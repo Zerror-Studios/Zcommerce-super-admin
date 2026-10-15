@@ -93,3 +93,5 @@ export { BackLink, CopyableId, Kbd, SaveBar, SegmentedControl } from "./Primitiv
 export type { BackLinkProps, CopyableIdProps, SaveBarProps, SegmentedControlProps } from "./Primitives";
 export { RankedBars } from "./RankedBars";
 export type { RankedBarItem } from "./RankedBars";
+export { SelectionBar } from "./SelectionBar";
+export type { SelectionBarProps } from "./SelectionBar";

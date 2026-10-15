@@ -37,7 +37,8 @@ const fieldInput = `
   placeholder:!text-fg-placeholder
 `;
 
-const fieldLabel = "text-[13px] leading-5 font-medium !text-fg w-full";
+/* No red asterisks (docs/design/02-components.md §7): required stays in aria; optional fields say "(optional)". */
+const fieldLabel = "text-[13px] leading-5 font-medium !text-fg w-full after:!hidden after:!content-none";
 
 /** Text field: white, strong border; primary border + ring on focus; red border when invalid. */
 export const getInputClasses = (className = "") => ({
