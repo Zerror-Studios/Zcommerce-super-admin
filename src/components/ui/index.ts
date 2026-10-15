@@ -91,3 +91,5 @@ export {
 } from "@heroui/react";
 export { BackLink, CopyableId, Kbd, SaveBar, SegmentedControl } from "./Primitives";
 export type { BackLinkProps, CopyableIdProps, SaveBarProps, SegmentedControlProps } from "./Primitives";
+export { RankedBars } from "./RankedBars";
+export type { RankedBarItem } from "./RankedBars";
