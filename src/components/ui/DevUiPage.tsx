@@ -62,6 +62,9 @@ import { Tabs } from "./Tabs";
 import { Textarea } from "./Textarea";
 import { Tooltip } from "./Tooltip";
 import { TONES } from "./tones";
+import { AiInsightCard, AiSuggestion, AiThinking, Sparkle, TodaysBrief, WriteWithAiButton } from "./Ai";
+import { setAiEnabled, useAiEnabled } from "./ai-flag";
+import { AskBar } from "../layout/Assistant";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -85,6 +88,7 @@ export default function DevUiPage() {
   const [dirty, setDirty] = useState(false);
   const [segment, setSegment] = useState<"revenue" | "orders">("revenue");
   const [search, setSearch] = useState("");
+  const aiEnabled = useAiEnabled();
 
   if (!import.meta.env.DEV) return null;
 
@@ -270,6 +274,60 @@ export default function DevUiPage() {
         <Card className="w-80" padding="none"><ErrorState title="Couldn't load products." onRetry={() => undefined} /></Card>
         <Card className="w-80" padding="none"><ErrorState inline title="Couldn't load products." onRetry={() => undefined} /></Card>
         <div className="flex w-80 flex-col gap-2"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-24 w-full" /></div>
+      </Section>
+
+      <Section title="AI layer (feature flag)">
+        <div className="flex w-full items-center justify-between gap-4 rounded-card border border-line bg-surface px-5 py-4">
+          <div>
+            <p className="flex items-center gap-2 text-body font-semibold text-fg">
+              <Sparkle /> AI features in this browser
+            </p>
+            <p className="text-label text-fg-muted">
+              Shows Today&apos;s brief, insight cards, the Ask bar and Write with AI. Answers are samples until the assistant
+              backend exists.
+            </p>
+          </div>
+          <Switch isSelected={aiEnabled} onValueChange={setAiEnabled} aria-label="AI features" />
+        </div>
+        <TodaysBrief
+          className="w-full"
+          message="Sessions are up 17% this month, but conversion slipped to 2.4%."
+          action={{ label: "Review products", onPress: () => undefined }}
+          onDismiss={() => undefined}
+        />
+        <AiThinking
+          className="w-80"
+          status="Analysing the last 30 days…"
+          steps={[
+            { label: "Read 1,284 orders", done: true },
+            { label: "Compared traffic sources", done: true },
+            { label: "Checking checkout drop-offs", done: false },
+          ]}
+        />
+        <AiInsightCard
+          className="w-80"
+          title="Mobile checkout is losing buyers"
+          body="68% of abandoned carts this month were on mobile, mostly at the shipping step."
+          action={{ label: "Show cost on product page", onPress: () => undefined }}
+          onDismiss={() => undefined}
+          source="Based on orders and sessions, 15 Sep – 14 Oct"
+        />
+        <div className="flex w-80 flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-label font-medium text-fg">Description</span>
+            <WriteWithAiButton onPress={() => undefined} />
+          </div>
+          <AiSuggestion
+            text="A breathable kurta set cut from pure linen in a soft sage green."
+            onAccept={() => undefined}
+            onRetry={() => undefined}
+            onDiscard={() => undefined}
+            chips={[{ label: "Shorter", onPress: () => undefined }, { label: "More premium", onPress: () => undefined }]}
+          />
+        </div>
+        <div className="w-full max-w-[560px]">
+          <AskBar placeholder="Ask anything about your store…" hidden={false} onOpen={() => undefined} />
+        </div>
       </Section>
 
       <Section title="Overlays and feedback">

@@ -9,7 +9,10 @@ import { useNavigate } from "react-router-dom";
 import { cx } from "../ui/cx";
 import { IconSearch } from "../ui/icons";
 import { Modal } from "../ui/Modal";
+import { Sparkle } from "../ui/Ai";
 import { Kbd } from "../ui/Primitives";
+
+const AskIcon = ({ className }: { className?: string }) => <Sparkle className={className} />;
 import type { CommandGroup, CommandItem } from "./types";
 
 export interface CommandPaletteProps {
@@ -17,6 +20,8 @@ export interface CommandPaletteProps {
   onClose: () => void;
   groups: CommandGroup[];
   placeholder?: string;
+  /** When the `ai` flag is on: last row "Ask AI: ‹query›" opens the assistant with the query. */
+  onAskAi?: (query: string) => void;
 }
 
 const MAX_PER_GROUP = 8;
@@ -30,19 +35,25 @@ function matches(item: CommandItem, query: string): boolean {
     .every((word) => haystack.includes(word));
 }
 
-export function CommandPalette({ isOpen, onClose, groups, placeholder = "Search pages and actions" }: CommandPaletteProps) {
+export function CommandPalette({ isOpen, onClose, groups, placeholder = "Search pages and actions", onAskAi }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
   const navigate = useNavigate();
   const listRef = useRef<HTMLDivElement>(null);
 
-  const visible = useMemo(
-    () =>
-      groups
-        .map((group) => ({ ...group, items: group.items.filter((item) => matches(item, query.trim())).slice(0, MAX_PER_GROUP) }))
-        .filter((group) => group.items.length > 0),
-    [groups, query],
-  );
+  const visible = useMemo(() => {
+    const found = groups
+      .map((group) => ({ ...group, items: group.items.filter((item) => matches(item, query.trim())).slice(0, MAX_PER_GROUP) }))
+      .filter((group) => group.items.length > 0);
+    const asked = query.trim();
+    if (onAskAi && asked) {
+      found.push({
+        title: "Assistant",
+        items: [{ id: "ask-ai", label: `Ask AI: ${asked}`, icon: AskIcon, onSelect: () => onAskAi(asked) }],
+      });
+    }
+    return found;
+  }, [groups, query, onAskAi]);
   const flat = useMemo(() => visible.flatMap((group) => group.items), [visible]);
 
   useEffect(() => {

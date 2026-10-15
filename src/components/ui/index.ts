@@ -95,3 +95,6 @@ export { RankedBars } from "./RankedBars";
 export type { RankedBarItem } from "./RankedBars";
 export { SelectionBar } from "./SelectionBar";
 export type { SelectionBarProps } from "./SelectionBar";
+export { AiInsightCard, AiSpectrumDefs, AiSuggestion, AiThinking, Sparkle, TodaysBrief, WriteWithAiButton } from "./Ai";
+export type { AiInsightCardProps, AiSuggestionProps, AiThinkingProps, TodaysBriefProps } from "./Ai";
+export { isAiEnabled, setAiEnabled, useAiEnabled } from "./ai-flag";

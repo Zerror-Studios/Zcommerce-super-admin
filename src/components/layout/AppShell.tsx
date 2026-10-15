@@ -5,7 +5,7 @@
  * the page title and the bell.
  */
 import { Drawer, DrawerBody, DrawerContent, ModalBody, ModalContent, ModalHeader } from "@heroui/react";
-import type { ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { cx } from "../ui/cx";
 import { IconMenu } from "../ui/icons";
 import { Modal } from "../ui/Modal";
@@ -26,6 +26,11 @@ export interface AppShellProps {
   contentClassName?: string;
   /** Content above the page inside the main area (e.g. the support-session banner). */
   banner?: ReactNode;
+  /**
+   * Floating element at the bottom centre of the main area (the AI Ask bar). Receives `hidden`, true while the
+   * user scrolls down. Pages get 96px of bottom padding so it never covers save bars or table footers.
+   */
+  floating?: (hidden: boolean) => ReactNode;
   children: ReactNode;
 }
 
@@ -38,13 +43,16 @@ export function AppShell({
   mobileActions,
   contentClassName,
   banner,
+  floating,
   children,
 }: AppShellProps) {
+  const [floatingHidden, setFloatingHidden] = useState(false);
+  const lastScroll = useRef(0);
   return (
     <div className="flex h-dvh overflow-hidden bg-page">
       {sidebar ? <div className="relative z-20 hidden h-full shrink-0 lg:block">{sidebar}</div> : null}
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col">
         {drawerSidebar ? (
           <header className="flex h-13 shrink-0 items-center gap-2 border-b border-line bg-surface px-2 lg:hidden">
             <button
@@ -65,10 +73,28 @@ export function AppShell({
             "custom-scroll relative min-h-0 flex-1 overflow-y-auto",
             contentClassName,
           )}
+          onScroll={
+            floating
+              ? (event) => {
+                  const top = event.currentTarget.scrollTop;
+                  // Hide while scrolling down, show again on scroll up (spec §16.3).
+                  if (Math.abs(top - lastScroll.current) > 8) setFloatingHidden(top > lastScroll.current && top > 80);
+                  lastScroll.current = top;
+                }
+              : undefined
+          }
         >
           {banner}
-          <div className="mx-auto w-full max-w-content-wide px-4 pb-16 pt-5 sm:px-8 sm:pt-7">{children}</div>
+          <div className={cx("mx-auto w-full max-w-content-wide px-4 pt-5 sm:px-8 sm:pt-7", floating ? "pb-28" : "pb-16")}>
+            {children}
+          </div>
         </main>
+
+        {floating ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 z-[var(--zc-z-ask)] flex justify-center px-4">
+            <div className="w-full max-w-[560px]">{floating(floatingHidden)}</div>
+          </div>
+        ) : null}
       </div>
 
       {drawerSidebar ? (

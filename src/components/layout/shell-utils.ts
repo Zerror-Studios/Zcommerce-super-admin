@@ -2,8 +2,16 @@
 /** Shell helpers: keyboard shortcuts, remembered sidebar state, relative times. */
 import { useEffect } from "react";
 
-/** ⌘K / Ctrl+K opens the palette; ⌘\ / Ctrl+\ toggles the sidebar. Ignored while typing only for ⌘\. */
-export function useShellHotkeys({ onSearch, onToggleSidebar }: { onSearch?: () => void; onToggleSidebar?: () => void }) {
+/** ⌘K / Ctrl+K opens the palette; ⌘\ / Ctrl+\ toggles the sidebar; ⌘J / Ctrl+J opens the assistant (when given). */
+export function useShellHotkeys({
+  onSearch,
+  onToggleSidebar,
+  onAsk,
+}: {
+  onSearch?: () => void;
+  onToggleSidebar?: () => void;
+  onAsk?: () => void;
+}) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
@@ -13,11 +21,14 @@ export function useShellHotkeys({ onSearch, onToggleSidebar }: { onSearch?: () =
       } else if (event.key === "\\" && onToggleSidebar) {
         event.preventDefault();
         onToggleSidebar();
+      } else if (event.key.toLowerCase() === "j" && onAsk) {
+        event.preventDefault();
+        onAsk();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onSearch, onToggleSidebar]);
+  }, [onSearch, onToggleSidebar, onAsk]);
 }
 
 /** Remembers the collapsed sidebar in localStorage (falls back to expanded when storage is unavailable). */

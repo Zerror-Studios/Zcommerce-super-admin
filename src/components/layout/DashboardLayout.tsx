@@ -12,6 +12,7 @@ import { readStoredFlag, storeFlag, useShellHotkeys } from "./shell-utils";
 import { CommandPalette } from "./CommandPalette";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { Sidebar } from "./Sidebar";
+import { AiSpectrumDefs } from "../ui/Ai";
 import type { CommandGroup, NotificationEntry, UserMenuItem } from "./types";
 
 const COLLAPSE_KEY = "zcommerce-sidebar-collapsed";
@@ -176,6 +177,7 @@ export function DashboardLayout() {
 
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} groups={commandGroups} placeholder="Search stores, pages and actions" />
       <ShortcutsDialog isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <AiSpectrumDefs />
     </>
   );
 }

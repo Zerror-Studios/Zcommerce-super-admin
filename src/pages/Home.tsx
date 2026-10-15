@@ -4,7 +4,8 @@ import { ClientsTable } from "../components/clients/ClientsTable";
 import { PageHeader } from "../components/common/PageHeader";
 import { EarningsChart } from "../components/dashboard/EarningsChart";
 import { NeedsAttention } from "../components/dashboard/NeedsAttention";
-import { Button, KpiStrip, StatCard } from "../components/ui";
+import { Button, KpiStrip, StatCard, TodaysBrief, useAiEnabled } from "../components/ui";
+import { platformBrief } from "../lib/aiSamples";
 import { IconAdd } from "../components/ui/icons";
 import {
   earnedIn,
@@ -32,6 +33,17 @@ export function Home() {
   const [loading, setLoading] = useState(true);
   const now = useMemo(() => new Date(), []);
   const platformGraceDays = useMemo(() => loadPlatformSettings().gracePeriodDays, []);
+
+  // Today's brief (AI flag), written from the same data as the KPIs below.
+  const aiEnabled = useAiEnabled();
+  const [briefDismissed, setBriefDismissed] = useState(false);
+  const brief = useMemo(
+    () =>
+      aiEnabled && !briefDismissed
+        ? platformBrief({ clients, subscriptions, transactions, platformGraceDays, now })
+        : null,
+    [aiEnabled, briefDismissed, clients, platformGraceDays, now],
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => setLoading(false), 600);
@@ -72,6 +84,14 @@ export function Home() {
           </Button>
         }
       />
+
+      {brief ? (
+        <TodaysBrief
+          message={brief.message}
+          action={{ label: brief.action.label, onPress: () => navigate(brief.action.href) }}
+          onDismiss={() => setBriefDismissed(true)}
+        />
+      ) : null}
 
       <KpiStrip>
         <StatCard

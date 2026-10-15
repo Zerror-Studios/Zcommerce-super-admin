@@ -13,7 +13,11 @@ import type { Client, Plan, Subscription } from "../../types";
 import { getStoreHealth } from "../../lib/storeHealth";
 import { formatDate } from "../../lib/utils";
 import { areaGradientStops, chartColors, recharts } from "../ui/chart-theme";
-import { Card, HealthScore, KpiStrip, StatCard, Tooltip as UiTooltip, formatCount, formatMoney, getHealthBand } from "../ui";
+import { AiInsightCard, Card, HealthScore, KpiStrip, StatCard, Tooltip as UiTooltip, formatCount, formatMoney, getHealthBand, useAiEnabled } from "../ui";
+import { useState } from "react";
+import { storeInsight } from "../../lib/aiSamples";
+import { transactions } from "../../lib/mockData";
+import { loadPlatformSettings } from "../../lib/platformSettings";
 import { ClientUsageTab } from "./ClientUsageTab";
 
 export interface ClientOverviewTabProps {
@@ -77,6 +81,12 @@ export function ClientOverviewTab({ client, subscription, plan }: ClientOverview
   const health = getStoreHealth(client, subscription);
   // growthPercent −100 means the comparison can't be shown as a real change (docs/design/05-wording.md §2).
   const growthUnknown = client.growthPercent <= -100;
+  // Insight card (AI flag), written from this store's own payment and health data.
+  const aiEnabled = useAiEnabled();
+  const [insightDismissed, setInsightDismissed] = useState(false);
+  const insight = aiEnabled && !insightDismissed
+    ? storeInsight(client, subscription, transactions, loadPlatformSettings().gracePeriodDays, new Date())
+    : null;
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
@@ -107,6 +117,15 @@ export function ClientOverviewTab({ client, subscription, plan }: ClientOverview
           />
           <StatCard bare label="Monthly fee" value={client.mrr} format="money" deltaLabel={`${client.plan} plan`} />
         </KpiStrip>
+
+        {insight ? (
+          <AiInsightCard
+            title={insight.title}
+            body={insight.body}
+            source="Based on this store's payments, orders and activity"
+            onDismiss={() => setInsightDismissed(true)}
+          />
+        ) : null}
 
         <Card
           title="Performance"

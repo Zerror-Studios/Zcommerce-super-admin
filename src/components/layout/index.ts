@@ -2,6 +2,8 @@
 export { AppShell, ShortcutsDialog } from "./AppShell";
 export { isSameDay, readStoredFlag, relativeTime, storeFlag, useShellHotkeys } from "./shell-utils";
 export type { AppShellProps } from "./AppShell";
+export { AskBar, AssistantPanel } from "./Assistant";
+export type { AiAnswer, AssistantPanelProps } from "./Assistant";
 export { CommandPalette } from "./CommandPalette";
 export type { CommandPaletteProps } from "./CommandPalette";
 export { NotificationsPanel } from "./NotificationsPanel";
