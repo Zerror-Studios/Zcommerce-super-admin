@@ -1,18 +1,10 @@
-import {
-  addToast,
-  Button,
-  Card,
-  CardBody,
-  Input,
-  Select,
-  SelectItem,
-} from "@heroui/react";
+import { addToast, Card, CardBody, Input, Select, SelectItem } from "@heroui/react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ClientStatus, PlanName } from "../types";
-import { secondaryButtonClassName } from "../components/common/buttonStyles";
 import { PageHeader } from "../components/common/PageHeader";
 import { useClients } from "../providers/ClientsProvider";
+import { Button as UiButton } from "../components/ui";
 
 const planMrr: Record<PlanName, number> = {
   Free: 0,
@@ -89,12 +81,12 @@ export function AddClient() {
         ]}
       />
 
-      <Card shadow="none" className="max-w-3xl border border-default-200 bg-white">
+      <Card shadow="none" className="max-w-3xl border border-line bg-surface">
         <CardBody className="gap-6 p-6">
           <section className="space-y-4">
             <div>
-              <h2 className="text-base font-semibold">Store details</h2>
-              <p className="text-xs text-default-500">
+              <h2 className="text-subtitle font-bold">Store details</h2>
+              <p className="text-caption text-default-500">
                 Basic information for the new client store
               </p>
             </div>
@@ -123,8 +115,8 @@ export function AddClient() {
 
           <section className="space-y-4 border-t border-default-100 pt-6">
             <div>
-              <h2 className="text-base font-semibold">Subscription</h2>
-              <p className="text-xs text-default-500">
+              <h2 className="text-subtitle font-bold">Subscription</h2>
+              <p className="text-caption text-default-500">
                 Starting plan and account status
               </p>
             </div>
@@ -173,25 +165,12 @@ export function AddClient() {
           </section>
 
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-default-100 pt-6">
-            <Button
-              variant="bordered"
-              color="primary"
-              radius="full"
-              size="sm"
-              className={secondaryButtonClassName}
-              onPress={() => navigate("/clients")}
-            >
+            <UiButton variant="outline" size="sm" onPress={() => navigate("/clients")}>
               Cancel
-            </Button>
-            <Button
-              color="primary"
-              radius="full"
-              size="sm"
-              className="h-8 px-5 font-medium"
-              onPress={handleCreate}
-            >
+            </UiButton>
+            <UiButton variant="primary" size="sm" onPress={handleCreate}>
               Add client
-            </Button>
+            </UiButton>
           </div>
         </CardBody>
       </Card>

@@ -1,21 +1,7 @@
-import {
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-} from "@heroui/react";
+import { Card, CardBody, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
 import { endOfDay, endOfMonth, startOfMonth } from "date-fns";
-import { Download } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { HiOutlineArrowDownRight, HiOutlineArrowUpRight } from "react-icons/hi2";
-import type { PlanName } from "../../types";
 import { clients, transactions } from "../../lib/mockData";
 import {
   MONTHLY_PLAN_REVENUE,
@@ -30,12 +16,11 @@ import {
 } from "../../lib/revenueReports";
 import { downloadCsv, rowsToCsv } from "../../lib/subscriptionReports";
 import { formatCurrency, formatNumber, formatPercent } from "../../lib/utils";
-import { secondaryButtonClassName } from "../common/buttonStyles";
 import {
   DateRangeComparison,
   type DateRangeValue,
 } from "../common/DateRangeComparison";
-import { dataTableClassNames, tablePanelClassName } from "../common/dataTableStyles";
+import { dataTableClassNames } from "../common/dataTableStyles";
 import { NoDataPlaceholder } from "../common/NoDataPlaceholder";
 import { StatusChip } from "../common/StatusChip";
 import {
@@ -44,19 +29,17 @@ import {
   CartesianGrid,
   Legend,
   Line,
-  LineChart,
+  Area,
+  ComposedChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-
-const planColors: Record<PlanName, string> = {
-  Free: "#94A3B8",
-  Starter: "#60A5FA",
-  Pro: "#3b82f6",
-  Enterprise: "#1E3A8A",
-};
+import { areaGradientStops, chartColors, planColors, recharts } from "../ui/chart-theme";
+import { IconDownload, IconTrendDown, IconTrendUp } from "../ui/icons";
+import { Button as UiButton } from "../ui";
+import { CardWrapper } from "../ui/CardWrapper";
 
 const defaultRange: DateRangeValue = {
   startDate: startOfMonth(new Date(2026, 3, 1)),
@@ -73,25 +56,25 @@ interface SummaryCardProps {
 function SummaryCard({ title, value, subtitle, change }: SummaryCardProps) {
   const positive = change != null && change >= 0;
   return (
-    <Card shadow="none">
+    <Card shadow="none" className="border border-line bg-surface">
       <CardBody className="gap-1 p-4">
-        <p className="text-xs font-medium text-default-500">{title}</p>
+        <p className="text-caption font-medium text-default-500">{title}</p>
         <p className="text-xl font-bold text-foreground">{value}</p>
         {change != null ? (
           <p
-            className={`flex items-center gap-0.5 text-xs font-medium ${
+            className={`flex items-center gap-0.5 text-caption font-medium ${
               positive ? "text-success" : "text-danger"
             }`}
           >
             {positive ? (
-              <HiOutlineArrowUpRight size={12} />
+              <IconTrendUp size={12} />
             ) : (
-              <HiOutlineArrowDownRight size={12} />
+              <IconTrendDown size={12} />
             )}
             {formatPercent(Math.abs(change))} MoM
           </p>
         ) : subtitle ? (
-          <p className="text-xs text-default-400">{subtitle}</p>
+          <p className="text-caption text-default-400">{subtitle}</p>
         ) : null}
       </CardBody>
     </Card>
@@ -115,11 +98,11 @@ function ChartTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border border-default-200 bg-content1 px-3 py-2 shadow-md">
-      <p className="mb-1 text-xs font-medium text-default-500">{label}</p>
+      <p className="mb-1 text-caption font-medium text-default-500">{label}</p>
       {payload.map((entry) => (
         <p
           key={String(entry.dataKey)}
-          className="text-sm font-semibold"
+          className="text-body font-bold"
           style={{ color: entry.color }}
         >
           {entry.name ?? entry.dataKey}: {formatCurrency(entry.value ?? 0)}
@@ -202,17 +185,15 @@ export function RevenueReportsTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <DateRangeComparison value={range} onChange={setRange} />
-        <Button
+        <UiButton
+          variant="outline"
           size="sm"
-          variant="bordered"
-          radius="full"
-          className={secondaryButtonClassName}
-          startContent={<Download size={14} strokeWidth={2.5} />}
+          startIcon={<IconDownload size={14} strokeWidth={2.5} />}
           isDisabled={monthly.length === 0}
           onPress={exportCsv}
         >
           Export CSV
-        </Button>
+        </UiButton>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
@@ -253,14 +234,7 @@ export function RevenueReportsTab() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <Card shadow="none" className={tablePanelClassName}>
-          <CardHeader className="flex flex-col items-start gap-1 px-5 pb-0 pt-5">
-            <h3 className="text-base font-semibold">Revenue trend</h3>
-            <p className="text-xs text-default-500">
-              Monthly plan bookings vs trailing 3‑month average
-            </p>
-          </CardHeader>
-          <CardBody className="h-[300px] px-2 pb-4 sm:px-4">
+        <CardWrapper title="Revenue trend" description="Monthly plan bookings vs trailing 3‑month average" bodyClassName="p-2 h-[300px]">
             {trend.length === 0 ? (
               <NoDataPlaceholder
                 title="No months in range"
@@ -268,49 +242,44 @@ export function RevenueReportsTab() {
               />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trend} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-default-200" />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+                <ComposedChart data={trend} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="reportsRevenueFill" x1="0" y1="0" x2="0" y2="1">
+                      {areaGradientStops.map((stop) => (
+                        <stop key={stop.offset} offset={stop.offset} stopColor={chartColors.series[0]} stopOpacity={stop.stopOpacity} />
+                      ))}
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid {...recharts.grid} />
+                  <XAxis dataKey="month" {...recharts.axis} />
                   <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 12 }}
+                    {...recharts.axis}
                     tickFormatter={(v: number) => formatCurrency(v, "INR", true)}
                   />
                   <Tooltip content={<ChartTooltip />} />
                   <Legend />
-                  <Line
-                    type="monotone"
+                  <Area
                     dataKey="revenue"
                     name="Revenue"
-                    stroke="#2563EB"
-                    strokeWidth={2.5}
-                    dot={false}
-                    activeDot={{ r: 4 }}
+                    stroke={chartColors.series[0]}
+                    {...recharts.area}
+                    fill="url(#reportsRevenueFill)"
                   />
                   <Line
                     type="monotone"
                     dataKey="mrr"
                     name="Trailing avg"
-                    stroke="#94A3B8"
+                    stroke={chartColors.categorical[2]}
                     strokeWidth={1.5}
                     strokeDasharray="4 4"
                     dot={false}
                   />
-                </LineChart>
+                </ComposedChart>
               </ResponsiveContainer>
             )}
-          </CardBody>
-        </Card>
+        </CardWrapper>
 
-        <Card shadow="none" className={tablePanelClassName}>
-          <CardHeader className="flex flex-col items-start gap-1 px-5 pb-0 pt-5">
-            <h3 className="text-base font-semibold">Revenue by plan</h3>
-            <p className="text-xs text-default-500">
-              Stacked subscription bookings per month
-            </p>
-          </CardHeader>
-          <CardBody className="h-[300px] px-2 pb-4 sm:px-4">
+        <CardWrapper title="Revenue by plan" description="Stacked subscription bookings per month" bodyClassName="p-2 h-[300px]">
             {monthly.length === 0 ? (
               <NoDataPlaceholder
                 title="No months in range"
@@ -319,7 +288,7 @@ export function RevenueReportsTab() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthly} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-default-200" />
+                  <CartesianGrid {...recharts.grid} />
                   <XAxis
                     dataKey="label"
                     tickLine={false}
@@ -328,9 +297,7 @@ export function RevenueReportsTab() {
                     tickFormatter={(v: string) => String(v).replace(/ 20\d\d$/, "")}
                   />
                   <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 12 }}
+                    {...recharts.axis}
                     tickFormatter={(v: number) => formatCurrency(v, "INR", true)}
                   />
                   <Tooltip content={<ChartTooltip />} />
@@ -346,25 +313,17 @@ export function RevenueReportsTab() {
                 </BarChart>
               </ResponsiveContainer>
             )}
-          </CardBody>
-        </Card>
+        </CardWrapper>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <Card shadow="none" className={`overflow-hidden ${tablePanelClassName}`}>
-          <CardHeader className="flex flex-col items-start gap-1 px-5 pb-2 pt-5">
-            <h3 className="text-base font-semibold">Plan breakdown</h3>
-            <p className="text-xs text-default-500">
-              Share of period revenue, store count, and live MRR
-            </p>
-          </CardHeader>
-          <CardBody className="px-0 pb-0 pt-0">
+        <CardWrapper title="Plan breakdown" description="Share of period revenue, store count, and live MRR" bodyClassName="p-0" className="overflow-hidden">
             <Table
               aria-label="Plan revenue breakdown"
               removeWrapper
               classNames={{
                 ...dataTableClassNames,
-                base: "rounded-none border-0 border-t border-default-200 overflow-hidden bg-white",
+                base: "rounded-none border-0 border-t border-default-200 overflow-hidden bg-surface",
               }}
             >
               <TableHeader>
@@ -398,23 +357,15 @@ export function RevenueReportsTab() {
                 )}
               </TableBody>
             </Table>
-          </CardBody>
-        </Card>
+        </CardWrapper>
 
-        <Card shadow="none" className={`overflow-hidden ${tablePanelClassName}`}>
-          <CardHeader className="flex flex-col items-start gap-1 px-5 pb-2 pt-5">
-            <h3 className="text-base font-semibold">Gateway split</h3>
-            <p className="text-xs text-default-500">
-              Collected vs failed charges by payment gateway
-            </p>
-          </CardHeader>
-          <CardBody className="px-0 pb-0 pt-0">
+        <CardWrapper title="Gateway split" description="Collected vs failed charges by payment gateway" bodyClassName="p-0" className="overflow-hidden">
             <Table
               aria-label="Gateway revenue breakdown"
               removeWrapper
               classNames={{
                 ...dataTableClassNames,
-                base: "rounded-none border-0 border-t border-default-200 overflow-hidden bg-white",
+                base: "rounded-none border-0 border-t border-default-200 overflow-hidden bg-surface",
               }}
             >
               <TableHeader>
@@ -446,24 +397,16 @@ export function RevenueReportsTab() {
                 )}
               </TableBody>
             </Table>
-          </CardBody>
-        </Card>
+        </CardWrapper>
       </div>
 
-      <Card shadow="none" className={`overflow-hidden ${tablePanelClassName}`}>
-        <CardHeader className="flex flex-col items-start gap-1 px-5 pb-2 pt-5">
-          <h3 className="text-base font-semibold">Top stores by collected revenue</h3>
-          <p className="text-xs text-default-500">
-            Successful charges in the selected range
-          </p>
-        </CardHeader>
-        <CardBody className="px-0 pb-0 pt-0">
+      <CardWrapper title="Top stores by collected revenue" description="Successful charges in the selected range" bodyClassName="p-0" className="overflow-hidden">
           <Table
             aria-label="Top stores by revenue"
             removeWrapper
             classNames={{
               ...dataTableClassNames,
-              base: "rounded-none border-0 border-t border-default-200 overflow-hidden bg-white",
+              base: "rounded-none border-0 border-t border-default-200 overflow-hidden bg-surface",
             }}
           >
             <TableHeader>
@@ -493,7 +436,7 @@ export function RevenueReportsTab() {
                       <p className="truncate font-medium whitespace-nowrap">
                         {row.storeName}
                       </p>
-                      <p className="truncate text-xs text-default-400">
+                      <p className="truncate text-caption text-default-400">
                         {row.ownerEmail}
                       </p>
                     </div>
@@ -512,8 +455,7 @@ export function RevenueReportsTab() {
               )}
             </TableBody>
           </Table>
-        </CardBody>
-      </Card>
+      </CardWrapper>
     </div>
   );
 }

@@ -1,5 +1,4 @@
-import { Button, Card, CardBody, Select, SelectItem } from "@heroui/react";
-import { Plus } from "lucide-react";
+import { Card, CardBody, Select, SelectItem } from "@heroui/react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Client, ClientStatus, PlanName } from "../../types";
@@ -10,6 +9,8 @@ import {
   TableToolbar,
 } from "../common/TableToolbar";
 import { ClientsTable } from "./ClientsTable";
+import { IconAdd } from "../ui/icons";
+import { Button as UiButton } from "../ui";
 
 export interface ClientsPageContentProps {
   clients: Client[];
@@ -69,16 +70,14 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
         description="Monitor and manage every client store on the Zcommerce platform."
         breadcrumbs={[{ label: "Home", href: "/" }, { label: "Clients" }]}
         actions={
-          <Button
-            color="primary"
-            radius="full"
+          <UiButton
+            variant="primary"
             size="sm"
-            className="h-8 px-5 font-medium"
-            startContent={<Plus size={14} strokeWidth={2.5} />}
+            startIcon={<IconAdd size={14} strokeWidth={2.5} />}
             onPress={() => navigate("/clients/new")}
           >
             Add client
-          </Button>
+          </UiButton>
         }
       />
 

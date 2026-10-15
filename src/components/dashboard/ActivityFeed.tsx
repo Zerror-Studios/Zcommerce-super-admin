@@ -1,14 +1,9 @@
-import { Card, CardBody, CardHeader, Skeleton } from "@heroui/react";
+import { Skeleton } from "@heroui/react";
 import type { IconType } from "react-icons";
-import {
-  HiOutlineArrowDownCircle,
-  HiOutlineArrowUpCircle,
-  HiOutlineCreditCard,
-  HiOutlineNoSymbol,
-  HiOutlineUserPlus,
-} from "react-icons/hi2";
 import type { ActivityItem, ActivityType } from "../../types";
 import { formatDateTime } from "../../lib/utils";
+import { IconAddUser, IconArrowDownCircle, IconBlock, IconPayments, IconUpgrade } from "../ui/icons";
+import { CardWrapper } from "../ui/CardWrapper";
 
 export interface ActivityFeedProps {
   items: ActivityItem[];
@@ -16,13 +11,13 @@ export interface ActivityFeedProps {
 }
 
 const iconMap: Record<ActivityType, IconType> = {
-  signup: HiOutlineUserPlus,
-  upgrade: HiOutlineArrowUpCircle,
-  downgrade: HiOutlineArrowDownCircle,
-  cancellation: HiOutlineNoSymbol,
-  failed_payment: HiOutlineCreditCard,
-  payout: HiOutlineCreditCard,
-  note: HiOutlineUserPlus,
+  signup: IconAddUser,
+  upgrade: IconUpgrade,
+  downgrade: IconArrowDownCircle,
+  cancellation: IconBlock,
+  failed_payment: IconPayments,
+  payout: IconPayments,
+  note: IconAddUser,
 };
 
 const colorMap: Record<ActivityType, string> = {
@@ -37,12 +32,7 @@ const colorMap: Record<ActivityType, string> = {
 
 export function ActivityFeed({ items, isLoading }: ActivityFeedProps) {
   return (
-    <Card shadow="none" className="h-full">
-      <CardHeader className="flex flex-col items-start gap-1 px-5 pb-2 pt-5">
-        <h2 className="text-base font-semibold">Recent activity</h2>
-        <p className="text-xs text-default-500">Signups, upgrades, cancellations & payments</p>
-      </CardHeader>
-      <CardBody className="px-3 pb-4 pt-0">
+    <CardWrapper title="Recent activity" description="Signups, upgrades, cancellations & payments" className="h-full">
         {isLoading ? (
           <div className="space-y-3 p-2">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -65,19 +55,18 @@ export function ActivityFeed({ items, isLoading }: ActivityFeedProps) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
-                      <p className="text-sm font-semibold">{item.title}</p>
+                      <p className="text-body font-bold">{item.title}</p>
                       <time className="shrink-0 text-[11px] text-default-400">
                         {formatDateTime(item.timestamp)}
                       </time>
                     </div>
-                    <p className="text-xs text-default-500">{item.description}</p>
+                    <p className="text-caption text-default-500">{item.description}</p>
                   </div>
                 </li>
               );
             })}
           </ul>
         )}
-      </CardBody>
-    </Card>
+    </CardWrapper>
   );
 }

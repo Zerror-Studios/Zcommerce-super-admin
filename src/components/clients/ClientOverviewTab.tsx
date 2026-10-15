@@ -1,8 +1,8 @@
-import { Card, CardBody, CardHeader } from "@heroui/react";
 import {
   CartesianGrid,
   Line,
-  LineChart,
+  Area,
+  ComposedChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -18,7 +18,9 @@ import {
 } from "../../lib/utils";
 import { StatusChip } from "../common/StatusChip";
 import { StatCard } from "../dashboard/StatCard";
-import { DollarSign, ShoppingCart, TrendingUp, Users } from "lucide-react";
+import { areaGradientStops, chartColors, recharts } from "../ui/chart-theme";
+import { IconCustomers, IconDollar, IconOrders, IconTrendUp } from "../ui/icons";
+import { CardWrapper } from "../ui/CardWrapper";
 
 export interface ClientOverviewTabProps {
   client: Client;
@@ -61,9 +63,9 @@ function ChartTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border border-default-200 bg-content1 px-3 py-2 shadow-md">
-      <p className="mb-1 text-xs font-medium text-default-500">{label}</p>
+      <p className="mb-1 text-caption font-medium text-default-500">{label}</p>
       {payload.map((entry) => (
-        <p key={String(entry.dataKey)} className="text-sm font-semibold">
+        <p key={String(entry.dataKey)} className="text-body font-bold">
           {entry.dataKey === "revenue"
             ? `Revenue: ${formatCurrency(entry.value ?? 0)}`
             : `Orders: ${formatNumber(entry.value ?? 0)}`}
@@ -80,14 +82,7 @@ export function ClientOverviewTab({ client, subscription }: ClientOverviewTabPro
 
   return (
     <div className="space-y-4">
-      <Card shadow="none">
-        <CardHeader className="flex flex-col items-start gap-1 px-5 pb-2 pt-5">
-          <h3 className="text-base font-semibold">Store profile</h3>
-          <p className="text-xs text-default-500">
-            Account and billing summary for {client.storeName}
-          </p>
-        </CardHeader>
-        <CardBody className="grid grid-cols-1 gap-4 px-5 pb-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <CardWrapper title="Store profile" description={<>Account and billing summary for {client.storeName}</>} bodyClassName="p-8 py-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <SummaryItem label="Owner" value={client.ownerName} />
           <SummaryItem label="Email" value={client.ownerEmail} />
           <SummaryItem
@@ -113,86 +108,79 @@ export function ClientOverviewTab({ client, subscription }: ClientOverviewTabPro
               <StatusChip kind="subscription" value={subscriptionStatus} />
             }
           />
-        </CardBody>
-      </Card>
+      </CardWrapper>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Store Revenue"
           value={formatCurrency(client.revenue)}
           change={client.growthPercent}
-          icon={DollarSign}
+          icon={IconDollar}
         />
         <StatCard
           title="Monthly Recurring Revenue (₹)"
           value={formatNumber(client.mrr)}
           change={client.status === "trial" ? 0 : 2.4}
-          icon={TrendingUp}
+          icon={IconTrendUp}
         />
         <StatCard
           title="Orders (30d)"
           value={formatNumber(client.orders30d)}
           change={client.growthPercent * 0.6}
-          icon={ShoppingCart}
+          icon={IconOrders}
         />
         <StatCard
           title="Growth"
           value={formatPercent(client.growthPercent)}
           change={client.growthPercent}
-          icon={Users}
+          icon={IconCustomers}
         />
       </div>
 
-      <Card shadow="none">
-        <CardHeader className="flex flex-col items-start gap-1 px-5 pb-0 pt-5">
-          <h3 className="text-base font-semibold">Performance trend</h3>
-          <p className="text-xs text-default-500">
-            Estimated monthly revenue & orders for {client.storeName}
-          </p>
-        </CardHeader>
-        <CardBody className="px-2 pb-4 pt-2 sm:px-4">
+      <CardWrapper title="Performance trend" description={<>Estimated monthly revenue & orders for {client.storeName}</>}>
           <div className="h-[260px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trend} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-default-200" />
-                <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+              <ComposedChart data={trend} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="clientRevenueFill" x1="0" y1="0" x2="0" y2="1">
+                    {areaGradientStops.map((stop) => (
+                      <stop key={stop.offset} offset={stop.offset} stopColor={chartColors.series[0]} stopOpacity={stop.stopOpacity} />
+                    ))}
+                  </linearGradient>
+                </defs>
+                <CartesianGrid {...recharts.grid} />
+                <XAxis dataKey="month" {...recharts.axis} />
                 <YAxis
                   yAxisId="left"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 12 }}
+                  {...recharts.axis}
                   tickFormatter={(v: number) => formatCurrency(v, "INR", true)}
                 />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 12 }}
+                  {...recharts.axis}
                 />
                 <Tooltip content={<ChartTooltip />} />
-                <Line
+                <Area
                   yAxisId="left"
-                  type="monotone"
                   dataKey="revenue"
-                  stroke="#2563EB"
-                  strokeWidth={2.5}
-                  dot={false}
-                />
+                  stroke={chartColors.series[0]}
+                    {...recharts.area}
+                    fill="url(#clientRevenueFill)"
+                  />
                 <Line
                   yAxisId="right"
                   type="monotone"
                   dataKey="orders"
-                  stroke="#94A3B8"
+                  stroke={chartColors.categorical[2]}
                   strokeWidth={1.5}
                   strokeDasharray="4 4"
                   dot={false}
                 />
-              </LineChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
-        </CardBody>
-      </Card>
+      </CardWrapper>
     </div>
   );
 }
@@ -206,8 +194,8 @@ interface SummaryItemProps {
 function SummaryItem({ label, value, valueNode }: SummaryItemProps) {
   return (
     <div className="rounded-xl bg-default-50 px-4 py-3">
-      <p className="text-xs text-default-500">{label}</p>
-      <div className="mt-1 text-sm font-semibold">{valueNode ?? value}</div>
+      <p className="text-caption text-default-500">{label}</p>
+      <div className="mt-1 text-body font-bold">{valueNode ?? value}</div>
     </div>
   );
 }

@@ -1,18 +1,4 @@
-import {
-  addToast,
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  Input,
-  Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-} from "@heroui/react";
+import { addToast, Input, Switch, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
 import { useEffect, useMemo, useState } from "react";
 import type { Client, Transaction } from "../../types";
 import { formatCurrency, formatDateTime } from "../../lib/utils";
@@ -20,6 +6,8 @@ import { getInputClasses } from "../../styles/inputStyle";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { NoDataPlaceholder } from "../common/NoDataPlaceholder";
 import { StatusChip } from "../common/StatusChip";
+import { Button as UiButton } from "../ui";
+import { CardWrapper } from "../ui/CardWrapper";
 
 export interface ClientBillingTabProps {
   client: Client;
@@ -95,17 +83,7 @@ export function ClientBillingTab({
 
   return (
     <div className="space-y-4">
-      <Card shadow="none">
-        <CardHeader className="flex flex-col items-start gap-1 px-5 pb-2 pt-5">
-          <h3 className="text-base font-semibold">Grace period</h3>
-          <p className="text-xs text-default-500">
-            Extend days after due date when this client says they will pay later.
-            Uses the platform default ({defaultGracePeriodDays} day
-            {defaultGracePeriodDays === 1 ? "" : "s"}) unless you set a custom
-            value below.
-          </p>
-        </CardHeader>
-        <CardBody className="flex flex-col gap-4 px-5 pb-5 sm:max-w-md">
+      <CardWrapper title="Grace period" description={<>Extend days after due date when this client says they will pay later. Uses the platform default ({defaultGracePeriodDays} day{defaultGracePeriodDays === 1 ? "" : "s"}) unless you set a custom value below.</>} bodyClassName="p-8 py-6 flex flex-col gap-4 sm:max-w-md">
           <Switch
             size="sm"
             isSelected={useOverride}
@@ -121,7 +99,7 @@ export function ClientBillingTab({
           </Switch>
 
           {!useOverride ? (
-            <p className="text-xs text-default-400">
+            <p className="text-caption text-default-400">
               Currently using platform default ({defaultGracePeriodDays} days)
             </p>
           ) : (
@@ -141,43 +119,30 @@ export function ClientBillingTab({
           )}
 
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="light" isDisabled={!dirty} onPress={onCancel}>
+            <UiButton variant="outline" size="sm" isDisabled={!dirty} onPress={onCancel}>
               Cancel
-            </Button>
-            <Button
+            </UiButton>
+            <UiButton
+              variant="primary"
               size="sm"
-              color="primary"
-              radius="full"
-              className="h-8 px-5 font-medium"
               isDisabled={!dirty}
               onPress={onSave}
             >
               Save
-            </Button>
+            </UiButton>
             {dirty ? (
-              <span className="text-xs text-warning">Unsaved changes</span>
+              <span className="text-caption text-warning">Unsaved changes</span>
             ) : null}
           </div>
-        </CardBody>
-      </Card>
+      </CardWrapper>
 
-      <Card
-        shadow="none"
-        className="overflow-hidden rounded-xl border border-default-200 bg-white"
-      >
-        <CardHeader className="flex flex-col items-start gap-1 px-5 pb-2 pt-5">
-          <h3 className="text-base font-semibold">Billing history</h3>
-          <p className="text-xs text-default-500">
-            Platform subscription charges for this client
-          </p>
-        </CardHeader>
-        <CardBody className="px-0 pb-0 pt-0">
+      <CardWrapper title="Billing history" description="Platform subscription charges for this client" bodyClassName="p-0" className="overflow-hidden">
           <Table
             aria-label="Client billing history"
             removeWrapper
             classNames={{
               ...dataTableClassNames,
-              base: "rounded-none border-0 border-t border-default-200 overflow-hidden bg-white",
+              base: "rounded-none border-0 border-t border-default-200 overflow-hidden bg-surface",
             }}
           >
             <TableHeader columns={[...txnColumns]}>
@@ -212,8 +177,7 @@ export function ClientBillingTab({
               )}
             </TableBody>
           </Table>
-        </CardBody>
-      </Card>
+      </CardWrapper>
     </div>
   );
 }

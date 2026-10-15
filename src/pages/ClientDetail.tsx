@@ -1,5 +1,4 @@
-import { addToast, Button, Card, CardBody } from "@heroui/react";
-import { LogIn } from "lucide-react";
+import { addToast, Card, CardBody } from "@heroui/react";
 import { useMemo, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { ClientBillingTab } from "../components/clients/ClientBillingTab";
@@ -12,6 +11,8 @@ import { StatusChip } from "../components/common/StatusChip";
 import { plans, subscriptions, transactions } from "../lib/mockData";
 import { loadPlatformSettings } from "../lib/platformSettings";
 import { useClients } from "../providers/ClientsProvider";
+import { IconLogin } from "../components/ui/icons";
+import { Button as UiButton } from "../components/ui";
 
 export function ClientDetail() {
   const { id } = useParams<{ id: string }>();
@@ -53,12 +54,12 @@ export function ClientDetail() {
             { label: "Not found" },
           ]}
         />
-        <Card shadow="none">
+        <Card shadow="none" className="border border-line bg-surface">
           <CardBody className="items-center gap-3 py-16 text-center">
             <p className="text-default-500">No client with id “{id}”.</p>
-            <Button color="primary" variant="flat" onPress={() => navigate("/clients")}>
+            <UiButton variant="outline" onPress={() => navigate("/clients")}>
               Back to clients
-            </Button>
+            </UiButton>
           </CardBody>
         </Card>
       </div>
@@ -79,16 +80,14 @@ export function ClientDetail() {
           <div className="flex flex-wrap items-center gap-2">
             <StatusChip kind="plan" value={client.plan} />
             <StatusChip kind="client" value={client.status} />
-            <Button
-              color="primary"
-              radius="full"
+            <UiButton
+              variant="primary"
               size="sm"
-              className="h-8 px-5 font-medium"
-              startContent={<LogIn size={14} strokeWidth={2.5} />}
+              startIcon={<IconLogin size={14} strokeWidth={2.5} />}
               onPress={() => setLoginOpen(true)}
             >
               Login as client
-            </Button>
+            </UiButton>
           </div>
         }
       />

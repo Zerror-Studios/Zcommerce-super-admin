@@ -1,34 +1,20 @@
-import {
-  addToast,
-  Button,
-  Pagination,
-  Skeleton,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-  type SortDescriptor,
-} from "@heroui/react";
-import { LogIn } from "lucide-react";
+import { addToast, Pagination, Skeleton, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type SortDescriptor } from "@heroui/react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Client, Subscription } from "../../types";
 import { subscriptions } from "../../lib/mockData";
 import { getStoreHealth } from "../../lib/storeHealth";
 import {
-  daysUntil,
-  formatDate,
   formatNumber,
-  isExpiringSoon,
 } from "../../lib/utils";
-import { secondaryButtonClassName } from "../common/buttonStyles";
 import { ConfirmModal } from "../common/ConfirmModal";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { NoDataPlaceholder } from "../common/NoDataPlaceholder";
 import { StatusChip } from "../common/StatusChip";
 import { StoreHealthCell } from "../common/StoreHealthCell";
+import { RenewalBadge } from "../common/RenewalBadge";
+import { IconLogin } from "../ui/icons";
+import { Button as UiButton } from "../ui";
 
 export interface ClientsTableProps {
   clients: Client[];
@@ -55,35 +41,6 @@ const allColumns: { key: ColumnKey; label: string; allowsSorting?: boolean }[] =
 ];
 
 const PAGE_SIZE = 10;
-
-function renewalLabel(sub: Subscription): {
-  text: string;
-  tone: "default" | "warning" | "danger";
-} {
-  const days = daysUntil(sub.renewalDate);
-  if (sub.status === "past_due") {
-    return {
-      text: `Overdue by ${Math.abs(days)}d · ${formatDate(sub.renewalDate)}`,
-      tone: "danger",
-    };
-  }
-  if (sub.status === "canceled") {
-    return { text: `Ended ${formatDate(sub.renewalDate)}`, tone: "default" };
-  }
-  if (days < 0) {
-    return { text: `Overdue · ${formatDate(sub.renewalDate)}`, tone: "danger" };
-  }
-  if (isExpiringSoon(sub.renewalDate, 7)) {
-    return {
-      text:
-        days === 0
-          ? `Due today · ${formatDate(sub.renewalDate)}`
-          : `Expires in ${days}d · ${formatDate(sub.renewalDate)}`,
-      tone: "warning",
-    };
-  }
-  return { text: formatDate(sub.renewalDate), tone: "default" };
-}
 
 function compareClients(
   a: Client,
@@ -176,14 +133,13 @@ export function ClientsTable({
 
   const renderCell = (client: Client, key: string) => {
     const subscription = subscriptionByClientId.get(client.id);
-    const renewal = subscription ? renewalLabel(subscription) : null;
 
     switch (key as ColumnKey) {
       case "storeName":
         return (
           <div>
             <p className="font-medium text-foreground">{client.storeName}</p>
-            <p className="text-xs text-default-400">{client.ownerEmail}</p>
+            <p className="text-caption text-default-400">{client.ownerEmail}</p>
           </div>
         );
       case "plan":
@@ -195,20 +151,7 @@ export function ClientsTable({
           <StoreHealthCell client={client} subscription={subscription} />
         );
       case "renewalDate":
-        if (!renewal) return <span className="text-default-400">—</span>;
-        return (
-          <span
-            className={
-              renewal.tone === "danger"
-                ? "text-sm font-medium text-danger"
-                : renewal.tone === "warning"
-                  ? "text-sm font-medium text-warning"
-                  : "text-sm text-default-600"
-            }
-          >
-            {renewal.text}
-          </span>
-        );
+        return <RenewalBadge subscription={subscription} />;
       case "mrr":
         return <span className="font-medium">{formatNumber(client.mrr)}</span>;
       case "actions":
@@ -218,17 +161,14 @@ export function ClientsTable({
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <Button
+            <UiButton
+              variant="outline"
               size="sm"
-              radius="full"
-              variant="bordered"
-              color="primary"
-              className={secondaryButtonClassName}
-              startContent={<LogIn size={14} strokeWidth={2.5} />}
+              startIcon={<IconLogin size={14} strokeWidth={2.5} />}
               onPress={() => setLoginClient(client)}
             >
               Login
-            </Button>
+            </UiButton>
           </div>
         );
       default:
@@ -284,7 +224,7 @@ export function ClientsTable({
       </Table>
 
       <div className="flex items-center justify-between gap-3 border-t border-default-100 px-4 py-3">
-        <p className="text-xs text-default-400">
+        <p className="text-caption text-default-400">
           Showing {(safePage - 1) * PAGE_SIZE + (pageItems.length ? 1 : 0)}–
           {Math.min(safePage * PAGE_SIZE, sorted.length)} of {sorted.length}
         </p>

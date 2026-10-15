@@ -1,36 +1,17 @@
-import {
-  addToast,
-  Button,
-  Card,
-  CardBody,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Select,
-  SelectItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-  type Selection,
-} from "@heroui/react";
-import { Eye, Mail, Send } from "lucide-react";
+import { addToast, Card, CardBody, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Select, SelectItem, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type Selection } from "@heroui/react";
 import { useMemo, useState } from "react";
 import type { Client, Subscription } from "../../types";
 import { subscriptions } from "../../lib/mockData";
 import { selectionToIdSet } from "../../lib/tableSelection";
 import { daysUntil, formatDate } from "../../lib/utils";
 import { useClients } from "../../providers/ClientsProvider";
-import { secondaryButtonClassName, modalCancelButtonClassName, modalPrimaryButtonClassName } from "../common/buttonStyles";
 import { dataTableClassNames, dataTableSelectionProps, tablePanelClassName } from "../common/dataTableStyles";
 import { dashboardModalProps } from "../common/modalStyles";
 import { NoDataPlaceholder } from "../common/NoDataPlaceholder";
 import { StatusChip } from "../common/StatusChip";
 import { TableToolbar } from "../common/TableToolbar";
+import { IconMessages, IconSend, IconView } from "../ui/icons";
+import { Button as UiButton } from "../ui";
 
 type WindowFilter = "all" | "30" | "14" | "7" | "3" | "overdue";
 
@@ -151,14 +132,14 @@ export function AutomationSettingsTab() {
         return (
           <div>
             <p className="font-medium text-foreground">{client.storeName}</p>
-            <p className="text-xs text-default-400">{client.ownerEmail}</p>
+            <p className="text-caption text-default-400">{client.ownerEmail}</p>
           </div>
         );
       case "plan":
         return <StatusChip kind="plan" value={client.plan} />;
       case "renewalDate":
         return (
-          <span className="text-sm text-default-600">
+          <span className="text-body text-default-600">
             {formatDate(subscription.renewalDate)}
           </span>
         );
@@ -175,7 +156,7 @@ export function AutomationSettingsTab() {
             : daysLeft <= 7
               ? "text-warning"
               : "text-default-700";
-        return <span className={`text-sm font-medium ${tone}`}>{label}</span>;
+        return <span className={`text-body font-medium ${tone}`}>{label}</span>;
       }
       case "status":
         return <StatusChip kind="subscription" value={subscription.status} />;
@@ -187,28 +168,28 @@ export function AutomationSettingsTab() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Card shadow="none" className="border border-default-200 bg-white">
+        <Card shadow="none" className="border border-line bg-surface">
           <CardBody className="gap-1 p-4">
-            <p className="text-xs text-default-500">Expiring in 30 days</p>
-            <p className="text-2xl font-bold">{counts.within30}</p>
+            <p className="text-caption text-default-500">Expiring in 30 days</p>
+            <p className="text-title font-bold">{counts.within30}</p>
           </CardBody>
         </Card>
-        <Card shadow="none" className="border border-default-200 bg-white">
+        <Card shadow="none" className="border border-line bg-surface">
           <CardBody className="gap-1 p-4">
-            <p className="text-xs text-default-500">Expiring in 7 days</p>
-            <p className="text-2xl font-bold">{counts.within7}</p>
+            <p className="text-caption text-default-500">Expiring in 7 days</p>
+            <p className="text-title font-bold">{counts.within7}</p>
           </CardBody>
         </Card>
-        <Card shadow="none" className="border border-default-200 bg-white">
+        <Card shadow="none" className="border border-line bg-surface">
           <CardBody className="gap-1 p-4">
-            <p className="text-xs text-default-500">Overdue</p>
-            <p className="text-2xl font-bold text-danger">{counts.overdue}</p>
+            <p className="text-caption text-default-500">Overdue</p>
+            <p className="text-title font-bold text-danger">{counts.overdue}</p>
           </CardBody>
         </Card>
-        <Card shadow="none" className="border border-default-200 bg-white">
+        <Card shadow="none" className="border border-line bg-surface">
           <CardBody className="gap-1 p-4">
-            <p className="text-xs text-default-500">Selected stores</p>
-            <p className="text-2xl font-bold text-primary">{counts.selected}</p>
+            <p className="text-caption text-default-500">Selected stores</p>
+            <p className="text-title font-bold text-primary">{counts.selected}</p>
           </CardBody>
         </Card>
       </div>
@@ -286,15 +267,15 @@ export function AutomationSettingsTab() {
         </CardBody>
       </Card>
 
-      <Card shadow="none" className="border border-default-200 bg-white">
+      <Card shadow="none" className="border border-line bg-surface">
         <CardBody className="flex flex-row flex-wrap items-center justify-between gap-3 p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Mail size={18} strokeWidth={2.25} />
+              <IconMessages size={18} strokeWidth={2.25} />
             </div>
             <div>
-              <h3 className="text-base font-semibold">Ready to send</h3>
-              <p className="text-xs text-default-500">
+              <h3 className="text-subtitle font-bold">Ready to send</h3>
+              <p className="text-caption text-default-500">
                 {selectedCount > 0
                   ? `${selectedCount} store${selectedCount === 1 ? "" : "s"} selected for expiry reminder emails`
                   : "Select one or more stores to send expiry reminder emails"}
@@ -302,28 +283,23 @@ export function AutomationSettingsTab() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="bordered"
-              color="primary"
-              radius="full"
+            <UiButton
+              variant="outline"
               size="sm"
-              className={secondaryButtonClassName}
-              startContent={<Eye size={14} strokeWidth={2.5} />}
+              startIcon={<IconView size={14} strokeWidth={2.5} />}
               onPress={() => setPreviewOpen(true)}
             >
               Preview email
-            </Button>
-            <Button
-              color="primary"
-              radius="full"
+            </UiButton>
+            <UiButton
+              variant="primary"
               size="sm"
-              className="h-8 px-5 font-medium"
-              startContent={<Send size={14} strokeWidth={2.5} />}
+              startIcon={<IconSend size={14} strokeWidth={2.5} />}
               isDisabled={selectedCount === 0}
               onPress={handleSend}
             >
               Send emails
-            </Button>
+            </UiButton>
           </div>
         </CardBody>
       </Card>
@@ -339,49 +315,43 @@ export function AutomationSettingsTab() {
             <>
               <ModalHeader>
                 Email preview
-                <span className="mt-1 text-sm font-normal text-default-500">
+                <span className="mt-1 text-body font-normal text-default-500">
                   Same template for all selected stores — placeholders are filled
                   when sending
                 </span>
               </ModalHeader>
               <ModalBody>
                 <div>
-                  <p className="text-sm font-medium text-foreground">Subject</p>
-                  <p className="mt-1 rounded-md border border-[#BED2F1] bg-grayBackground px-3 py-2 text-sm">
+                  <p className="text-body font-medium text-foreground">Subject</p>
+                  <p className="mt-1 rounded-md border border-line bg-surface-muted px-3 py-2 text-body">
                     {EMAIL_SUBJECT}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">Message</p>
-                  <div className="mt-1 rounded-md border border-[#BED2F1] bg-grayBackground px-4 py-3">
-                    <p className="whitespace-pre-wrap text-sm text-default-700">
+                  <p className="text-body font-medium text-foreground">Message</p>
+                  <div className="mt-1 rounded-md border border-line bg-surface-muted px-4 py-3">
+                    <p className="whitespace-pre-wrap text-body text-default-700">
                       {EMAIL_BODY}
                     </p>
                   </div>
                 </div>
-                <p className="text-xs text-default-500">
+                <p className="text-caption text-default-500">
                   Placeholders: {"{{days}}"}, {"{{storeName}}"}, {"{{ownerName}}"}
                   , {"{{plan}}"}, {"{{renewalDate}}"}
                 </p>
               </ModalBody>
               <ModalFooter>
-                <Button
-                  variant="bordered"
-                  radius="full"
-                  className={modalCancelButtonClassName}
-                  onPress={close}
-                >
+                <UiButton variant="danger-outline" size="sm" onPress={close}>
                   Cancel
-                </Button>
-                <Button
-                  color="primary"
-                  radius="full"
-                  className={modalPrimaryButtonClassName}
+                </UiButton>
+                <UiButton
+                  variant="primary"
+                  size="sm"
                   isDisabled={selectedCount === 0}
                   onPress={handleSend}
                 >
                   Send emails
-                </Button>
+                </UiButton>
               </ModalFooter>
             </>
           )}

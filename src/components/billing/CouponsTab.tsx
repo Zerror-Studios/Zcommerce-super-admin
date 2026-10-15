@@ -1,35 +1,9 @@
-import {
-  addToast,
-  Button,
-  Card,
-  CardBody,
-  Chip,
-  Input,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Select,
-  SelectItem,
-  Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-  type Selection,
-} from "@heroui/react";
+import { addToast, Card, CardBody, Chip, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Select, SelectItem, Switch, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type Selection } from "@heroui/react";
 import { useMemo, useState } from "react";
 import type { Coupon, PlanName } from "../../types";
 import { selectionToIdSet } from "../../lib/tableSelection";
 import { formatDate } from "../../lib/utils";
 import { getInputClasses, getSelectClasses } from "../../styles/inputStyle";
-import {
-  modalCancelButtonClassName,
-  modalPrimaryButtonClassName,
-} from "../common/buttonStyles";
 import { dataTableFillClassNames, dataTableSelectionProps, tablePanelFillClassName } from "../common/dataTableStyles";
 import { dashboardModalProps } from "../common/modalStyles";
 import {
@@ -37,6 +11,7 @@ import {
   TableToolbar,
 } from "../common/TableToolbar";
 import { NoDataPlaceholder } from "../common/NoDataPlaceholder";
+import { Button as UiButton } from "../ui";
 
 export interface CouponsTabProps {
   coupons: Coupon[];
@@ -108,7 +83,7 @@ export function CouponsTab({
   const renderCell = (coupon: Coupon, key: string) => {
     switch (key) {
       case "code":
-        return <span className="font-mono font-semibold">{coupon.code}</span>;
+        return <span className="font-mono font-bold">{coupon.code}</span>;
       case "discount":
         return coupon.discountType === "percent"
           ? `${coupon.discountValue}%`
@@ -329,22 +304,12 @@ export function CouponsTab({
                 </Switch>
               </ModalBody>
               <ModalFooter>
-                <Button
-                  variant="bordered"
-                  radius="full"
-                  className={modalCancelButtonClassName}
-                  onPress={close}
-                >
+                <UiButton variant="danger-outline" size="sm" onPress={close}>
                   Cancel
-                </Button>
-                <Button
-                  color="primary"
-                  radius="full"
-                  className={modalPrimaryButtonClassName}
-                  onPress={handleCreate}
-                >
+                </UiButton>
+                <UiButton variant="primary" size="sm" onPress={handleCreate}>
                   Save
-                </Button>
+                </UiButton>
               </ModalFooter>
             </>
           )}

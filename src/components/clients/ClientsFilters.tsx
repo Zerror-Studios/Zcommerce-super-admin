@@ -1,7 +1,7 @@
 import { Input, Select, SelectItem } from "@heroui/react";
-import { Search } from "lucide-react";
 import type { ClientStatus, PlanName } from "../../types";
 import { getInputClasses } from "../../styles/inputStyle";
+import { IconSearch } from "../ui/icons";
 
 export type PlanFilter = PlanName | "all";
 export type StatusFilter = ClientStatus | "all";
@@ -45,7 +45,7 @@ export function ClientsFilters({
         placeholder="Search by store name or email..."
         value={search}
         onValueChange={onSearchChange}
-        startContent={<Search size={16} className="text-default-400" />}
+        startContent={<IconSearch size={16} className="text-default-400" />}
         className="w-full sm:max-w-sm"
         classNames={getInputClasses("!rounded-full")}
       />

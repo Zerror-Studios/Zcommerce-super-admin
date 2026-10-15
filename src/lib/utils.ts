@@ -1,26 +1,15 @@
-export function formatCurrency(
-  value: number,
-  currency = "INR",
-  compact = false,
-): string {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency,
-    notation: compact ? "compact" : "standard",
-    maximumFractionDigits: compact ? 1 : 0,
-  }).format(value);
+import { formatCount, formatDelta, formatMoney } from "../components/ui/money";
+// Money and number formatting delegate to the shared formatters (component-specs §20) so both products match.
+export function formatCurrency(value: number, currency = "INR", compact = false): string {
+  return formatMoney(value, { currency, compact });
 }
 
 export function formatNumber(value: number, compact = false): string {
-  return new Intl.NumberFormat("en-US", {
-    notation: compact ? "compact" : "standard",
-    maximumFractionDigits: compact ? 1 : 0,
-  }).format(value);
+  return formatCount(value, compact);
 }
 
 export function formatPercent(value: number, digits = 1): string {
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(digits)}%`;
+  return formatDelta(value, digits);
 }
 
 export function formatDate(iso: string): string {

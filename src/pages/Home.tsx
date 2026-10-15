@@ -1,10 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  HiOutlineCurrencyDollar,
-  HiOutlineShoppingCart,
-  HiOutlineArrowTrendingUp,
-  HiOutlineUsers,
-} from "react-icons/hi2";
+import { IconOrders, IconRevenue, IconStore, IconTrendUp } from "../components/ui/icons";
 import { PlanChart } from "../components/dashboard/PlanChart";
 import { RevenueChart } from "../components/dashboard/RevenueChart";
 import { StatCard } from "../components/dashboard/StatCard";
@@ -40,28 +35,28 @@ export function Home() {
           title="Total Revenue"
           value={formatCurrency(dashboardStats.totalRevenue)}
           change={dashboardStats.totalRevenueChange}
-          icon={HiOutlineCurrencyDollar}
+          icon={IconRevenue}
           isLoading={loading}
         />
         <StatCard
           title="Monthly Recurring Revenue"
           value={formatCurrency(dashboardStats.mrr)}
           change={dashboardStats.mrrChange}
-          icon={HiOutlineArrowTrendingUp}
+          icon={IconTrendUp}
           isLoading={loading}
         />
         <StatCard
           title="Total Stores"
           value={formatNumber(dashboardStats.activeClients)}
           change={dashboardStats.activeClientsChange}
-          icon={HiOutlineUsers}
+          icon={IconStore}
           isLoading={loading}
         />
         <StatCard
           title="Total Orders"
           value={formatNumber(dashboardStats.totalOrders)}
           change={dashboardStats.totalOrdersChange}
-          icon={HiOutlineShoppingCart}
+          icon={IconOrders}
           isLoading={loading}
         />
       </div>

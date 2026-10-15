@@ -1,3 +1,9 @@
+import {
+  differenceInCalendarDays,
+  endOfDay,
+  startOfDay,
+  subDays,
+} from "date-fns";
 import type {
   Client,
   PlanName,
@@ -32,7 +38,12 @@ export interface ReportQueryInput {
   subscriptions: Subscription[];
   transactions: Transaction[];
   asOf?: Date;
-  month?: Date; // first day of month under review
+  /** Inclusive range start (preferred over `month`). */
+  rangeStart?: Date;
+  /** Inclusive range end (preferred over `month`). */
+  rangeEnd?: Date;
+  /** @deprecated Prefer rangeStart/rangeEnd. First day of month under review. */
+  month?: Date;
   settings?: PlatformSettings;
   drill?: ReportDrillFilter;
   search?: string;
@@ -107,6 +118,27 @@ function monthBounds(month: Date): { start: Date; end: Date } {
   const start = new Date(month.getFullYear(), month.getMonth(), 1);
   const end = new Date(month.getFullYear(), month.getMonth() + 1, 0, 23, 59, 59, 999);
   return { start, end };
+}
+
+function resolveRange(
+  input: Pick<ReportQueryInput, "rangeStart" | "rangeEnd" | "month" | "asOf">,
+): { start: Date; end: Date } {
+  if (input.rangeStart && input.rangeEnd) {
+    return {
+      start: startOfDay(input.rangeStart),
+      end: endOfDay(input.rangeEnd),
+    };
+  }
+  const asOf = input.asOf ?? new Date();
+  const month = input.month ?? new Date(asOf.getFullYear(), asOf.getMonth(), 1);
+  return monthBounds(month);
+}
+
+function previousPeriod(start: Date, end: Date): { start: Date; end: Date } {
+  const length = differenceInCalendarDays(end, start) + 1;
+  const prevEnd = endOfDay(subDays(start, 1));
+  const prevStart = startOfDay(subDays(prevEnd, length - 1));
+  return { start: prevStart, end: prevEnd };
 }
 
 function inRange(iso: string | null | undefined, start: Date, end: Date): boolean {
@@ -261,11 +293,11 @@ export function buildPaymentReportRows(
   });
 }
 
-function monthSnapshot(
+function periodSnapshot(
   input: ReportQueryInput,
-  month: Date,
+  start: Date,
+  end: Date,
 ): MonthSnapshot {
-  const { start, end } = monthBounds(month);
   const { subscriptions, transactions } = input;
 
   const success = transactions.filter(
@@ -322,21 +354,19 @@ export function buildSubscriptionReportOverview(
   input: ReportQueryInput,
 ): SubscriptionReportOverview {
   const asOf = input.asOf ?? new Date();
-  const month = input.month ?? new Date(asOf.getFullYear(), asOf.getMonth(), 1);
   const shops = buildShopReportRows({ ...input, asOf });
   const payments = buildPaymentReportRows({ ...input, asOf });
-  const { start, end } = monthBounds(month);
+  const { start, end } = resolveRange({ ...input, asOf });
+  const prev = previousPeriod(start, end);
 
-  const paidMonthPayments = applyDrillToPayments(payments, "paid_month", month, asOf);
-  const pendingPayments = applyDrillToPayments(payments, "pending", month, asOf);
-  const overduePayments = applyDrillToPayments(payments, "overdue", month, asOf);
+  const paidMonthPayments = applyDrillToPayments(payments, "paid_month", start, end, asOf);
+  const pendingPayments = applyDrillToPayments(payments, "pending", start, end, asOf);
+  const overduePayments = applyDrillToPayments(payments, "overdue", start, end, asOf);
 
   const expectedRevenue = input.subscriptions
     .filter((s) => s.status !== "canceled" && s.mrr > 0)
     .reduce((sum, s) => sum + s.mrr, 0);
   const collectedRevenue = paidMonthPayments.reduce((sum, t) => sum + t.amount, 0);
-
-  const prevMonth = new Date(month.getFullYear(), month.getMonth() - 1, 1);
 
   return {
     totalShops: shops.length,
@@ -361,8 +391,8 @@ export function buildSubscriptionReportOverview(
       expectedRevenue > 0
         ? Math.round((collectedRevenue / expectedRevenue) * 1000) / 10
         : 0,
-    renewals7: applyDrillToShops(shops, "renewals_7", asOf, month).length,
-    renewals30: applyDrillToShops(shops, "renewals_30", asOf, month).length,
+    renewals7: applyDrillToShops(shops, "renewals_7", asOf).length,
+    renewals30: applyDrillToShops(shops, "renewals_30", asOf).length,
     churnedThisMonth: input.subscriptions.filter((s) =>
       inRange(
         s.canceledAt ?? (s.status === "canceled" ? s.renewalDate : null),
@@ -370,8 +400,8 @@ export function buildSubscriptionReportOverview(
         end,
       ),
     ).length,
-    currentMonth: monthSnapshot(input, month),
-    previousMonth: monthSnapshot(input, prevMonth),
+    currentMonth: periodSnapshot(input, start, end),
+    previousMonth: periodSnapshot(input, prev.start, prev.end),
   };
 }
 
@@ -380,7 +410,7 @@ export function applyDrillToShops(
   shops: ShopReportRow[],
   drill: ReportDrillFilter,
   asOf: Date = new Date(),
-  _month?: Date,
+  _rangeStart?: Date,
 ): ShopReportRow[] {
   switch (drill) {
     case "healthy":
@@ -423,11 +453,15 @@ export function applyDrillToShops(
 export function applyDrillToPayments(
   payments: PaymentReportRow[],
   drill: ReportDrillFilter,
-  month?: Date,
+  rangeStart?: Date,
+  rangeEnd?: Date,
   asOf: Date = new Date(),
 ): PaymentReportRow[] {
-  const m = month ?? new Date(asOf.getFullYear(), asOf.getMonth(), 1);
-  const { start, end } = monthBounds(m);
+  const { start, end } = resolveRange({
+    rangeStart,
+    rangeEnd,
+    asOf,
+  });
 
   switch (drill) {
     case "paid_month":

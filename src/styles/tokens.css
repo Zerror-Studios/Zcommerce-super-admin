@@ -1,0 +1,85 @@
+/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* Wix Madefor Text is a variable font (wght 400-800). The weight range must be declared, or browsers
+   treat it as 400 only and fake bold/medium by smearing the regular glyphs. */
+@font-face {
+  font-family: "Wix Madefor Text";
+  src: url("/fonts/font-wix.woff2") format("woff2-variations"), url("/fonts/font-wix.woff2") format("woff2");
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+:root {
+  --zc-font-sans: "Wix Madefor Text", "Helvetica Neue", Helvetica, Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --zc-bg: #F8F8F8;
+  --zc-surface: #FFFFFF;
+  --zc-surface-muted: #F8F8F8;
+  --zc-fg: #131720;
+  --zc-fg-muted: #71717A;
+  --zc-border: #E4E4E7;
+  --zc-border-strong: #D4D4D8;
+  --zc-field-border: #BED2F1; /* light blue border of the table search field */
+
+  --zc-primary: #116DFE;
+  --zc-primary-hover: #0E5FDF;
+  --zc-primary-pressed: #0B54C7;
+  --zc-on-primary: #FFFFFF;
+  --zc-primary-text: #0E5FDF;
+  --zc-primary-soft: #E6F3FE;
+  --zc-primary-tint: #E2F2FF;
+  --zc-primary-soft-strong: #D4EBFD;
+
+  --zc-danger: #EC0102;
+  --zc-danger-hover: #C40102;
+  --zc-danger-text: #C40102;
+  --zc-danger-soft: #FDECEC;
+  --zc-success: #15803D;
+  --zc-success-soft: #DCFCE7;
+  --zc-warning: #B45309;
+  --zc-warning-soft: #FEF3C7;
+  --zc-neutral-text: #52525B;
+  --zc-neutral-soft: #F1F1F3;
+
+  --zc-topbar: #131720;
+  --zc-topbar-fg: #FFFFFF;
+  --zc-topbar-fg-muted: rgba(255, 255, 255, 0.70);
+  --zc-topbar-control: rgba(255, 255, 255, 0.10);
+  --zc-topbar-control-hover: rgba(255, 255, 255, 0.15);
+  --zc-topbar-badge: #16294A;
+  --zc-topbar-badge-fg: #5B9BFF;
+  --zc-focus: #116DFE;
+  --zc-overlay: rgba(19, 23, 32, 0.50);
+  --zc-media-scrim: rgba(19, 23, 32, 0.35);
+  --zc-media-action: rgba(255, 255, 255, 0.30);
+  --zc-scrollbar-thumb: rgba(100, 116, 139, 0.35);
+
+  --zc-chart-1: #116DFE;
+  --zc-chart-2: #6AA6FF;
+  --zc-chart-3: #0B3D91;
+  --zc-chart-4: #A1A1AA;
+  /* Categorical chart colors (owner decision 2026-10-13: the Store Dashboard analytics palette, in both products). */
+  --zc-chart-cat-1: #1684EA;
+  --zc-chart-cat-2: #17B0E2;
+  --zc-chart-cat-3: #6544F9;
+  --zc-chart-cat-4: #FF9F43;
+  --zc-chart-cat-5: #FF6B6B;
+
+  --zc-shadow-card: 0 1px 2px rgba(19, 23, 32, 0.04);
+  --zc-shadow-popover: 0 8px 24px rgba(19, 23, 32, 0.12), 0 2px 6px rgba(19, 23, 32, 0.06);
+  --zc-shadow-modal: 0 24px 48px rgba(19, 23, 32, 0.18);
+
+  --zc-ease: cubic-bezier(0.2, 0, 0, 1);
+  color-scheme: light;
+}
+
+html { font-family: var(--zc-font-sans); }
+body { background: var(--zc-bg); color: var(--zc-fg); -webkit-font-smoothing: antialiased; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

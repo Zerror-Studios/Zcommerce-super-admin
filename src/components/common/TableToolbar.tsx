@@ -1,20 +1,8 @@
-import {
-  Button,
-  Checkbox,
-  CheckboxGroup,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
-  Input,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@heroui/react";
-import { ChevronDown, ListFilter, Search } from "lucide-react";
+import { Checkbox, CheckboxGroup, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Input, Popover, PopoverContent, PopoverTrigger } from "@heroui/react";
 import type { ReactNode } from "react";
-import { getInputClasses } from "../../styles/inputStyle";
-import { secondaryButtonClassName } from "./buttonStyles";
+import { getTableSearchClasses, tableSearchIconClass } from "../ui/field-styles";
+import { IconCaret, IconFilters, IconSearch } from "../ui/icons";
+import { Button as UiButton } from "../ui";
 
 export interface TableColumnOption {
   key: string;
@@ -43,31 +31,26 @@ export function TableToolbar({
   endContent,
 }: TableToolbarProps) {
   return (
-    <div className="flex flex-col gap-3 border-b border-default-100 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 border-b border-default-100 bg-surface px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
       <Input
         aria-label="Search table"
         placeholder={searchPlaceholder}
         value={search}
         onValueChange={onSearchChange}
-        startContent={<Search size={16} className="text-default-400" />}
-        className="w-full sm:max-w-md"
-        classNames={getInputClasses("!rounded-full")}
+        radius="full"
+        isClearable
+        onClear={() => onSearchChange("")}
+        startContent={<IconSearch aria-hidden className={tableSearchIconClass} />}
+        classNames={getTableSearchClasses()}
       />
 
       <div className="flex flex-wrap items-center gap-2 sm:justify-end">
         {columns && visibleColumns && onVisibleColumnsChange ? (
           <Dropdown>
             <DropdownTrigger>
-              <Button
-                variant="bordered"
-                color="primary"
-                radius="full"
-                size="sm"
-                className={secondaryButtonClassName}
-                endContent={<ChevronDown size={14} />}
-              >
+              <UiButton variant="outline" size="sm" endIcon={<IconCaret size={14} />}>
                 Columns
-              </Button>
+              </UiButton>
             </DropdownTrigger>
             <DropdownMenu
               aria-label="Toggle columns"
@@ -89,32 +72,26 @@ export function TableToolbar({
         {filterContent ? (
           <Popover placement="bottom-end">
             <PopoverTrigger>
-              <Button
-                variant="bordered"
-                color="primary"
-                radius="full"
+              <UiButton
+                variant="outline"
                 size="sm"
-                className={secondaryButtonClassName}
-                endContent={<ListFilter size={14} strokeWidth={2.5} />}
+                endIcon={<IconFilters size={14} strokeWidth={2.5} />}
               >
                 Filters
-              </Button>
+              </UiButton>
             </PopoverTrigger>
             <PopoverContent className="w-64 p-4">
               <div className="flex w-full flex-col gap-3">{filterContent}</div>
             </PopoverContent>
           </Popover>
         ) : (
-          <Button
-            variant="bordered"
-            color="primary"
-            radius="full"
+          <UiButton
+            variant="outline"
             size="sm"
-            className={secondaryButtonClassName}
-            endContent={<ListFilter size={14} strokeWidth={2.5} />}
+            endIcon={<IconFilters size={14} strokeWidth={2.5} />}
           >
             Filters
-          </Button>
+          </UiButton>
         )}
 
         {endContent}
@@ -146,7 +123,7 @@ export function TableSelectAll({
       classNames={{
         wrapper:
           "before:border-default-300 after:bg-primary rounded-[4px] before:rounded-[4px]",
-        icon: "text-white",
+        icon: "text-brand-on",
       }}
     />
   );
@@ -174,7 +151,7 @@ export function TableRowCheckbox({
       classNames={{
         wrapper:
           "before:border-default-300 after:bg-primary rounded-[4px] before:rounded-[4px]",
-        icon: "text-white",
+        icon: "text-brand-on",
       }}
     />
   );
@@ -195,7 +172,7 @@ export function FilterCheckboxGroup({
 }: FilterCheckboxGroupProps) {
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold text-default-500">{label}</p>
+      <p className="text-caption font-bold text-default-500">{label}</p>
       <CheckboxGroup
         value={value}
         onValueChange={onChange}

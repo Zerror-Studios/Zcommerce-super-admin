@@ -1,7 +1,9 @@
-import { addToast, Button, Card, CardBody, CardHeader } from "@heroui/react";
+import { addToast } from "@heroui/react";
 import { useState } from "react";
 import type { Client, ClientStatus } from "../../types";
 import { ConfirmModal } from "../common/ConfirmModal";
+import { Button as UiButton } from "../ui";
+import { CardWrapper } from "../ui/CardWrapper";
 
 export interface ClientDangerZoneProps {
   client: Client;
@@ -22,49 +24,41 @@ export function ClientDangerZone({
 
   return (
     <>
-      <Card shadow="none" className="bg-danger-50/40 dark:bg-danger-100/10">
-        <CardHeader className="flex flex-col items-start gap-1 px-5 pb-2 pt-5">
-          <h3 className="text-base font-semibold text-danger">Danger zone</h3>
-          <p className="text-xs text-default-500">
-            Destructive account actions. Confirm carefully — demo only updates local state.
-          </p>
-        </CardHeader>
-        <CardBody className="gap-4 px-5 pb-5">
+      <CardWrapper title={<span className="text-danger">Danger zone</span>} description="Destructive account actions. Confirm carefully — demo only updates local state." bodyClassName="p-8 py-6 flex flex-col gap-4" className="!bg-danger-50/40">
           <div className="flex flex-col gap-3 rounded-xl border border-default-200 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold">
+              <p className="text-body font-bold">
                 {isSuspended ? "Reactivate store" : "Suspend store"}
               </p>
-              <p className="text-xs text-default-500">
+              <p className="text-caption text-default-500">
                 {isSuspended
                   ? "Restore access for the merchant admin panel."
                   : "Block storefront and merchant dashboard access."}
               </p>
             </div>
             {isSuspended ? (
-              <Button color="success" variant="flat" onPress={() => setActivateOpen(true)}>
+              <UiButton variant="primary" size="sm" onPress={() => setActivateOpen(true)}>
                 Reactivate
-              </Button>
+              </UiButton>
             ) : (
-              <Button color="warning" variant="flat" onPress={() => setSuspendOpen(true)}>
+              <UiButton variant="outline" size="sm" onPress={() => setSuspendOpen(true)}>
                 Suspend
-              </Button>
+              </UiButton>
             )}
           </div>
 
-          <div className="flex flex-col gap-3 rounded-xl border border-danger-200 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-danger-100/40">
+          <div className="flex flex-col gap-3 rounded-xl border border-danger-200 p-4 sm:flex-row sm:items-center sm:justify-between ">
             <div>
-              <p className="text-sm font-semibold text-danger">Delete client</p>
-              <p className="text-xs text-default-500">
+              <p className="text-body font-bold text-danger">Delete client</p>
+              <p className="text-caption text-default-500">
                 Permanently remove this client from the admin panel list.
               </p>
             </div>
-            <Button color="danger" variant="flat" onPress={() => setDeleteOpen(true)}>
+            <UiButton variant="danger-outline" size="sm" onPress={() => setDeleteOpen(true)}>
               Delete
-            </Button>
+            </UiButton>
           </div>
-        </CardBody>
-      </Card>
+      </CardWrapper>
 
       <ConfirmModal
         isOpen={suspendOpen}

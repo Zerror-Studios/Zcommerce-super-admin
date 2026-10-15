@@ -1,0 +1,200 @@
+/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+@custom-variant dark (&:where(.dark, .dark *)); /* light only: never toggled, keeps dark: inert */
+/* Viewport height breakpoint (896px): extra content only where it fits without page scroll (sign-in panel). */
+@custom-variant tall (@media (min-height: 56rem));
+@theme inline {
+  --font-sans: var(--zc-font-sans);
+
+  --color-page: var(--zc-bg);
+  --color-surface: var(--zc-surface);
+  --color-surface-muted: var(--zc-surface-muted);
+  --color-fg: var(--zc-fg);
+  --color-fg-muted: var(--zc-fg-muted);
+  --color-line: var(--zc-border);
+  --color-line-strong: var(--zc-border-strong);
+  --color-field-line: var(--zc-field-border);
+
+  --color-brand: var(--zc-primary);
+  --color-brand-hover: var(--zc-primary-hover);
+  --color-brand-pressed: var(--zc-primary-pressed);
+  --color-brand-on: var(--zc-on-primary);
+  --color-brand-text: var(--zc-primary-text);
+  --color-brand-soft: var(--zc-primary-soft);
+  --color-brand-tint: var(--zc-primary-tint);
+  --color-brand-soft-strong: var(--zc-primary-soft-strong);
+
+  --color-tone-danger: var(--zc-danger);
+  --color-tone-danger-hover: var(--zc-danger-hover);
+  --color-tone-danger-text: var(--zc-danger-text);
+  --color-tone-danger-soft: var(--zc-danger-soft);
+  --color-tone-success: var(--zc-success);
+  --color-tone-success-soft: var(--zc-success-soft);
+  --color-tone-warning: var(--zc-warning);
+  --color-tone-warning-soft: var(--zc-warning-soft);
+  --color-tone-neutral: var(--zc-neutral-text);
+  --color-tone-neutral-soft: var(--zc-neutral-soft);
+
+  --color-topbar: var(--zc-topbar);
+  --color-topbar-fg: var(--zc-topbar-fg);
+  --color-topbar-fg-muted: var(--zc-topbar-fg-muted);
+  --color-topbar-control: var(--zc-topbar-control);
+  --color-topbar-control-hover: var(--zc-topbar-control-hover);
+  --color-topbar-badge: var(--zc-topbar-badge);
+  --color-topbar-badge-fg: var(--zc-topbar-badge-fg);
+
+  --color-focus: var(--zc-focus);
+  /* No --color-overlay here: HeroUI owns `overlay` (#131720 in heroui-theme.js) and its backdrops use
+     bg-overlay/50, which equals --zc-overlay. Redefining it as a translucent color would halve that opacity. */
+  --color-media-scrim: var(--zc-media-scrim);
+  --color-media-action: var(--zc-media-action);
+
+  --color-chart-1: var(--zc-chart-1);
+  --color-chart-2: var(--zc-chart-2);
+  --color-chart-3: var(--zc-chart-3);
+  --color-chart-4: var(--zc-chart-4);
+  --color-chart-cat-1: var(--zc-chart-cat-1);
+  --color-chart-cat-2: var(--zc-chart-cat-2);
+  --color-chart-cat-3: var(--zc-chart-cat-3);
+  --color-chart-cat-4: var(--zc-chart-cat-4);
+  --color-chart-cat-5: var(--zc-chart-cat-5);
+
+  --text-caption: 0.75rem;  --text-caption--line-height: 1rem;
+  --text-body: 0.875rem;    --text-body--line-height: 1.25rem;
+  --text-subtitle: 1rem;    --text-subtitle--line-height: 1.5rem;
+  --text-title: 1.5rem;     --text-title--line-height: 2rem;
+  --text-display: 1.875rem; --text-display--line-height: 2.25rem;
+
+  --radius-sm: 6px;
+  --radius-field: 8px;
+  --radius-tile: 12px;
+  --radius-card: 16px;
+
+  --shadow-card: var(--zc-shadow-card);
+  --shadow-popover: var(--zc-shadow-popover);
+  --shadow-modal: var(--zc-shadow-modal);
+
+  --ease-standard: var(--zc-ease);
+}
+
+/* Element defaults for both products: a bare "border" uses the border token, placeholders are muted,
+   buttons show the pointer cursor (Tailwind v4 defaults are currentColor / no pointer). */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--zc-border);
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--zc-fg-muted);
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* Slim scrollbar for scrolling areas (owner choice 2026-10-13: the Super Admin style, used in both products). */
+@utility custom-scroll {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--zc-scrollbar-thumb);
+    border-radius: 999px;
+  }
+}
+
+/* Scrolls without showing a scrollbar (sidebar). */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Layout sizes (design-system §3, §8). Not inline, so they also exist as CSS variables. */
+@theme {
+  --spacing-topbar: 64px;
+  --spacing-sidebar: 240px;
+  --spacing-sidebar-collapsed: 64px;
+  --spacing-drawer: 280px;
+
+  /* Modal widths (component-specs §11): max-w-modal-sm / -md / -lg. */
+  --container-modal-sm: 400px;
+  --container-modal-md: 560px;
+  --container-modal-lg: 720px;
+}
+
+/* Named durations (Tailwind v4 has no theme key for them; same class names as the v3 preset). */
+@utility duration-fast {
+  transition-duration: 150ms;
+}
+@utility duration-base {
+  transition-duration: 200ms;
+}
+@utility duration-slow {
+  transition-duration: 250ms;
+}
+
+/* ---------- Typography (shared) ----------
+   One set of element defaults for both projects, so the same tag or helper class renders identically.
+   Element rules sit in @layer base and helpers in @layer components, so Tailwind utilities
+   (text-sm, font-bold, ...) always override them. */
+:root {
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+
+  --font-size-extra-tiny: 11px;
+  --font-size-tiny: 12px;
+  --font-size-small: 14px;
+  --font-size-medium: 16px;
+  --font-size-h5: 15px;
+  --font-size-h4: 18px;
+  --font-size-h3: 20px;
+  --font-size-h2: 21px;
+  --font-size-h1: 28px;
+
+  --line-height-extra-tiny: 16px;
+  --line-height-tiny: 20px;
+  --line-height-h4: 24px;
+  --line-height-h2: 28px;
+  --line-height-h1: 32px;
+}
+
+@layer base {
+  h1 { font-size: var(--font-size-h1); line-height: var(--line-height-h1); font-weight: var(--font-weight-bold); }
+  h2 { font-size: var(--font-size-h2); line-height: var(--line-height-h2); font-weight: var(--font-weight-bold); }
+  h3 { font-size: var(--font-size-h3); line-height: var(--line-height-h2); font-weight: var(--font-weight-bold); }
+  h4 { font-size: var(--font-size-h4); line-height: var(--line-height-h4); font-weight: var(--font-weight-medium); }
+  h5 { font-size: var(--font-size-h5); line-height: var(--line-height-h4); font-weight: var(--font-weight-medium); }
+  h6 { font-size: var(--font-size-tiny); line-height: var(--line-height-tiny); font-weight: var(--font-weight-regular); }
+  /* Paragraphs inherit their size from the container (a table cell stays 14px) and only set rhythm. */
+  p { line-height: 1.5; font-weight: var(--font-weight-regular); }
+}
+
+@layer components {
+  .section-title { font-size: var(--font-size-h4); line-height: var(--line-height-h4); font-weight: var(--font-weight-bold); }
+  .text-extra-tiny { font-size: var(--font-size-extra-tiny); line-height: var(--line-height-extra-tiny); font-weight: var(--font-weight-regular); }
+  .text-tiny { font-weight: var(--font-weight-regular); }
+  .text-small { font-weight: var(--font-weight-regular); }
+  .text-medium { font-weight: var(--font-weight-regular); }
+}
+
+/* Buttons are medium (500) in the type scale. HeroUI's Button defaults to font-normal; tailwind-merge drops
+   that class whenever a button sets its own weight, so this only lifts buttons left on the default. */
+button.font-normal.min-w-max.tap-highlight-transparent {
+  font-weight: var(--font-weight-medium);
+}
+
+/* Modal / drawer backdrop. HeroUI's opaque backdrop is bg-overlay/50 (= --zc-overlay) plus a backdrop-filter
+   (backdrop-opacity-disabled). The filter makes the browser re-filter the page behind on every repaint, so
+   animated content underneath (live dots, spinners) makes the dark overlay flicker. The color alone is the spec. */
+.backdrop-opacity-disabled {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}

@@ -1,5 +1,3 @@
-import { Button } from "@heroui/react";
-import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { CouponsTab } from "../components/billing/CouponsTab";
@@ -7,6 +5,8 @@ import { PageHeader } from "../components/common/PageHeader";
 import { AutomationSettingsTab } from "../components/settings/AutomationSettingsTab";
 import { coupons as initialCoupons } from "../lib/mockData";
 import type { Coupon } from "../types";
+import { IconAdd } from "../components/ui/icons";
+import { Button as UiButton } from "../components/ui";
 
 const sections = {
   discounts: {
@@ -50,16 +50,14 @@ export function Settings() {
         ]}
         actions={
           active === "discounts" ? (
-            <Button
-              color="primary"
-              radius="full"
+            <UiButton
+              variant="primary"
               size="sm"
-              className="h-8 px-5 font-medium"
-              startContent={<Plus size={14} strokeWidth={2.5} />}
+              startIcon={<IconAdd size={14} strokeWidth={2.5} />}
               onPress={() => setCreateOpen(true)}
             >
               Create discount
-            </Button>
+            </UiButton>
           ) : undefined
         }
       />

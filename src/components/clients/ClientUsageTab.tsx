@@ -1,6 +1,7 @@
-import { Card, CardBody, CardHeader, Progress } from "@heroui/react";
+import { Progress } from "@heroui/react";
 import type { Client, Plan } from "../../types";
 import { formatNumber } from "../../lib/utils";
+import { CardWrapper } from "../ui/CardWrapper";
 
 export interface ClientUsageTabProps {
   client: Client;
@@ -53,14 +54,7 @@ export function ClientUsageTab({ client, plan }: ClientUsageTabProps) {
   ];
 
   return (
-    <Card shadow="none">
-      <CardHeader className="flex flex-col items-start gap-1 px-5 pb-2 pt-5">
-        <h3 className="text-base font-semibold">Plan usage</h3>
-        <p className="text-xs text-default-500">
-          Resource consumption vs {client.plan} plan limits
-        </p>
-      </CardHeader>
-      <CardBody className="gap-6 px-5 pb-6">
+    <CardWrapper title="Plan usage" description={<>Resource consumption vs {client.plan} plan limits</>} bodyClassName="p-8 py-6 flex flex-col gap-6">
         {metrics.map((metric) => {
           const percent = Math.min(100, Math.round((metric.used / metric.limit) * 100));
           const unitSuffix = metric.unit ? ` ${metric.unit}` : "";
@@ -68,14 +62,14 @@ export function ClientUsageTab({ client, plan }: ClientUsageTabProps) {
             <div key={metric.key} className="space-y-2">
               <div className="flex items-end justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold">{metric.label}</p>
-                  <p className="text-xs text-default-500">
+                  <p className="text-body font-bold">{metric.label}</p>
+                  <p className="text-caption text-default-500">
                     {formatNumber(metric.used)}
                     {unitSuffix} of {formatNumber(metric.limit)}
                     {unitSuffix}
                   </p>
                 </div>
-                <span className="text-sm font-medium text-default-600">{percent}%</span>
+                <span className="text-body font-medium text-default-600">{percent}%</span>
               </div>
               <Progress
                 aria-label={`${metric.label} usage`}
@@ -87,7 +81,6 @@ export function ClientUsageTab({ client, plan }: ClientUsageTabProps) {
             </div>
           );
         })}
-      </CardBody>
-    </Card>
+    </CardWrapper>
   );
 }

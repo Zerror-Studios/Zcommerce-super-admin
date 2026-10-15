@@ -1,8 +1,9 @@
-import { HeroUIProvider, ToastProvider } from "@heroui/react";
+import { HeroUIProvider } from "@heroui/react";
 import { useEffect, type ReactNode } from "react";
 import { useHref, useNavigate } from "react-router-dom";
 import { AuthProvider } from "./AuthProvider";
 import { ClientsProvider } from "./ClientsProvider";
+import { AppToastProvider } from "../components/ui/AppToastProvider";
 
 interface AppProvidersProps {
   children: ReactNode;
@@ -17,8 +18,13 @@ export function AppProviders({ children }: AppProvidersProps) {
   }, []);
 
   return (
-    <HeroUIProvider navigate={navigate} useHref={useHref}>
-      <ToastProvider placement="bottom-right" />
+    <HeroUIProvider
+      navigate={navigate}
+      useHref={useHref}
+      reducedMotion="user"
+      locale="en-IN"
+    >
+      <AppToastProvider />
       <AuthProvider>
         <ClientsProvider>{children}</ClientsProvider>
       </AuthProvider>

@@ -1,85 +1,38 @@
-import { Chip } from "@heroui/react";
-import type { ClientStatus, PlanName, SubscriptionStatus, TransactionStatus, UserStatus } from "../../types";
-
-type ChipColor = "default" | "primary" | "secondary" | "success" | "warning" | "danger";
+import { planColor } from "../ui/chart-theme";
+import { Chip } from "../ui/Chip";
+import { StatusChip as SharedStatusChip } from "../ui/StatusChip";
+import type { StatusDomain } from "../ui/status-map";
 
 export interface StatusChipProps {
   kind: "client" | "plan" | "transaction" | "subscription" | "user";
   value: string;
 }
 
-function resolveColor(kind: StatusChipProps["kind"], value: string): ChipColor {
-  if (kind === "client") {
-    const map: Record<ClientStatus, ChipColor> = {
-      active: "success",
-      trial: "warning",
-      suspended: "danger",
-    };
-    return map[value as ClientStatus] ?? "default";
-  }
+/** Super Admin kinds → shared status domains (status-mappings.md). */
+const domainByKind: Record<Exclude<StatusChipProps["kind"], "plan">, StatusDomain> = {
+  client: "store",
+  transaction: "payment",
+  subscription: "plan",
+  user: "user",
+};
 
-  if (kind === "plan") {
-    const map: Record<PlanName, ChipColor> = {
-      Free: "default",
-      Starter: "primary",
-      Pro: "secondary",
-      Enterprise: "warning",
-    };
-    return map[value as PlanName] ?? "default";
-  }
-
-  if (kind === "transaction") {
-    const map: Record<TransactionStatus, ChipColor> = {
-      success: "success",
-      failed: "danger",
-      refunded: "warning",
-      pending: "warning",
-    };
-    return map[value as TransactionStatus] ?? "default";
-  }
-
-  if (kind === "subscription") {
-    const map: Record<SubscriptionStatus, ChipColor> = {
-      active: "success",
-      trialing: "warning",
-      pending: "warning",
-      past_due: "danger",
-      canceled: "default",
-    };
-    return map[value as SubscriptionStatus] ?? "default";
-  }
-
-  const userMap: Record<UserStatus, ChipColor> = {
-    active: "success",
-    invited: "warning",
-    disabled: "danger",
-  };
-  return userMap[value as UserStatus] ?? "default";
-}
-
-function formatLabel(value: string): string {
-  if (value.includes("_")) {
-    return value
-      .split("_")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(" ");
-  }
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
+/** Kept for existing call sites. Statuses use the shared StatusChip; plan tiers are a neutral chip with the plan color dot. */
 export function StatusChip({ kind, value }: StatusChipProps) {
-  return (
-    <Chip
-      size="sm"
-      variant="flat"
-      color={resolveColor(kind, value)}
-      className="h-7 rounded-full px-3 capitalize"
-      classNames={{
-        base: "rounded-full",
-        content: "font-medium text-xs",
-      }}
-    >
-      {formatLabel(value)}
-    </Chip>
-  );
+  if (kind === "plan") {
+    return (
+      <Chip
+        tone="neutral"
+        startIcon={
+          <span
+            aria-hidden
+            className="size-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: planColor(value) }}
+          />
+        }
+      >
+        {value}
+      </Chip>
+    );
+  }
+  return <SharedStatusChip domain={domainByKind[kind]} status={value} />;
 }

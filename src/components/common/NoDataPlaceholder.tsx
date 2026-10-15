@@ -1,14 +1,15 @@
-import { Button } from "@heroui/react";
-import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { secondaryButtonClassName } from "./buttonStyles";
+import { Button } from "../ui/Button";
+import { EmptyState } from "../ui/EmptyState";
+import { IconAdd } from "../ui/icons";
 
 export interface NoDataPlaceholderProps {
   title?: string;
   description?: string;
   error?: string;
   icon?: ReactNode | string;
+  /** LEGACY: ignored; EmptyState uses a fixed illustration size. */
   iconHeight?: number | string;
   actionLabel?: string;
   actionTo?: string;
@@ -18,72 +19,45 @@ export interface NoDataPlaceholderProps {
   isLoading?: boolean;
 }
 
+/** Kept for existing call sites; renders the shared EmptyState (component-specs §23). */
 export function NoDataPlaceholder({
   title = "No data yet",
   description,
   error,
   icon = "/no-activity.svg",
-  iconHeight = 110,
   actionLabel,
   actionTo,
   buttonLabel,
   onButtonClick,
   isLoading,
-  className = "",
+  className,
 }: NoDataPlaceholderProps) {
+  const action =
+    buttonLabel && onButtonClick ? (
+      <Button
+        variant="outline"
+        size="sm"
+        startIcon={<IconAdd aria-hidden className="size-3" />}
+        isLoading={isLoading}
+        onPress={onButtonClick}
+      >
+        {buttonLabel}
+      </Button>
+    ) : actionLabel && actionTo ? (
+      <Link to={actionTo} className="text-body font-medium text-brand-text hover:underline">
+        {actionLabel} →
+      </Link>
+    ) : undefined;
+
   return (
-    <div
-      className={`flex w-full flex-col items-center justify-center p-6 text-center ${className}`}
-    >
-      {icon ? (
-        <div className="mb-2">
-          {typeof icon === "string" ? (
-            <img
-              src={icon}
-              alt=""
-              style={{
-                height:
-                  typeof iconHeight === "number" ? `${iconHeight}px` : iconHeight,
-                width: "auto",
-              }}
-            />
-          ) : (
-            icon
-          )}
-        </div>
-      ) : null}
-
-      <h2 className="mb-1.5 text-base font-semibold text-foreground">{title}</h2>
-
-      {description ? (
-        <p className="mb-3 max-w-md text-sm text-default-600">{description}</p>
-      ) : null}
-
-      {error ? <p className="mb-2 text-sm text-danger">{error}</p> : null}
-
-      {buttonLabel && onButtonClick ? (
-        <Button
-          startContent={<Plus size={14} strokeWidth={2.5} />}
-          variant="bordered"
-          size="sm"
-          radius="full"
-          color="primary"
-          className={secondaryButtonClassName}
-          onPress={onButtonClick}
-          isLoading={isLoading}
-        >
-          {buttonLabel}
-        </Button>
-      ) : null}
-
-      {actionLabel && actionTo ? (
-        <Link
-          to={actionTo}
-          className="text-sm font-medium text-primary hover:underline"
-        >
-          {actionLabel} →
-        </Link>
-      ) : null}
-    </div>
+    <EmptyState
+      title={title}
+      description={description}
+      error={error}
+      illustration={typeof icon === "string" ? icon : undefined}
+      media={typeof icon === "string" ? undefined : icon}
+      action={action}
+      className={className}
+    />
   );
 }

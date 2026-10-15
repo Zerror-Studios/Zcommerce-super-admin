@@ -1,15 +1,4 @@
 import { heroui } from "@heroui/react";
+import { zcHeroUI } from "./src/theme/heroui-theme.js";
 
-export default heroui({
-  themes: {
-    light: {
-      colors: {
-        primary: {
-          DEFAULT: "#3b82f6",
-          foreground: "#FFFFFF",
-        },
-        focus: "#3b82f6",
-      },
-    },
-  },
-});
+export default heroui(zcHeroUI);

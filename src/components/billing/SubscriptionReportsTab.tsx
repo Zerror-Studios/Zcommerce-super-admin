@@ -1,25 +1,7 @@
-import {
-  Button,
-  Card,
-  CardBody,
-  Chip,
-  Pagination,
-  Select,
-  SelectItem,
-  Skeleton,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-  Tab,
-  Tabs,
-} from "@heroui/react";
-import { Download } from "lucide-react";
+import { Card, CardBody, Chip, Pagination, Select, SelectItem, Skeleton, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, Tab, Tabs } from "@heroui/react";
+import { endOfDay, startOfMonth } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { HiOutlineArrowDownRight, HiOutlineArrowUpRight } from "react-icons/hi2";
 import type { PlanName, SubscriptionHealthBucket } from "../../types";
 import { clients, subscriptions, transactions } from "../../lib/mockData";
 import { loadPlatformSettings } from "../../lib/platformSettings";
@@ -36,13 +18,23 @@ import {
   type ShopReportRow,
 } from "../../lib/subscriptionReports";
 import { formatCurrency, formatDate, formatPercent } from "../../lib/utils";
-import { secondaryButtonClassName } from "../common/buttonStyles";
+import {
+  DateRangeComparison,
+  type DateRangeValue,
+} from "../common/DateRangeComparison";
 import { dataTableClassNames, tablePanelClassName } from "../common/dataTableStyles";
 import { NoDataPlaceholder } from "../common/NoDataPlaceholder";
 import { TableToolbar } from "../common/TableToolbar";
+import { IconDownload, IconTrendDown, IconTrendUp } from "../ui/icons";
+import { Button as UiButton } from "../ui";
 
 const PAGE_SIZE = 8;
 const AS_OF = new Date("2026-10-06T12:00:00Z");
+
+const defaultRange: DateRangeValue = {
+  startDate: startOfMonth(new Date(2026, 9, 1)),
+  endDate: endOfDay(AS_OF),
+};
 
 type TableView = "shops" | "payments";
 
@@ -90,7 +82,7 @@ interface SummaryCardProps {
 function SummaryCard({ title, value, subtitle, active, onPress, isLoading }: SummaryCardProps) {
   if (isLoading) {
     return (
-      <Card shadow="none">
+      <Card shadow="none" className="border border-line bg-surface">
         <CardBody className="gap-2 p-4">
           <Skeleton className="h-3 w-20 rounded" />
           <Skeleton className="h-7 w-28 rounded" />
@@ -104,12 +96,12 @@ function SummaryCard({ title, value, subtitle, active, onPress, isLoading }: Sum
       shadow="none"
       isPressable={!!onPress}
       onPress={onPress}
-      className={active ? "ring-2 ring-primary" : ""}
+      className={`border border-line bg-surface ${active ? "ring-2 ring-primary" : ""}`}
     >
       <CardBody className="gap-1 p-4">
-        <p className="text-xs font-medium text-default-500">{title}</p>
+        <p className="text-caption font-medium text-default-500">{title}</p>
         <p className="text-xl font-bold text-foreground">{value}</p>
-        {subtitle ? <p className="text-xs text-default-400">{subtitle}</p> : null}
+        {subtitle ? <p className="text-caption text-default-400">{subtitle}</p> : null}
       </CardBody>
     </Card>
   );
@@ -119,7 +111,7 @@ export function SubscriptionReportsTab() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [month, setMonth] = useState(() => new Date(2026, 9, 1));
+  const [range, setRange] = useState<DateRangeValue>(defaultRange);
   const [drill, setDrill] = useState<ReportDrillFilter>("all");
   const [tableView, setTableView] = useState<TableView>("shops");
   const [search, setSearch] = useState("");
@@ -143,13 +135,14 @@ export function SubscriptionReportsTab() {
       subscriptions,
       transactions,
       asOf: AS_OF,
-      month,
+      rangeStart: range.startDate,
+      rangeEnd: range.endDate,
       settings: loadPlatformSettings(),
       search,
       plan,
       health,
     }),
-    [month, search, plan, health, loading],
+    [range.endDate, range.startDate, search, plan, health, loading],
   );
 
   const overview = useMemo(
@@ -159,17 +152,23 @@ export function SubscriptionReportsTab() {
 
   const shopRows = useMemo(() => {
     const base = buildShopReportRows(queryInput);
-    return applyDrillToShops(base, drill, AS_OF, month);
-  }, [queryInput, drill, month]);
+    return applyDrillToShops(base, drill, AS_OF);
+  }, [queryInput, drill]);
 
   const paymentRows = useMemo(() => {
     const base = buildPaymentReportRows(queryInput);
-    return applyDrillToPayments(base, drill, month, AS_OF);
-  }, [queryInput, drill, month]);
+    return applyDrillToPayments(
+      base,
+      drill,
+      range.startDate,
+      range.endDate,
+      AS_OF,
+    );
+  }, [queryInput, drill, range.endDate, range.startDate]);
 
   useEffect(() => {
     setPage(1);
-  }, [drill, search, plan, health, tableView, month]);
+  }, [drill, search, plan, health, tableView, range.endDate, range.startDate]);
 
   const activeRows = tableView === "shops" ? shopRows : paymentRows;
   const pageCount = Math.max(1, Math.ceil(activeRows.length / PAGE_SIZE));
@@ -228,28 +227,7 @@ export function SubscriptionReportsTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-foreground">Current month</p>
-          <p className="text-xs text-default-500">
-            Snapshot as of {formatDate(AS_OF.toISOString())}
-          </p>
-        </div>
-        <Select
-          aria-label="Report month"
-          className="w-44"
-          size="sm"
-          selectedKeys={new Set([`${month.getFullYear()}-${month.getMonth()}`])}
-          onSelectionChange={(keys) => {
-            const key = Array.from(keys)[0];
-            if (typeof key !== "string") return;
-            const [y, m] = key.split("-").map(Number);
-            setMonth(new Date(y, m, 1));
-          }}
-        >
-          <SelectItem key="2026-9">October 2026</SelectItem>
-          <SelectItem key="2026-8">September 2026</SelectItem>
-          <SelectItem key="2026-7">August 2026</SelectItem>
-        </Select>
+        <DateRangeComparison value={range} onChange={setRange} />
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -340,14 +318,14 @@ export function SubscriptionReportsTab() {
         <Card shadow="none" className={tablePanelClassName}>
           <CardBody className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold">Month vs previous</p>
-              <p className="text-xs text-default-500">
+              <p className="text-body font-bold">Period vs previous</p>
+              <p className="text-caption text-default-500">
                 New {overview.currentMonth.newSubscriptions} · Renewals{" "}
                 {overview.currentMonth.renewals} · Cancellations{" "}
                 {overview.currentMonth.cancellations}
               </p>
             </div>
-            <div className="flex flex-wrap gap-4 text-sm">
+            <div className="flex flex-wrap gap-4 text-body">
               {(
                 [
                   ["Collected", overview.currentMonth.collectedAmount, overview.previousMonth.collectedAmount],
@@ -359,9 +337,9 @@ export function SubscriptionReportsTab() {
                 return (
                   <div key={label} className="flex items-center gap-2">
                     <span className="text-default-500">{label}</span>
-                    <span className="font-semibold">{formatCurrency(cur)}</span>
-                    <span className={`inline-flex items-center gap-0.5 text-xs ${up ? "text-success" : "text-danger"}`}>
-                      {up ? <HiOutlineArrowUpRight size={12} /> : <HiOutlineArrowDownRight size={12} />}
+                    <span className="font-bold">{formatCurrency(cur)}</span>
+                    <span className={`inline-flex items-center gap-0.5 text-caption ${up ? "text-success" : "text-danger"}`}>
+                      {up ? <IconTrendUp size={12} /> : <IconTrendDown size={12} />}
                       {formatPercent(d)}
                     </span>
                   </div>
@@ -386,21 +364,18 @@ export function SubscriptionReportsTab() {
             </Tabs>
             <div className="flex items-center gap-2">
               {drill !== "all" ? (
-                <Button size="sm" variant="light" onPress={() => setDrill("all")}>
+                <UiButton variant="outline" size="sm" onPress={() => setDrill("all")}>
                   Clear drill
-                </Button>
+                </UiButton>
               ) : null}
-              <Button
+              <UiButton
+                variant="outline"
                 size="sm"
-                variant="bordered"
-                color="primary"
-                radius="full"
-                className={secondaryButtonClassName}
-                startContent={<Download size={14} strokeWidth={2.5} />}
+                startIcon={<IconDownload size={14} strokeWidth={2.5} />}
                 onPress={exportCsv}
               >
                 Export CSV
-              </Button>
+              </UiButton>
             </div>
           </div>
 
@@ -479,7 +454,7 @@ export function SubscriptionReportsTab() {
                               <p className="truncate font-medium whitespace-nowrap">
                                 {row.storeName}
                               </p>
-                              <p className="truncate text-xs text-default-400">
+                              <p className="truncate text-caption text-default-400">
                                 {row.ownerEmail}
                               </p>
                             </div>
@@ -534,7 +509,7 @@ export function SubscriptionReportsTab() {
                               <p className="truncate font-medium whitespace-nowrap">
                                 {row.shopName}
                               </p>
-                              <p className="truncate text-xs text-default-400">
+                              <p className="truncate text-caption text-default-400">
                                 {row.ownerEmail}
                               </p>
                             </div>
@@ -569,7 +544,7 @@ export function SubscriptionReportsTab() {
           )}
 
           <div className="flex items-center justify-between gap-3 border-t border-default-100 px-4 py-3">
-            <p className="text-xs text-default-400">
+            <p className="text-caption text-default-400">
               {activeRows.length} row{activeRows.length === 1 ? "" : "s"}
               {drill !== "all" ? ` · drill: ${drill}` : ""}
             </p>

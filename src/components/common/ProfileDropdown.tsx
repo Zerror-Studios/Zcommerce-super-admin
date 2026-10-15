@@ -40,7 +40,7 @@ export function ProfileDropdown() {
     <Dropdown placement="bottom-end" showArrow offset={12}>
       <DropdownTrigger>
         <div className="flex cursor-pointer items-center gap-2 rounded bg-[#3a3a3a] p-1 pl-2 text-small text-white hover:bg-[#4a4a4a]">
-          <h5 className="hidden sm:block">{displayName}</h5>
+          <span className="hidden sm:block">{displayName}</span>
           <div className="rounded bg-primary p-1 px-2.5 font-medium text-white">
             {initials.charAt(0)}
           </div>

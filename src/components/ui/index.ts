@@ -1,0 +1,91 @@
+/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/**
+ * Shared UI layer. Feature code imports from here, not from @heroui/react.
+ * HeroUI building blocks without design-system styling of their own are re-exported as-is.
+ */
+export { Badge } from "./Badge";
+export type { BadgeProps } from "./Badge";
+export { Button } from "./Button";
+export type { ButtonProps, ButtonSize, ButtonVariant } from "./Button";
+export { Card } from "./Card";
+export type { CardPadding, CardProps } from "./Card";
+export { CardWrapper, cardFrameClasses } from "./CardWrapper";
+export type { CardWrapperProps } from "./CardWrapper";
+export { Checkbox } from "./Checkbox";
+export type { CheckboxProps } from "./Checkbox";
+export { Chip } from "./Chip";
+export type { ChipProps } from "./Chip";
+export { ConfirmDialog } from "./ConfirmDialog";
+export type { ConfirmDialogProps } from "./ConfirmDialog";
+export { Dropdown, DropdownMenu } from "./Dropdown";
+export type { DropdownMenuProps, DropdownProps } from "./Dropdown";
+export { IconButton } from "./IconButton";
+export type { IconButtonProps, IconButtonSize, IconButtonVariant } from "./IconButton";
+export { Input } from "./Input";
+export type { InputProps } from "./Input";
+export { Modal } from "./Modal";
+export type { ModalProps } from "./Modal";
+export { SearchInput } from "./SearchInput";
+export type { SearchInputProps } from "./SearchInput";
+export { Select } from "./Select";
+export type { SelectProps } from "./Select";
+export { Skeleton } from "./Skeleton";
+export type { SkeletonProps } from "./Skeleton";
+export { Spinner } from "./Spinner";
+export type { SpinnerProps } from "./Spinner";
+export { Switch } from "./Switch";
+export type { SwitchProps } from "./Switch";
+export { Tabs } from "./Tabs";
+export type { TabsProps } from "./Tabs";
+export { Textarea } from "./Textarea";
+export type { TextareaProps } from "./Textarea";
+export { Tooltip } from "./Tooltip";
+export type { TooltipProps } from "./Tooltip";
+export { EmptyState } from "./EmptyState";
+export type { EmptyStateProps } from "./EmptyState";
+export { ErrorState } from "./ErrorState";
+export type { ErrorStateProps } from "./ErrorState";
+export { HealthScore } from "./HealthScore";
+export type { HealthScoreProps } from "./HealthScore";
+export { MoneyText } from "./MoneyText";
+export type { MoneyTextProps } from "./MoneyText";
+export { PlanExpiryBadge } from "./PlanExpiryBadge";
+export type { PlanExpiryBadgeProps } from "./PlanExpiryBadge";
+export { StatCard } from "./StatCard";
+export type { StatCardProps } from "./StatCard";
+export { StatusChip } from "./StatusChip";
+export type { StatusChipProps } from "./StatusChip";
+export { apexBaseOptions, areaGradientStops, categoryColor, chartColors, planColor, planColors, recharts } from "./chart-theme";
+export { formatCount, formatDelta, formatMoney } from "./money";
+export type { FormatMoneyOptions } from "./money";
+export { STATUS_MAP, getExpiryStatus, getHealthBand, getStatus, normalizeStatus } from "./status-map";
+export type { StatusDomain, StatusInfo } from "./status-map";
+
+export { cx } from "./cx";
+export { fieldHeight } from "./field-styles";
+export type { FieldSize } from "./field-styles";
+export { menuItemDangerClasses } from "./menu-styles";
+export {
+  tableCellClasses,
+  tableCheckboxClassNames,
+  tableHeaderCellClasses,
+  tablePanelClasses,
+  tableRowClasses,
+} from "./table-styles";
+export { TONES, toneClasses, toneDotClasses } from "./tones";
+export type { Tone } from "./tones";
+export * from "./icons";
+
+export {
+  DropdownItem,
+  DropdownSection,
+  DropdownTrigger,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  SelectItem,
+  SelectSection,
+  Tab,
+  useDisclosure,
+} from "@heroui/react";

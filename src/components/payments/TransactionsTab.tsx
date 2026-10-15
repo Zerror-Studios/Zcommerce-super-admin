@@ -72,7 +72,7 @@ export function TransactionsTab({ transactions }: TransactionsTabProps) {
         return (
           <div className="min-w-0">
             <p className="truncate font-medium whitespace-nowrap">{txn.clientName}</p>
-            <p className="truncate text-xs text-default-400">
+            <p className="truncate text-caption text-default-400">
               {client?.ownerEmail ?? "—"}
             </p>
           </div>
@@ -91,7 +91,7 @@ export function TransactionsTab({ transactions }: TransactionsTabProps) {
         return formatDateTime(txn.date);
       case "transactionId":
         return (
-          <span className="font-mono text-xs text-default-500">{txn.transactionId}</span>
+          <span className="font-mono text-caption text-default-500">{txn.transactionId}</span>
         );
       default:
         return "—";

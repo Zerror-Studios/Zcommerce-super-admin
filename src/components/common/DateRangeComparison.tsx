@@ -1,4 +1,3 @@
-import { Button } from "@heroui/react";
 import {
   addDays,
   differenceInCalendarDays,
@@ -8,14 +7,14 @@ import {
   startOfMonth,
   subDays,
 } from "date-fns";
-import { CalendarDays, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DateRange, type Range, type RangeKeyDict } from "react-date-range";
-import { secondaryButtonClassName } from "./buttonStyles";
 
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 import "./dateRangeComparison.css";
+import { IconCalendarDays, IconCaret } from "../ui/icons";
+import { Button as UiButton } from "../ui";
 
 export interface DateRangeValue {
   startDate: Date;
@@ -196,21 +195,21 @@ export function DateRangeComparison({ value, onChange }: DateRangeComparisonProp
         <button
           type="button"
           onClick={() => setOpen((prev) => !prev)}
-          className="inline-flex h-8 w-full max-w-md items-center gap-2.5 rounded-lg border border-default-200 bg-white px-3 text-left text-sm text-default-700 transition-colors hover:border-default-300 sm:w-[22rem]"
+          className="inline-flex h-8 w-full max-w-md items-center gap-2.5 rounded-lg border border-default-200 bg-surface px-3 text-left text-body text-default-700 transition-colors hover:border-default-300 sm:w-[22rem]"
         >
-          <CalendarDays size={15} className="shrink-0 text-primary" strokeWidth={2} />
+          <IconCalendarDays size={15} className="shrink-0 text-primary" strokeWidth={2} />
           <span className="flex-1 truncate font-normal text-default-700">
             {formatRangeLabel(value.startDate, value.endDate)}
           </span>
-          <ChevronDown size={13} className="shrink-0 text-primary" strokeWidth={2} />
+          <IconCaret size={13} className="shrink-0 text-primary" strokeWidth={2} />
         </button>
-        <p className="text-sm text-default-500">
+        <p className="text-body text-default-500">
           compared to previous period ({format(previousPeriod.startDate, "MMM d, yyyy")})
         </p>
       </div>
 
       {open ? (
-        <div className="date-range-comparison absolute left-0 z-40 mt-2 w-[min(100%,34rem)] overflow-hidden rounded-xl border border-default-200 bg-white shadow-xl">
+        <div className="date-range-comparison absolute left-0 z-40 mt-2 w-[min(100%,34rem)] overflow-hidden rounded-xl border border-default-200 bg-surface shadow-xl">
           <div className="flex flex-col sm:flex-row">
             <aside className="shrink-0 border-b border-default-200 sm:w-32 sm:border-b-0 sm:border-r sm:border-primary/20">
               <ul className="py-1.5">
@@ -224,7 +223,7 @@ export function DateRangeComparison({ value, onChange }: DateRangeComparisonProp
                       <button
                         type="button"
                         onClick={() => applyPreset(preset)}
-                        className={`w-full px-3 py-2 text-left text-xs transition-colors ${
+                        className={`w-full px-3 py-2 text-left text-caption transition-colors ${
                           selected
                             ? "font-medium text-primary"
                             : "text-default-600 hover:bg-default-50 hover:text-foreground"
@@ -255,29 +254,16 @@ export function DateRangeComparison({ value, onChange }: DateRangeComparisonProp
           </div>
 
           <div className="flex flex-col gap-2 border-t border-default-200 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-default-500">
+            <p className="text-caption text-default-500">
               {formatRangeLabel(draftStart, draftEnd)}
             </p>
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                radius="full"
-                variant="bordered"
-                color="primary"
-                className={secondaryButtonClassName}
-                onPress={() => setOpen(false)}
-              >
+              <UiButton variant="outline" size="sm" onPress={() => setOpen(false)}>
                 Cancel
-              </Button>
-              <Button
-                size="sm"
-                radius="full"
-                color="primary"
-                className="h-8 px-5 font-medium"
-                onPress={handleApply}
-              >
+              </UiButton>
+              <UiButton variant="primary" size="sm" onPress={handleApply}>
                 Apply
-              </Button>
+              </UiButton>
             </div>
           </div>
         </div>

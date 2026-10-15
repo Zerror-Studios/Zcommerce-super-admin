@@ -1,34 +1,20 @@
-import {
-  addToast,
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  Skeleton,
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-} from "@heroui/react";
-import { LogIn } from "lucide-react";
+import { CardWrapper } from "../ui/CardWrapper";
+import { addToast, Skeleton, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Client, Subscription } from "../../types";
 import { subscriptions } from "../../lib/mockData";
 import {
-  daysUntil,
-  formatDate,
   formatNumber,
-  isExpiringSoon,
 } from "../../lib/utils";
-import { secondaryButtonClassName } from "../common/buttonStyles";
 import { ConfirmModal } from "../common/ConfirmModal";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { NoDataPlaceholder } from "../common/NoDataPlaceholder";
 import { StatusChip } from "../common/StatusChip";
 import { StoreHealthCell } from "../common/StoreHealthCell";
+import { RenewalBadge } from "../common/RenewalBadge";
+import { IconLogin } from "../ui/icons";
+import { Button as UiButton } from "../ui";
 
 export interface TopClientsTableProps {
   clients: Client[];
@@ -44,35 +30,6 @@ const columns = [
   { key: "mrr", label: "MRR (₹)" },
   { key: "actions", label: "Actions" },
 ] as const;
-
-function renewalLabel(sub: Subscription): {
-  text: string;
-  tone: "default" | "warning" | "danger";
-} {
-  const days = daysUntil(sub.renewalDate);
-  if (sub.status === "past_due") {
-    return {
-      text: `Overdue by ${Math.abs(days)}d · ${formatDate(sub.renewalDate)}`,
-      tone: "danger",
-    };
-  }
-  if (sub.status === "canceled") {
-    return { text: `Ended ${formatDate(sub.renewalDate)}`, tone: "default" };
-  }
-  if (days < 0) {
-    return { text: `Overdue · ${formatDate(sub.renewalDate)}`, tone: "danger" };
-  }
-  if (isExpiringSoon(sub.renewalDate, 7)) {
-    return {
-      text:
-        days === 0
-          ? `Due today · ${formatDate(sub.renewalDate)}`
-          : `Expires in ${days}d · ${formatDate(sub.renewalDate)}`,
-      tone: "warning",
-    };
-  }
-  return { text: formatDate(sub.renewalDate), tone: "default" };
-}
 
 export function TopClientsTable({ clients, isLoading }: TopClientsTableProps) {
   const navigate = useNavigate();
@@ -95,14 +52,13 @@ export function TopClientsTable({ clients, isLoading }: TopClientsTableProps) {
 
   const renderCell = (client: Client, key: string) => {
     const subscription = subscriptionByClientId.get(client.id);
-    const renewal = subscription ? renewalLabel(subscription) : null;
 
     switch (key) {
       case "storeName":
         return (
           <div>
             <p className="font-medium text-foreground">{client.storeName}</p>
-            <p className="text-xs text-default-400">{client.ownerEmail}</p>
+            <p className="text-caption text-default-400">{client.ownerEmail}</p>
           </div>
         );
       case "plan":
@@ -114,20 +70,7 @@ export function TopClientsTable({ clients, isLoading }: TopClientsTableProps) {
           <StoreHealthCell client={client} subscription={subscription} />
         );
       case "renewalDate":
-        if (!renewal) return <span className="text-default-400">—</span>;
-        return (
-          <span
-            className={
-              renewal.tone === "danger"
-                ? "text-sm font-medium text-danger"
-                : renewal.tone === "warning"
-                  ? "text-sm font-medium text-warning"
-                  : "text-sm text-default-600"
-            }
-          >
-            {renewal.text}
-          </span>
-        );
+        return <RenewalBadge subscription={subscription} />;
       case "mrr":
         return <span className="font-medium">{formatNumber(client.mrr)}</span>;
       case "actions":
@@ -137,17 +80,14 @@ export function TopClientsTable({ clients, isLoading }: TopClientsTableProps) {
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <Button
+            <UiButton
+              variant="outline"
               size="sm"
-              radius="full"
-              variant="bordered"
-              color="primary"
-              className={secondaryButtonClassName}
-              startContent={<LogIn size={14} strokeWidth={2.5} />}
+              startIcon={<IconLogin size={14} strokeWidth={2.5} />}
               onPress={() => setLoginClient(client)}
             >
               Login
-            </Button>
+            </UiButton>
           </div>
         );
       default:
@@ -156,12 +96,7 @@ export function TopClientsTable({ clients, isLoading }: TopClientsTableProps) {
   };
 
   return (
-    <Card shadow="none" className="rounded-xl border border-default-200 bg-white">
-      <CardHeader className="flex flex-col items-start gap-1 px-5 pb-2 pt-5">
-        <h2 className="text-base font-semibold">Top performing clients</h2>
-        <p className="text-xs text-default-500">Ranked by lifetime platform revenue</p>
-      </CardHeader>
-      <CardBody className="px-0 pb-0 pt-0">
+    <CardWrapper title="Top performing clients" description="Ranked by lifetime platform revenue" bodyClassName="p-0" className="overflow-hidden">
         {isLoading ? (
           <div className="space-y-3 p-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -174,7 +109,7 @@ export function TopClientsTable({ clients, isLoading }: TopClientsTableProps) {
             removeWrapper
             classNames={{
               ...dataTableClassNames,
-              base: "rounded-none border-0 border-t border-default-200 overflow-hidden bg-white",
+              base: "rounded-none border-0 border-t border-default-200 overflow-hidden bg-surface",
             }}
           >
             <TableHeader columns={[...columns]}>
@@ -212,7 +147,6 @@ export function TopClientsTable({ clients, isLoading }: TopClientsTableProps) {
             </TableBody>
           </Table>
         )}
-      </CardBody>
 
       <ConfirmModal
         isOpen={loginClient !== null}
@@ -231,6 +165,6 @@ export function TopClientsTable({ clients, isLoading }: TopClientsTableProps) {
           setLoginClient(null);
         }}
       />
-    </Card>
+    </CardWrapper>
   );
 }
