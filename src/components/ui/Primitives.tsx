@@ -139,9 +139,11 @@ export function Kbd({ children, dark = false, className }: { children: ReactNode
 // ─── SegmentedControl ────────────────────────────────────────────────────────
 
 export interface SegmentedControlProps<T extends string> {
-  options: { value: T; label: ReactNode }[];
+  /** Option values are the same strings as `value`; typed loosely so plain string arrays work. */
+  options: { value: string; label: ReactNode }[];
   value: T;
-  onChange: (value: T) => void;
+  /** NoInfer: T comes from `value`, so a state setter (Dispatch<SetStateAction<T>>) fits. */
+  onChange: (value: NoInfer<T>) => void;
   "aria-label": string;
   className?: string;
 }
@@ -162,7 +164,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, c
             type="button"
             role="radio"
             aria-checked={selected}
-            onClick={() => onChange(option.value)}
+            onClick={() => onChange(option.value as T)}
             className={cx(
               "h-6 rounded-md px-2.5 text-label font-medium transition-colors duration-fast",
               selected ? "bg-surface text-fg shadow-sticky" : "text-fg-muted hover:text-fg",

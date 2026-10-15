@@ -146,6 +146,7 @@ export {
   LuCircleArrowDown as IconArrowDownCircle,
   LuCalendarDays as IconCalendarDays,
   LuLogIn as IconLogin,
+  LuLock as IconLock,
 } from "react-icons/lu";
 
 /* Filled glyphs where a fill carries the meaning: brand logo, status dot, rating star. */

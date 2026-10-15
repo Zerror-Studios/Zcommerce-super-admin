@@ -174,6 +174,10 @@ export const STATUS_MAP: Record<StatusDomain, Record<string, StatusInfo>> = {
     active: s("Active", "success"),
     invited: s("Invited", "info"),
     disabled: s("Disabled", "danger"),
+    inactive: s("Inactive", "neutral"), // added: Store staff ("Deactive" in the API)
+    deactive: s("Inactive", "neutral"),
+    blocked: s("Blocked", "warning"),
+    deleted: s("Deleted", "danger"),
   },
 };
 

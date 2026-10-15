@@ -28,7 +28,7 @@ export function Card({ title, description, actions, padding = "md", className, c
   return (
     <section className={cx("rounded-card border border-line bg-surface", className)} {...rest}>
       {hasHeader ? (
-        <header className="flex items-center justify-between gap-4 px-5 py-4">
+        <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4">
           <div className="min-w-0">
             {title != null ? <h3 className="text-body font-semibold text-fg">{title}</h3> : null}
             {description != null ? <p className="mt-0.5 text-label text-fg-muted">{description}</p> : null}
