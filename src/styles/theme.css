@@ -67,6 +67,15 @@
   --color-nav-active: var(--zc-nav-active-bg);
   --color-nav-count: var(--zc-nav-count-bg);
 
+  --color-auth: var(--zc-auth-bg);
+  --color-auth-card: var(--zc-auth-card);
+  --color-auth-field: var(--zc-auth-field);
+  --color-auth-field-line: var(--zc-auth-field-border);
+  --color-auth-muted: var(--zc-auth-muted);
+  --color-auth-footer: var(--zc-auth-footer);
+  --color-auth-focus: var(--zc-auth-focus);
+  --color-auth-error: var(--zc-auth-error);
+
   --color-ai-tint: var(--zc-ai-tint);
   --color-ai-tint-border: var(--zc-ai-tint-border);
 
@@ -111,6 +120,7 @@
   --shadow-card: var(--zc-shadow-card);
   --shadow-sticky: var(--zc-shadow-sm);
   --shadow-focus: var(--zc-focus-ring);
+  --shadow-auth-focus: var(--zc-auth-focus-ring);
   --shadow-popover: var(--zc-shadow-popover);
   --shadow-modal: var(--zc-shadow-modal);
 

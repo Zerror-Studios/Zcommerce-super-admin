@@ -20,5 +20,5 @@ export type {
   NotificationEntry,
   UserMenuItem,
 } from "./types";
-export { AuthLayout } from "./AuthLayout";
-export type { AuthBrandPanel, AuthLayoutProps } from "./AuthLayout";
+export { AuthField, AuthLayout } from "./AuthLayout";
+export type { AuthFieldProps, AuthLayoutProps } from "./AuthLayout";

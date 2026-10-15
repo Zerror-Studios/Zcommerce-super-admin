@@ -1,18 +1,9 @@
-import { addToast } from "@heroui/react";
 import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider";
 import { IconHide, IconView } from "../components/ui/icons";
-import { Button as UiButton, Input } from "../components/ui";
-import { AuthLayout } from "../components/layout/AuthLayout";
-import type { AuthBrandPanel } from "../components/layout/AuthLayout";
-
-const brandPanel: AuthBrandPanel = {
-  headline: "Every store on the platform, in one view.",
-  description: "Clients, billing, plans and platform health for the whole ZCommerce network.",
-  previewSrc: "/images/auth/admin-preview.png",
-  previewAlt: "ZCommerce Super Admin dashboard",
-};
+import { Button as UiButton } from "../components/ui";
+import { AuthField, AuthLayout } from "../components/layout/AuthLayout";
 
 export function SignIn() {
   const { isAuthenticated, signIn } = useAuth();
@@ -29,74 +20,73 @@ export function SignIn() {
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    // Same rule as before (both fields filled), reported inline like every other form instead of a toast.
+    // Same rule as before (both fields filled), reported inline.
     const nextErrors = {
-      email: email.trim() ? undefined : "Enter your email address",
-      password: password.trim() ? undefined : "Enter your password",
+      email: email.trim() ? undefined : "Enter your email address.",
+      password: password.trim() ? undefined : "Enter your password.",
     };
     setErrors(nextErrors);
     if (nextErrors.email || nextErrors.password) return;
     setSubmitting(true);
     const ok = signIn(email, password);
     setSubmitting(false);
-    if (!ok) return;
-    addToast({
-      title: "Signed in",
-      description: "Welcome back to Zcommerce Admin.",
-      color: "success",
-    });
+    if (!ok) {
+      setErrors({ password: "Couldn't log in. Check your email and password." });
+      return;
+    }
+    // No "Signed in" toast (docs/design/04-super-admin.md §4.8).
     navigate("/", { replace: true });
   };
 
   return (
-    <AuthLayout title="Sign in" documentTitle="Sign in — ZCommerce Super Admin" subtitle="Continue to ZCommerce Super Admin" badge="Super Admin" panel={brandPanel}>
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        <Input
+    <AuthLayout title="Log in" documentTitle="Log in · Zcommerce Super admin" subtitle="Zerror team access only." productLabel="Super admin">
+      <form noValidate className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <AuthField
           id="signin-email"
           type="email"
           label="Email"
-          labelPlacement="outside-top"
           value={email}
-          onValueChange={(value) => {
-            setEmail(value);
+          onChange={(event) => {
+            setEmail(event.target.value);
             if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
           }}
-          isRequired
-          validationBehavior="aria"
-          isInvalid={!!errors.email}
-          errorMessage={errors.email}
+          aria-required
+          error={errors.email}
           autoComplete="email"
         />
 
-        <Input
+        <AuthField
           id="signin-password"
           type={showPassword ? "text" : "password"}
           label="Password"
-          labelPlacement="outside-top"
           value={password}
-          onValueChange={(value) => {
-            setPassword(value);
+          onChange={(event) => {
+            setPassword(event.target.value);
             if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
           }}
-          isRequired
-          validationBehavior="aria"
-          isInvalid={!!errors.password}
-          errorMessage={errors.password}
+          aria-required
+          error={errors.password}
           autoComplete="current-password"
           endContent={
             <button
               type="button"
               aria-label={showPassword ? "Hide password" : "Show password"}
               onClick={() => setShowPassword((prev) => !prev)}
-              className="text-fg-muted transition-colors hover:text-fg"
+              className="rounded-md p-1 text-auth-muted transition-colors hover:text-brand-on"
             >
-              {showPassword ? <IconView className="size-4" /> : <IconHide className="size-4" />}
+              {showPassword ? <IconHide className="size-4" /> : <IconView className="size-4" />}
             </button>
           }
         />
 
-        <UiButton variant="primary" size="md" type="submit" className="mt-2 w-full" isLoading={submitting}>
-          Sign in
+        <UiButton
+          variant="secondary"
+          size="lg"
+          type="submit"
+          isLoading={submitting}
+          className="mt-1 w-full border-0 !bg-surface font-semibold !text-fg data-[hover=true]:!bg-surface-sunken"
+        >
+          Log in
         </UiButton>
       </form>
     </AuthLayout>

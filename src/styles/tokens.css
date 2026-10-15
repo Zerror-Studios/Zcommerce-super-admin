@@ -111,6 +111,18 @@
   --zc-ai-tint: rgba(157, 123, 255, 0.07);
   --zc-ai-tint-border: rgba(157, 123, 255, 0.35);
 
+  /* ---------- Login (dark page, docs/design/02-components.md §17) ---------- */
+  --zc-auth-bg: #08090C;
+  --zc-auth-card: #0C0D11;
+  --zc-auth-field: #0F1115;
+  --zc-auth-field-border: #262930;
+  --zc-auth-muted: #8A8F99;
+  --zc-auth-footer: #7A7F89;
+  --zc-auth-focus: #7C9BFF;
+  --zc-auth-focus-ring: 0 0 0 3px rgba(124, 155, 255, 0.22);
+  --zc-auth-dot: rgba(255, 255, 255, 0.07);
+  --zc-auth-error: #FF8A80; /* readable red on the dark card (8.1:1) */
+
   /* ---------- Charts ---------- */
   --zc-chart-1: #1F5EFF;        /* main series */
   --zc-chart-2: #9DB5FF;        /* projected / forecast (dashed outline) */
@@ -199,6 +211,37 @@ body {
   background: linear-gradient(90deg, #9A9EA7 35%, var(--zc-fg) 50%, #9A9EA7 65%); background-size: 250% 100%;
   -webkit-background-clip: text; background-clip: text; color: transparent; animation: zc-ai-sheen 2.2s linear infinite;
 }
+/* Login card: a soft spectrum arc travels round the edge (6s per turn) with a blurred halo behind the card.
+   The card surface is the child .auth-edge-body, inset 1px, so the halo never shows through it. Static under reduced motion. */
+.auth-edge { position: relative; isolation: isolate; border-radius: 16px; padding: 1px; }
+.auth-edge-body { position: relative; border-radius: 15px; background: var(--zc-auth-card); }
+.auth-edge::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: conic-gradient(from var(--zc-ai-angle), transparent 0 50%, var(--zc-ai-1) 62%, var(--zc-ai-2) 72%, var(--zc-ai-3) 82%, var(--zc-ai-4) 88%, transparent 96%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; animation: zc-ai-spin 6s linear infinite;
+}
+.auth-edge::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -1; pointer-events: none;
+  background: conic-gradient(from var(--zc-ai-angle), transparent 0 50%, var(--zc-ai-1) 62%, var(--zc-ai-2) 72%, var(--zc-ai-3) 82%, transparent 96%);
+  filter: blur(28px); opacity: 0.6; animation: zc-ai-spin 6s linear infinite;
+}
+/* Faint dot grid that fades into solid towards the edges. */
+.auth-dots {
+  background-image: radial-gradient(var(--zc-auth-dot) 1px, transparent 1px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+}
+/* Keep browser autofill dark on the login fields. */
+.auth-field:-webkit-autofill,
+.auth-field:-webkit-autofill:hover,
+.auth-field:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 40px var(--zc-auth-field) inset;
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+}
+
 @keyframes zc-ai-spin { to { --zc-ai-angle: 360deg; } }
 @keyframes zc-ai-sheen { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
