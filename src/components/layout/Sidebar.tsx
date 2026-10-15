@@ -1,264 +1,332 @@
 /* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
- * Sidebar in the original Store Dashboard design (owner choice 2026-10-13, replaces component-specs §16 look):
- * 240px / 64px, light-blue hover and active fill, an open group becomes one tinted panel with dot sub-items,
- * left chevron that turns down when open, tab-style collapse handle on the edge.
+ * Dark sidebar (docs/design/02-components.md §1, ref 01/05/07). Top to bottom: wordmark → search (⌘K) →
+ * navigation → divider + secondary items → spacer → Notifications → Settings → user row.
+ * 248px, or a 64px icon rail when collapsed. Only the active section shows its children. No blue except
+ * the unread count pill.
  */
-import { AnimatePresence, motion } from "framer-motion";
+import { DropdownItem, DropdownSection, DropdownTrigger } from "@heroui/react";
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { cx } from "../ui/cx";
-import { IconButton } from "../ui/IconButton";
-import { IconClose, IconCollapseSidebar, IconGroupToggle } from "../ui/icons";
+import { Dropdown, DropdownMenu } from "../ui/Dropdown";
+import { IconClose, IconCollapseSidebar, IconNotifications, IconSearch } from "../ui/icons";
+import { menuItemDangerClasses } from "../ui/menu-styles";
+import { Kbd } from "../ui/Primitives";
 import { Tooltip } from "../ui/Tooltip";
-import type { NavItem } from "./types";
+import type { NavItem, UserMenuItem } from "./types";
+
+export interface SidebarUser {
+  name: string;
+  email?: string;
+  /** Two letters; derived from the name when omitted. */
+  initials?: string;
+}
 
 export interface SidebarProps {
+  /** Main navigation. */
   items: NavItem[];
+  /** Under a divider (Merchant: Apps & channels). */
+  secondaryItems?: NavItem[];
+  /** Settings, pinned to the bottom above the user row. */
+  settingsItem?: NavItem;
+  /** Muted label after the wordmark ("Super admin"). */
+  productLabel?: string;
+  searchPlaceholder?: string;
+  /** Opens the command palette. */
+  onOpenSearch?: () => void;
+  /** Unread notifications; the bell row shows a count pill (a dot when collapsed). */
+  unreadCount?: number;
+  /** Renders the notifications row; receives the row so the panel can anchor to it. */
+  renderNotifications?: (row: ReactNode) => ReactNode;
+  user?: SidebarUser;
+  userMenu?: UserMenuItem[];
+  /** Small line at the bottom of the user menu (app version). */
+  userMenuFooter?: ReactNode;
   /** Icons only (64px) when true. */
   collapsed?: boolean;
-  /** Shows the edge toggle on lg+. Omit when the project has no collapse. */
+  /** Shows the collapse button (desktop only). */
   onToggleCollapse?: () => void;
-  /** Key of the expanded group, or null. The project owns this state (and any storage of it). */
-  openKey: string | null;
-  /** Called when a group header is clicked. The project decides what opening a group does. */
-  onGroupToggle: (item: NavItem) => void;
   /** Project's active-route rule. */
   isActive: (to: string, end?: boolean) => boolean;
-  /** Called after a link is clicked ("item" = top-level link, "child" = sub-item). */
-  onNavigate?: (source: "item" | "child") => void;
+  /** Called after any link is clicked (closes the mobile drawer). */
+  onNavigate?: () => void;
   /** Shows a close button (mobile drawer). */
   onClose?: () => void;
-  /** Content above the credit (e.g. the Store Dashboard upgrade card). Receives the collapsed state. */
-  footerSlot?: ReactNode | ((collapsed: boolean) => ReactNode);
-  /** Credit line under the nav. Hidden when collapsed. */
-  credit?: ReactNode;
   className?: string;
 }
 
-const focusRing =
-  "outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface";
+/** "⌘" on Apple devices, "Ctrl" elsewhere (shortcut hints). */
+const MOD_KEY = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl ";
 
-/** Row shared by links and group headers: 36px, 8px inset, 6px radius, 14px label. */
+const focusRing = "outline-hidden focus-visible:shadow-[0_0_0_2px_var(--zc-nav-border)]";
+
 const rowBase = cx(
-  "flex h-9 w-full items-center gap-2 rounded-sm px-2 text-body transition-colors duration-fast ease-standard",
+  "flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-label font-medium transition-colors duration-instant ease-standard",
   focusRing,
 );
 
+const rowIdle = "text-nav-fg hover:bg-nav-hover hover:text-nav-fg-strong [&_svg]:text-nav-icon hover:[&_svg]:text-nav-fg-strong";
+const rowActive = "bg-nav-active text-nav-fg-strong [&_svg]:text-nav-fg-strong";
+
+function initialsOf(user: SidebarUser): string {
+  if (user.initials) return user.initials;
+  const parts = user.name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "U";
+}
+
+function WithTooltip({ show, label, children }: { show: boolean; label: string; children: ReactNode }) {
+  return show ? (
+    <Tooltip content={label} placement="right">
+      {children}
+    </Tooltip>
+  ) : (
+    <>{children}</>
+  );
+}
+
 export function Sidebar({
   items,
+  secondaryItems = [],
+  settingsItem,
+  productLabel,
+  searchPlaceholder = "Search",
+  onOpenSearch,
+  unreadCount = 0,
+  renderNotifications,
+  user,
+  userMenu = [],
+  userMenuFooter,
   collapsed = false,
   onToggleCollapse,
-  openKey,
-  onGroupToggle,
   isActive,
   onNavigate,
   onClose,
-  footerSlot,
-  credit,
   className,
 }: SidebarProps) {
-  const footer = typeof footerSlot === "function" ? footerSlot(collapsed) : footerSlot;
+  const notificationsRow = (
+    <button type="button" aria-label={collapsed ? "Notifications" : undefined} className={cx(rowBase, rowIdle, collapsed && "justify-center px-0")}>
+      <span className="relative">
+        <IconNotifications aria-hidden className="size-4 shrink-0" />
+        {collapsed && unreadCount > 0 ? (
+          <span aria-hidden className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-nav-count" />
+        ) : null}
+      </span>
+      {collapsed ? null : <span className="flex-1 truncate text-left">Notifications</span>}
+      {!collapsed && unreadCount > 0 ? (
+        <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-nav-count px-1.5 text-[11px] font-semibold leading-none text-brand-on num">
+          {unreadCount > 99 ? "99+" : unreadCount}
+          <span className="sr-only"> unread</span>
+        </span>
+      ) : null}
+    </button>
+  );
+
+  const userMenuItems = userMenu.filter((item) => !item.danger);
+  const dangerItems = userMenu.filter((item) => item.danger);
 
   return (
-    <div className={cx("relative h-full", className)}>
-      {onToggleCollapse ? (
-        <Tooltip content={collapsed ? "Expand" : "Collapse"} placement="right">
+    <aside
+      aria-label="Sidebar"
+      className={cx(
+        "flex h-full flex-col bg-nav transition-[width] duration-base ease-standard",
+        collapsed ? "w-sidebar-collapsed px-2" : "w-sidebar px-3",
+        className,
+      )}
+    >
+      {/* Wordmark */}
+      <div className={cx("flex items-center gap-2 pb-3.5 pt-4", collapsed ? "justify-center" : "px-2.5")}>
+        <span aria-hidden className="flex size-[22px] shrink-0 items-center justify-center rounded-[6px] bg-surface text-[13px] font-semibold text-fg">
+          Z
+        </span>
+        {collapsed ? <span className="sr-only">zcommerce</span> : (
+          <span className="flex min-w-0 flex-1 items-baseline gap-2">
+            <span className="text-[15px] font-semibold text-nav-fg-strong">zcommerce</span>
+            {productLabel ? <span className="truncate text-caption font-medium text-nav-fg-muted">{productLabel}</span> : null}
+          </span>
+        )}
+        {onClose ? (
+          <button type="button" onClick={onClose} aria-label="Close menu" className={cx("rounded-lg p-1 text-nav-fg hover:bg-nav-hover hover:text-nav-fg-strong", focusRing)}>
+            <IconClose aria-hidden className="size-4" />
+          </button>
+        ) : null}
+      </div>
+
+      {/* Search */}
+      {onOpenSearch ? (
+        <WithTooltip show={collapsed} label={`${searchPlaceholder} (${MOD_KEY}K)`}>
           <button
             type="button"
-            onClick={onToggleCollapse}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={onOpenSearch}
+            aria-label={collapsed ? searchPlaceholder : undefined}
             className={cx(
-              "absolute -right-6 top-10 z-0 hidden h-6 w-10 items-center justify-end rounded-tile border border-line-strong bg-surface px-2 text-fg transition-colors duration-fast ease-standard hover:text-brand-text lg:flex",
+              "mb-3 flex h-8 w-full items-center gap-2 rounded-lg border border-nav-border bg-nav-surface text-label text-nav-fg-muted transition-colors duration-instant hover:bg-nav-hover",
+              collapsed ? "justify-center" : "px-2.5",
               focusRing,
             )}
           >
-            <IconCollapseSidebar
-              aria-hidden
-              className={cx("size-3 transition-transform duration-slow ease-standard", collapsed && "rotate-180")}
-            />
+            <IconSearch aria-hidden className="size-[15px] shrink-0" />
+            {collapsed ? null : (
+              <>
+                <span className="flex-1 truncate text-left">{searchPlaceholder}</span>
+                <Kbd dark>{MOD_KEY}K</Kbd>
+              </>
+            )}
           </button>
-        </Tooltip>
+        </WithTooltip>
       ) : null}
 
-      <aside
-        className={cx(
-          "no-scrollbar relative z-10 flex h-full flex-col justify-between overflow-y-auto overflow-x-hidden border-r border-line bg-surface transition-[width] duration-slow ease-standard",
-          collapsed ? "w-sidebar-collapsed px-1 pt-1" : "w-sidebar p-2",
-        )}
-      >
-        <div>
-          {onClose ? (
-            <div className="p-2 lg:hidden">
-              <IconButton aria-label="Close menu" size="sm" showTooltip={false} onPress={onClose}>
-                <IconClose aria-hidden className="size-4" />
-              </IconButton>
-            </div>
-          ) : null}
-
-          <nav aria-label="Main">
-            <ul className="flex flex-col gap-1 px-2">
-              {items.map((item) => (
-                <li key={item.key}>
-                  {item.children?.length ? (
-                    <SidebarGroup
-                      item={item}
-                      collapsed={collapsed}
-                      open={openKey === item.key}
-                      onToggle={() => onGroupToggle(item)}
-                      isActive={isActive}
-                      onNavigate={onNavigate}
-                    />
-                  ) : (
-                    <SidebarItem item={item} collapsed={collapsed} isActive={isActive} onNavigate={onNavigate} />
-                  )}
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </div>
-
-        {footer || (!collapsed && credit) ? (
-          <div className="mb-2 mt-6 flex w-full flex-col gap-3">
-            {footer}
-            {!collapsed ? credit : null}
-          </div>
+      {/* Navigation */}
+      <nav aria-label="Main" className="no-scrollbar -mx-1 min-h-0 flex-1 overflow-y-auto px-1">
+        <NavList items={items} collapsed={collapsed} isActive={isActive} onNavigate={onNavigate} />
+        {secondaryItems.length ? (
+          <>
+            <div aria-hidden className="my-2 h-px bg-nav-divider" />
+            <NavList items={secondaryItems} collapsed={collapsed} isActive={isActive} onNavigate={onNavigate} />
+          </>
         ) : null}
-      </aside>
-    </div>
+      </nav>
+
+      {/* Bottom: notifications, settings */}
+      <div className="flex flex-col gap-0.5 pb-2 pt-2">
+        {renderNotifications ? (
+          <WithTooltip show={collapsed} label="Notifications">
+            {renderNotifications(notificationsRow)}
+          </WithTooltip>
+        ) : null}
+        {settingsItem ? <NavList items={[settingsItem]} collapsed={collapsed} isActive={isActive} onNavigate={onNavigate} /> : null}
+      </div>
+
+      {/* User row */}
+      {user ? (
+        <div className={cx("flex items-center gap-1 border-t border-nav-divider py-2.5", collapsed && "flex-col")}>
+          <Dropdown placement="top-start">
+            <DropdownTrigger>
+              <button
+                type="button"
+                aria-label={`Account menu for ${user.name}`}
+                className={cx("flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 text-left hover:bg-nav-hover", focusRing)}
+              >
+                <span aria-hidden className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-nav-active text-[11px] font-semibold text-nav-fg-strong">
+                  {initialsOf(user)}
+                </span>
+                {collapsed ? null : (
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-label font-medium text-nav-fg-strong">{user.name}</span>
+                    {user.email ? <span className="block truncate text-caption text-nav-fg-muted">{user.email}</span> : null}
+                  </span>
+                )}
+              </button>
+            </DropdownTrigger>
+            <DropdownMenu
+              aria-label="Account"
+              onAction={(key) => userMenu.find((item) => item.key === key)?.onAction()}
+              bottomContent={userMenuFooter ? <p className="px-2.5 pb-1.5 pt-1 text-caption text-fg-subtle">{userMenuFooter}</p> : undefined}
+            >
+              <DropdownSection showDivider={dangerItems.length > 0} aria-label="Account">
+                {userMenuItems.map((item) => (
+                  <DropdownItem key={item.key}>{item.label}</DropdownItem>
+                ))}
+              </DropdownSection>
+              <DropdownSection aria-label="Session">
+                {dangerItems.map((item) => (
+                  <DropdownItem key={item.key} className={menuItemDangerClasses}>
+                    {item.label}
+                  </DropdownItem>
+                ))}
+              </DropdownSection>
+            </DropdownMenu>
+          </Dropdown>
+          {onToggleCollapse ? (
+            <Tooltip content={`${collapsed ? "Expand" : "Collapse"} sidebar (${MOD_KEY}\\)`} placement="right">
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                className={cx("shrink-0 rounded-lg p-1.5 text-nav-icon hover:bg-nav-hover hover:text-nav-fg-strong", focusRing)}
+              >
+                <IconCollapseSidebar aria-hidden className={cx("size-4 transition-transform duration-base", collapsed && "rotate-180")} />
+              </button>
+            </Tooltip>
+          ) : null}
+        </div>
+      ) : null}
+    </aside>
   );
 }
 
-interface SidebarItemProps {
-  item: NavItem;
+interface NavListProps {
+  items: NavItem[];
   collapsed: boolean;
   isActive: SidebarProps["isActive"];
-  onNavigate?: SidebarProps["onNavigate"];
+  onNavigate?: () => void;
 }
 
-function SidebarItem({ item, collapsed, isActive, onNavigate }: SidebarItemProps) {
-  const Icon = item.icon;
-  const active = item.to != null && isActive(item.to, item.end);
-  const link = (
-    <NavLink
-      to={item.to ?? "#"}
-      end={item.end}
-      aria-current={active ? "page" : undefined}
-      onClick={() => onNavigate?.("item")}
-      className={cx(
-        rowBase,
-        collapsed && "justify-center px-0",
-        active ? "bg-brand-soft text-brand-text" : "text-fg hover:bg-brand-soft hover:text-brand-text",
-      )}
-    >
-      <Icon aria-hidden className="size-4 shrink-0" />
-      {collapsed ? <span className="sr-only">{item.label}</span> : <span className="truncate">{item.label}</span>}
-    </NavLink>
-  );
-
-  return collapsed ? (
-    <Tooltip content={item.label} placement="right">
-      {link}
-    </Tooltip>
-  ) : (
-    link
+function NavList({ items, collapsed, isActive, onNavigate }: NavListProps) {
+  return (
+    <ul className="flex flex-col gap-0.5">
+      {items.map((item) => (
+        <li key={item.key}>
+          <NavEntry item={item} collapsed={collapsed} isActive={isActive} onNavigate={onNavigate} />
+        </li>
+      ))}
+    </ul>
   );
 }
 
-interface SidebarGroupProps extends SidebarItemProps {
-  open: boolean;
-  onToggle: () => void;
-}
-
-function SidebarGroup({ item, collapsed, open, onToggle, isActive, onNavigate }: SidebarGroupProps) {
+function NavEntry({ item, collapsed, isActive, onNavigate }: { item: NavItem } & Omit<NavListProps, "items">) {
   const Icon = item.icon;
   const children = item.children ?? [];
   const sectionActive =
     children.some((child) => isActive(child.to)) || (item.to != null && isActive(item.to, item.end));
-
-  if (collapsed) {
-    // Collapsed: the group icon links to its first page.
-    return (
-      <Tooltip content={item.label} placement="right">
-        <NavLink
-          to={children[0]?.to ?? item.to ?? "#"}
-          onClick={() => onNavigate?.("item")}
-          className={cx(
-            rowBase,
-            "justify-center px-0",
-            sectionActive ? "bg-brand-soft text-brand-text" : "text-fg hover:bg-brand-soft hover:text-brand-text",
-          )}
-        >
-          <Icon aria-hidden className="size-4 shrink-0" />
-          <span className="sr-only">{item.label}</span>
-        </NavLink>
-      </Tooltip>
-    );
-  }
-
-  const panelId = `sidebar-group-${item.key}`;
+  const target = item.to && !children.length ? item.to : (children[0]?.to ?? item.to ?? "#");
+  const count = item.count ?? 0;
 
   return (
-    <div className={cx("overflow-hidden rounded-sm", open && "bg-brand-soft")}>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        aria-controls={panelId}
-        className={cx(
-          rowBase,
-          "text-left hover:bg-brand-soft",
-          open ? "text-brand-text" : sectionActive ? "text-brand-text" : "text-fg",
-        )}
-      >
-        <Icon aria-hidden className="size-4 shrink-0" />
-        <span className="flex-1 truncate">{item.label}</span>
-        <IconGroupToggle
-          aria-hidden
-          className={cx(
-            "mr-1 size-3 shrink-0 text-fg transition-transform duration-base ease-standard",
-            open && "-rotate-90",
+    <>
+      <WithTooltip show={collapsed} label={item.label}>
+        <NavLink
+          to={target}
+          end={item.end}
+          aria-current={sectionActive && !children.length ? "page" : undefined}
+          onClick={() => onNavigate?.()}
+          className={cx(rowBase, collapsed && "justify-center px-0", sectionActive ? rowActive : rowIdle)}
+        >
+          <Icon aria-hidden className="size-4 shrink-0" />
+          {collapsed ? (
+            <span className="sr-only">{item.label}</span>
+          ) : (
+            <>
+              <span className="flex-1 truncate">{item.label}</span>
+              {count > 0 ? <span className="text-caption font-normal text-nav-fg-muted num">{count}</span> : null}
+            </>
           )}
-        />
-      </button>
+        </NavLink>
+      </WithTooltip>
 
-      <AnimatePresence initial={false}>
-        {open ? (
-          <motion.ul
-            id={panelId}
-            key="children"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
-            className="flex flex-col gap-1 overflow-hidden py-2"
-          >
-            {children.map((child) => {
-              const active = isActive(child.to);
-              return (
-                <li key={child.to}>
-                  <NavLink
-                    to={child.to}
-                    aria-current={active ? "page" : undefined}
-                    onClick={() => onNavigate?.("child")}
-                    className={cx(
-                      "mx-2 flex h-9 items-center gap-3 rounded-sm px-2 text-caption transition-colors duration-fast ease-standard",
-                      focusRing,
-                      active ? "bg-brand-soft-strong text-brand-text" : "text-fg hover:bg-brand-soft-strong",
-                    )}
-                  >
-                    <span
-                      aria-hidden
-                      className={cx("size-1.5 shrink-0 rounded-full", active ? "bg-brand" : "bg-line-strong")}
-                    />
-                    <span className="truncate">{child.label}</span>
-                  </NavLink>
-                </li>
-              );
-            })}
-          </motion.ul>
-        ) : null}
-      </AnimatePresence>
-    </div>
+      {sectionActive && children.length && !collapsed ? (
+        <ul className="mt-0.5 flex flex-col gap-0.5">
+          {children.map((child) => {
+            const active = isActive(child.to);
+            return (
+              <li key={child.to}>
+                <NavLink
+                  to={child.to}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => onNavigate?.()}
+                  className={cx(
+                    "flex h-7 items-center rounded-lg pl-9 pr-2.5 text-label transition-colors duration-instant",
+                    focusRing,
+                    active ? "bg-nav-active text-nav-fg-strong" : "text-nav-fg hover:bg-nav-hover hover:text-nav-fg-strong",
+                  )}
+                >
+                  <span className="truncate">{child.label}</span>
+                </NavLink>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </>
   );
 }

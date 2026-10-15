@@ -9,6 +9,7 @@ import { Billing } from "./pages/Billing";
 import { ClientDetail } from "./pages/ClientDetail";
 import { Clients } from "./pages/Clients";
 import { Home } from "./pages/Home";
+import { NotFound } from "./pages/NotFound";
 import { Settings } from "./pages/Settings";
 import { SignIn } from "./pages/SignIn";
 import { useAuth } from "./providers/AuthProvider";
@@ -49,10 +50,11 @@ export default function App() {
 
           {/* Hidden component showcase (restyle Phase 2); renders only in development builds. */}
           <Route path="dev/ui" element={<DevUiPage />} />
+
+          {/* Unknown URLs show the 404 inside the app shell (signed-out users go to sign-in first). */}
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Route>
-
-      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
