@@ -5,7 +5,7 @@ import { cx } from "./cx";
 
 export type TabsProps<T extends object = object> = Omit<HeroTabsProps<T>, "variant" | "color">;
 
-/** Underlined tabs (component-specs §18): muted label, primary label + 2px indicator when selected. */
+/** Underline tabs (docs/design/02-components.md §8): 14/500 secondary text; selected = ink text + 2px ink underline. */
 export function Tabs<T extends object = object>({ classNames, ...rest }: TabsProps<T>) {
   return (
     <HeroTabs<T>
@@ -13,13 +13,13 @@ export function Tabs<T extends object = object>({ classNames, ...rest }: TabsPro
       color="primary"
       classNames={{
         ...classNames,
-        tabList: cx("gap-6 p-0 border-b border-line rounded-none", classNames?.tabList),
+        tabList: cx("gap-5 p-0 border-b border-line rounded-none", classNames?.tabList),
         tab: cx("px-0 h-10", classNames?.tab),
         tabContent: cx(
-          "text-sm font-medium text-fg-muted transition-colors duration-fast ease-standard group-data-[hover=true]:text-fg group-data-[selected=true]:text-brand-text",
+          "text-sm font-medium text-fg-muted transition-colors duration-fast ease-standard group-data-[hover=true]:text-fg group-data-[selected=true]:text-fg",
           classNames?.tabContent,
         ),
-        cursor: cx("h-0.5 w-full bg-brand", classNames?.cursor),
+        cursor: cx("h-0.5 w-full bg-fg shadow-none", classNames?.cursor),
       }}
       {...rest}
     />

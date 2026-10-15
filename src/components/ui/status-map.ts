@@ -42,6 +42,7 @@ export const STATUS_MAP: Record<StatusDomain, Record<string, StatusInfo>> = {
     completed: s("Completed", "success"),
     returned: s("Returned", "neutral"),
     refunded: s("Refunded", "neutral"),
+    rto: s("RTO", "danger"), // spec 02 §10: return to origin is critical
     cancelled: s("Cancelled", "danger"),
     canceled: s("Cancelled", "danger"),
     failed: s("Failed", "danger"),
@@ -106,30 +107,34 @@ export const STATUS_MAP: Record<StatusDomain, Record<string, StatusInfo>> = {
     cancelled: s("Cancelled", "neutral"),
   },
   store: {
-    active: s("Active", "success"),
-    live: s("Active", "success"),
+    // Store lifecycle (docs/design/04-super-admin.md §2): Building · Live · Suspended · Cancelled.
+    active: s("Live", "success"),
+    live: s("Live", "success"),
+    building: s("Building", "info"),
     trial: s("Trial", "info"),
     trialing: s("Trial", "info"),
-    setup_pending: s("Setting up", "warning"),
-    onboarding: s("Setting up", "warning"),
+    setup_pending: s("Building", "info"),
+    onboarding: s("Building", "info"),
     inactive: s("Inactive", "neutral"),
     paused: s("Inactive", "neutral"),
     suspended: s("Suspended", "danger"),
     blocked: s("Suspended", "danger"),
+    cancelled: s("Cancelled", "neutral"),
+    canceled: s("Cancelled", "neutral"),
   },
   plan: {
     active: s("Active", "success"),
     trialing: s("Trial", "info"),
     expiring_soon: s("Expiring soon", "warning"),
     pending: s("Pending", "warning"), // added: Super Admin subscriptions
-    past_due: s("Payment overdue", "danger"),
+    past_due: s("Overdue", "danger"),
     expired: s("Expired", "danger"),
     cancelled: s("Cancelled", "neutral"),
     canceled: s("Cancelled", "neutral"), // added: US spelling
   },
   product: {
-    published: s("Published", "success"),
-    active: s("Published", "success"),
+    published: s("Active", "success"),
+    active: s("Active", "success"),
     draft: s("Draft", "neutral"),
     scheduled: s("Scheduled", "info"),
     archived: s("Archived", "neutral"),
@@ -184,6 +189,11 @@ function humanize(value: unknown): string {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : "Unknown";
 }
 
+/** The badge tone for a status (spec statusTone()): same status, same tone, in both apps. */
+export function statusTone(domain: StatusDomain, value: unknown): Tone {
+  return getStatus(domain, value).tone;
+}
+
 /** Label and tone for a status. Unknown values: neutral + humanised label (warns in development). */
 export function getStatus(domain: StatusDomain, value: unknown): StatusInfo {
   const hit = STATUS_MAP[domain][normalizeStatus(value)];
@@ -218,10 +228,10 @@ export function getExpiryStatus(expiresAt: Date | string | number | null | undef
   return { label: `Expired ${ago} ${ago === 1 ? "day" : "days"} ago`, tone: "danger", days };
 }
 
-/** Store health band (status-mappings §7). The score itself comes from existing data. */
+/** Store health band (docs/design/04-super-admin.md §2): 80–100 Healthy · 50–79 At risk · 0–49 Critical. */
 export function getHealthBand(score: number | null | undefined): StatusInfo {
-  if (score == null || Number.isNaN(score)) return { label: "Not available", tone: "neutral" };
+  if (score == null || Number.isNaN(score)) return { label: "Not live yet", tone: "neutral" };
   if (score >= 80) return { label: "Healthy", tone: "success" };
-  if (score >= 50) return { label: "Needs attention", tone: "warning" };
+  if (score >= 50) return { label: "At risk", tone: "warning" };
   return { label: "Critical", tone: "danger" };
 }

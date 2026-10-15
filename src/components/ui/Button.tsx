@@ -4,13 +4,28 @@ import type { ButtonProps as HeroButtonProps } from "@heroui/react";
 import { forwardRef, type ReactNode } from "react";
 import { cx } from "./cx";
 
-/** Only four CTA variants — use this Button everywhere (tabs, modals, tables, headers). */
+/**
+ * Button variants (docs/design/02-components.md §3). One primary per view; everything else is
+ * secondary or ghost. Cancel is never red.
+ * - primary: filled blue
+ * - secondary: white, strong border (other important actions, date picker)
+ * - ghost: transparent, muted text (Import, Export, Cancel, Filter, Sort, Columns, row actions)
+ * - destructive: white, red border and text (Delete, Suspend, Refund)
+ * - danger: filled red, only inside destructive confirm modals
+ * - link: blue text ("View all", inline links)
+ * LEGACY aliases: "outline" renders as secondary, "danger-outline" as destructive.
+ */
 export type ButtonVariant =
   | "primary"
-  | "outline"
+  | "secondary"
+  | "ghost"
+  | "destructive"
   | "danger"
+  | "link"
+  | "outline"
   | "danger-outline";
 
+/** sm 32px (tables, cards), md 36px (default), lg 40px (login). */
 export type ButtonSize = "sm" | "md" | "lg";
 
 export interface ButtonProps
@@ -23,36 +38,55 @@ export interface ButtonProps
   disabled?: boolean;
 }
 
-/** HeroUI base variant + color for each design-system variant. */
-const base: Record<ButtonVariant, Pick<HeroButtonProps, "variant" | "color">> = {
-  primary: { variant: "solid", color: "primary" },
-  outline: { variant: "bordered", color: "default" },
-  danger: { variant: "solid", color: "danger" },
-  "danger-outline": { variant: "bordered", color: "default" },
+type BaseVariant = Exclude<ButtonVariant, "outline" | "danger-outline">;
+
+const legacy: Record<ButtonVariant, BaseVariant> = {
+  primary: "primary",
+  secondary: "secondary",
+  ghost: "ghost",
+  destructive: "destructive",
+  danger: "danger",
+  link: "link",
+  outline: "secondary",
+  "danger-outline": "destructive",
 };
 
-const variantClasses: Record<ButtonVariant, string> = {
+/** HeroUI base variant + color for each design-system variant. */
+const base: Record<BaseVariant, Pick<HeroButtonProps, "variant" | "color">> = {
+  primary: { variant: "solid", color: "primary" },
+  secondary: { variant: "bordered", color: "default" },
+  ghost: { variant: "light", color: "default" },
+  destructive: { variant: "bordered", color: "default" },
+  danger: { variant: "solid", color: "danger" },
+  link: { variant: "light", color: "primary" },
+};
+
+const variantClasses: Record<BaseVariant, string> = {
   primary:
     "bg-brand text-brand-on data-[hover=true]:!opacity-100 data-[hover=true]:bg-brand-hover data-[pressed=true]:bg-brand-pressed",
-  outline:
-    "border border-brand bg-transparent text-brand-text data-[hover=true]:!opacity-100 data-[hover=true]:bg-brand-soft data-[pressed=true]:bg-brand-tint",
+  secondary:
+    "border border-line-strong bg-surface text-fg data-[hover=true]:!opacity-100 data-[hover=true]:!bg-surface-muted data-[pressed=true]:!bg-surface-sunken",
+  ghost:
+    "bg-transparent text-fg-muted data-[hover=true]:!opacity-100 data-[hover=true]:!bg-surface-sunken data-[hover=true]:text-fg data-[pressed=true]:!bg-line",
+  destructive:
+    "border border-tone-danger-border bg-surface text-tone-danger-text data-[hover=true]:!opacity-100 data-[hover=true]:!bg-tone-danger-soft data-[pressed=true]:!bg-tone-danger-soft",
   danger:
     "bg-tone-danger text-brand-on data-[hover=true]:!opacity-100 data-[hover=true]:bg-tone-danger-hover data-[pressed=true]:bg-tone-danger-hover",
-  "danger-outline":
-    "border border-tone-danger bg-transparent text-tone-danger-text data-[hover=true]:!opacity-100 data-[hover=true]:bg-tone-danger-soft data-[pressed=true]:bg-tone-danger-soft",
+  link:
+    "h-auto min-w-0 bg-transparent px-0 text-brand data-[hover=true]:!bg-transparent data-[hover=true]:underline data-[hover=true]:!opacity-100",
 };
 
-/** Size parity table. text-xs/sm/base = caption/body/subtitle sizes (tailwind-merge safe). */
+/** Heights 32 / 36 / 40; 13px text on small buttons, 14px otherwise (tailwind-merge safe arbitrary sizes). */
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "h-8 px-3 text-xs",
-  md: "h-10 px-4 text-sm",
-  lg: "h-12 px-5 text-base",
+  sm: "h-8 min-h-8 px-3 text-[13px] leading-5",
+  md: "h-9 min-h-9 px-3.5 text-sm",
+  lg: "h-10 min-h-10 px-4 text-sm",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
     variant = "primary",
-    size = "sm",
+    size = "md",
     startIcon,
     endIcon,
     disabled,
@@ -63,21 +97,23 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   },
   ref,
 ) {
+  const kind = legacy[variant];
   return (
     <HeroButton
       ref={ref}
-      {...base[variant]}
+      {...base[kind]}
       size={size}
-      radius="full"
-      startContent={startIcon}
-      endContent={endIcon}
+      radius="md"
+      startContent={isLoading ? undefined : startIcon}
+      endContent={isLoading ? undefined : endIcon}
       isDisabled={isDisabled ?? disabled}
       isLoading={isLoading}
+      spinner={<span aria-hidden className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
       aria-busy={isLoading || undefined}
       className={cx(
-        "gap-2 font-medium shadow-none transition-colors duration-fast ease-standard",
+        "min-w-0 gap-1.5 rounded-lg font-medium shadow-none transition-colors duration-instant ease-standard [&_svg]:size-4 [&_svg]:shrink-0",
         sizeClasses[size],
-        variantClasses[variant],
+        variantClasses[kind],
         className,
       )}
       {...rest}

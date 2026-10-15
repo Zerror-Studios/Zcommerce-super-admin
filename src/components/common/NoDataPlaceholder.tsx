@@ -2,14 +2,13 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
-import { IconAdd } from "../ui/icons";
 
 export interface NoDataPlaceholderProps {
   title?: string;
   description?: string;
   error?: string;
   icon?: ReactNode | string;
-  /** LEGACY: ignored; EmptyState uses a fixed illustration size. */
+  /** LEGACY: ignored; illustrations are removed (docs/design/02-components.md §9). */
   iconHeight?: number | string;
   actionLabel?: string;
   actionTo?: string;
@@ -19,12 +18,12 @@ export interface NoDataPlaceholderProps {
   isLoading?: boolean;
 }
 
-/** Kept for existing call sites; renders the shared EmptyState (component-specs §23). */
+/** Kept for existing call sites; renders the shared EmptyState (docs/design/02-components.md §9). */
 export function NoDataPlaceholder({
-  title = "No data yet",
+  title = "Nothing here yet",
   description,
   error,
-  icon = "/no-activity.svg",
+  icon,
   actionLabel,
   actionTo,
   buttonLabel,
@@ -34,18 +33,12 @@ export function NoDataPlaceholder({
 }: NoDataPlaceholderProps) {
   const action =
     buttonLabel && onButtonClick ? (
-      <Button
-        variant="outline"
-        size="sm"
-        startIcon={<IconAdd aria-hidden className="size-3" />}
-        isLoading={isLoading}
-        onPress={onButtonClick}
-      >
+      <Button variant="secondary" isLoading={isLoading} onPress={onButtonClick}>
         {buttonLabel}
       </Button>
     ) : actionLabel && actionTo ? (
-      <Link to={actionTo} className="text-body font-medium text-brand-text hover:underline">
-        {actionLabel} →
+      <Link to={actionTo} className="text-body font-medium text-brand hover:underline">
+        {actionLabel}
       </Link>
     ) : undefined;
 
@@ -54,7 +47,6 @@ export function NoDataPlaceholder({
       title={title}
       description={description}
       error={error}
-      illustration={typeof icon === "string" ? icon : undefined}
       media={typeof icon === "string" ? undefined : icon}
       action={action}
       className={className}

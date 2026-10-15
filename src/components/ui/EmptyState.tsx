@@ -1,46 +1,55 @@
 /* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 import type { ComponentType, ReactNode } from "react";
 import { cx } from "./cx";
+import { IconOrders } from "./icons";
 
 export interface EmptyStateProps {
+  /** Short and specific: "No orders yet". */
   title?: ReactNode;
+  /** One sentence that says what happens next (max 320px wide). */
   description?: ReactNode;
-  /** Illustration image URL (each project passes its own asset path). */
+  /** LEGACY: ignored. Illustrations (the cactus) are removed everywhere; pass the section's icon instead. */
   illustration?: string;
-  /** Or a 40px icon instead of an illustration. */
+  /** The section's icon, shown at 20px in a 40px muted tile. */
   icon?: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
-  /** Or any custom media element (takes precedence over illustration and icon). */
+  /** Custom media element (takes precedence over the icon tile). */
   media?: ReactNode;
   /** Error message shown under the description. */
   error?: ReactNode;
-  /** Primary action, e.g. a Button. For search/filter results offer "Clear filters". */
+  /** One action, usually a secondary Button. */
   action?: ReactNode;
+  /** Inside small dashboard cards: one secondary line of text, no icon, no button. */
+  compact?: boolean;
   className?: string;
 }
 
-/** Empty state (component-specs §23): centered, illustration or icon, subtitle title, muted description. */
+/**
+ * Empty state (docs/design/02-components.md §9, ref 06): 40px muted tile with the section icon →
+ * title 14/600 → one sentence 14px secondary → one button. Copy per page lives in docs/design/05-wording.md.
+ */
 export function EmptyState({
-  title = "No data available",
+  title = "Nothing here yet",
   description,
-  illustration,
-  icon: Icon,
+  icon: Icon = IconOrders,
   media,
   error,
   action,
+  compact = false,
   className,
 }: EmptyStateProps) {
+  if (compact) {
+    return <p className={cx("py-6 text-center text-body text-fg-muted", className)}>{description ?? title}</p>;
+  }
   return (
-    <div className={cx("flex flex-col items-center justify-center gap-2 py-12 text-center", className)}>
-      {media ? (
-        <div className="mb-2">{media}</div>
-      ) : illustration ? (
-        <img src={illustration} alt="" aria-hidden className="mb-2 h-32 w-auto max-w-full" />
-      ) : Icon ? (
-        <Icon aria-hidden className="mb-2 size-10 text-fg-muted" />
-      ) : null}
-      {title ? <p className="text-subtitle font-medium text-fg">{title}</p> : null}
-      {description ? <p className="max-w-md text-body text-fg-muted">{description}</p> : null}
-      {error ? <p className="text-body text-tone-danger-text">{error}</p> : null}
+    <div className={cx("flex flex-col items-center justify-center px-4 py-12 text-center", className)}>
+      {media ?? (
+        <span aria-hidden className="flex size-10 items-center justify-center rounded-tile bg-surface-sunken text-fg-muted">
+          <Icon aria-hidden className="size-5" />
+        </span>
+      )}
+      {title ? <p className="mt-3 text-body font-semibold text-fg">{title}</p> : null}
+      {description ? <p className="mt-1 max-w-80 text-body text-fg-muted">{description}</p> : null}
+      {error ? <p className="mt-1 text-body text-tone-danger-text">{error}</p> : null}
       {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );

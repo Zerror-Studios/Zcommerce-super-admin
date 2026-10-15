@@ -51,14 +51,14 @@ export { MoneyText } from "./MoneyText";
 export type { MoneyTextProps } from "./MoneyText";
 export { PlanExpiryBadge } from "./PlanExpiryBadge";
 export type { PlanExpiryBadgeProps } from "./PlanExpiryBadge";
-export { StatCard } from "./StatCard";
-export type { StatCardProps } from "./StatCard";
+export { KpiStrip, StatCard } from "./StatCard";
+export type { KpiStripProps, StatCardProps } from "./StatCard";
 export { StatusChip } from "./StatusChip";
 export type { StatusChipProps } from "./StatusChip";
 export { apexBaseOptions, areaGradientStops, categoryColor, chartColors, planColor, planColors, recharts } from "./chart-theme";
-export { formatCount, formatDelta, formatMoney } from "./money";
+export { formatCount, formatDelta, formatMoney, formatPercent } from "./money";
 export type { FormatMoneyOptions } from "./money";
-export { STATUS_MAP, getExpiryStatus, getHealthBand, getStatus, normalizeStatus } from "./status-map";
+export { STATUS_MAP, getExpiryStatus, getHealthBand, getStatus, normalizeStatus, statusTone } from "./status-map";
 export type { StatusDomain, StatusInfo } from "./status-map";
 
 export { cx } from "./cx";
@@ -72,7 +72,7 @@ export {
   tablePanelClasses,
   tableRowClasses,
 } from "./table-styles";
-export { TONES, toneClasses, toneDotClasses } from "./tones";
+export { TONES, toneClasses, toneDotClasses, toneTextClasses } from "./tones";
 export type { Tone } from "./tones";
 export * from "./icons";
 
@@ -89,3 +89,5 @@ export {
   Tab,
   useDisclosure,
 } from "@heroui/react";
+export { BackLink, CopyableId, Kbd, SaveBar, SegmentedControl } from "./Primitives";
+export type { BackLinkProps, CopyableIdProps, SaveBarProps, SegmentedControlProps } from "./Primitives";

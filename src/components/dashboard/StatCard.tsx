@@ -9,7 +9,7 @@ export interface StatCardProps {
   isLoading?: boolean;
 }
 
-/** Kept for existing call sites; renders the shared StatCard (component-specs §19). */
+/** Kept for existing call sites; renders the shared StatCard (docs/design/02-components.md §5, no icon). */
 export function StatCard({ title, value, change, icon, isLoading }: StatCardProps) {
   return <SharedStatCard label={title} value={value} delta={change} icon={icon} isLoading={isLoading} />;
 }

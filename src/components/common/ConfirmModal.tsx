@@ -17,9 +17,10 @@ export interface ConfirmModalProps {
   confirmLabel?: string;
   cancelLabel?: string;
   /**
-   * danger → destructive ConfirmDialog (component-specs §11).
-   * warning → danger buttons (the design system has no warning button).
+   * danger → destructive ConfirmDialog (docs/design/02-components.md §11).
+   * warning → filled red confirm (the design system has no warning button).
    * primary / success → primary confirm (the design system has no success button).
+   * Cancel is always ghost, never red.
    */
   confirmColor?: "danger" | "primary" | "warning" | "success";
   isLoading?: boolean;
@@ -59,23 +60,18 @@ export function ConfirmModal({
   const destructive = confirmColor === "warning";
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} width="md">
+    <Modal isOpen={isOpen} onClose={onClose} width="sm">
       <ModalContent>
         <ModalHeader>{title}</ModalHeader>
         <ModalBody>
-          <p className="text-fg-muted">{description}</p>
+          <p className="text-body text-fg-muted">{description}</p>
         </ModalBody>
         <ModalFooter>
-          <Button
-            variant={destructive ? "danger-outline" : "outline"}
-            size="sm"
-            onPress={onClose}
-          >
+          <Button variant="ghost" onPress={onClose}>
             {cancelLabel}
           </Button>
           <Button
             variant={destructive ? "danger" : "primary"}
-            size="sm"
             isLoading={isLoading}
             onPress={confirmAndClose}
           >

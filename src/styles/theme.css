@@ -110,6 +110,7 @@
 
   --shadow-card: var(--zc-shadow-card);
   --shadow-sticky: var(--zc-shadow-sm);
+  --shadow-focus: var(--zc-focus-ring);
   --shadow-popover: var(--zc-shadow-popover);
   --shadow-modal: var(--zc-shadow-modal);
 
@@ -135,6 +136,10 @@
   :focus-visible {
     outline: none;
     box-shadow: var(--zc-focus-ring);
+  }
+  /* Lucide icons (components/ui/icons.ts) ship with stroke 2; the spec draws them at 1.75. */
+  svg[fill="none"][stroke-linejoin="round"] {
+    stroke-width: 1.75;
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {

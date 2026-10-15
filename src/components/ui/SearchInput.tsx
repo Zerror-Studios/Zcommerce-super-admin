@@ -2,7 +2,7 @@
 import { Input as HeroInput } from "@heroui/react";
 import type { InputProps as HeroInputProps } from "@heroui/react";
 import { cx } from "./cx";
-import { fieldHeight, getSearchInputClasses } from "./field-styles";
+import { getSearchInputClasses, tableSearchIconClass } from "./field-styles";
 import type { FieldSize } from "./field-styles";
 import { IconSearch } from "./icons";
 
@@ -11,8 +11,8 @@ export interface SearchInputProps extends Omit<HeroInputProps, "size" | "variant
 }
 
 /**
- * Search field (component-specs §5): pill, leading magnifier, clear button when it has a value.
- * Use size="sm" in table toolbars (next to sm buttons); md elsewhere.
+ * Search field (docs/design/02-components.md §7): 34px, 8px radius, 15px leading magnifier, clear button
+ * when it has a value. Always pass a page-specific placeholder ("Search orders").
  */
 export function SearchInput({
   size = "md",
@@ -32,11 +32,11 @@ export function SearchInput({
       isClearable={isClearable}
       placeholder={placeholder}
       aria-label={ariaLabel ?? (typeof placeholder === "string" ? placeholder : "Search")}
-      startContent={startContent ?? <IconSearch aria-hidden className="size-4 shrink-0 text-fg-muted" />}
+      startContent={startContent ?? <IconSearch aria-hidden className={tableSearchIconClass} />}
       classNames={{
         ...classNames,
         input: cx(styles.input, classNames?.input),
-        inputWrapper: cx(styles.inputWrapper, fieldHeight[size], classNames?.inputWrapper),
+        inputWrapper: cx(styles.inputWrapper, size === "sm" && "h-8 min-h-8", classNames?.inputWrapper),
         clearButton: cx("text-fg-muted", classNames?.clearButton),
       }}
       {...rest}

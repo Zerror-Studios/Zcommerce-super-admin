@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { RequireAuth } from "./components/auth/RequireAuth";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
+import DevUiPage from "./components/ui/DevUiPage";
 import { Analytics } from "./pages/Analytics";
 import { AddClient } from "./pages/AddClient";
 import { Billing } from "./pages/Billing";
@@ -45,6 +46,9 @@ export default function App() {
 
           <Route path="settings" element={<Navigate to="/settings/discounts" replace />} />
           <Route path="settings/:section" element={<Settings />} />
+
+          {/* Hidden component showcase (restyle Phase 2); renders only in development builds. */}
+          <Route path="dev/ui" element={<DevUiPage />} />
         </Route>
       </Route>
 

@@ -38,6 +38,8 @@ for (const file of walk(SCAN_DIR)) {
       // Skip HTML entities (&#123;) and in-page links (href="#top").
       const matches = [...line.matchAll(HEX_PATTERN)].filter((match) => {
         const before = line.slice(0, match.index);
+        // Order numbers ("#1042") are 4 digits; real 4-digit hex colours with no letters are vanishingly rare.
+        if (/^#\d{4}$/.test(match[0])) return false;
         return !before.endsWith("&") && !/(href|to)=["'{`]*$/.test(before);
       });
       for (const match of matches) hits.push(`${rel}:${index + 1}  ${match[0]}`);

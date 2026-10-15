@@ -12,12 +12,12 @@ export interface ChipProps extends HTMLAttributes<HTMLSpanElement> {
   children: ReactNode;
 }
 
-/** Chip (component-specs §8): pill, 24px, 12px/500, soft background, tone text and dot. Always shows text. */
+/** Status badge (docs/design/02-components.md §10): 22px, 6px radius, 12px/500, 6px dot, sentence case. Always shows text. */
 export function Chip({ tone = "neutral", dot = true, startIcon, className, children, ...rest }: ChipProps) {
   return (
     <span
       className={cx(
-        "inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 text-caption font-medium",
+        "inline-flex h-[22px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm px-2 text-caption font-medium",
         toneClasses[tone],
         className,
       )}
