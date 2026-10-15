@@ -31,9 +31,9 @@ function theme(): ThemeValues {
   if (cache) return cache;
   const values: ThemeValues = {
     series: ["--zc-chart-1", "--zc-chart-2", "--zc-chart-3", "--zc-chart-4"].map(cssVar),
-    categorical: ["--zc-chart-cat-1", "--zc-chart-cat-2", "--zc-chart-cat-3", "--zc-chart-cat-4", "--zc-chart-cat-5"].map(cssVar),
-    grid: cssVar("--zc-border"),
-    axis: cssVar("--zc-fg-muted"),
+    categorical: ["--zc-chart-cat-1", "--zc-chart-cat-2", "--zc-chart-cat-3", "--zc-chart-cat-4", "--zc-chart-cat-5", "--zc-chart-cat-6"].map(cssVar),
+    grid: cssVar("--zc-chart-grid"),
+    axis: cssVar("--zc-fg-subtle"),
     text: cssVar("--zc-fg"),
     surface: cssVar("--zc-surface"),
     positive: cssVar("--zc-success"),
@@ -82,7 +82,7 @@ export function categoryColor(index: number): string {
 export const recharts = {
   line: { type: "monotone", strokeWidth: 2, dot: false, activeDot: { r: 4 } } as const,
   get grid() {
-    return { strokeDasharray: "4 4", stroke: theme().grid, vertical: false } as const;
+    return { stroke: theme().grid, vertical: false } as const; // spec §14: solid 1px, horizontal only
   },
   get axis() {
     return {
@@ -96,8 +96,8 @@ export const recharts = {
     return {
       contentStyle: {
         background: t.surface,
-        border: `1px solid ${t.grid}`,
-        borderRadius: 8,
+        border: `1px solid ${cssVar("--zc-border")}`,
+        borderRadius: 12,
         boxShadow: t.popoverShadow,
         fontSize: 12,
         fontFamily: t.fontFamily,
@@ -112,10 +112,10 @@ export const recharts = {
   area: { type: "monotone", strokeWidth: 2, fillOpacity: 1, dot: false, activeDot: { r: 4 } } as const,
 };
 
-/** Gradient stops for area fills (top → bottom), matching the Store Dashboard area chart (0.45 → 0.1). */
+/** Gradient stops for area fills (top → bottom): spec §14 soft vertical gradient, 14% → 0%. */
 export const areaGradientStops = [
-  { offset: "0%", stopOpacity: 0.45 },
-  { offset: "100%", stopOpacity: 0.1 },
+  { offset: "0%", stopOpacity: 0.14 },
+  { offset: "100%", stopOpacity: 0 },
 ] as const;
 
 /** ApexCharts base options (call at render time). Merge with chart-specific options. */
@@ -131,7 +131,7 @@ export function apexBaseOptions() {
     },
     grid: {
       borderColor: t.grid,
-      strokeDashArray: 4,
+      strokeDashArray: 0,
       xaxis: { lines: { show: false } },
       yaxis: { lines: { show: true } },
     },

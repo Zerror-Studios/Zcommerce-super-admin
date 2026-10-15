@@ -1,85 +1,212 @@
 /* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
-/* Wix Madefor Text is a variable font (wght 400-800). The weight range must be declared, or browsers
-   treat it as 400 only and fake bold/medium by smearing the regular glyphs. */
+/* Zcommerce design tokens v1.0. Values come from docs/design/tokens.css (the spec). They keep the --zc- prefix
+   because the spec's bare names (--radius-sm, --text-sm, --shadow-md, --font-sans) are Tailwind v4 theme
+   namespaces; theme.css maps these into Tailwind utilities. Never hard-code colours, sizes or radii elsewhere. */
+
+/* Geist is a variable font (wght 100-900). The weight range must be declared, or browsers treat it as 400
+   only and fake medium/semibold. Geist Mono is only used at 400 (IDs, codes, shortcuts). */
 @font-face {
-  font-family: "Wix Madefor Text";
-  src: url("/fonts/font-wix.woff2") format("woff2-variations"), url("/fonts/font-wix.woff2") format("woff2");
-  font-weight: 400 800;
+  font-family: "Geist";
+  src: url("/fonts/geist-variable.woff2") format("woff2-variations"), url("/fonts/geist-variable.woff2") format("woff2");
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist-mono-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@property --zc-ai-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+
 :root {
-  --zc-font-sans: "Wix Madefor Text", "Helvetica Neue", Helvetica, Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --zc-font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --zc-font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --zc-bg: #F8F8F8;
-  --zc-surface: #FFFFFF;
-  --zc-surface-muted: #F8F8F8;
-  --zc-fg: #131720;
-  --zc-fg-muted: #71717A;
-  --zc-border: #E4E4E7;
-  --zc-border-strong: #D4D4D8;
-  --zc-field-border: #BED2F1; /* light blue border of the table search field */
+  /* ---------- Surfaces ---------- */
+  --zc-bg: #F6F7F9;             /* spec --bg-canvas: page background behind cards */
+  --zc-surface: #FFFFFF;        /* cards, tables, inputs, popovers */
+  --zc-surface-muted: #FAFAFB;  /* spec --bg-subtle: table header, row hover */
+  --zc-surface-sunken: #F2F3F5; /* spec --bg-muted: neutral badge, empty-state tile, skeleton */
 
-  --zc-primary: #116DFE;
-  --zc-primary-hover: #0E5FDF;
-  --zc-primary-pressed: #0B54C7;
+  /* ---------- Text (all pass WCAG AA on white) ---------- */
+  --zc-fg: #111318;
+  --zc-fg-muted: #5F646E;       /* spec --text-secondary */
+  --zc-fg-subtle: #6F747E;      /* spec --text-tertiary: on white surfaces only */
+  --zc-fg-placeholder: #9599A2; /* input placeholders only */
+  --zc-fg-disabled: #B4B8C0;
+
+  /* ---------- Borders ---------- */
+  --zc-border: #EBEBEF;         /* cards, section dividers */
+  --zc-border-strong: #E2E3E8;  /* inputs, secondary buttons */
+  --zc-divider: #F1F1F4;        /* table row lines, list rows */
+  --zc-field-border: #E2E3E8;   /* was the light-blue search field border; now the input border */
+
+  /* ---------- Brand / action (spec --accent) ---------- */
+  --zc-primary: #1F5EFF;
+  --zc-primary-hover: #1A4FDB;
+  --zc-primary-pressed: #1745C2;
   --zc-on-primary: #FFFFFF;
-  --zc-primary-text: #0E5FDF;
-  --zc-primary-soft: #E6F3FE;
-  --zc-primary-tint: #E2F2FF;
-  --zc-primary-soft-strong: #D4EBFD;
+  --zc-primary-text: #1747C7;   /* spec --accent-on-subtle */
+  --zc-primary-soft: #EEF3FF;   /* spec --accent-subtle: selected rows/states */
+  --zc-primary-tint: #EEF3FF;
+  --zc-primary-soft-strong: #DCE6FF;
 
-  --zc-danger: #EC0102;
-  --zc-danger-hover: #C40102;
-  --zc-danger-text: #C40102;
+  /* ---------- Status (fg on its own bg passes AA) ---------- */
+  --zc-danger: #B42318;         /* spec --critical-fg: text, outlines, filled confirm button */
+  --zc-danger-hover: #9A1E14;
+  --zc-danger-text: #B42318;
   --zc-danger-soft: #FDECEC;
-  --zc-success: #15803D;
-  --zc-success-soft: #DCFCE7;
-  --zc-warning: #B45309;
-  --zc-warning-soft: #FEF3C7;
-  --zc-neutral-text: #52525B;
-  --zc-neutral-soft: #F1F1F3;
+  --zc-danger-border: #F3C7C3;
+  --zc-danger-dot: #D92D20;
+  --zc-success: #18794E;
+  --zc-success-soft: #EAF7EF;
+  --zc-warning: #A15C07;
+  --zc-warning-soft: #FFF4E5;
+  --zc-warning-dot: #E8890C;
+  --zc-info: #1747C7;
+  --zc-info-soft: #EEF3FF;
+  --zc-neutral-text: #5A5F69;
+  --zc-neutral-soft: #F2F3F5;
 
-  --zc-topbar: #131720;
+  /* ---------- Sidebar (dark rail) ---------- */
+  --zc-nav-bg: #0E1015;
+  --zc-nav-surface: #14171D;    /* search field */
+  --zc-nav-border: #23262E;
+  --zc-nav-divider: #1E2129;
+  --zc-nav-text: #A4A9B3;
+  --zc-nav-text-strong: #FFFFFF;
+  --zc-nav-text-muted: #7C828E;
+  --zc-nav-icon: #7C828E;
+  --zc-nav-hover-bg: #181B22;
+  --zc-nav-active-bg: #1E2129;
+  --zc-nav-count-bg: #1F5EFF;   /* unread notification count pill */
+
+  /* LEGACY: the top bar is removed in Phase 3 (shell). Until then it uses the sidebar colours. */
+  --zc-topbar: #0E1015;
   --zc-topbar-fg: #FFFFFF;
-  --zc-topbar-fg-muted: rgba(255, 255, 255, 0.70);
-  --zc-topbar-control: rgba(255, 255, 255, 0.10);
-  --zc-topbar-control-hover: rgba(255, 255, 255, 0.15);
-  --zc-topbar-badge: #16294A;
-  --zc-topbar-badge-fg: #5B9BFF;
-  --zc-focus: #116DFE;
-  --zc-overlay: rgba(19, 23, 32, 0.50);
-  --zc-media-scrim: rgba(19, 23, 32, 0.35);
+  --zc-topbar-fg-muted: #A4A9B3;
+  --zc-topbar-control: #14171D;
+  --zc-topbar-control-hover: #181B22;
+  --zc-topbar-badge: #1E2129;
+  --zc-topbar-badge-fg: #A4A9B3;
+
+  --zc-focus: #1F5EFF;
+  --zc-focus-ring: 0 0 0 3px rgba(31, 94, 255, 0.18);
+  --zc-overlay: rgba(17, 19, 24, 0.40);
+  --zc-media-scrim: rgba(17, 19, 24, 0.35);
   --zc-media-action: rgba(255, 255, 255, 0.30);
-  --zc-scrollbar-thumb: rgba(100, 116, 139, 0.35);
+  --zc-scrollbar-thumb: rgba(95, 100, 110, 0.35);
 
-  --zc-chart-1: #116DFE;
-  --zc-chart-2: #6AA6FF;
-  --zc-chart-3: #0B3D91;
-  --zc-chart-4: #A1A1AA;
-  /* Categorical chart colors (owner decision 2026-10-13: the Store Dashboard analytics palette, in both products). */
-  --zc-chart-cat-1: #1684EA;
-  --zc-chart-cat-2: #17B0E2;
-  --zc-chart-cat-3: #6544F9;
-  --zc-chart-cat-4: #FF9F43;
-  --zc-chart-cat-5: #FF6B6B;
+  /* ---------- AI spectrum: AI surfaces ONLY ---------- */
+  --zc-ai-1: #5B8CFF;
+  --zc-ai-2: #9D7BFF;
+  --zc-ai-3: #FF8FB8;
+  --zc-ai-4: #FFBE73;
+  --zc-ai-gradient: linear-gradient(115deg, var(--zc-ai-1), var(--zc-ai-2) 45%, var(--zc-ai-3) 78%, var(--zc-ai-4));
+  --zc-ai-conic: conic-gradient(from var(--zc-ai-angle), var(--zc-ai-1), var(--zc-ai-2), var(--zc-ai-3), var(--zc-ai-4), var(--zc-ai-1));
+  --zc-ai-tint: rgba(157, 123, 255, 0.07);
+  --zc-ai-tint-border: rgba(157, 123, 255, 0.35);
 
-  --zc-shadow-card: 0 1px 2px rgba(19, 23, 32, 0.04);
-  --zc-shadow-popover: 0 8px 24px rgba(19, 23, 32, 0.12), 0 2px 6px rgba(19, 23, 32, 0.06);
-  --zc-shadow-modal: 0 24px 48px rgba(19, 23, 32, 0.18);
+  /* ---------- Charts ---------- */
+  --zc-chart-1: #1F5EFF;        /* main series */
+  --zc-chart-2: #9DB5FF;        /* projected / forecast (dashed outline) */
+  --zc-chart-3: #B8BCC6;        /* previous period (dashed line) */
+  --zc-chart-4: #6A6F79;
+  --zc-chart-projected: #9DB5FF;
+  --zc-chart-compare: #B8BCC6;
+  --zc-chart-grid: #F0F0F3;
+  /* Categorical order (spec CHART_CATEGORICAL). Donuts only for <= 4 parts. */
+  --zc-chart-cat-1: #1F5EFF;
+  --zc-chart-cat-2: #8B6CFF;
+  --zc-chart-cat-3: #14A3A3;
+  --zc-chart-cat-4: #E8890C;
+  --zc-chart-cat-5: #E5487A;
+  --zc-chart-cat-6: #6A6F79;
 
+  /* ---------- Elevation (no shadows on cards) ---------- */
+  --zc-shadow-card: none;
+  --zc-shadow-sm: 0 1px 2px rgba(17, 19, 24, 0.06);
+  --zc-shadow-popover: 0 1px 2px rgba(17, 19, 24, 0.06), 0 8px 24px rgba(17, 19, 24, 0.08);
+  --zc-shadow-modal: 0 2px 4px rgba(17, 19, 24, 0.06), 0 24px 64px rgba(17, 19, 24, 0.16);
+
+  /* ---------- Sizes ---------- */
+  --zc-control-h: 36px;
+  --zc-control-h-sm: 32px;
+  --zc-control-h-lg: 40px;
+  --zc-table-head-h: 40px;
+  --zc-table-row-h: 56px;
+  --zc-table-toolbar-h: 52px;
+  --zc-content-max: 1200px;
+  --zc-content-max-wide: 1440px;
+  --zc-content-max-form: 720px;
+  --zc-page-pad-x: 32px;
+  --zc-page-pad-top: 28px;
+  --zc-page-pad-x-mobile: 16px;
+
+  /* ---------- Motion ---------- */
+  --zc-dur-instant: 80ms;
+  --zc-dur-fast: 140ms;
+  --zc-dur-base: 220ms;
+  --zc-dur-slow: 320ms;
   --zc-ease: cubic-bezier(0.2, 0, 0, 1);
+  --zc-ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --zc-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ---------- Layers ---------- */
+  --zc-z-sticky: 10;
+  --zc-z-sidebar: 20;
+  --zc-z-ask: 30;
+  --zc-z-popover: 40;
+  --zc-z-drawer: 50;
+  --zc-z-modal: 60;
+  --zc-z-toast: 70;
+
   color-scheme: light;
 }
 
 html { font-family: var(--zc-font-sans); }
-body { background: var(--zc-bg); color: var(--zc-fg); -webkit-font-smoothing: antialiased; }
+body {
+  background: var(--zc-bg);
+  color: var(--zc-fg);
+  font-size: 14px;
+  line-height: 20px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------- AI utilities (spec 02-components §16). The spectrum is reserved for AI. ---------- */
+.ai-edge { position: relative; border-radius: 12px; background: var(--zc-surface); }
+.ai-edge::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: var(--zc-ai-gradient);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+}
+.ai-live { position: relative; isolation: isolate; border-radius: 12px; background: var(--zc-surface); }
+.ai-live::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; background: var(--zc-ai-conic);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; animation: zc-ai-spin 2.4s linear infinite; pointer-events: none;
+}
+.ai-live::after {
+  content: ""; position: absolute; inset: 6px; border-radius: inherit; z-index: -1; background: var(--zc-ai-conic);
+  filter: blur(22px); opacity: 0.28; animation: zc-ai-spin 2.4s linear infinite; pointer-events: none;
+}
+.ai-shimmer {
+  background: linear-gradient(90deg, #9A9EA7 35%, var(--zc-fg) 50%, #9A9EA7 65%); background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: zc-ai-sheen 2.2s linear infinite;
+}
+@keyframes zc-ai-spin { to { --zc-ai-angle: 360deg; } }
+@keyframes zc-ai-sheen { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 1ms !important;
     scroll-behavior: auto !important;
   }
 }
