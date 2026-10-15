@@ -1,24 +1,41 @@
-import { addToast, Card, CardBody } from "@heroui/react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type Key } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { ClientBillingTab } from "../components/clients/ClientBillingTab";
 import { ClientDangerZone } from "../components/clients/ClientDangerZone";
 import { ClientOverviewTab } from "../components/clients/ClientOverviewTab";
-import { ClientUsageTab } from "../components/clients/ClientUsageTab";
-import { ConfirmModal } from "../components/common/ConfirmModal";
+import { StoreActionDialog, type StoreAction } from "../components/clients/storeActions";
+import { logInToStore } from "../components/clients/storeLogin";
 import { PageHeader } from "../components/common/PageHeader";
-import { StatusChip } from "../components/common/StatusChip";
 import { plans, subscriptions, transactions } from "../lib/mockData";
 import { loadPlatformSettings } from "../lib/platformSettings";
+import { graceDaysFor, paymentState, storeLifecycle } from "../lib/storeStatus";
 import { useClients } from "../providers/ClientsProvider";
-import { IconLogin } from "../components/ui/icons";
-import { Button as UiButton } from "../components/ui";
+import { IconLogin, IconMore, IconStore } from "../components/ui/icons";
+import {
+  Button as UiButton,
+  Card,
+  Chip,
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownSection,
+  DropdownTrigger,
+  EmptyState,
+  IconButton,
+  Tab,
+  Tabs,
+  menuItemDangerClasses,
+} from "../components/ui";
 
+type DetailTab = "overview" | "billing" | "settings";
+
+/** Store detail (docs/design/04-super-admin.md §3.4). Activity is left out: there is no per-store activity data yet. */
 export function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getClient, updateClient, setClientStatus, deleteClient } = useClients();
-  const [loginOpen, setLoginOpen] = useState(false);
+  const { getClient, updateClient } = useClients();
+  const [tab, setTab] = useState<DetailTab>("overview");
+  const [action, setAction] = useState<StoreAction | null>(null);
 
   const client = id ? getClient(id) : undefined;
   const defaultGracePeriodDays = loadPlatformSettings().gracePeriodDays;
@@ -39,94 +56,118 @@ export function ClientDetail() {
   );
 
   if (!id) {
-    return <Navigate to="/clients" replace />;
+    return <Navigate to="/stores" replace />;
   }
 
   if (!client) {
     return (
       <div>
-        <PageHeader
-          title="Client not found"
-          description="This client may have been deleted or the link is invalid."
-          breadcrumbs={[
-            { label: "Home", href: "/" },
-            { label: "Clients", href: "/clients" },
-            { label: "Not found" },
-          ]}
-        />
-        <Card shadow="none" className="border border-line bg-surface">
-          <CardBody className="items-center gap-3 py-16 text-center">
-            <p className="text-default-500">No client with id “{id}”.</p>
-            <UiButton variant="outline" onPress={() => navigate("/clients")}>
-              Back to clients
-            </UiButton>
-          </CardBody>
+        <PageHeader back={{ href: "/stores", label: "Stores" }} title="Store not found" />
+        <Card>
+          <EmptyState
+            icon={IconStore}
+            title="This store doesn't exist"
+            description="It may have been deleted, or the link may be broken."
+            action={
+              <UiButton variant="secondary" onPress={() => navigate("/stores")}>
+                Go to stores
+              </UiButton>
+            }
+          />
         </Card>
       </div>
     );
   }
 
+  const lifecycle = storeLifecycle(client);
+  const payment = paymentState(
+    subscription,
+    transactions,
+    graceDaysFor(client, defaultGracePeriodDays),
+    new Date(),
+  );
+  const isSuspended = client.status === "suspended";
+
+  const onMenuAction = (key: Key) => {
+    if (key === "suspend" || key === "reactivate" || key === "delete") setAction(key);
+  };
+
   return (
     <div>
       <PageHeader
+        back={{ href: "/stores", label: "Stores" }}
         title={client.storeName}
+        badges={
+          <>
+            <Chip tone={lifecycle.tone}>{lifecycle.label}</Chip>
+            <Chip tone={payment.tone}>{payment.label}</Chip>
+          </>
+        }
         description={`${client.ownerName} · ${client.ownerEmail}`}
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Clients", href: "/clients" },
-          { label: client.storeName },
-        ]}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusChip kind="plan" value={client.plan} />
-            <StatusChip kind="client" value={client.status} />
-            <UiButton
-              variant="primary"
-              size="sm"
-              startIcon={<IconLogin size={14} strokeWidth={2.5} />}
-              onPress={() => setLoginOpen(true)}
-            >
-              Login as client
+          <>
+            <Dropdown placement="bottom-end">
+              <DropdownTrigger>
+                <IconButton aria-label="More actions" showTooltip={false}>
+                  <IconMore aria-hidden className="size-4" />
+                </IconButton>
+              </DropdownTrigger>
+              <DropdownMenu aria-label={`Actions for ${client.storeName}`} onAction={onMenuAction}>
+                <DropdownSection showDivider aria-label="Store">
+                  <DropdownItem key={isSuspended ? "reactivate" : "suspend"}>
+                    {isSuspended ? "Reactivate store" : "Suspend store"}
+                  </DropdownItem>
+                </DropdownSection>
+                <DropdownSection aria-label="Danger">
+                  <DropdownItem key="delete" className={menuItemDangerClasses}>
+                    Delete store
+                  </DropdownItem>
+                </DropdownSection>
+              </DropdownMenu>
+            </Dropdown>
+            <UiButton variant="primary" startIcon={<IconLogin aria-hidden />} onPress={() => logInToStore(client)}>
+              Log in
             </UiButton>
-          </div>
+          </>
         }
       />
 
-      <div className="space-y-6">
-        <ClientOverviewTab client={client} subscription={subscription} />
-        <ClientBillingTab
-          client={client}
-          transactions={clientTransactions}
-          defaultGracePeriodDays={defaultGracePeriodDays}
-          onSaveGracePeriod={(days) =>
-            updateClient(client.id, { gracePeriodDays: days })
-          }
-        />
-        <ClientUsageTab client={client} plan={plan} />
-        <ClientDangerZone
-          client={client}
-          onStatusChange={(status) => setClientStatus(client.id, status)}
-          onDelete={() => {
-            deleteClient(client.id);
-            navigate("/clients");
-          }}
-        />
+      <div className="mb-5 border-b border-line">
+        <Tabs
+          aria-label="Store sections"
+          selectedKey={tab}
+          onSelectionChange={(key) => setTab(String(key) as DetailTab)}
+          classNames={{ tabList: "border-b-0", panel: "hidden" }}
+        >
+          <Tab key="overview" title="Overview" />
+          <Tab key="billing" title="Billing" />
+          <Tab key="settings" title="Settings" />
+        </Tabs>
       </div>
 
-      <ConfirmModal
-        isOpen={loginOpen}
-        onClose={() => setLoginOpen(false)}
-        title={`Login as ${client.storeName}?`}
-        description="This would open an impersonation session in production. In this demo, only a toast is shown."
-        confirmLabel="Continue"
-        confirmColor="primary"
-        onConfirm={() =>
-          addToast({
-            title: "Impersonation started (demo)",
-            description: `You would now be logged in as ${client.ownerEmail}.`,
-            color: "primary",
-          })
-        }
+      {tab === "overview" ? (
+        <ClientOverviewTab client={client} subscription={subscription} plan={plan} />
+      ) : null}
+      {tab === "billing" ? (
+        <ClientBillingTab
+          client={client}
+          subscription={subscription}
+          transactions={clientTransactions}
+          defaultGracePeriodDays={defaultGracePeriodDays}
+          onSaveGracePeriod={(days) => updateClient(client.id, { gracePeriodDays: days })}
+        />
+      ) : null}
+      {tab === "settings" ? (
+        <div className="max-w-content-form">
+          <ClientDangerZone client={client} onDeleted={() => navigate("/stores")} />
+        </div>
+      ) : null}
+
+      <StoreActionDialog
+        client={client}
+        action={action}
+        onClose={() => setAction(null)}
+        onDeleted={() => navigate("/stores")}
       />
     </div>
   );

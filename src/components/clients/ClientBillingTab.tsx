@@ -1,16 +1,15 @@
-import { addToast, Input, Switch, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { useEffect, useMemo, useState } from "react";
-import type { Client, Transaction } from "../../types";
-import { formatCurrency, formatDateTime } from "../../lib/utils";
-import { getInputClasses } from "../../styles/inputStyle";
+import { addToast, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import type { Client, Subscription, Transaction } from "../../types";
+import { graceDaysFor, paymentState } from "../../lib/storeStatus";
+import { formatDate, formatDateTime } from "../../lib/utils";
 import { dataTableClassNames } from "../common/dataTableStyles";
-import { NoDataPlaceholder } from "../common/NoDataPlaceholder";
-import { StatusChip } from "../common/StatusChip";
-import { Button as UiButton } from "../ui";
-import { CardWrapper } from "../ui/CardWrapper";
+import { Button as UiButton, Card, Chip, CopyableId, EmptyState, Input, StatusChip, Switch, formatMoney } from "../ui";
+import { IconInvoice } from "../ui/icons";
 
 export interface ClientBillingTabProps {
   client: Client;
+  subscription?: Subscription;
   transactions: Transaction[];
   defaultGracePeriodDays: number;
   onSaveGracePeriod: (days: number | undefined) => void;
@@ -18,79 +17,143 @@ export interface ClientBillingTabProps {
 
 const txnColumns = [
   { key: "date", label: "Date" },
-  { key: "amount", label: "Amount" },
+  { key: "amount", label: "Amount", align: "end" as const },
   { key: "status", label: "Status" },
   { key: "transactionId", label: "Transaction ID" },
-] as const;
+];
 
+function days(n: number): string {
+  return `${n} ${n === 1 ? "day" : "days"}`;
+}
+
+/** Store detail › Billing (docs/design/04-super-admin.md §3.4): payment status → billing history → grace period. */
 export function ClientBillingTab({
   client,
+  subscription,
   transactions,
   defaultGracePeriodDays,
   onSaveGracePeriod,
 }: ClientBillingTabProps) {
   const savedOverride = client.gracePeriodDays;
   const [useOverride, setUseOverride] = useState(savedOverride != null);
-  const [days, setDays] = useState(
-    String(savedOverride ?? defaultGracePeriodDays),
-  );
+  const [daysInput, setDaysInput] = useState(String(savedOverride ?? defaultGracePeriodDays));
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setUseOverride(client.gracePeriodDays != null);
-    setDays(String(client.gracePeriodDays ?? defaultGracePeriodDays));
+    setDaysInput(String(client.gracePeriodDays ?? defaultGracePeriodDays));
     setError(null);
   }, [client.id, client.gracePeriodDays, defaultGracePeriodDays]);
 
   const dirty = useMemo(() => {
     if (!useOverride) return savedOverride != null;
-    const n = Number(days);
+    const n = Number(daysInput);
     if (!Number.isFinite(n)) return true;
     return savedOverride !== n;
-  }, [useOverride, days, savedOverride]);
+  }, [useOverride, daysInput, savedOverride]);
+
+  const graceDays = graceDaysFor(client, defaultGracePeriodDays);
+  const payment = paymentState(subscription, transactions, graceDays, new Date());
 
   const onSave = () => {
     if (!useOverride) {
       setError(null);
       onSaveGracePeriod(undefined);
-      addToast({
-        title: "Using platform default grace period",
-        description: `${defaultGracePeriodDays} day${defaultGracePeriodDays === 1 ? "" : "s"}`,
-        color: "success",
-      });
+      addToast({ title: `Grace period set to the default (${days(defaultGracePeriodDays)}).` });
       return;
     }
-    const n = Number(days);
+    const n = Number(daysInput);
     if (!Number.isFinite(n) || n < 0 || n > 30 || !Number.isInteger(n)) {
-      setError("Use a whole number from 0–30");
-      addToast({ title: "Fix validation errors", color: "danger" });
+      setError("Use a whole number from 0 to 30.");
       return;
     }
     setError(null);
     onSaveGracePeriod(n);
-    addToast({
-      title: "Grace period updated",
-      description: `${n} day${n === 1 ? "" : "s"} for ${client.storeName}`,
-      color: "success",
-    });
+    addToast({ title: `Grace period set to ${days(n)} for ${client.storeName}.` });
   };
 
   const onCancel = () => {
     setUseOverride(savedOverride != null);
-    setDays(String(savedOverride ?? defaultGracePeriodDays));
+    setDaysInput(String(savedOverride ?? defaultGracePeriodDays));
     setError(null);
   };
 
   return (
-    <div className="space-y-4">
-      <CardWrapper title="Grace period" description={<>Extend days after due date when this client says they will pay later. Uses the platform default ({defaultGracePeriodDays} day{defaultGracePeriodDays === 1 ? "" : "s"}) unless you set a custom value below.</>} bodyClassName="p-8 py-6 flex flex-col gap-4 sm:max-w-md">
+    <div className="flex flex-col gap-4">
+      <Card title="Payment status" actions={<Chip tone={payment.tone}>{payment.label}</Chip>}>
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+          <StatusItem label="Next invoice">
+            {subscription ? formatDate(subscription.renewalDate) : <span className="text-fg-subtle">—</span>}
+          </StatusItem>
+          <StatusItem label="Amount due">
+            {subscription && subscription.amountDue > 0 ? (
+              <span className="num">{formatMoney(subscription.amountDue, { whole: true })}</span>
+            ) : (
+              <span className="text-fg-subtle">—</span>
+            )}
+          </StatusItem>
+          <StatusItem label="Grace period">{days(graceDays)}</StatusItem>
+          <StatusItem label="Suspension">
+            {payment.detail ?? <span className="text-fg-subtle">—</span>}
+          </StatusItem>
+        </dl>
+      </Card>
+
+      <Card title="Billing history" padding="none" className="overflow-hidden">
+        <Table
+          aria-label="Billing history"
+          removeWrapper
+          classNames={{
+            ...dataTableClassNames,
+            base: "rounded-none border-0 border-t border-line overflow-x-auto bg-surface",
+            // No selection column here, so the first column isn't the 48px checkbox column.
+            th: dataTableClassNames.th.replace("first:w-12 ", ""),
+            td: dataTableClassNames.td.replace("first:w-12 ", ""),
+            tr: dataTableClassNames.tr.replace("cursor-pointer ", ""),
+          }}
+        >
+          <TableHeader columns={txnColumns}>
+            {(column) => (
+              <TableColumn key={column.key} align={column.align ?? "start"} className={column.align === "end" ? "text-end" : undefined}>
+                {column.label}
+              </TableColumn>
+            )}
+          </TableHeader>
+          <TableBody
+            items={transactions}
+            emptyContent={
+              <EmptyState icon={IconInvoice} title="No invoices yet" description="Invoices for this store will appear here." />
+            }
+          >
+            {(txn) => (
+              <TableRow key={txn.id}>
+                <TableCell className="whitespace-nowrap">{formatDateTime(txn.date)}</TableCell>
+                <TableCell className="text-end">
+                  <span className="num">{formatMoney(txn.amount, { currency: txn.currency, paise: true })}</span>
+                </TableCell>
+                <TableCell>
+                  <StatusChip domain="payment" status={txn.status} />
+                </TableCell>
+                <TableCell>
+                  <CopyableId value={txn.transactionId} className="text-label text-fg-muted" />
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Card>
+
+      <Card
+        title="Grace period"
+        description={`Extra days before this store is suspended for non-payment. Default: ${days(defaultGracePeriodDays)}.`}
+      >
+        <div className="flex max-w-md flex-col gap-4">
           <Switch
-            size="sm"
             isSelected={useOverride}
             onValueChange={(next) => {
               setUseOverride(next);
               if (!next) {
-                setDays(String(defaultGracePeriodDays));
+                setDaysInput(String(defaultGracePeriodDays));
                 setError(null);
               }
             }}
@@ -98,86 +161,42 @@ export function ClientBillingTab({
             Custom grace period for this store
           </Switch>
 
-          {!useOverride ? (
-            <p className="text-caption text-default-400">
-              Currently using platform default ({defaultGracePeriodDays} days)
-            </p>
-          ) : (
+          {useOverride ? (
             <Input
               type="number"
               label="Grace period (days)"
-              labelPlacement="outside"
               min={0}
               max={30}
-              value={days}
-              onValueChange={setDays}
+              value={daysInput}
+              onValueChange={setDaysInput}
               isInvalid={!!error}
               errorMessage={error}
               description="0–30 days after the due date"
-              classNames={getInputClasses()}
+              className="max-w-40"
             />
-          )}
+          ) : null}
 
           <div className="flex items-center gap-2">
-            <UiButton variant="outline" size="sm" isDisabled={!dirty} onPress={onCancel}>
-              Cancel
-            </UiButton>
-            <UiButton
-              variant="primary"
-              size="sm"
-              isDisabled={!dirty}
-              onPress={onSave}
-            >
+            {dirty ? (
+              <UiButton variant="ghost" onPress={onCancel}>
+                Cancel
+              </UiButton>
+            ) : null}
+            <UiButton variant="primary" isDisabled={!dirty} onPress={onSave}>
               Save
             </UiButton>
-            {dirty ? (
-              <span className="text-caption text-warning">Unsaved changes</span>
-            ) : null}
           </div>
-      </CardWrapper>
+        </div>
+      </Card>
+    </div>
+  );
+}
 
-      <CardWrapper title="Billing history" description="Platform subscription charges for this client" bodyClassName="p-0" className="overflow-hidden">
-          <Table
-            aria-label="Client billing history"
-            removeWrapper
-            classNames={{
-              ...dataTableClassNames,
-              base: "rounded-none border-0 border-t border-default-200 overflow-hidden bg-surface",
-            }}
-          >
-            <TableHeader columns={[...txnColumns]}>
-              {(column) => (
-                <TableColumn key={column.key}>{column.label}</TableColumn>
-              )}
-            </TableHeader>
-            <TableBody
-              items={transactions}
-              emptyContent={
-                <NoDataPlaceholder
-                  title="No billing history yet"
-                  description="Subscription charges for this client will show up here."
-                />
-              }
-            >
-              {(txn) => (
-                <TableRow key={txn.id}>
-                  <TableCell className="text-sm">
-                    {formatDateTime(txn.date)}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {formatCurrency(txn.amount, txn.currency)}
-                  </TableCell>
-                  <TableCell>
-                    <StatusChip kind="transaction" value={txn.status} />
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-default-500">
-                    {txn.transactionId}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-      </CardWrapper>
+function StatusItem({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-label text-fg-muted">{label}</dt>
+      <dd className="mt-1 text-body text-fg">{children}</dd>
     </div>
   );
 }

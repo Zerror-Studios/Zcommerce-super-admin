@@ -1,17 +1,34 @@
-import { addToast, Card, CardBody, Chip, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Select, SelectItem, Switch, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type Selection } from "@heroui/react";
+import { addToast, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type Selection } from "@heroui/react";
 import { useMemo, useState } from "react";
 import type { Coupon, PlanName } from "../../types";
 import { selectionToIdSet } from "../../lib/tableSelection";
 import { formatDate } from "../../lib/utils";
-import { getInputClasses, getSelectClasses } from "../../styles/inputStyle";
 import { dataTableFillClassNames, dataTableSelectionProps, tablePanelFillClassName } from "../common/dataTableStyles";
-import { dashboardModalProps } from "../common/modalStyles";
 import {
   FilterCheckboxGroup,
   TableToolbar,
 } from "../common/TableToolbar";
-import { NoDataPlaceholder } from "../common/NoDataPlaceholder";
-import { Button as UiButton } from "../ui";
+import {
+  Button as UiButton,
+  Chip,
+  CopyableId,
+  EmptyState,
+  Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Select,
+  SelectItem,
+  SelectionBar,
+  Switch,
+  formatCount,
+  formatMoney,
+  tableRowClasses,
+} from "../ui";
+import type { Tone } from "../ui";
+import { IconTag } from "../ui/icons";
 
 export interface CouponsTabProps {
   coupons: Coupon[];
@@ -23,8 +40,8 @@ export interface CouponsTabProps {
 const columns = [
   { key: "code", label: "Code" },
   { key: "discount", label: "Discount" },
-  { key: "appliesTo", label: "Applies To" },
-  { key: "redemptions", label: "Redemptions" },
+  { key: "appliesTo", label: "Applies to" },
+  { key: "redemptions", label: "Used" },
   { key: "expiresAt", label: "Expires" },
   { key: "active", label: "Status" },
 ] as const;
@@ -36,6 +53,26 @@ const planOptions: Array<PlanName | "All"> = [
   "Pro",
   "Enterprise",
 ];
+
+type CouponStatus = "active" | "inactive" | "expired";
+
+const statusDisplay: Record<CouponStatus, { label: string; tone: Tone }> = {
+  active: { label: "Active", tone: "success" },
+  inactive: { label: "Inactive", tone: "neutral" },
+  expired: { label: "Expired", tone: "neutral" },
+};
+
+/**
+ * Display status (docs/design/04-super-admin.md §3.8): a code past its expiry date shows "Expired" even if it
+ * is still flagged active. Derived at render time; the stored coupon is not changed.
+ */
+function couponStatus(coupon: Coupon, now: Date = new Date()): CouponStatus {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const expires = new Date(coupon.expiresAt);
+  const expiresDay = new Date(expires.getFullYear(), expires.getMonth(), expires.getDate()).getTime();
+  if (!Number.isNaN(expiresDay) && expiresDay < today) return "expired";
+  return coupon.active ? "active" : "inactive";
+}
 
 export function CouponsTab({
   coupons,
@@ -64,7 +101,7 @@ export function CouponsTab({
         !query ||
         coupon.code.toLowerCase().includes(query) ||
         String(coupon.appliesTo).toLowerCase().includes(query);
-      const statusKey = coupon.active ? "active" : "inactive";
+      const statusKey = couponStatus(coupon);
       const matchesStatus =
         statusFilter.length === 0 || statusFilter.includes(statusKey);
       return matchesSearch && matchesStatus;
@@ -75,6 +112,7 @@ export function CouponsTab({
     visibleColumns.includes(column.key),
   );
   const headerColumns = dataColumns;
+  const isFiltered = search.trim() !== "" || statusFilter.length > 0;
 
   const handleSelectionChange = (keys: Selection) => {
     setSelected(selectionToIdSet(keys, filtered.map((item) => item.id)));
@@ -83,30 +121,27 @@ export function CouponsTab({
   const renderCell = (coupon: Coupon, key: string) => {
     switch (key) {
       case "code":
-        return <span className="font-mono font-bold">{coupon.code}</span>;
+        return <CopyableId value={coupon.code} />;
       case "discount":
         return coupon.discountType === "percent"
           ? `${coupon.discountValue}%`
-          : `₹${coupon.discountValue}`;
+          : formatMoney(coupon.discountValue);
       case "appliesTo":
-        return coupon.appliesTo;
+        return coupon.appliesTo === "All" ? "All plans" : coupon.appliesTo;
       case "redemptions":
-        return `${coupon.redemptions}/${coupon.maxRedemptions}`;
-      case "expiresAt":
-        return formatDate(coupon.expiresAt);
-      case "active":
         return (
-          <Chip
-            size="sm"
-            variant="flat"
-            color={coupon.active ? "success" : "default"}
-            className="h-7 rounded-full px-3"
-          >
-            {coupon.active ? "Active" : "Inactive"}
-          </Chip>
+          <span className="block text-right num">
+            {formatCount(coupon.redemptions)} / {formatCount(coupon.maxRedemptions)}
+          </span>
         );
+      case "expiresAt":
+        return <span className="num">{formatDate(coupon.expiresAt)}</span>;
+      case "active": {
+        const status = statusDisplay[couponStatus(coupon)];
+        return <Chip tone={status.tone}>{status.label}</Chip>;
+      }
       default:
-        return "—";
+        return <span className="text-fg-subtle">—</span>;
     }
   };
 
@@ -125,15 +160,15 @@ export function CouponsTab({
     const value = Number(discountValue);
     const max = Number(maxRedemptions);
     if (!trimmed) {
-      addToast({ title: "Code required", color: "danger" });
+      addToast({ title: "Enter a code.", color: "danger" });
       return;
     }
     if (Number.isNaN(value) || value <= 0) {
-      addToast({ title: "Invalid discount value", color: "danger" });
+      addToast({ title: "Enter a discount above 0.", color: "danger" });
       return;
     }
     if (Number.isNaN(max) || max <= 0) {
-      addToast({ title: "Invalid max redemptions", color: "danger" });
+      addToast({ title: "Enter a usage limit above 0.", color: "danger" });
       return;
     }
 
@@ -151,20 +186,22 @@ export function CouponsTab({
     onCreateOpenChange(false);
     resetForm();
     addToast({
-      title: "Discount created",
-      description: `${trimmed} is ready to use (local demo).`,
+      title: `${trimmed} created.`,
+      description: "The code is ready to use.",
       color: "success",
     });
   };
 
   return (
     <>
-      <Card shadow="none" className={tablePanelFillClassName}>
-        <CardBody className="flex min-h-0 flex-1 flex-col gap-0 p-0">
+      <div className={tablePanelFillClassName}>
+        {selected.size > 0 ? (
+          <SelectionBar count={selected.size} onClear={() => setSelected(new Set())} />
+        ) : (
           <TableToolbar
             search={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search for discount details..."
+            searchPlaceholder="Search discounts"
             columns={[...columns].map((column) => ({
               key: column.key,
               label: column.label,
@@ -177,46 +214,73 @@ export function CouponsTab({
                 options={[
                   { key: "active", label: "Active" },
                   { key: "inactive", label: "Inactive" },
+                  { key: "expired", label: "Expired" },
                 ]}
                 value={statusFilter}
                 onChange={setStatusFilter}
               />
             }
           />
-          <Table
-            aria-label="Discounts table"
-            {...dataTableSelectionProps}
-            selectedKeys={selected}
-            onSelectionChange={handleSelectionChange}
-            classNames={dataTableFillClassNames}
-          >
-            <TableHeader columns={headerColumns}>
-              {(column) => (
-                <TableColumn key={column.key}>{column.label}</TableColumn>
-              )}
-            </TableHeader>
-            <TableBody
-              items={filtered}
-              emptyContent={
-                <NoDataPlaceholder
-                  title="No discounts yet"
-                  description="Create a discount code to get started."
-                  buttonLabel="Create discount"
-                  onButtonClick={() => onCreateOpenChange(true)}
+        )}
+        <Table
+          aria-label="Discounts"
+          {...dataTableSelectionProps}
+          selectedKeys={selected}
+          onSelectionChange={handleSelectionChange}
+          classNames={{ ...dataTableFillClassNames, tr: tableRowClasses }}
+        >
+          <TableHeader columns={headerColumns}>
+            {(column) => (
+              <TableColumn key={column.key} align={column.key === "redemptions" ? "end" : "start"}>
+                {column.label}
+              </TableColumn>
+            )}
+          </TableHeader>
+          <TableBody
+            items={filtered}
+            emptyContent={
+              isFiltered ? (
+                <EmptyState
+                  icon={IconTag}
+                  title={search.trim() ? `No results for "${search.trim()}"` : "No discounts match these filters"}
+                  description="Check the spelling or clear filters."
+                  action={
+                    <UiButton
+                      variant="secondary"
+                      size="sm"
+                      onPress={() => {
+                        setSearch("");
+                        setStatusFilter([]);
+                      }}
+                    >
+                      Clear filters
+                    </UiButton>
+                  }
                 />
-              }
-            >
-              {(coupon) => (
-                <TableRow key={coupon.id}>
-                  {(columnKey) => (
-                    <TableCell>{renderCell(coupon, String(columnKey))}</TableCell>
-                  )}
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardBody>
-      </Card>
+              ) : (
+                <EmptyState
+                  icon={IconTag}
+                  title="No discounts yet"
+                  description="Create a code to give stores a discount on their plan."
+                  action={
+                    <UiButton variant="secondary" size="sm" onPress={() => onCreateOpenChange(true)}>
+                      Create discount
+                    </UiButton>
+                  }
+                />
+              )
+            }
+          >
+            {(coupon) => (
+              <TableRow key={coupon.id}>
+                {(columnKey) => (
+                  <TableCell>{renderCell(coupon, String(columnKey))}</TableCell>
+                )}
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       <Modal
         isOpen={createOpen}
@@ -224,91 +288,79 @@ export function CouponsTab({
           onCreateOpenChange(false);
           resetForm();
         }}
-        size="2xl"
-        {...dashboardModalProps}
+        width="md"
       >
         <ModalContent>
           {(close) => (
             <>
               <ModalHeader>Create discount</ModalHeader>
-              <ModalBody>
+              <ModalBody className="gap-4">
                 <Input
                   label="Code"
-                  labelPlacement="outside"
                   placeholder="SAVE20"
                   value={code}
                   onValueChange={setCode}
-                  classNames={getInputClasses()}
+                  classNames={{ input: "font-mono" }}
                 />
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Select
                     label="Discount type"
-                    labelPlacement="outside"
                     selectedKeys={new Set([discountType])}
                     onSelectionChange={(keys) => {
                       const value = Array.from(keys)[0];
                       if (value === "percent" || value === "fixed") setDiscountType(value);
                     }}
                     disallowEmptySelection
-                    classNames={getSelectClasses()}
                   >
-                    <SelectItem key="percent">Percent</SelectItem>
-                    <SelectItem key="fixed">Fixed (₹)</SelectItem>
+                    <SelectItem key="percent">Percentage</SelectItem>
+                    <SelectItem key="fixed">Fixed amount (₹)</SelectItem>
                   </Select>
                   <Input
                     label="Discount value"
-                    labelPlacement="outside"
                     placeholder="0"
                     type="number"
                     value={discountValue}
                     onValueChange={setDiscountValue}
-                    classNames={getInputClasses()}
                   />
                 </div>
                 <Select
                   label="Applies to"
-                  labelPlacement="outside"
                   selectedKeys={new Set([appliesTo])}
                   onSelectionChange={(keys) => {
                     const value = Array.from(keys)[0];
                     if (typeof value === "string") setAppliesTo(value as PlanName | "All");
                   }}
                   disallowEmptySelection
-                  classNames={getSelectClasses()}
                 >
                   {planOptions.map((option) => (
-                    <SelectItem key={option}>{option}</SelectItem>
+                    <SelectItem key={option}>{option === "All" ? "All plans" : option}</SelectItem>
                   ))}
                 </Select>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Input
-                    label="Max redemptions"
-                    labelPlacement="outside"
+                    label="Usage limit"
                     placeholder="100"
                     type="number"
                     value={maxRedemptions}
                     onValueChange={setMaxRedemptions}
-                    classNames={getInputClasses()}
                   />
                   <Input
-                    label="Expires at"
-                    labelPlacement="outside"
+                    label="Expires on"
                     type="date"
                     value={expiresAt}
                     onValueChange={setExpiresAt}
-                    classNames={getInputClasses()}
                   />
                 </div>
                 <Switch isSelected={active} onValueChange={setActive}>
-                  Active immediately
+                  Active right away
                 </Switch>
               </ModalBody>
               <ModalFooter>
-                <UiButton variant="danger-outline" size="sm" onPress={close}>
+                <UiButton variant="ghost" onPress={close}>
                   Cancel
                 </UiButton>
-                <UiButton variant="primary" size="sm" onPress={handleCreate}>
-                  Save
+                <UiButton variant="primary" onPress={handleCreate}>
+                  Create discount
                 </UiButton>
               </ModalFooter>
             </>

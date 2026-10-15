@@ -5,25 +5,16 @@ import { PageHeader } from "../components/common/PageHeader";
 import { TransactionsTab } from "../components/payments/TransactionsTab";
 import { transactions } from "../lib/mockData";
 
-const sections = {
-  subscriptions: {
-    title: "Subscriptions",
-    description:
-      "Subscription health, payments, renewals, and shop status in one place.",
-  },
-  transactions: {
-    title: "Transactions",
-    description: "Payment charges across Stripe and Razorpay.",
-  },
-} as const;
+/** Billing › Collections (route "subscriptions", unchanged) and Billing › Transactions. */
+const sections = ["subscriptions", "transactions"] as const;
 
-type BillingSection = keyof typeof sections;
+type BillingSection = (typeof sections)[number];
 
 export function Billing() {
   const { section } = useParams<{ section: string }>();
 
   const active = useMemo(() => {
-    if (!section || !(section in sections)) return null;
+    if (!section || !(sections as readonly string[]).includes(section)) return null;
     return section as BillingSection;
   }, [section]);
 
@@ -31,24 +22,17 @@ export function Billing() {
     return <Navigate to="/billing/subscriptions" replace />;
   }
 
-  const meta = sections[active];
+  // Collections renders its own header: its date control and export share state with the report.
+  if (active === "subscriptions") return <SubscriptionReportsTab />;
 
   return (
     <div>
       <PageHeader
-        title={meta.title}
-        description={meta.description}
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Billing", href: "/billing/subscriptions" },
-          { label: meta.title },
-        ]}
+        title="Transactions"
+        count={transactions.length}
+        description="Payments across Stripe and Razorpay"
       />
-
-      {active === "subscriptions" ? <SubscriptionReportsTab /> : null}
-      {active === "transactions" ? (
-        <TransactionsTab transactions={transactions} />
-      ) : null}
+      <TransactionsTab transactions={transactions} />
     </div>
   );
 }

@@ -9,22 +9,17 @@ import {
   YAxis,
 } from "recharts";
 import type { ReactNode } from "react";
-import type { Client, Subscription } from "../../types";
-import {
-  formatCurrency,
-  formatDate,
-  formatNumber,
-  formatPercent,
-} from "../../lib/utils";
-import { StatusChip } from "../common/StatusChip";
-import { StatCard } from "../dashboard/StatCard";
+import type { Client, Plan, Subscription } from "../../types";
+import { getStoreHealth } from "../../lib/storeHealth";
+import { formatDate } from "../../lib/utils";
 import { areaGradientStops, chartColors, recharts } from "../ui/chart-theme";
-import { IconCustomers, IconDollar, IconOrders, IconTrendUp } from "../ui/icons";
-import { CardWrapper } from "../ui/CardWrapper";
+import { Card, HealthScore, KpiStrip, StatCard, Tooltip as UiTooltip, formatCount, formatMoney, getHealthBand } from "../ui";
+import { ClientUsageTab } from "./ClientUsageTab";
 
 export interface ClientOverviewTabProps {
   client: Client;
   subscription?: Subscription;
+  plan?: Plan;
 }
 
 interface MonthPoint {
@@ -33,6 +28,7 @@ interface MonthPoint {
   orders: number;
 }
 
+/** Synthetic trend from the store's totals (unchanged; there is no monthly store data yet). */
 function buildClientTrend(client: Client): MonthPoint[] {
   const months = ["Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
   const baseRevenue = Math.max(client.revenue / 12, 200);
@@ -62,85 +58,74 @@ interface CustomTooltipProps {
 function ChartTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-default-200 bg-content1 px-3 py-2 shadow-md">
-      <p className="mb-1 text-caption font-medium text-default-500">{label}</p>
+    <div className="rounded-xl border border-line bg-surface px-3 py-2 shadow-popover">
+      <p className="mb-1 text-caption text-fg-muted">{label}</p>
       {payload.map((entry) => (
-        <p key={String(entry.dataKey)} className="text-body font-bold">
+        <p key={String(entry.dataKey)} className="text-caption font-medium text-fg num">
           {entry.dataKey === "revenue"
-            ? `Revenue: ${formatCurrency(entry.value ?? 0)}`
-            : `Orders: ${formatNumber(entry.value ?? 0)}`}
+            ? `Store sales: ${formatMoney(entry.value ?? 0, { whole: true })}`
+            : `Orders: ${formatCount(entry.value ?? 0)}`}
         </p>
       ))}
     </div>
   );
 }
 
-export function ClientOverviewTab({ client, subscription }: ClientOverviewTabProps) {
+/** Store detail › Overview (docs/design/04-super-admin.md §3.4): KPIs → Performance → Health → Plan usage; Profile and Notes on the side. */
+export function ClientOverviewTab({ client, subscription, plan }: ClientOverviewTabProps) {
   const trend = buildClientTrend(client);
-  const subscriptionStatus =
-    subscription?.status ?? (client.status === "trial" ? "trialing" : "active");
+  const health = getStoreHealth(client, subscription);
+  // growthPercent −100 means the comparison can't be shown as a real change (docs/design/05-wording.md §2).
+  const growthUnknown = client.growthPercent <= -100;
 
   return (
-    <div className="space-y-4">
-      <CardWrapper title="Store profile" description={<>Account and billing summary for {client.storeName}</>} bodyClassName="p-8 py-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <SummaryItem label="Owner" value={client.ownerName} />
-          <SummaryItem label="Email" value={client.ownerEmail} />
-          <SummaryItem
-            label="Status"
-            valueNode={<StatusChip kind="client" value={client.status} />}
-          />
-          <SummaryItem label="Plan" value={subscription?.plan ?? client.plan} />
-          <SummaryItem
-            label="Joined"
-            value={formatDate(client.joinedDate)}
-          />
-          <SummaryItem
-            label="Renewal date"
-            value={
-              subscription?.renewalDate
-                ? formatDate(subscription.renewalDate)
-                : "—"
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+      <div className="flex min-w-0 flex-col gap-4">
+        <KpiStrip>
+          <StatCard
+            bare
+            label="Store sales · 30d"
+            value={client.revenue}
+            format="money"
+            delta={growthUnknown ? null : client.growthPercent}
+            deltaLabel={
+              growthUnknown ? (
+                <UiTooltip content="No sales in the previous period">
+                  <span>—</span>
+                </UiTooltip>
+              ) : (
+                "vs previous 30 days"
+              )
             }
           />
-          <SummaryItem
-            label="Subscription"
-            valueNode={
-              <StatusChip kind="subscription" value={subscriptionStatus} />
-            }
+          <StatCard bare label="Orders · 30d" value={client.orders30d} deltaLabel={null} />
+          <StatCard
+            bare
+            label="Health"
+            value={health.score}
+            deltaLabel={getHealthBand(health.score).label}
           />
-      </CardWrapper>
+          <StatCard bare label="Monthly fee" value={client.mrr} format="money" deltaLabel={`${client.plan} plan`} />
+        </KpiStrip>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="Store Revenue"
-          value={formatCurrency(client.revenue)}
-          change={client.growthPercent}
-          icon={IconDollar}
-        />
-        <StatCard
-          title="Monthly Recurring Revenue (₹)"
-          value={formatNumber(client.mrr)}
-          change={client.status === "trial" ? 0 : 2.4}
-          icon={IconTrendUp}
-        />
-        <StatCard
-          title="Orders (30d)"
-          value={formatNumber(client.orders30d)}
-          change={client.growthPercent * 0.6}
-          icon={IconOrders}
-        />
-        <StatCard
-          title="Growth"
-          value={formatPercent(client.growthPercent)}
-          change={client.growthPercent}
-          icon={IconCustomers}
-        />
-      </div>
-
-      <CardWrapper title="Performance trend" description={<>Estimated monthly revenue & orders for {client.storeName}</>}>
-          <div className="h-[260px] w-full">
+        <Card
+          title="Performance"
+          actions={
+            <div className="flex items-center gap-3 text-caption text-fg-muted">
+              <span className="inline-flex items-center gap-1.5">
+                <span aria-hidden className="h-0.5 w-3 rounded-full bg-chart-1" />
+                Store sales
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span aria-hidden className="w-3 border-t border-dashed border-chart-compare" />
+                Orders
+              </span>
+            </div>
+          }
+        >
+          <div className="h-65 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={trend} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+              <ComposedChart data={trend} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="clientRevenueFill" x1="0" y1="0" x2="0" y2="1">
                     {areaGradientStops.map((stop) => (
@@ -153,26 +138,23 @@ export function ClientOverviewTab({ client, subscription }: ClientOverviewTabPro
                 <YAxis
                   yAxisId="left"
                   {...recharts.axis}
-                  tickFormatter={(v: number) => formatCurrency(v, "INR", true)}
+                  width={56}
+                  tickFormatter={(v: number) => formatMoney(v, { compact: true })}
                 />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  {...recharts.axis}
-                />
+                <YAxis yAxisId="right" orientation="right" {...recharts.axis} width={40} />
                 <Tooltip content={<ChartTooltip />} />
                 <Area
                   yAxisId="left"
                   dataKey="revenue"
                   stroke={chartColors.series[0]}
-                    {...recharts.area}
-                    fill="url(#clientRevenueFill)"
-                  />
+                  {...recharts.area}
+                  fill="url(#clientRevenueFill)"
+                />
                 <Line
                   yAxisId="right"
                   type="monotone"
                   dataKey="orders"
-                  stroke={chartColors.categorical[2]}
+                  stroke="var(--zc-chart-compare)"
                   strokeWidth={1.5}
                   strokeDasharray="4 4"
                   dot={false}
@@ -180,22 +162,61 @@ export function ClientOverviewTab({ client, subscription }: ClientOverviewTabPro
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-      </CardWrapper>
+        </Card>
+
+        <Card title="Health">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <HealthScore score={health.score} />
+            <ul className="flex flex-1 flex-wrap gap-x-6 gap-y-2 sm:pt-2.5">
+              {health.factors.map((factor) => (
+                <li key={factor} className="text-body text-fg-muted">
+                  {factor}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Card>
+
+        <ClientUsageTab client={client} plan={plan} />
+      </div>
+
+      <div className="flex min-w-0 flex-col gap-4">
+        <Card title="Profile">
+          <dl className="flex flex-col gap-3">
+            <ProfileRow label="Owner">{client.ownerName}</ProfileRow>
+            <ProfileRow label="Email">
+              <a href={`mailto:${client.ownerEmail}`} className="break-all text-brand hover:underline">
+                {client.ownerEmail}
+              </a>
+            </ProfileRow>
+            <ProfileRow label="Plan">{subscription?.plan ?? client.plan}</ProfileRow>
+            <ProfileRow label="Joined">{formatDate(client.joinedDate)}</ProfileRow>
+            <ProfileRow label="Renewal">
+              {subscription?.renewalDate ? formatDate(subscription.renewalDate) : <span className="text-fg-subtle">—</span>}
+            </ProfileRow>
+            <ProfileRow label="Monthly fee">
+              <span className="num">{formatMoney(client.mrr, { whole: true })}</span>
+            </ProfileRow>
+          </dl>
+        </Card>
+
+        <Card title="Notes">
+          {client.notes ? (
+            <p className="whitespace-pre-line text-body text-fg">{client.notes}</p>
+          ) : (
+            <p className="text-body text-fg-muted">No notes yet.</p>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
 
-interface SummaryItemProps {
-  label: string;
-  value?: string;
-  valueNode?: ReactNode;
-}
-
-function SummaryItem({ label, value, valueNode }: SummaryItemProps) {
+function ProfileRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl bg-default-50 px-4 py-3">
-      <p className="text-caption text-default-500">{label}</p>
-      <div className="mt-1 text-body font-bold">{valueNode ?? value}</div>
+    <div className="flex items-baseline justify-between gap-4">
+      <dt className="shrink-0 text-label text-fg-muted">{label}</dt>
+      <dd className="min-w-0 text-right text-body text-fg">{children}</dd>
     </div>
   );
 }

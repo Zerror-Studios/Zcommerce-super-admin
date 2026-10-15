@@ -12,22 +12,23 @@ export function formatPercent(value: number, digits = 1): string {
   return formatDelta(value, digits);
 }
 
+/** "14 Oct", or "14 Oct 2025" outside the current year (docs/design/05-wording.md §2). */
 export function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", {
+  const date = new Date(iso);
+  return new Intl.DateTimeFormat("en-IN", {
     month: "short",
     day: "numeric",
-    year: "numeric",
-  }).format(new Date(iso));
+    ...(date.getFullYear() === new Date().getFullYear() ? {} : { year: "numeric" as const }),
+  }).format(date);
 }
 
+/** "14 Oct, 4:58 pm". */
 export function formatDateTime(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(iso));
+  const date = new Date(iso);
+  const time = new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })
+    .format(date)
+    .replace(/\s?(AM|PM)$/i, (match) => ` ${match.trim().toLowerCase()}`);
+  return `${formatDate(iso)}, ${time}`;
 }
 
 export function daysUntil(isoDate: string, from: Date = new Date()): number {

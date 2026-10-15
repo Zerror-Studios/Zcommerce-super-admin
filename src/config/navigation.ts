@@ -2,12 +2,12 @@ import type { NavItem } from "../components/layout/types";
 import { IconAnalytics, IconBilling, IconHome, IconSettings, IconStore } from "../components/ui/icons";
 
 /**
- * Super Admin navigation (docs/design/04-super-admin.md §1). URLs are unchanged from before the restyle;
- * "Clients" is shown as "Stores" (the /clients → /stores rename comes with the Stores page in Phase 6).
+ * Super Admin navigation (docs/design/04-super-admin.md §1). Billing and settings URLs are unchanged;
+ * Stores live at /stores (old /clients URLs redirect, see App.tsx).
  */
 export const mainNavItems: NavItem[] = [
   { key: "home", label: "Home", to: "/", end: true, icon: IconHome },
-  { key: "stores", label: "Stores", to: "/clients", icon: IconStore },
+  { key: "stores", label: "Stores", to: "/stores", icon: IconStore },
   {
     key: "billing",
     label: "Billing",

@@ -114,10 +114,10 @@ export function DashboardLayout() {
           hint: client.ownerEmail,
           keywords: `${client.ownerName} ${client.ownerEmail}`,
           icon: IconStore,
-          href: `/clients/${client.id}`,
+          href: `/stores/${client.id}`,
         })),
       },
-      { title: "Actions", items: [{ id: "add-store", label: "Add store", icon: IconAdd, href: "/clients/new" }] },
+      { title: "Actions", items: [{ id: "add-store", label: "Add store", icon: IconAdd, href: "/stores/new" }] },
     ],
     [clients],
   );

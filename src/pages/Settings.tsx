@@ -8,15 +8,15 @@ import type { Coupon } from "../types";
 import { IconAdd } from "../components/ui/icons";
 import { Button as UiButton } from "../components/ui";
 
+/** Settings › Discounts and Settings › Payment reminders (route "automation", unchanged). */
 const sections = {
   discounts: {
     title: "Discounts",
-    description: "Create and review discount codes for client subscriptions.",
+    description: undefined,
   },
   automation: {
-    title: "Automation",
-    description:
-      "Select stores nearing renewal and send expiry reminder emails.",
+    title: "Payment reminders",
+    description: "Remind stores before their plan renews or when a payment is overdue.",
   },
 } as const;
 
@@ -42,18 +42,13 @@ export function Settings() {
     <div>
       <PageHeader
         title={meta.title}
+        count={active === "discounts" ? coupons.length : undefined}
         description={meta.description}
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Settings", href: "/settings/discounts" },
-          { label: meta.title },
-        ]}
         actions={
           active === "discounts" ? (
             <UiButton
               variant="primary"
-              size="sm"
-              startIcon={<IconAdd size={14} strokeWidth={2.5} />}
+              startIcon={<IconAdd aria-hidden />}
               onPress={() => setCreateOpen(true)}
             >
               Create discount

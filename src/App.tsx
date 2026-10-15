@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { RequireAuth } from "./components/auth/RequireAuth";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import DevUiPage from "./components/ui/DevUiPage";
@@ -13,6 +13,11 @@ import { NotFound } from "./pages/NotFound";
 import { Settings } from "./pages/Settings";
 import { SignIn } from "./pages/SignIn";
 import { useAuth } from "./providers/AuthProvider";
+
+function LegacyStoreRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/stores/${id ?? ""}`} replace />;
+}
 
 function GuestOnly({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -35,9 +40,13 @@ export default function App() {
       <Route element={<RequireAuth />}>
         <Route element={<DashboardLayout />}>
           <Route index element={<Home />} />
-          <Route path="clients" element={<Clients />} />
-          <Route path="clients/new" element={<AddClient />} />
-          <Route path="clients/:id" element={<ClientDetail />} />
+          <Route path="stores" element={<Clients />} />
+          <Route path="stores/new" element={<AddClient />} />
+          <Route path="stores/:id" element={<ClientDetail />} />
+          {/* Old "clients" URLs (before the Stores rename) keep working. */}
+          <Route path="clients" element={<Navigate to="/stores" replace />} />
+          <Route path="clients/new" element={<Navigate to="/stores/new" replace />} />
+          <Route path="clients/:id" element={<LegacyStoreRedirect />} />
 
           <Route path="billing" element={<Navigate to="/billing/subscriptions" replace />} />
           <Route path="billing/:section" element={<Billing />} />

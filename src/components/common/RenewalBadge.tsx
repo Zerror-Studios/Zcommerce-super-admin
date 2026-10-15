@@ -9,17 +9,18 @@ export interface RenewalBadgeProps {
 
 /**
  * Plan renewal / expiry for a subscription (component-specs §21).
- * Overdue and ended states come from the subscription status (data), so they are passed as an override;
+ * Overdue and cancelled states come from the subscription status (data), so they are passed as an override;
  * everything else uses the shared expiry thresholds.
  */
 export function RenewalBadge({ subscription }: RenewalBadgeProps) {
-  if (!subscription) return <span className="text-fg-muted">—</span>;
+  if (!subscription) return <span className="text-fg-subtle">—</span>;
 
   let override: StatusInfo | undefined;
   if (subscription.status === "past_due") {
-    override = { label: `Overdue by ${Math.abs(daysUntil(subscription.renewalDate))}d`, tone: "danger" };
+    const days = Math.abs(daysUntil(subscription.renewalDate));
+    override = { label: `Overdue · ${days} ${days === 1 ? "day" : "days"}`, tone: "danger" };
   } else if (subscription.status === "canceled") {
-    override = { label: "Ended", tone: "neutral" };
+    override = { label: "Cancelled", tone: "neutral" };
   }
 
   return <PlanExpiryBadge expiresAt={subscription.renewalDate} override={override} />;
