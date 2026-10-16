@@ -54,7 +54,7 @@ export default function App() {
           <Route path="analytics" element={<Navigate to="/analytics/revenue" replace />} />
           <Route path="analytics/:section" element={<Analytics />} />
 
-          <Route path="settings" element={<Navigate to="/settings/discounts" replace />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="settings/:section" element={<Settings />} />
 
           {/* Hidden component showcase (restyle Phase 2); renders only in development builds. */}

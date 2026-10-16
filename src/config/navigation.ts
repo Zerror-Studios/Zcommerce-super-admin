@@ -25,17 +25,17 @@ export const mainNavItems: NavItem[] = [
     icon: IconAnalytics,
     children: [{ label: "Revenue", to: "/analytics/revenue" }],
   },
-  {
-    key: "settings",
-    label: "Settings",
-    to: "/settings",
-    icon: IconSettings,
-    children: [
-      { label: "Discounts", to: "/settings/discounts" },
-      { label: "Payment reminders", to: "/settings/automation" },
-      { label: "Account", to: "/settings/account" },
-    ],
-  },
+  // A single link: /settings lists every setting as cards (pages/Settings.tsx), like Merchant Admin.
+  { key: "settings", label: "Settings", to: "/settings", icon: IconSettings },
 ];
 
-export const allNavItems: NavItem[] = mainNavItems;
+/** Pages behind the Settings cards. */
+export const settingsPages = [
+  { label: "Discounts", to: "/settings/discounts" },
+  { label: "Payment reminders", to: "/settings/automation" },
+];
+
+/** Every page, for page titles and the command palette (settings pages are listed under Settings). */
+export const allNavItems: NavItem[] = mainNavItems.map((item) =>
+  item.key === "settings" ? { ...item, children: [...settingsPages, { label: "Settings", to: "/settings" }] } : item,
+);

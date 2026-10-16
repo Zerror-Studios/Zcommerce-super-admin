@@ -1,15 +1,15 @@
-import { useMemo, useState } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { CouponsTab } from "../components/billing/CouponsTab";
 import { PageHeader } from "../components/common/PageHeader";
 import { AutomationSettingsTab } from "../components/settings/AutomationSettingsTab";
+import { ShortcutsDialog } from "../components/layout/AppShell";
 import { coupons as initialCoupons } from "../lib/mockData";
 import type { Coupon } from "../types";
-import { IconAdd, IconExpand, IconKeyboard } from "../components/ui/icons";
+import { IconAdd, IconExpand, IconKeyboard, IconPercent, IconTime } from "../components/ui/icons";
 import { Button as UiButton, Card } from "../components/ui";
-import { ShortcutsDialog } from "../components/layout/AppShell";
 
-/** Settings › Discounts, Payment reminders (route "automation", unchanged) and Account. */
+/** Settings › Discounts and Settings › Payment reminders (route "automation", unchanged). */
 const sections = {
   discounts: {
     title: "Discounts",
@@ -19,34 +19,107 @@ const sections = {
     title: "Payment reminders",
     description: "Remind stores before their plan renews or when a payment is overdue.",
   },
-  account: {
-    title: "Account",
-    description: undefined,
-  },
 } as const;
 
 type SettingsSection = keyof typeof sections;
+
+interface SettingsRow {
+  title: string;
+  desc: string;
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  /** A page to open; rows without one open the keyboard shortcuts dialog. */
+  link?: string;
+}
+
+// Grouped list, same pattern as Merchant Admin Settings.
+const settingsGroups: { title: string; items: SettingsRow[] }[] = [
+  {
+    title: "Billing",
+    items: [
+      { title: "Discounts", desc: "Discount codes stores can apply to their plan.", icon: IconPercent, link: "/settings/discounts" },
+      { title: "Payment reminders", desc: sections.automation.description, icon: IconTime, link: "/settings/automation" },
+    ],
+  },
+  {
+    title: "Account",
+    items: [{ title: "Keyboard shortcuts", desc: "Keys for search, the sidebar and other quick actions.", icon: IconKeyboard }],
+  },
+];
+
+const rowClasses =
+  "flex min-h-13 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors duration-instant hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none";
+
+function SettingsIndex() {
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  return (
+    <div>
+      <PageHeader title="Settings" />
+
+      <div className="max-w-content-form space-y-6">
+        {settingsGroups.map((group) => (
+          <section key={group.title} aria-labelledby={`settings-${group.title}`}>
+            <h2 id={`settings-${group.title}`} className="mb-2 text-label font-semibold text-fg-muted">
+              {group.title}
+            </h2>
+            <Card padding="none" className="overflow-hidden">
+              <ul>
+                {group.items.map(({ title, desc, icon: Icon, link }) => {
+                  const content: ReactNode = (
+                    <>
+                      <Icon aria-hidden className="size-4 shrink-0 text-fg-muted" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-body font-medium text-fg">{title}</p>
+                        <p className="truncate text-label text-fg-muted">{desc}</p>
+                      </div>
+                      <IconExpand aria-hidden className="size-4 shrink-0 text-fg-subtle" />
+                    </>
+                  );
+                  return (
+                    <li key={title} className="border-t border-line-subtle first:border-t-0">
+                      {link ? (
+                        <Link to={link} className={rowClasses}>
+                          {content}
+                        </Link>
+                      ) : (
+                        <button type="button" onClick={() => setShortcutsOpen(true)} className={rowClasses}>
+                          {content}
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </Card>
+          </section>
+        ))}
+      </div>
+
+      <ShortcutsDialog isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+    </div>
+  );
+}
 
 export function Settings() {
   const { section } = useParams<{ section: string }>();
   const [coupons, setCoupons] = useState<Coupon[]>(initialCoupons);
   const [createOpen, setCreateOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const active = useMemo(() => {
     if (!section || !(section in sections)) return null;
     return section as SettingsSection;
   }, [section]);
 
-  if (!active) {
-    return <Navigate to="/settings/discounts" replace />;
-  }
+  if (!section) return <SettingsIndex />;
+  // Unknown sections (including the old /settings/account) go back to the list.
+  if (!active) return <Navigate to="/settings" replace />;
 
   const meta = sections[active];
 
   return (
     <div>
       <PageHeader
+        back={{ href: "/settings", label: "Settings" }}
         title={meta.title}
         count={active === "discounts" ? coupons.length : undefined}
         description={meta.description}
@@ -73,26 +146,6 @@ export function Settings() {
       ) : null}
 
       {active === "automation" ? <AutomationSettingsTab /> : null}
-
-      {active === "account" ? (
-        <div className="max-w-content-form">
-          <Card padding="none" className="overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShortcutsOpen(true)}
-              className="flex min-h-13 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors duration-instant hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none"
-            >
-              <IconKeyboard aria-hidden className="size-4 shrink-0 text-fg-muted" />
-              <div className="min-w-0 flex-1">
-                <p className="text-body font-medium text-fg">Keyboard shortcuts</p>
-                <p className="truncate text-label text-fg-muted">Keys for search, the sidebar and other quick actions.</p>
-              </div>
-              <IconExpand aria-hidden className="size-4 shrink-0 text-fg-subtle" />
-            </button>
-          </Card>
-          <ShortcutsDialog isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-        </div>
-      ) : null}
     </div>
   );
 }
