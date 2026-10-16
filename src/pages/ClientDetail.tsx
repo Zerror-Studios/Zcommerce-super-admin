@@ -1,4 +1,4 @@
-import { useMemo, useState, type Key } from "react";
+import { useMemo, useState, type Key, type ReactNode } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { ClientBillingTab } from "../components/clients/ClientBillingTab";
 import { ClientDangerZone } from "../components/clients/ClientDangerZone";
@@ -22,19 +22,29 @@ import {
   DropdownTrigger,
   EmptyState,
   IconButton,
-  Tab,
-  Tabs,
   menuItemDangerClasses,
 } from "../components/ui";
 
-type DetailTab = "overview" | "billing" | "settings";
+/** One titled block on the store page. */
+function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <section aria-labelledby={id}>
+      <h2 id={id} className="mb-3 text-subtitle font-semibold text-fg">
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
 
-/** Store detail (docs/design/04-super-admin.md §3.4). Activity is left out: there is no per-store activity data yet. */
+/**
+ * Store detail (docs/design/04-super-admin.md §3.4): one page, no tabs (owner's request 2026-10-16).
+ * Overview, then Billing, then store settings. Activity is left out: there is no per-store activity data yet.
+ */
 export function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getClient, updateClient } = useClients();
-  const [tab, setTab] = useState<DetailTab>("overview");
   const [action, setAction] = useState<StoreAction | null>(null);
 
   const client = id ? getClient(id) : undefined;
@@ -132,36 +142,25 @@ export function ClientDetail() {
         }
       />
 
-      <div className="mb-5 border-b border-line">
-        <Tabs
-          aria-label="Store sections"
-          selectedKey={tab}
-          onSelectionChange={(key) => setTab(String(key) as DetailTab)}
-          classNames={{ tabList: "border-b-0", panel: "hidden" }}
-        >
-          <Tab key="overview" title="Overview" />
-          <Tab key="billing" title="Billing" />
-          <Tab key="settings" title="Settings" />
-        </Tabs>
-      </div>
-
-      {tab === "overview" ? (
+      <div className="space-y-8">
         <ClientOverviewTab client={client} subscription={subscription} plan={plan} />
-      ) : null}
-      {tab === "billing" ? (
-        <ClientBillingTab
-          client={client}
-          subscription={subscription}
-          transactions={clientTransactions}
-          defaultGracePeriodDays={defaultGracePeriodDays}
-          onSaveGracePeriod={(days) => updateClient(client.id, { gracePeriodDays: days })}
-        />
-      ) : null}
-      {tab === "settings" ? (
-        <div className="max-w-content-form">
-          <ClientDangerZone client={client} onDeleted={() => navigate("/stores")} />
-        </div>
-      ) : null}
+
+        <Section id="store-billing" title="Billing">
+          <ClientBillingTab
+            client={client}
+            subscription={subscription}
+            transactions={clientTransactions}
+            defaultGracePeriodDays={defaultGracePeriodDays}
+            onSaveGracePeriod={(days) => updateClient(client.id, { gracePeriodDays: days })}
+          />
+        </Section>
+
+        <Section id="store-settings" title="Store settings">
+          <div className="max-w-content-form">
+            <ClientDangerZone client={client} onDeleted={() => navigate("/stores")} />
+          </div>
+        </Section>
+      </div>
 
       <StoreActionDialog
         client={client}
