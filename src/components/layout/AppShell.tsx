@@ -120,7 +120,7 @@ const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ["Esc"], label: "Close a dialog or menu" },
 ];
 
-/** Keyboard shortcuts (user menu › Keyboard shortcuts). Ctrl replaces ⌘ on Windows. */
+/** Keyboard shortcuts (Settings › Account › Keyboard shortcuts). Ctrl replaces ⌘ on Windows. */
 export function ShortcutsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   return (
     <Modal isOpen={isOpen} onOpenChange={(open) => !open && onClose()} width="sm">

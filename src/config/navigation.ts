@@ -36,6 +36,7 @@ export const settingsNavItem: NavItem = {
   children: [
     { label: "Discounts", to: "/settings/discounts" },
     { label: "Payment reminders", to: "/settings/automation" },
+    { label: "Account", to: "/settings/account" },
   ],
 };
 

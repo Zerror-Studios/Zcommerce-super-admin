@@ -5,10 +5,11 @@ import { PageHeader } from "../components/common/PageHeader";
 import { AutomationSettingsTab } from "../components/settings/AutomationSettingsTab";
 import { coupons as initialCoupons } from "../lib/mockData";
 import type { Coupon } from "../types";
-import { IconAdd } from "../components/ui/icons";
-import { Button as UiButton } from "../components/ui";
+import { IconAdd, IconExpand, IconKeyboard } from "../components/ui/icons";
+import { Button as UiButton, Card } from "../components/ui";
+import { ShortcutsDialog } from "../components/layout/AppShell";
 
-/** Settings › Discounts and Settings › Payment reminders (route "automation", unchanged). */
+/** Settings › Discounts, Payment reminders (route "automation", unchanged) and Account. */
 const sections = {
   discounts: {
     title: "Discounts",
@@ -18,6 +19,10 @@ const sections = {
     title: "Payment reminders",
     description: "Remind stores before their plan renews or when a payment is overdue.",
   },
+  account: {
+    title: "Account",
+    description: undefined,
+  },
 } as const;
 
 type SettingsSection = keyof typeof sections;
@@ -26,6 +31,7 @@ export function Settings() {
   const { section } = useParams<{ section: string }>();
   const [coupons, setCoupons] = useState<Coupon[]>(initialCoupons);
   const [createOpen, setCreateOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const active = useMemo(() => {
     if (!section || !(section in sections)) return null;
@@ -67,6 +73,26 @@ export function Settings() {
       ) : null}
 
       {active === "automation" ? <AutomationSettingsTab /> : null}
+
+      {active === "account" ? (
+        <div className="max-w-content-form">
+          <Card padding="none" className="overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShortcutsOpen(true)}
+              className="flex min-h-13 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors duration-instant hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none"
+            >
+              <IconKeyboard aria-hidden className="size-4 shrink-0 text-fg-muted" />
+              <div className="min-w-0 flex-1">
+                <p className="text-body font-medium text-fg">Keyboard shortcuts</p>
+                <p className="truncate text-label text-fg-muted">Keys for search, the sidebar and other quick actions.</p>
+              </div>
+              <IconExpand aria-hidden className="size-4 shrink-0 text-fg-subtle" />
+            </button>
+          </Card>
+          <ShortcutsDialog isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+        </div>
+      ) : null}
     </div>
   );
 }

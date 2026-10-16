@@ -7,7 +7,7 @@ import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import type { Notification } from "../../types";
 import { IconAdd, IconBilling, IconNotifications, IconStore, IconWarning } from "../ui/icons";
-import { AppShell, ShortcutsDialog } from "./AppShell";
+import { AppShell } from "./AppShell";
 import { readStoredFlag, storeFlag, useShellHotkeys } from "./shell-utils";
 import { CommandPalette } from "./CommandPalette";
 import { NotificationsPanel } from "./NotificationsPanel";
@@ -65,7 +65,6 @@ export function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(() => readStoredFlag(COLLAPSE_KEY));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationEntry[]>(() => sampleNotifications.map(toEntry));
 
   const toggleSidebar = useCallback(() => {
@@ -89,7 +88,6 @@ export function DashboardLayout() {
   };
 
   const userMenu: UserMenuItem[] = [
-    { key: "shortcuts", label: "Keyboard shortcuts", onAction: () => setShortcutsOpen(true) },
     { key: "logout", label: "Log out", danger: true, onAction: handleLogout },
   ];
 
@@ -125,10 +123,9 @@ export function DashboardLayout() {
   );
 
   const unreadCount = notifications.filter((item) => item.unread).length;
-  const panel = (trigger: ReactNode, placement: "right-end" | "bottom-end") => (
+  const panel = (trigger: ReactNode) => (
     <NotificationsPanel
       trigger={trigger}
-      placement={placement}
       items={notifications}
       tabs={NOTIFICATION_TABS}
       onMarkAllRead={() => setNotifications((list) => list.map((item) => ({ ...item, unread: false })))}
@@ -146,7 +143,7 @@ export function DashboardLayout() {
     searchPlaceholder: "Search stores",
     onOpenSearch: openPalette,
     unreadCount,
-    renderNotifications: (row: ReactNode) => panel(row, "right-end"),
+    renderNotifications: (row: ReactNode) => panel(row),
     user: { name: currentAdmin.name, email: currentAdmin.email, initials: currentAdmin.avatarInitials },
     userMenu,
     userMenuFooter: `Zcommerce · Version ${APP_VERSION}`,
@@ -170,14 +167,12 @@ export function DashboardLayout() {
             <IconNotifications aria-hidden className="size-5" />
             {unreadCount > 0 ? <span aria-hidden className="absolute right-2 top-2 size-1.5 rounded-full bg-brand" /> : null}
           </button>,
-          "bottom-end",
         )}
       >
         <Outlet />
       </AppShell>
 
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} groups={commandGroups} placeholder="Search stores, pages and actions" />
-      <ShortcutsDialog isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <AiSpectrumDefs />
     </>
   );

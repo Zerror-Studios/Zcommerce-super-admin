@@ -97,6 +97,7 @@ export {
   LuIndentIncrease as IconIndent,
   LuReceiptText as IconInvoice,
   LuItalic as IconItalic,
+  LuKeyboard as IconKeyboard,
   LuLayers as IconLayers,
   LuLibrary as IconLibrary,
   LuSun as IconLightMode,
