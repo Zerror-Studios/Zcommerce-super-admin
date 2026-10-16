@@ -25,19 +25,17 @@ export const mainNavItems: NavItem[] = [
     icon: IconAnalytics,
     children: [{ label: "Revenue", to: "/analytics/revenue" }],
   },
+  {
+    key: "settings",
+    label: "Settings",
+    to: "/settings",
+    icon: IconSettings,
+    children: [
+      { label: "Discounts", to: "/settings/discounts" },
+      { label: "Payment reminders", to: "/settings/automation" },
+      { label: "Account", to: "/settings/account" },
+    ],
+  },
 ];
 
-/** Pinned to the bottom of the sidebar. */
-export const settingsNavItem: NavItem = {
-  key: "settings",
-  label: "Settings",
-  to: "/settings",
-  icon: IconSettings,
-  children: [
-    { label: "Discounts", to: "/settings/discounts" },
-    { label: "Payment reminders", to: "/settings/automation" },
-    { label: "Account", to: "/settings/account" },
-  ],
-};
-
-export const allNavItems: NavItem[] = [...mainNavItems, settingsNavItem];
+export const allNavItems: NavItem[] = mainNavItems;

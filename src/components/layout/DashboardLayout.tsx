@@ -1,8 +1,8 @@
 import { addToast } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { allNavItems, mainNavItems, settingsNavItem } from "../../config/navigation";
-import { currentAdmin, notifications as sampleNotifications } from "../../lib/mockData";
+import { allNavItems, mainNavItems } from "../../config/navigation";
+import { notifications as sampleNotifications } from "../../lib/mockData";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import type { Notification } from "../../types";
@@ -13,11 +13,10 @@ import { CommandPalette } from "./CommandPalette";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { Sidebar } from "./Sidebar";
 import { AiSpectrumDefs } from "../ui/Ai";
-import type { CommandGroup, NotificationEntry, UserMenuItem } from "./types";
+import type { CommandGroup, NotificationEntry } from "./types";
 import { toasts } from "../../copy";
 
 const COLLAPSE_KEY = "zcommerce-sidebar-collapsed";
-const APP_VERSION = "1.01.000";
 
 function pathMatches(pathname: string, href: string, end = false): boolean {
   if (end) return pathname === href;
@@ -87,10 +86,6 @@ export function DashboardLayout() {
     addToast({ title: toasts.loggedOut });
   };
 
-  const userMenu: UserMenuItem[] = [
-    { key: "logout", label: "Log out", danger: true, onAction: handleLogout },
-  ];
-
   const items = useMemo(
     () => mainNavItems.map((item) => (item.key === "stores" ? { ...item, count: clients.length } : item)),
     [clients.length],
@@ -138,15 +133,13 @@ export function DashboardLayout() {
   const isActive = (to: string, end?: boolean) => pathMatches(location.pathname, to, end);
   const sidebarProps = {
     items,
-    settingsItem: settingsNavItem,
     productLabel: "Super admin",
     searchPlaceholder: "Search stores",
     onOpenSearch: openPalette,
     unreadCount,
     renderNotifications: (row: ReactNode) => panel(row),
-    user: { name: currentAdmin.name, email: currentAdmin.email, initials: currentAdmin.avatarInitials },
-    userMenu,
-    userMenuFooter: `Zcommerce · Version ${APP_VERSION}`,
+    // One shared Super admin account: no name/email card, just Log out.
+    onLogout: handleLogout,
     isActive,
   };
 

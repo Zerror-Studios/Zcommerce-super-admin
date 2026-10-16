@@ -1,7 +1,7 @@
 /* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Dark sidebar (docs/design/02-components.md §1, ref 01/05/07). Top to bottom: wordmark → search (⌘K) →
- * navigation → divider + secondary items → spacer → Notifications → Settings → user row.
+ * navigation → divider + secondary items → spacer → Notifications → Settings → user row (or a plain Log out row).
  * 248px, or a 64px icon rail when collapsed. Only the active section shows its children. No blue except
  * the unread count pill.
  */
@@ -10,7 +10,7 @@ import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { cx } from "../ui/cx";
 import { Dropdown, DropdownMenu } from "../ui/Dropdown";
-import { IconClose, IconCollapseSidebar, IconNotifications, IconSearch } from "../ui/icons";
+import { IconClose, IconCollapseSidebar, IconLogout, IconNotifications, IconSearch } from "../ui/icons";
 import { menuItemDangerClasses } from "../ui/menu-styles";
 import { Kbd } from "../ui/Primitives";
 import { Tooltip } from "../ui/Tooltip";
@@ -43,6 +43,8 @@ export interface SidebarProps {
   userMenu?: UserMenuItem[];
   /** Small line at the bottom of the user menu (app version). */
   userMenuFooter?: ReactNode;
+  /** Single-account apps (Super admin): without `user`, the bottom row is a plain "Log out" row. */
+  onLogout?: () => void;
   /** Icons only (64px) when true. */
   collapsed?: boolean;
   /** Shows the collapse button (desktop only). */
@@ -97,6 +99,7 @@ export function Sidebar({
   user,
   userMenu = [],
   userMenuFooter,
+  onLogout,
   collapsed = false,
   onToggleCollapse,
   isActive,
@@ -121,6 +124,19 @@ export function Sidebar({
       ) : null}
     </button>
   );
+
+  const collapseButton = onToggleCollapse ? (
+    <Tooltip content={`${collapsed ? "Expand" : "Collapse"} sidebar (${MOD_KEY}\\)`} placement="right">
+      <button
+        type="button"
+        onClick={onToggleCollapse}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        className={cx("shrink-0 rounded-lg p-1.5 text-nav-icon hover:bg-nav-hover hover:text-nav-fg-strong", focusRing)}
+      >
+        <IconCollapseSidebar aria-hidden className={cx("size-4 transition-transform duration-base", collapsed && "rotate-180")} />
+      </button>
+    </Tooltip>
+  ) : null;
 
   const userMenuItems = userMenu.filter((item) => !item.danger);
   const dangerItems = userMenu.filter((item) => item.danger);
@@ -243,18 +259,22 @@ export function Sidebar({
               </DropdownSection>
             </DropdownMenu>
           </Dropdown>
-          {onToggleCollapse ? (
-            <Tooltip content={`${collapsed ? "Expand" : "Collapse"} sidebar (${MOD_KEY}\\)`} placement="right">
-              <button
-                type="button"
-                onClick={onToggleCollapse}
-                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                className={cx("shrink-0 rounded-lg p-1.5 text-nav-icon hover:bg-nav-hover hover:text-nav-fg-strong", focusRing)}
-              >
-                <IconCollapseSidebar aria-hidden className={cx("size-4 transition-transform duration-base", collapsed && "rotate-180")} />
-              </button>
-            </Tooltip>
-          ) : null}
+          {collapseButton}
+        </div>
+      ) : onLogout ? (
+        <div className={cx("flex items-center gap-1 border-t border-nav-divider py-2.5", collapsed && "flex-col")}>
+          <WithTooltip show={collapsed} label="Log out">
+            <button
+              type="button"
+              onClick={onLogout}
+              aria-label={collapsed ? "Log out" : undefined}
+              className={cx(rowBase, rowIdle, "min-w-0 flex-1", collapsed && "justify-center px-0")}
+            >
+              <IconLogout aria-hidden className="size-4 shrink-0" />
+              {collapsed ? null : <span className="flex-1 truncate text-left">Log out</span>}
+            </button>
+          </WithTooltip>
+          {collapseButton}
         </div>
       ) : null}
     </aside>
