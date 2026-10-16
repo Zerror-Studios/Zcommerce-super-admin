@@ -215,7 +215,7 @@ export function Sidebar({
 
       {/* User row */}
       {user ? (
-        <div className={cx("flex items-center gap-1 border-t border-nav-divider py-2.5", collapsed && "flex-col")}>
+        <div className={cx("flex items-center gap-1 border-t border-nav-divider pb-1 pt-2.5", collapsed && "flex-col")}>
           <Dropdown placement="top-start">
             <DropdownTrigger>
               <button
@@ -223,7 +223,7 @@ export function Sidebar({
                 aria-label={`Account menu for ${user.name}`}
                 className={cx("flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 text-left hover:bg-nav-hover", focusRing)}
               >
-                <span aria-hidden className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-nav-active text-[11px] font-semibold text-nav-fg-strong">
+                <span aria-hidden className="flex size-[26px] shrink-0 items-center justify-center rounded-[7px] bg-nav-active text-[11px] font-semibold text-nav-fg-strong">
                   {initialsOf(user)}
                 </span>
                 {collapsed ? null : (
