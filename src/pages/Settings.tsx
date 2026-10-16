@@ -7,7 +7,7 @@ import { ShortcutsDialog } from "../components/layout/AppShell";
 import { coupons as initialCoupons } from "../lib/mockData";
 import type { Coupon } from "../types";
 import { IconAdd, IconExpand, IconKeyboard, IconPercent, IconTime } from "../components/ui/icons";
-import { Button as UiButton, Card } from "../components/ui";
+import { Button as UiButton } from "../components/ui";
 
 /** Settings › Discounts and Settings › Payment reminders (route "automation", unchanged). */
 const sections = {
@@ -46,8 +46,9 @@ const settingsGroups: { title: string; items: SettingsRow[] }[] = [
   },
 ];
 
+// Each setting is its own card, three per row on wide screens (two on tablets, one on phones).
 const rowClasses =
-  "flex min-h-13 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors duration-instant hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none";
+  "flex h-full w-full items-start gap-3 rounded-card border border-line bg-surface p-4 text-left transition-colors duration-instant hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none";
 
 function SettingsIndex() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -56,27 +57,26 @@ function SettingsIndex() {
     <div>
       <PageHeader title="Settings" />
 
-      <div className="max-w-content-form space-y-6">
+      <div className="space-y-6">
         {settingsGroups.map((group) => (
           <section key={group.title} aria-labelledby={`settings-${group.title}`}>
             <h2 id={`settings-${group.title}`} className="mb-2 text-label font-semibold text-fg-muted">
               {group.title}
             </h2>
-            <Card padding="none" className="overflow-hidden">
-              <ul>
+            <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {group.items.map(({ title, desc, icon: Icon, link }) => {
                   const content: ReactNode = (
                     <>
-                      <Icon aria-hidden className="size-4 shrink-0 text-fg-muted" />
+                      <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-muted" />
                       <div className="min-w-0 flex-1">
                         <p className="text-body font-medium text-fg">{title}</p>
-                        <p className="truncate text-label text-fg-muted">{desc}</p>
+                        <p className="mt-0.5 text-label text-fg-muted">{desc}</p>
                       </div>
-                      <IconExpand aria-hidden className="size-4 shrink-0 text-fg-subtle" />
+                      <IconExpand aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-subtle" />
                     </>
                   );
                   return (
-                    <li key={title} className="border-t border-line-subtle first:border-t-0">
+                    <li key={title}>
                       {link ? (
                         <Link to={link} className={rowClasses}>
                           {content}
@@ -89,8 +89,7 @@ function SettingsIndex() {
                     </li>
                   );
                 })}
-              </ul>
-            </Card>
+            </ul>
           </section>
         ))}
       </div>
