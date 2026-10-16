@@ -55,6 +55,8 @@ export default function App() {
           <Route path="analytics/:section" element={<Analytics />} />
 
           <Route path="settings" element={<Settings />} />
+          {/* Payment reminders moved from Settings to Subscriptions. */}
+          <Route path="settings/automation" element={<Navigate to="/billing/reminders" replace />} />
           <Route path="settings/:section" element={<Settings />} />
 
           {/* Hidden component showcase (restyle Phase 2); renders only in development builds. */}

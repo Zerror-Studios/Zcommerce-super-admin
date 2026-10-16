@@ -2,22 +2,17 @@ import { useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { CouponsTab } from "../components/billing/CouponsTab";
 import { PageHeader } from "../components/common/PageHeader";
-import { AutomationSettingsTab } from "../components/settings/AutomationSettingsTab";
 import { ShortcutsDialog } from "../components/layout/AppShell";
 import { coupons as initialCoupons } from "../lib/mockData";
 import type { Coupon } from "../types";
-import { IconAdd, IconExpand, IconKeyboard, IconPercent, IconTime } from "../components/ui/icons";
+import { IconAdd, IconExpand, IconKeyboard, IconPercent } from "../components/ui/icons";
 import { Button as UiButton } from "../components/ui";
 
-/** Settings › Discounts and Settings › Payment reminders (route "automation", unchanged). */
+/** Settings › Discounts. Payment reminders moved to Subscriptions (/settings/automation redirects there). */
 const sections = {
   discounts: {
     title: "Discounts",
     description: undefined,
-  },
-  automation: {
-    title: "Payment reminders",
-    description: "Remind stores before their plan renews or when a payment is overdue.",
   },
 } as const;
 
@@ -34,10 +29,9 @@ interface SettingsRow {
 // Grouped list, same pattern as Merchant Admin Settings.
 const settingsGroups: { title: string; items: SettingsRow[] }[] = [
   {
-    title: "Billing",
+    title: "Subscriptions",
     items: [
       { title: "Discounts", desc: "Discount codes stores can apply to their plan.", icon: IconPercent, link: "/settings/discounts" },
-      { title: "Payment reminders", desc: sections.automation.description, icon: IconTime, link: "/settings/automation" },
     ],
   },
   {
@@ -144,7 +138,6 @@ export function Settings() {
         />
       ) : null}
 
-      {active === "automation" ? <AutomationSettingsTab /> : null}
     </div>
   );
 }

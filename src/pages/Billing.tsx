@@ -2,11 +2,12 @@ import { useMemo } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { SubscriptionReportsTab } from "../components/billing/SubscriptionReportsTab";
 import { PageHeader } from "../components/common/PageHeader";
+import { AutomationSettingsTab } from "../components/settings/AutomationSettingsTab";
 import { TransactionsTab } from "../components/payments/TransactionsTab";
 import { transactions } from "../lib/mockData";
 
-/** Billing › Collections (route "subscriptions", unchanged) and Billing › Transactions. */
-const sections = ["subscriptions", "transactions"] as const;
+/** Subscriptions › Collections (route "subscriptions", unchanged), Transactions and Payment reminders. */
+const sections = ["subscriptions", "transactions", "reminders"] as const;
 
 type BillingSection = (typeof sections)[number];
 
@@ -24,6 +25,15 @@ export function Billing() {
 
   // Collections renders its own header: its date control and export share state with the report.
   if (active === "subscriptions") return <SubscriptionReportsTab />;
+
+  if (active === "reminders") {
+    return (
+      <div>
+        <PageHeader title="Payment reminders" description="Remind stores before their plan renews or when a payment is overdue." />
+        <AutomationSettingsTab />
+      </div>
+    );
+  }
 
   return (
     <div>
