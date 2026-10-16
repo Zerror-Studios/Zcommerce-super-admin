@@ -5,6 +5,7 @@
  * Entries marked "added" are not in status-mappings.md; they were added from real data and must be reported.
  */
 import type { Tone } from "./tones";
+import { formatDate } from "./format-date";
 
 export interface StatusInfo {
   label: string;
@@ -42,6 +43,7 @@ export const STATUS_MAP: Record<StatusDomain, Record<string, StatusInfo>> = {
     completed: s("Completed", "success"),
     returned: s("Returned", "neutral"),
     refunded: s("Refunded", "neutral"),
+    rto: s("RTO", "danger"), // spec 02 §10: return to origin is critical
     cancelled: s("Cancelled", "danger"),
     canceled: s("Cancelled", "danger"),
     failed: s("Failed", "danger"),
@@ -93,7 +95,7 @@ export const STATUS_MAP: Record<StatusDomain, Record<string, StatusInfo>> = {
     running: s("Running", "info"),
     completed: s("Completed", "success"),
     paused: s("Paused", "neutral"),
-    cancelled: s("Cancelled", "neutral"),
+    cancelled: s("Cancelled", "danger"),
     failed: s("Failed", "danger"),
   },
   sync: {
@@ -103,33 +105,37 @@ export const STATUS_MAP: Record<StatusDomain, Record<string, StatusInfo>> = {
     completed: s("Completed", "success"),
     partial: s("Partial", "warning"),
     failed: s("Failed", "danger"),
-    cancelled: s("Cancelled", "neutral"),
+    cancelled: s("Cancelled", "danger"),
   },
   store: {
-    active: s("Active", "success"),
-    live: s("Active", "success"),
+    // Store lifecycle (docs/design/04-super-admin.md §2): Building · Live · Suspended · Cancelled.
+    active: s("Live", "success"),
+    live: s("Live", "success"),
+    building: s("Building", "info"),
     trial: s("Trial", "info"),
     trialing: s("Trial", "info"),
-    setup_pending: s("Setting up", "warning"),
-    onboarding: s("Setting up", "warning"),
+    setup_pending: s("Building", "info"),
+    onboarding: s("Building", "info"),
     inactive: s("Inactive", "neutral"),
     paused: s("Inactive", "neutral"),
     suspended: s("Suspended", "danger"),
     blocked: s("Suspended", "danger"),
+    cancelled: s("Cancelled", "danger"),
+    canceled: s("Cancelled", "danger"),
   },
   plan: {
     active: s("Active", "success"),
     trialing: s("Trial", "info"),
     expiring_soon: s("Expiring soon", "warning"),
     pending: s("Pending", "warning"), // added: Super Admin subscriptions
-    past_due: s("Payment overdue", "danger"),
+    past_due: s("Overdue", "danger"),
     expired: s("Expired", "danger"),
-    cancelled: s("Cancelled", "neutral"),
-    canceled: s("Cancelled", "neutral"), // added: US spelling
+    cancelled: s("Cancelled", "danger"),
+    canceled: s("Cancelled", "danger"), // added: US spelling
   },
   product: {
-    published: s("Published", "success"),
-    active: s("Published", "success"),
+    published: s("Active", "success"),
+    active: s("Active", "success"),
     draft: s("Draft", "neutral"),
     scheduled: s("Scheduled", "info"),
     archived: s("Archived", "neutral"),
@@ -169,6 +175,10 @@ export const STATUS_MAP: Record<StatusDomain, Record<string, StatusInfo>> = {
     active: s("Active", "success"),
     invited: s("Invited", "info"),
     disabled: s("Disabled", "danger"),
+    inactive: s("Inactive", "neutral"), // added: Store staff ("Deactive" in the API)
+    deactive: s("Inactive", "neutral"),
+    blocked: s("Blocked", "warning"),
+    deleted: s("Deleted", "danger"),
   },
 };
 
@@ -182,6 +192,11 @@ export function normalizeStatus(value: unknown): string {
 function humanize(value: unknown): string {
   const text = String(value ?? "").trim().replace(/[_-]+/g, " ").toLowerCase();
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : "Unknown";
+}
+
+/** The badge tone for a status (spec statusTone()): same status, same tone, in both apps. */
+export function statusTone(domain: StatusDomain, value: unknown): Tone {
+  return getStatus(domain, value).tone;
 }
 
 /** Label and tone for a status. Unknown values: neutral + humanised label (warns in development). */
@@ -200,8 +215,8 @@ function startOfDay(date: Date): number {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 }
 
-const shortDate = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" });
-export const fullDate = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
+/** "14 Oct 2026" (always with the year; tooltips). Same `format()` shape as the Intl formatter it replaced. */
+export const fullDate = { format: (date: Date) => formatDate(date, new Date(0)) };
 
 /** Plan expiry (status-mappings §6). Whole days in the user's timezone, start of day to start of day. */
 export function getExpiryStatus(expiresAt: Date | string | number | null | undefined, now: Date = new Date()): StatusInfo & { days: number | null } {
@@ -209,19 +224,20 @@ export function getExpiryStatus(expiresAt: Date | string | number | null | undef
   const date = new Date(expiresAt);
   if (Number.isNaN(date.getTime())) return { label: "No expiry", tone: "neutral", days: null };
   const days = Math.round((startOfDay(date) - startOfDay(now)) / DAY);
-  if (days > 30) return { label: `Renews ${shortDate.format(date)}`, tone: "neutral", days };
+  if (days > 30) return { label: `Renews ${formatDate(date, now)}`, tone: "neutral", days };
   if (days >= 8) return { label: `Expires in ${days} days`, tone: "info", days };
   if (days >= 2) return { label: `Expires in ${days} days`, tone: "warning", days };
   if (days === 1) return { label: "Expires tomorrow", tone: "warning", days };
   if (days === 0) return { label: "Expires today", tone: "danger", days };
   const ago = Math.abs(days);
-  return { label: `Expired ${ago} ${ago === 1 ? "day" : "days"} ago`, tone: "danger", days };
+  // Spec 05 §5: "Overdue · 2 days" (was "Expired 2 days ago").
+  return { label: `Overdue · ${ago} ${ago === 1 ? "day" : "days"}`, tone: "danger", days };
 }
 
-/** Store health band (status-mappings §7). The score itself comes from existing data. */
+/** Store health band (docs/design/04-super-admin.md §2): 80–100 Healthy · 50–79 At risk · 0–49 Critical. */
 export function getHealthBand(score: number | null | undefined): StatusInfo {
-  if (score == null || Number.isNaN(score)) return { label: "Not available", tone: "neutral" };
+  if (score == null || Number.isNaN(score)) return { label: "Not live yet", tone: "neutral" };
   if (score >= 80) return { label: "Healthy", tone: "success" };
-  if (score >= 50) return { label: "Needs attention", tone: "warning" };
+  if (score >= 50) return { label: "At risk", tone: "warning" };
   return { label: "Critical", tone: "danger" };
 }

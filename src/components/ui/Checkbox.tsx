@@ -5,7 +5,7 @@ import { cx } from "./cx";
 
 export type CheckboxProps = Omit<HeroCheckboxProps, "color" | "radius">;
 
-/** Checkbox (component-specs §7): 16px, 6px radius, strong border, primary fill when checked. */
+/** Checkbox (docs/design/02-components.md §7): 16px, 4px radius, strong border, primary fill when checked. */
 export function Checkbox({ classNames, size = "sm", ...rest }: CheckboxProps) {
   return (
     <HeroCheckbox
@@ -15,7 +15,7 @@ export function Checkbox({ classNames, size = "sm", ...rest }: CheckboxProps) {
       classNames={{
         ...classNames,
         wrapper: cx(
-          "rounded-sm before:rounded-sm after:rounded-sm before:border-line-strong after:bg-brand",
+          "size-4 rounded-xs before:rounded-xs after:rounded-xs before:border before:border-line-strong after:bg-brand",
           classNames?.wrapper,
         ),
         icon: cx("text-brand-on", classNames?.icon),

@@ -1,18 +1,23 @@
 import type { NavItem } from "../components/layout/types";
-import { IconAnalytics, IconBilling, IconCustomers, IconHome, IconSettings } from "../components/ui/icons";
+import { IconAnalytics, IconBilling, IconHome, IconSettings, IconStore } from "../components/ui/icons";
 
-/** Super Admin navigation (project-specific; the Sidebar component is shared). */
+/**
+ * Super Admin navigation (docs/design/04-super-admin.md §1, sections renamed by the owner 2026-10-16:
+ * Billing → Subscriptions, Revenue → Platform revenue + Store sales). /billing/* and settings URLs are unchanged;
+ * Stores live at /stores (old /clients URLs redirect, see App.tsx).
+ */
 export const mainNavItems: NavItem[] = [
   { key: "home", label: "Home", to: "/", end: true, icon: IconHome },
-  { key: "clients", label: "Clients", to: "/clients", icon: IconCustomers },
+  { key: "stores", label: "Stores", to: "/stores", icon: IconStore },
   {
     key: "billing",
-    label: "Billing",
+    label: "Subscriptions",
     to: "/billing",
     icon: IconBilling,
     children: [
-      { label: "Subscriptions", to: "/billing/subscriptions" },
+      { label: "Collections", to: "/billing/subscriptions" },
       { label: "Transactions", to: "/billing/transactions" },
+      { label: "Payment reminders", to: "/billing/reminders" },
     ],
   },
   {
@@ -20,16 +25,20 @@ export const mainNavItems: NavItem[] = [
     label: "Analytics",
     to: "/analytics",
     icon: IconAnalytics,
-    children: [{ label: "Revenue Reports", to: "/analytics/revenue" }],
-  },
-  {
-    key: "settings",
-    label: "Settings",
-    to: "/settings",
-    icon: IconSettings,
     children: [
-      { label: "Discounts", to: "/settings/discounts" },
-      { label: "Automation", to: "/settings/automation" },
+      // What stores pay Zcommerce, and what stores sell to their own customers.
+      { label: "Platform revenue", to: "/analytics/revenue" },
+      { label: "Store sales", to: "/analytics/store-sales" },
     ],
   },
+  // A single link: /settings lists every setting as cards (pages/Settings.tsx), like Merchant Admin.
+  { key: "settings", label: "Settings", to: "/settings", icon: IconSettings },
 ];
+
+/** Pages behind the Settings cards. */
+export const settingsPages = [{ label: "Discounts", to: "/settings/discounts" }];
+
+/** Every page, for page titles and the command palette (settings pages are listed under Settings). */
+export const allNavItems: NavItem[] = mainNavItems.map((item) =>
+  item.key === "settings" ? { ...item, children: [...settingsPages, { label: "Settings", to: "/settings" }] } : item,
+);

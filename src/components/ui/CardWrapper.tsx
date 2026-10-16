@@ -9,7 +9,7 @@ export interface CardWrapperProps {
   description?: ReactNode;
   /** Right-aligned header content (buttons, filters, links). */
   endContent?: ReactNode;
-  /** Body padding/layout. Defaults to 32px sides, 24px top and bottom; use "p-0" for a full-bleed table. */
+  /** Body padding/layout. Defaults to 20px (spec card body); use "p-0" for a full-bleed table. */
   bodyClassName?: string | null;
   children?: ReactNode;
   className?: string;
@@ -27,18 +27,18 @@ export interface CardWrapperProps {
   info?: ReactNode;
 }
 
-/** Card frame shared by every card in both dashboards: white surface, 1px border (same as table cards), 8px radius. */
-export const cardFrameClasses = "bg-surface border border-line rounded-lg";
+/** Card frame shared by every card in both dashboards (docs/design/02-components.md §4): white, 1px border, 12px radius, no shadow. */
+export const cardFrameClasses = "bg-surface border border-line rounded-card";
 
 /**
- * Titled card (Store Dashboard "Revenue over time" style): header row with title, optional description,
- * switch, info tooltip and end content, a divider, then the body.
+ * Titled card: header (16px 20px) with a 14/600 title, optional description, switch, info tooltip and
+ * end content, then the body (20px). No icon tiles, no nested cards.
  */
 export function CardWrapper({
   title = null,
   description = null,
   endContent = null,
-  bodyClassName = "p-8 py-6",
+  bodyClassName,
   children,
   showSwitch = false,
   switchValue = false,
@@ -52,7 +52,7 @@ export function CardWrapper({
     <div className="flex items-center justify-between gap-4 w-full">
       <div>
         <div className="flex items-center gap-3">
-          <h3 className="text-[1.05rem] font-bold leading-tight">{title}</h3>
+          <h3 className="text-body font-semibold text-fg">{title}</h3>
           {showSwitch && (
             <Switch
               size="sm"
@@ -65,15 +65,15 @@ export function CardWrapper({
             />
           )}
           {info && (
-            <Tooltip showArrow={true} radius="sm" color="foreground" content={info} closeDelay={0}>
-              <button className="text-fg-muted hover:text-fg-muted transition-colors">
-                <IconInfo size={16} />
+            <Tooltip radius="sm" color="foreground" content={info} delay={400} closeDelay={0}>
+              <button type="button" aria-label="More information" className="text-fg-subtle transition-colors hover:text-fg">
+                <IconInfo size={14} />
               </button>
             </Tooltip>
           )}
         </div>
 
-        {description && <p className="mt-1 text-body text-fg-muted leading-tight">{description}</p>}
+        {description && <p className="mt-0.5 text-label text-fg-muted">{description}</p>}
       </div>
 
       {endContent && <div className="shrink-0">{endContent}</div>}
@@ -87,12 +87,8 @@ export function CardWrapper({
         className={cx(cardFrameClasses, "!px-0", className)}
         itemClasses={{
           title: "w-full",
-          trigger: `
-      px-8 py-4
-      data-[open=true]:border-b
-      data-[open=true]:border-line
-    `,
-          content: bodyClassName ?? undefined,
+          trigger: "px-5 py-4",
+          content: bodyClassName === undefined ? "px-5 pb-5" : (bodyClassName ?? undefined),
           indicator: "text-fg text-sm",
         }}
       >
@@ -106,9 +102,9 @@ export function CardWrapper({
   return (
     <div className={cx(cardFrameClasses, "w-full", !/(^|\s)h-/.test(className) && "h-fit", className)}>
       {title && (
-        <div className={cx("px-8 py-4", children ? "border-b border-line" : "")}>{headerContent}</div>
+        <div className="px-5 py-4">{headerContent}</div>
       )}
-      {children ? <div className={bodyClassName ?? undefined}>{children}</div> : null}
+      {children ? <div className={bodyClassName === undefined ? (title ? "px-5 pb-5" : "p-5") : (bodyClassName ?? undefined)}>{children}</div> : null}
     </div>
   );
 }

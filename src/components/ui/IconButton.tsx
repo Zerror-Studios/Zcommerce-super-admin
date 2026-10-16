@@ -20,20 +20,24 @@ export interface IconButtonProps
   disabled?: boolean;
 }
 
-/** Component-specs §3 and §15. Square size = control height (32/40/48). */
+/**
+ * Icon-only buttons (docs/design/02-components.md §3): 8px radius, 16px icon, tooltip from aria-label.
+ * outline = secondary look (white, strong border); ghost = transparent, muted icon (row "···", close).
+ * Square size = control height: sm 32, md 36, lg 40.
+ */
 const variantClasses: Record<IconButtonVariant, string> = {
   outline:
-    "rounded-full border border-brand bg-transparent text-brand-text data-[hover=true]:!opacity-100 data-[hover=true]:bg-brand-soft data-[pressed=true]:bg-brand-tint",
+    "rounded-lg border border-line-strong bg-surface text-fg data-[hover=true]:!opacity-100 data-[hover=true]:!bg-surface-muted data-[pressed=true]:!bg-surface-sunken",
   ghost:
-    "rounded-full bg-transparent text-fg data-[hover=true]:!opacity-100 data-[hover=true]:bg-tone-neutral-soft data-[pressed=true]:bg-line",
+    "rounded-lg bg-transparent text-fg-muted data-[hover=true]:!opacity-100 data-[hover=true]:!bg-surface-sunken data-[hover=true]:text-fg data-[pressed=true]:!bg-line",
   topbar:
     "rounded-lg bg-topbar-control text-topbar-fg data-[hover=true]:!opacity-100 data-[hover=true]:bg-topbar-control-hover",
 };
 
 const sizeClasses: Record<IconButtonSize, string> = {
   sm: "size-8 min-w-8",
-  md: "size-10 min-w-10",
-  lg: "size-12 min-w-12",
+  md: "size-9 min-w-9",
+  lg: "size-10 min-w-10",
 };
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
@@ -56,7 +60,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       size={size}
       isDisabled={isDisabled ?? disabled}
       className={cx(
-        "shadow-none transition-colors duration-fast ease-standard",
+        "shadow-none transition-colors duration-instant ease-standard",
         sizeClasses[size],
         variantClasses[variant],
         className,

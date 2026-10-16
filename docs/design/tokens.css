@@ -1,0 +1,155 @@
+/* ==========================================================================
+   Zcommerce design tokens — v1.0 (15 Oct 2026)
+   Single source of truth for BOTH apps (Merchant Admin + Super Admin).
+   Never hard-code colours, sizes, radii, shadows or durations in components.
+   ========================================================================== */
+
+@property --ai-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+
+:root {
+  /* ---------- Surfaces ---------- */
+  --bg-canvas:        #F6F7F9;  /* page background behind cards */
+  --bg-surface:       #FFFFFF;  /* cards, tables, inputs, popovers */
+  --bg-subtle:        #FAFAFB;  /* table header, row hover */
+  --bg-muted:         #F2F3F5;  /* neutral badge, empty-state icon tile, skeleton */
+
+  /* ---------- Borders ---------- */
+  --border:           #EBEBEF;  /* cards, section dividers */
+  --border-strong:    #E2E3E8;  /* inputs, secondary buttons */
+  --divider:          #F1F1F4;  /* table row lines, list rows */
+
+  /* ---------- Text (all pass WCAG AA on white) ---------- */
+  --text:             #111318;
+  --text-secondary:   #5F646E;  /* 5.9:1 */
+  --text-tertiary:    #6F747E;  /* 4.7:1 — on white surfaces only */
+  --text-placeholder: #9599A2;  /* input placeholders only */
+  --text-disabled:    #B4B8C0;
+  --text-inverse:     #FFFFFF;
+
+  /* ---------- Brand / action ---------- */
+  --accent:           #1F5EFF;  /* 5.1:1 on white */
+  --accent-hover:     #1A4FDB;
+  --accent-pressed:   #1745C2;
+  --accent-subtle:    #EEF3FF;
+  --accent-on-subtle: #1747C7;
+  --focus-ring:       0 0 0 3px rgba(31, 94, 255, 0.18);
+
+  /* ---------- Status (fg on its own bg passes AA) ---------- */
+  --success-fg: #18794E;  --success-bg: #EAF7EF;
+  --warning-fg: #A15C07;  --warning-bg: #FFF4E5;  --warning-dot: #E8890C;
+  --critical-fg:#B42318;  --critical-bg:#FDECEC;  --critical-border: #F3C7C3;  --critical-dot: #D92D20;
+  --info-fg:    #1747C7;  --info-bg:    #EEF3FF;
+  --neutral-fg: #5A5F69;  --neutral-bg: #F2F3F5;
+
+  /* ---------- Sidebar (dark rail) ---------- */
+  --nav-bg:           #0E1015;
+  --nav-surface:      #14171D;  /* search field */
+  --nav-border:       #23262E;
+  --nav-divider:      #1E2129;
+  --nav-text:         #A4A9B3;
+  --nav-text-strong:  #FFFFFF;
+  --nav-text-muted:   #7C828E;
+  --nav-icon:         #7C828E;
+  --nav-hover-bg:     #181B22;
+  --nav-active-bg:    #1E2129;
+  --nav-count-bg:     #1F5EFF;  /* unread notification count pill */
+
+  /* ---------- AI spectrum — AI surfaces ONLY ---------- */
+  --ai-1: #5B8CFF;  --ai-2: #9D7BFF;  --ai-3: #FF8FB8;  --ai-4: #FFBE73;
+  --ai-gradient: linear-gradient(115deg, var(--ai-1), var(--ai-2) 45%, var(--ai-3) 78%, var(--ai-4));
+  --ai-conic: conic-gradient(from var(--ai-angle), var(--ai-1), var(--ai-2), var(--ai-3), var(--ai-4), var(--ai-1));
+  --ai-tint: rgba(157, 123, 255, 0.07);
+  --ai-tint-border: rgba(157, 123, 255, 0.35);
+
+  /* ---------- Charts ---------- */
+  --chart-1: #1F5EFF;            /* main series */
+  --chart-projected: #9DB5FF;    /* projected / forecast (dashed outline) */
+  --chart-compare: #B8BCC6;      /* previous period (dashed line) */
+  --chart-grid: #F0F0F3;
+  /* Categorical order (expose as a JS array CHART_CATEGORICAL):
+     #1F5EFF, #8B6CFF, #14A3A3, #E8890C, #E5487A, #6A6F79 */
+
+  /* ---------- Typography ---------- */
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --text-caption: 12px;  --lh-caption: 16px;    /* meta, helper text, badges */
+  --text-sm:      13px;  --lh-sm: 20px;         /* sidebar, table header, secondary rows */
+  --text-body:    14px;  --lh-body: 20px;       /* DEFAULT: body, cells, inputs, buttons */
+  --text-title-sm:14px;  --lh-title-sm: 20px;   /* card/section titles, weight 600 */
+  --text-title-md:16px;  --lh-title-md: 24px;   /* modal + settings group titles, 600 */
+  --text-page:    22px;  --lh-page: 30px;       /* page H1, 600, -0.01em */
+  --text-kpi:     26px;  --lh-kpi: 34px;        /* KPI values, 600, -0.02em */
+  --weight-regular: 400; --weight-medium: 500; --weight-semibold: 600;
+
+  /* ---------- Spacing (4px grid) ---------- */
+  --space-0-5: 2px; --space-1: 4px; --space-1-5: 6px; --space-2: 8px; --space-3: 12px;
+  --space-4: 16px;  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  --space-12: 48px; --space-16: 64px;
+
+  /* ---------- Radius ---------- */
+  --radius-xs: 4px;     /* checkbox, kbd */
+  --radius-sm: 6px;     /* badges, chips */
+  --radius-md: 8px;     /* buttons, inputs, nav items, thumbnails, menu items */
+  --radius-lg: 12px;    /* cards, tables, popovers, toasts */
+  --radius-xl: 16px;    /* modals, login card */
+  --radius-full: 999px; /* avatars, status dots, count pills ONLY */
+
+  /* ---------- Elevation ---------- */
+  --shadow-sm: 0 1px 2px rgba(17,19,24,.06);
+  --shadow-md: 0 1px 2px rgba(17,19,24,.06), 0 8px 24px rgba(17,19,24,.08);
+  --shadow-lg: 0 2px 4px rgba(17,19,24,.06), 0 24px 64px rgba(17,19,24,.16);
+
+  /* ---------- Sizes ---------- */
+  --control-h: 36px;  --control-h-sm: 32px;  --control-h-lg: 40px;
+  --table-head-h: 40px;  --table-row-h: 56px;  --table-toolbar-h: 52px;
+  --sidebar-w: 248px;  --sidebar-w-collapsed: 64px;
+  --content-max: 1200px;  --content-max-wide: 1440px;  --content-max-form: 720px;
+  --page-pad-x: 32px;  --page-pad-top: 28px;  --page-pad-x-mobile: 16px;
+  --gap-section: 16px;
+
+  /* ---------- Motion ---------- */
+  --dur-instant: 80ms;  --dur-fast: 140ms;  --dur-base: 220ms;  --dur-slow: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ---------- Layers ---------- */
+  --z-sticky: 10; --z-sidebar: 20; --z-ask: 30; --z-popover: 40; --z-drawer: 50; --z-modal: 60; --z-toast: 70;
+}
+
+/* ---------- Base ---------- */
+html, body { background: var(--bg-canvas); }
+body {
+  font-family: var(--font-sans); font-size: var(--text-body); line-height: var(--lh-body);
+  color: var(--text); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+.num, td.num, [data-numeric] { font-variant-numeric: tabular-nums; }
+:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ---------- AI utilities ---------- */
+.ai-edge { position: relative; border-radius: var(--radius-lg); background: var(--bg-surface); }
+.ai-edge::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: var(--ai-gradient);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+}
+.ai-live { position: relative; isolation: isolate; border-radius: var(--radius-lg); background: var(--bg-surface); }
+.ai-live::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; background: var(--ai-conic);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; animation: ai-spin 2.4s linear infinite; pointer-events: none;
+}
+.ai-live::after {
+  content: ""; position: absolute; inset: 6px; border-radius: inherit; z-index: -1; background: var(--ai-conic);
+  filter: blur(22px); opacity: .28; animation: ai-spin 2.4s linear infinite; pointer-events: none;
+}
+.ai-shimmer {
+  background: linear-gradient(90deg, #9A9EA7 35%, var(--text) 50%, #9A9EA7 65%); background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: ai-sheen 2.2s linear infinite;
+}
+@keyframes ai-spin  { to { --ai-angle: 360deg; } }
+@keyframes ai-sheen { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}

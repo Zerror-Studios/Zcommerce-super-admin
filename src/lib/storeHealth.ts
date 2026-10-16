@@ -70,7 +70,7 @@ export function getStoreHealth(
     score += 3;
     factors.push("Payment issues");
   } else if (subStatus === "canceled") {
-    factors.push("Subscription canceled");
+    factors.push("Subscription cancelled");
   } else if (client.status === "active") {
     score += 14;
     factors.push("Billing OK");

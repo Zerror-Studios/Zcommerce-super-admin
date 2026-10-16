@@ -24,11 +24,11 @@ export const dataTableClassNames = {
   base: "bg-surface gap-0 rounded-none border-0 overflow-hidden",
   wrapper: `scrollbar p-0 shadow-none rounded-none mt-0 overflow-auto h-[min(26rem,calc(100vh-22rem))] ${scrollHidden}`,
   thead: "sticky top-0 z-20 !rounded-none [&>tr]:first:shadow-none",
-  th: `first:w-[4.2rem] ${tableHeaderCellClasses} first:pl-4 xl:first:pl-8 last:pr-4 xl:last:pr-8 sticky top-0`,
-  td: `first:w-[4.2rem] py-4 text-sm ${tableCellClasses} first:pl-4 xl:first:pl-8 last:pr-4 xl:last:pr-8`,
+  th: `first:w-12 ${tableHeaderCellClasses} sticky top-0`,
+  td: `first:w-12 ${tableCellClasses}`,
   tr: `cursor-pointer ${tableRowClasses}`,
   table: "min-h-[100px] min-w-full",
-  emptyWrapper: "text-fg-muted h-full py-8",
+  emptyWrapper: "text-fg-muted h-full py-4",
 } as const;
 
 /** Taller table that fills the viewport panel. */

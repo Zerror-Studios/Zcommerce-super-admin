@@ -1,6 +1,9 @@
+/* react-date-range inside the date control popover. Colours come from the design tokens (no hex here). */
 .date-range-comparison .rdrCalendarWrapper {
   background: transparent;
-  font-size: 11px;
+  color: var(--zc-fg);
+  font-family: var(--zc-font-sans);
+  font-size: 13px;
   width: 100%;
 }
 
@@ -10,30 +13,48 @@
 
 .date-range-comparison .rdrMonth {
   width: 100%;
-  padding: 0.4rem 0.65rem 0.65rem;
+  padding: 0.25rem 0.75rem 0.75rem;
 }
 
 .date-range-comparison .rdrMonthAndYearWrapper {
-  padding-top: 0.45rem;
+  padding-top: 0.5rem;
   height: auto;
 }
 
 .date-range-comparison .rdrMonthAndYearPickers {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .date-range-comparison .rdrMonthAndYearPickers select {
-  color: #111827;
-  font-weight: 600;
-  font-size: 12px;
+  color: var(--zc-fg);
+  font-family: var(--zc-font-sans);
+  font-weight: 500;
+  font-size: 13px;
+  border-radius: 8px;
+}
+
+.date-range-comparison .rdrMonthAndYearPickers select:hover {
+  background-color: var(--zc-surface-sunken);
 }
 
 .date-range-comparison .rdrNextPrevButton {
-  background: #f3f4f6;
-  border-radius: 0.4rem;
+  background: transparent;
+  border-radius: 8px;
   margin: 0 0.25rem;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.date-range-comparison .rdrNextPrevButton:hover {
+  background: var(--zc-surface-sunken);
+}
+
+.date-range-comparison .rdrPprevButton i {
+  border-color: transparent var(--zc-fg-muted) transparent transparent;
+}
+
+.date-range-comparison .rdrNextButton i {
+  border-color: transparent transparent transparent var(--zc-fg-muted);
 }
 
 .date-range-comparison .rdrDay {
@@ -49,78 +70,84 @@
 }
 
 .date-range-comparison .rdrDayNumber span {
-  color: #111827;
+  color: var(--zc-fg);
   font-weight: 400;
-  font-size: 11px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
-.date-range-comparison .rdrDayPassive .rdrDayNumber span {
-  color: #9ca3af;
+.date-range-comparison .rdrDayPassive .rdrDayNumber span,
+.date-range-comparison .rdrDayDisabled .rdrDayNumber span {
+  color: var(--zc-fg-subtle);
+}
+
+.date-range-comparison .rdrDayDisabled {
+  background: transparent;
 }
 
 .date-range-comparison .rdrDayToday .rdrDayNumber span:after {
-  background: #3b82f6;
+  background: var(--zc-primary);
   bottom: 4px;
 }
 
 .date-range-comparison .rdrInRange,
 .date-range-comparison .rdrStartEdge,
 .date-range-comparison .rdrEndEdge {
-  background: #3b82f6 !important;
-  color: #fff !important;
+  background: var(--zc-primary) !important;
+  color: var(--zc-on-primary) !important;
   top: 2px;
   bottom: 2px;
+}
+
+.date-range-comparison .rdrInRange {
+  background: var(--zc-primary-soft) !important;
 }
 
 .date-range-comparison .rdrDayStartOfMonth .rdrInRange,
 .date-range-comparison .rdrDayStartOfWeek .rdrInRange,
 .date-range-comparison .rdrDayStartOfMonth .rdrStartEdge,
-.date-range-comparison .rdrDayStartOfWeek .rdrStartEdge {
-  border-top-left-radius: 999px;
-  border-bottom-left-radius: 999px;
+.date-range-comparison .rdrDayStartOfWeek .rdrStartEdge,
+.date-range-comparison .rdrStartEdge {
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
 }
 
 .date-range-comparison .rdrDayEndOfMonth .rdrInRange,
 .date-range-comparison .rdrDayEndOfWeek .rdrInRange,
 .date-range-comparison .rdrDayEndOfMonth .rdrEndEdge,
-.date-range-comparison .rdrDayEndOfWeek .rdrEndEdge {
-  border-top-right-radius: 999px;
-  border-bottom-right-radius: 999px;
-}
-
-.date-range-comparison .rdrStartEdge {
-  border-top-left-radius: 999px;
-  border-bottom-left-radius: 999px;
-}
-
+.date-range-comparison .rdrDayEndOfWeek .rdrEndEdge,
 .date-range-comparison .rdrEndEdge {
-  border-top-right-radius: 999px;
-  border-bottom-right-radius: 999px;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 
 .date-range-comparison .rdrDayInRange .rdrDayNumber span,
+.date-range-comparison .rdrInRange ~ .rdrDayNumber span,
+.date-range-comparison .rdrDay:not(.rdrDayPassive) .rdrInRange ~ .rdrDayNumber span {
+  color: var(--zc-primary-text) !important;
+}
+
 .date-range-comparison .rdrDayStartEdge .rdrDayNumber span,
 .date-range-comparison .rdrDayEndEdge .rdrDayNumber span,
-.date-range-comparison .rdrInRange ~ .rdrDayNumber span,
-.date-range-comparison .rdrDay:not(.rdrDayPassive) .rdrInRange ~ .rdrDayNumber span,
 .date-range-comparison .rdrDay:not(.rdrDayPassive) .rdrStartEdge ~ .rdrDayNumber span,
 .date-range-comparison .rdrDay:not(.rdrDayPassive) .rdrEndEdge ~ .rdrDayNumber span {
-  color: #fff !important;
+  color: var(--zc-on-primary) !important;
 }
 
 .date-range-comparison .rdrDayHovered .rdrDayNumber:after,
 .date-range-comparison .rdrDayStartPreview,
 .date-range-comparison .rdrDayInPreview,
 .date-range-comparison .rdrDayEndPreview {
-  border-color: #3b82f6;
+  border-color: var(--zc-primary);
+  border-radius: 8px;
 }
 
 .date-range-comparison .rdrWeekDays {
-  padding: 0 0.65rem;
+  padding: 0 0.75rem;
 }
 
 .date-range-comparison .rdrWeekDay {
-  color: #9ca3af;
+  color: var(--zc-fg-subtle);
   font-weight: 500;
-  font-size: 10px;
+  font-size: 12px;
 }

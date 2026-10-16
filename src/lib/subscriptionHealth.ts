@@ -4,6 +4,7 @@ import type {
   Subscription,
   SubscriptionHealthBucket,
 } from "../types";
+import { formatMoney } from "../components/ui/money";
 import { daysUntil } from "./utils";
 import { DEFAULT_PLATFORM_SETTINGS } from "./platformSettings";
 
@@ -70,7 +71,7 @@ export function evaluateSubscriptionHealth({
   if (subStatus === "canceled") {
     return {
       bucket: "unhealthy",
-      reason: "Subscription canceled",
+      reason: "Subscription cancelled",
       daysOverdue,
       daysUntilRenewal: Number.isFinite(daysUntilRenewal) ? daysUntilRenewal : 0,
       daysSinceActive,
@@ -110,7 +111,7 @@ export function evaluateSubscriptionHealth({
       bucket: "at_risk",
       reason:
         amountDue > 0
-          ? `Payment pending (₹${Math.round(amountDue)})`
+          ? `Payment pending (${formatMoney(amountDue, { whole: true })})`
           : "Payment pending",
       daysOverdue,
       daysUntilRenewal: Number.isFinite(daysUntilRenewal) ? daysUntilRenewal : 0,

@@ -4,14 +4,22 @@
 @custom-variant tall (@media (min-height: 56rem));
 @theme inline {
   --font-sans: var(--zc-font-sans);
+  --font-mono: var(--zc-font-mono);
+  /* Spec: never weight 700. Tailwind's font-bold reads this, so every existing font-bold renders semibold. */
+  --font-weight-bold: 600;
 
   --color-page: var(--zc-bg);
   --color-surface: var(--zc-surface);
   --color-surface-muted: var(--zc-surface-muted);
+  --color-surface-sunken: var(--zc-surface-sunken);
   --color-fg: var(--zc-fg);
   --color-fg-muted: var(--zc-fg-muted);
+  --color-fg-subtle: var(--zc-fg-subtle);
+  --color-fg-placeholder: var(--zc-fg-placeholder);
+  --color-fg-disabled: var(--zc-fg-disabled);
   --color-line: var(--zc-border);
   --color-line-strong: var(--zc-border-strong);
+  --color-line-subtle: var(--zc-divider);
   --color-field-line: var(--zc-field-border);
 
   --color-brand: var(--zc-primary);
@@ -27,10 +35,15 @@
   --color-tone-danger-hover: var(--zc-danger-hover);
   --color-tone-danger-text: var(--zc-danger-text);
   --color-tone-danger-soft: var(--zc-danger-soft);
+  --color-tone-danger-border: var(--zc-danger-border);
+  --color-tone-danger-dot: var(--zc-danger-dot);
   --color-tone-success: var(--zc-success);
   --color-tone-success-soft: var(--zc-success-soft);
   --color-tone-warning: var(--zc-warning);
   --color-tone-warning-soft: var(--zc-warning-soft);
+  --color-tone-warning-dot: var(--zc-warning-dot);
+  --color-tone-info: var(--zc-info);
+  --color-tone-info-soft: var(--zc-info-soft);
   --color-tone-neutral: var(--zc-neutral-text);
   --color-tone-neutral-soft: var(--zc-neutral-soft);
 
@@ -42,9 +55,34 @@
   --color-topbar-badge: var(--zc-topbar-badge);
   --color-topbar-badge-fg: var(--zc-topbar-badge-fg);
 
+  --color-nav: var(--zc-nav-bg);
+  --color-nav-surface: var(--zc-nav-surface);
+  --color-nav-border: var(--zc-nav-border);
+  --color-nav-divider: var(--zc-nav-divider);
+  --color-nav-fg: var(--zc-nav-text);
+  --color-nav-fg-strong: var(--zc-nav-text-strong);
+  --color-nav-fg-muted: var(--zc-nav-text-muted);
+  --color-nav-icon: var(--zc-nav-icon);
+  --color-nav-hover: var(--zc-nav-hover-bg);
+  --color-nav-active: var(--zc-nav-active-bg);
+  --color-nav-count: var(--zc-nav-count-bg);
+
+  --color-auth: var(--zc-auth-bg);
+  --color-auth-card: var(--zc-auth-card);
+  --color-auth-field: var(--zc-auth-field);
+  --color-auth-field-line: var(--zc-auth-field-border);
+  --color-auth-muted: var(--zc-auth-muted);
+  --color-auth-footer: var(--zc-auth-footer);
+  --color-auth-focus: var(--zc-auth-focus);
+  --color-auth-error: var(--zc-auth-error);
+
+  --color-ai: var(--zc-ai-2);
+  --color-ai-tint: var(--zc-ai-tint);
+  --color-ai-tint-border: var(--zc-ai-tint-border);
+
   --color-focus: var(--zc-focus);
-  /* No --color-overlay here: HeroUI owns `overlay` (#131720 in heroui-theme.js) and its backdrops use
-     bg-overlay/50, which equals --zc-overlay. Redefining it as a translucent color would halve that opacity. */
+  /* No --color-overlay here: HeroUI owns `overlay` (the --zc-fg ink in heroui-theme.js) and its backdrops
+     use bg-overlay/50; the spec's 40% backdrop (--zc-overlay) is set by the Modal component in Phase 2. Redefining it as a translucent color would halve that opacity. */
   --color-media-scrim: var(--zc-media-scrim);
   --color-media-action: var(--zc-media-action);
 
@@ -57,23 +95,39 @@
   --color-chart-cat-3: var(--zc-chart-cat-3);
   --color-chart-cat-4: var(--zc-chart-cat-4);
   --color-chart-cat-5: var(--zc-chart-cat-5);
+  --color-chart-cat-6: var(--zc-chart-cat-6);
+  --color-chart-projected: var(--zc-chart-projected);
+  --color-chart-compare: var(--zc-chart-compare);
+  --color-chart-grid: var(--zc-chart-grid);
 
-  --text-caption: 0.75rem;  --text-caption--line-height: 1rem;
-  --text-body: 0.875rem;    --text-body--line-height: 1.25rem;
-  --text-subtitle: 1rem;    --text-subtitle--line-height: 1.5rem;
-  --text-title: 1.5rem;     --text-title--line-height: 2rem;
-  --text-display: 1.875rem; --text-display--line-height: 2.25rem;
+  /* The only text sizes in the app (spec 01 §5): 12 / 13 / 14 / 16 / 22 / 26 (login uses 18). */
+  --text-caption: 0.75rem;  --text-caption--line-height: 1rem;      /* 12: meta, helper text, badges */
+  --text-label: 0.8125rem;  --text-label--line-height: 1.25rem;     /* 13: sidebar, table header, secondary rows */
+  --text-body: 0.875rem;    --text-body--line-height: 1.25rem;      /* 14: default body, cells, inputs, buttons */
+  --text-subtitle: 1rem;    --text-subtitle--line-height: 1.5rem;   /* 16: modal + settings group titles */
+  --text-login: 1.125rem;   --text-login--line-height: 1.5rem;      /* 18: login card title only */
+  --text-title: 1.375rem;   --text-title--line-height: 1.875rem;    /* 22: page H1 */
+  --text-title--letter-spacing: -0.01em;
+  --text-display: 1.625rem; --text-display--line-height: 2.125rem;  /* 26: KPI values */
+  --text-display--letter-spacing: -0.02em;
 
-  --radius-sm: 6px;
-  --radius-field: 8px;
-  --radius-tile: 12px;
-  --radius-card: 16px;
+  --radius-xs: 4px;     /* checkbox, kbd */
+  --radius-sm: 6px;     /* badges, chips, tooltips */
+  --radius-field: 8px;  /* buttons, inputs, nav items, thumbnails, menu items */
+  --radius-tile: 12px;  /* cards, tables, popovers, toasts */
+  --radius-card: 12px;
+  --radius-modal: 16px; /* modals, login card */
 
   --shadow-card: var(--zc-shadow-card);
+  --shadow-sticky: var(--zc-shadow-sm);
+  --shadow-focus: var(--zc-focus-ring);
+  --shadow-auth-focus: var(--zc-auth-focus-ring);
   --shadow-popover: var(--zc-shadow-popover);
   --shadow-modal: var(--zc-shadow-modal);
 
   --ease-standard: var(--zc-ease);
+  --ease-enter: var(--zc-ease-enter);
+  --ease-exit: var(--zc-ease-exit);
 }
 
 /* Element defaults for both products: a bare "border" uses the border token, placeholders are muted,
@@ -88,7 +142,15 @@
   }
   input::placeholder,
   textarea::placeholder {
-    color: var(--zc-fg-muted);
+    color: var(--zc-fg-placeholder);
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--zc-focus-ring);
+  }
+  /* Lucide icons (components/ui/icons.ts) ship with stroke 2; the spec draws them at 1.75. */
+  svg[fill="none"][stroke-linejoin="round"] {
+    stroke-width: 1.75;
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
@@ -119,25 +181,36 @@
 /* Layout sizes (design-system §3, §8). Not inline, so they also exist as CSS variables. */
 @theme {
   --spacing-topbar: 64px;
-  --spacing-sidebar: 240px;
+  --spacing-sidebar: 248px;
   --spacing-sidebar-collapsed: 64px;
   --spacing-drawer: 280px;
 
   /* Modal widths (component-specs §11): max-w-modal-sm / -md / -lg. */
-  --container-modal-sm: 400px;
-  --container-modal-md: 560px;
+  --container-modal-sm: 480px;
+  --container-modal-md: 640px;
   --container-modal-lg: 720px;
+  --container-content: 1200px;
+  --container-content-wide: 1440px;
+  --container-content-form: 720px;
 }
 
-/* Named durations (Tailwind v4 has no theme key for them; same class names as the v3 preset). */
+/* Named durations (spec 01 §7): 80 hover/press, 140 menus/tooltips/tabs, 220 drawers/modals, 320 AI reveal. */
+@utility duration-instant {
+  transition-duration: 80ms;
+}
 @utility duration-fast {
-  transition-duration: 150ms;
+  transition-duration: 140ms;
 }
 @utility duration-base {
-  transition-duration: 200ms;
+  transition-duration: 220ms;
 }
 @utility duration-slow {
-  transition-duration: 250ms;
+  transition-duration: 320ms;
+}
+
+/* Tabular figures for every number in tables, KPIs, charts and prices. */
+@utility num {
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Typography (shared) ----------
@@ -147,29 +220,31 @@
 :root {
   --font-weight-regular: 400;
   --font-weight-medium: 500;
-  --font-weight-bold: 700;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 600; /* spec: never 700 */
 
-  --font-size-extra-tiny: 11px;
+  --font-size-extra-tiny: 12px; /* spec has no 11px; folded into caption */
   --font-size-tiny: 12px;
   --font-size-small: 14px;
   --font-size-medium: 16px;
-  --font-size-h5: 15px;
-  --font-size-h4: 18px;
-  --font-size-h3: 20px;
-  --font-size-h2: 21px;
-  --font-size-h1: 28px;
+  --font-size-h5: 13px;
+  --font-size-h4: 14px;
+  --font-size-h3: 14px;
+  --font-size-h2: 16px;
+  --font-size-h1: 22px;
 
   --line-height-extra-tiny: 16px;
   --line-height-tiny: 20px;
-  --line-height-h4: 24px;
-  --line-height-h2: 28px;
-  --line-height-h1: 32px;
+  --line-height-h4: 20px;
+  --line-height-h2: 24px;
+  --line-height-h1: 30px;
 }
 
 @layer base {
-  h1 { font-size: var(--font-size-h1); line-height: var(--line-height-h1); font-weight: var(--font-weight-bold); }
-  h2 { font-size: var(--font-size-h2); line-height: var(--line-height-h2); font-weight: var(--font-weight-bold); }
-  h3 { font-size: var(--font-size-h3); line-height: var(--line-height-h2); font-weight: var(--font-weight-bold); }
+  /* h1 = page title 22/600, h2 = modal/settings group 16/600, h3 = card/section title 14/600. */
+  h1 { font-size: var(--font-size-h1); line-height: var(--line-height-h1); font-weight: var(--font-weight-semibold); letter-spacing: -0.01em; }
+  h2 { font-size: var(--font-size-h2); line-height: var(--line-height-h2); font-weight: var(--font-weight-semibold); }
+  h3 { font-size: var(--font-size-h3); line-height: var(--line-height-h4); font-weight: var(--font-weight-semibold); }
   h4 { font-size: var(--font-size-h4); line-height: var(--line-height-h4); font-weight: var(--font-weight-medium); }
   h5 { font-size: var(--font-size-h5); line-height: var(--line-height-h4); font-weight: var(--font-weight-medium); }
   h6 { font-size: var(--font-size-tiny); line-height: var(--line-height-tiny); font-weight: var(--font-weight-regular); }
@@ -178,7 +253,7 @@
 }
 
 @layer components {
-  .section-title { font-size: var(--font-size-h4); line-height: var(--line-height-h4); font-weight: var(--font-weight-bold); }
+  .section-title { font-size: var(--font-size-h4); line-height: var(--line-height-h4); font-weight: var(--font-weight-semibold); }
   .text-extra-tiny { font-size: var(--font-size-extra-tiny); line-height: var(--line-height-extra-tiny); font-weight: var(--font-weight-regular); }
   .text-tiny { font-weight: var(--font-weight-regular); }
   .text-small { font-weight: var(--font-weight-regular); }

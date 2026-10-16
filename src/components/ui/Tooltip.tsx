@@ -5,8 +5,8 @@ import { cx } from "./cx";
 
 export type TooltipProps = HeroTooltipProps;
 
-/** Popover-style tooltip (design-system §5 shadow-popover), 300ms open delay. */
-export function Tooltip({ classNames, delay = 300, closeDelay = 0, ...rest }: TooltipProps) {
+/** Tooltip (docs/design/02-components.md §11): ink background, white 12px, 6px radius, 400ms delay. */
+export function Tooltip({ classNames, delay = 400, closeDelay = 0, ...rest }: TooltipProps) {
   return (
     <HeroTooltip
       delay={delay}
@@ -14,7 +14,7 @@ export function Tooltip({ classNames, delay = 300, closeDelay = 0, ...rest }: To
       classNames={{
         ...classNames,
         content: cx(
-          "rounded-lg bg-surface px-2 py-1 text-xs text-fg !shadow-popover",
+          "rounded-sm bg-fg px-2 py-1 text-xs text-brand-on shadow-none",
           classNames?.content,
         ),
       }}

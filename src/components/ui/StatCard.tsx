@@ -3,7 +3,7 @@ import type { ComponentType, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { cx } from "./cx";
 import { IconTrendDown, IconTrendUp } from "./icons";
-import { formatCount, formatDelta, formatMoney } from "./money";
+import { formatCount, formatMoney, formatPercent } from "./money";
 import { Skeleton } from "./Skeleton";
 
 export interface StatCardProps {
@@ -12,72 +12,85 @@ export interface StatCardProps {
   value: number | string | ReactNode;
   format?: "money" | "number" | "percent";
   currency?: string;
-  /** Change in percent (6.7 means +6.7%). Omit to hide the delta row. */
+  /** Change (6.7 means +6.7%, or +6.7 pts with deltaUnit "pts"). Omit to hide the arrow. */
   delta?: number | null;
-  deltaLabel?: string;
+  deltaUnit?: "%" | "pts";
+  /** Tertiary context after the delta: "vs previous 30 days", "3 of 7 stores paid". */
+  deltaLabel?: ReactNode;
+  /** Shows the value in red (e.g. Outstanding > 0). */
+  valueTone?: "default" | "danger";
+  /** LEGACY: ignored. KPIs have no icons (docs/design/02-components.md §5). */
   icon?: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   isLoading?: boolean;
   isError?: boolean;
-  /** Makes the whole card a link. */
+  /** Makes the whole cell a link. */
   href?: string;
+  /** Render without its own card (inside KpiStrip). */
+  bare?: boolean;
   className?: string;
 }
 
 function formatValue(value: StatCardProps["value"], format: StatCardProps["format"], currency?: string): ReactNode {
   if (typeof value !== "number") return value;
-  if (format === "money") return formatMoney(value, { currency });
-  if (format === "percent") return `${value.toFixed(1)}%`;
+  if (format === "money") return formatMoney(value, { currency, whole: true });
+  if (format === "percent") return formatPercent(value);
   return formatCount(value);
 }
 
-/** KPI card (component-specs §19): label + solid icon tile, 30px value, delta with arrow. */
+/**
+ * KPI cell (docs/design/02-components.md §5): label 13/500 secondary → value 26/600 tabular →
+ * one 12px line: green/red arrow + change, then tertiary context. No icons.
+ * Use several inside <KpiStrip> (one card, equal cells, vertical dividers); alone it renders its own card.
+ */
 export function StatCard({
   label,
   value,
   format = "number",
   currency,
   delta,
-  deltaLabel = "vs last period",
-  icon: Icon,
+  deltaUnit = "%",
+  deltaLabel = "vs previous period",
+  valueTone = "default",
   isLoading = false,
   isError = false,
   href,
+  bare = false,
   className,
 }: StatCardProps) {
   const body = (
     <>
-      <div className="flex items-start justify-between gap-4">
-        <p className="text-body font-medium text-fg-muted">{label}</p>
-        {Icon ? (
-          <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-tile bg-brand-soft text-brand">
-            <Icon className="size-5" />
-          </span>
-        ) : null}
-      </div>
-
+      <p className="text-label font-medium text-fg-muted">{label}</p>
       {isLoading ? (
         <>
-          <Skeleton className="mt-4 h-9 w-32" />
-          <Skeleton className="mt-2 h-4 w-24" />
+          <Skeleton className="mt-2 h-8 w-32" />
+          <Skeleton className="mt-2 h-4 w-40" />
         </>
       ) : isError ? (
         <>
-          <p className="mt-4 text-display font-bold text-fg">—</p>
-          <p className="mt-2 text-caption text-fg-muted">Couldn't load</p>
+          <p className="mt-1 text-display font-semibold text-fg-subtle">—</p>
+          <p className="mt-1 text-caption text-fg-muted">Couldn't load</p>
         </>
       ) : (
         <>
-          <p className="mt-4 text-display font-bold text-fg tabular-nums">{formatValue(value, format, currency)}</p>
-          {delta != null ? <Delta delta={delta} label={deltaLabel} /> : null}
+          <p
+            className={cx(
+              "mt-1 text-display font-semibold num",
+              valueTone === "danger" ? "text-tone-danger-text" : "text-fg",
+            )}
+          >
+            {formatValue(value, format, currency)}
+          </p>
+          <Delta delta={delta} unit={deltaUnit} label={deltaLabel} />
         </>
       )}
     </>
   );
 
   const classes = cx(
-    "block min-h-40 rounded-card border border-line bg-surface p-6 shadow-card",
+    "block min-w-0 px-5 py-4",
+    !bare && "rounded-card border border-line bg-surface",
     href &&
-      "outline-hidden transition-shadow duration-fast ease-standard hover:shadow-popover focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2",
+      "transition-colors duration-instant ease-standard hover:bg-surface-muted focus-visible:shadow-focus",
     className,
   );
 
@@ -90,16 +103,43 @@ export function StatCard({
   );
 }
 
-function Delta({ delta, label }: { delta: number; label: string }) {
-  const tone = delta > 0 ? "text-tone-success" : delta < 0 ? "text-tone-danger-text" : "text-fg-muted";
-  const Arrow = delta > 0 ? IconTrendUp : delta < 0 ? IconTrendDown : null;
+function Delta({ delta: raw, unit, label }: { delta?: number | null; unit: "%" | "pts"; label: ReactNode }) {
+  if (raw == null && !label) return null;
+  // A zero base (Infinity / NaN) has no meaningful change: show "—", never "−100.0%".
+  const known = raw != null && Number.isFinite(raw);
+  const delta = known ? Number(raw) : 0;
+  const shown = Number(Math.abs(delta).toFixed(1));
+  const tone = !known || shown === 0 ? "text-fg-muted" : delta > 0 ? "text-tone-success" : "text-tone-danger-text";
+  const Arrow = !known || shown === 0 ? null : delta > 0 ? IconTrendUp : IconTrendDown;
+  const amount = raw == null ? null : !known ? "—" : unit === "pts" ? `${shown} pts` : formatPercent(Math.abs(delta));
   return (
-    <p className="mt-2 flex items-center gap-1 text-caption">
-      <span className={cx("inline-flex items-center gap-1 font-medium tabular-nums", tone)}>
-        {Arrow ? <Arrow aria-hidden className="size-3" /> : null}
-        {formatDelta(delta)}
-      </span>
-      <span className="text-fg-muted">{label}</span>
+    <p className="mt-1 flex flex-wrap items-center gap-x-1 text-caption">
+      {amount != null ? (
+        <span className={cx("inline-flex items-center gap-0.5 font-medium num", tone)}>
+          {Arrow ? <Arrow aria-hidden className="size-3" /> : null}
+          {amount}
+        </span>
+      ) : null}
+      {label ? <span className="text-fg-subtle">{label}</span> : null}
     </p>
+  );
+}
+
+export interface KpiStripProps {
+  children: ReactNode;
+  className?: string;
+}
+
+/** KPI strip: one card, equal cells, 1px vertical dividers (stacked with horizontal dividers on phones). Max 4–5 cells. */
+export function KpiStrip({ children, className }: KpiStripProps) {
+  return (
+    <section
+      className={cx(
+        "flex flex-col divide-y divide-line rounded-card border border-line bg-surface sm:flex-row sm:divide-x sm:divide-y-0 [&>*]:flex-1",
+        className,
+      )}
+    >
+      {children}
+    </section>
   );
 }

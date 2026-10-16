@@ -1,23 +1,18 @@
 import { useMemo } from "react";
 import { Navigate, useParams } from "react-router-dom";
+import { StoreSalesTab } from "../components/analytics/StoreSalesTab";
 import { RevenueReportsTab } from "../components/billing/RevenueReportsTab";
-import { PageHeader } from "../components/common/PageHeader";
 
-const sections = {
-  revenue: {
-    title: "Revenue Reports",
-    description:
-      "Plan bookings, collection health, gateway mix, and top contributing stores.",
-  },
-} as const;
+/** Analytics › Platform revenue (route "revenue", unchanged) and Analytics › Store sales. */
+const sections = ["revenue", "store-sales"] as const;
 
-type AnalyticsSection = keyof typeof sections;
+type AnalyticsSection = (typeof sections)[number];
 
 export function Analytics() {
   const { section } = useParams<{ section: string }>();
 
   const active = useMemo(() => {
-    if (!section || !(section in sections)) return null;
+    if (!section || !(sections as readonly string[]).includes(section)) return null;
     return section as AnalyticsSection;
   }, [section]);
 
@@ -25,20 +20,8 @@ export function Analytics() {
     return <Navigate to="/analytics/revenue" replace />;
   }
 
-  const meta = sections[active];
+  if (active === "store-sales") return <StoreSalesTab />;
 
-  return (
-    <div>
-      <PageHeader
-        title={meta.title}
-        description={meta.description}
-        breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Analytics", href: "/analytics/revenue" },
-          { label: meta.title },
-        ]}
-      />
-      <RevenueReportsTab />
-    </div>
-  );
+  // Platform revenue renders its own header: the date control and export share state with the report.
+  return <RevenueReportsTab />;
 }

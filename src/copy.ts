@@ -1,0 +1,87 @@
+/**
+ * Repeated user-facing copy for the Super Admin (docs/design/05-wording.md §6–8): empty states, toasts and
+ * confirmation dialogs. Page-specific labels stay inline in their components.
+ */
+
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+// ─── Empty states (§6) ───────────────────────────────────────────────────────
+
+export interface EmptyCopy {
+  title: string;
+  description: string;
+  action?: string;
+}
+
+export const emptyStates = {
+  stores: {
+    title: "No stores yet",
+    description: "Add your first store to start tracking billing and health.",
+    action: "Add store",
+  },
+  storeInvoices: {
+    title: "No invoices yet",
+    description: "Invoices for this store will appear here.",
+  },
+  unpaid: {
+    title: "Everyone's paid",
+    description: "No unpaid invoices right now.",
+  },
+  notFound: {
+    title: "Page not found",
+    description: "The link may be broken or the page may have moved.",
+    action: "Go to Home",
+  },
+  /** Search with no matches: "No results for "kurta blu"". */
+  noResults: (query: string): EmptyCopy => ({
+    title: `No results for "${query}"`,
+    description: "Check the spelling or clear filters.",
+    action: "Clear filters",
+  }),
+  /** Analytics card with nothing to show (single line). */
+  noData: "Not enough data for this period yet.",
+} satisfies Record<string, EmptyCopy | string | ((query: string) => EmptyCopy)>;
+
+// ─── Toasts and messages (§7) ────────────────────────────────────────────────
+
+export const toasts = {
+  loggedOut: "You've been logged out.",
+  changesSaved: "Changes saved.",
+  genericError: "Something went wrong. Try again.",
+  copied: "Copied",
+  wrongLogin: "That email and password don't match. Try again.",
+  storeDeleted: (name: string) => `${name} deleted.`,
+  storeSuspended: (name: string) => `${name} suspended.`,
+  storeReactivated: (name: string) => `${name} reactivated.`,
+  storeAdded: (name: string) => `${name} added.`,
+  reminderSent: (count: number) => `Reminder sent to ${plural(count, "store", "stores")}.`,
+  supportLoginUnavailable: "Support log-in isn't available yet.",
+} as const;
+
+// ─── Confirmation dialogs (§8) ───────────────────────────────────────────────
+
+export interface ConfirmCopy {
+  title: string;
+  description: string;
+  confirmLabel: string;
+}
+
+export const confirms = {
+  suspendStore: (name: string): ConfirmCopy => ({
+    title: `Suspend ${name}?`,
+    description: "The storefront goes offline and the owner can't log in until you reactivate it.",
+    confirmLabel: "Suspend store",
+  }),
+  reactivateStore: (name: string): ConfirmCopy => ({
+    title: `Reactivate ${name}?`,
+    description: "The storefront and the owner's dashboard come back online right away.",
+    confirmLabel: "Reactivate store",
+  }),
+  deleteStore: (name: string): ConfirmCopy => ({
+    title: `Delete ${name}?`,
+    description: "All store data will be permanently deleted. This can't be undone.",
+    confirmLabel: "Delete store",
+  }),
+} as const;

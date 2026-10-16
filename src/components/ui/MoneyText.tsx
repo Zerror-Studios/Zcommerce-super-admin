@@ -8,13 +8,17 @@ export interface MoneyTextProps extends Omit<HTMLAttributes<HTMLSpanElement>, "c
   currency?: string;
   compact?: boolean;
   showSign?: boolean;
+  /** Always 2 decimals (finance, invoices, transactions): ₹49.50. */
+  paise?: boolean;
+  /** Whole rupees only (summaries, KPIs): ₹52,500. */
+  whole?: boolean;
 }
 
 /** Money value (component-specs §20). Always tabular numbers. Never format money inline in pages. */
-export function MoneyText({ amount, currency, compact, showSign, className, ...rest }: MoneyTextProps) {
+export function MoneyText({ amount, currency, compact, showSign, paise, whole, className, ...rest }: MoneyTextProps) {
   return (
     <span className={cx("tabular-nums", className)} {...rest}>
-      {formatMoney(amount, { currency, compact, showSign })}
+      {formatMoney(amount, { currency, compact, showSign, paise, whole })}
     </span>
   );
 }
