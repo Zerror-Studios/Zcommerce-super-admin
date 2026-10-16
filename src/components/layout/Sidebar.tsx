@@ -245,18 +245,25 @@ export function Sidebar({
               }
               bottomContent={userMenuFooter ? <p className="px-2.5 pb-1.5 pt-1 text-caption text-fg-subtle">{userMenuFooter}</p> : undefined}
             >
-              <DropdownSection showDivider={dangerItems.length > 0} aria-label="Account">
-                {userMenuItems.map((item) => (
-                  <DropdownItem key={item.key}>{item.label}</DropdownItem>
-                ))}
-              </DropdownSection>
-              <DropdownSection aria-label="Session">
-                {dangerItems.map((item) => (
-                  <DropdownItem key={item.key} className={menuItemDangerClasses}>
-                    {item.label}
-                  </DropdownItem>
-                ))}
-              </DropdownSection>
+              {/* An empty section would still draw a divider and padding, so it's left out when unused. */}
+              {[
+                ...(userMenuItems.length
+                  ? [
+                      <DropdownSection key="account" showDivider={dangerItems.length > 0} aria-label="Account">
+                        {userMenuItems.map((item) => (
+                          <DropdownItem key={item.key}>{item.label}</DropdownItem>
+                        ))}
+                      </DropdownSection>,
+                    ]
+                  : []),
+                <DropdownSection key="session" aria-label="Session">
+                  {dangerItems.map((item) => (
+                    <DropdownItem key={item.key} className={menuItemDangerClasses}>
+                      {item.label}
+                    </DropdownItem>
+                  ))}
+                </DropdownSection>,
+              ]}
             </DropdownMenu>
           </Dropdown>
           {collapseButton}
