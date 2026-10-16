@@ -1,4 +1,5 @@
 import { addToast, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type Selection } from "@heroui/react";
+import { toastError } from "../ui";
 import { useMemo, useState } from "react";
 import type { Coupon, PlanName } from "../../types";
 import { selectionToIdSet } from "../../lib/tableSelection";
@@ -29,6 +30,7 @@ import {
 } from "../ui";
 import type { Tone } from "../ui";
 import { IconTag } from "../ui/icons";
+import { emptyStates } from "../../copy";
 
 export interface CouponsTabProps {
   coupons: Coupon[];
@@ -160,15 +162,15 @@ export function CouponsTab({
     const value = Number(discountValue);
     const max = Number(maxRedemptions);
     if (!trimmed) {
-      addToast({ title: "Enter a code.", color: "danger" });
+      toastError("Enter a code.");
       return;
     }
     if (Number.isNaN(value) || value <= 0) {
-      addToast({ title: "Enter a discount above 0.", color: "danger" });
+      toastError("Enter a discount above 0.");
       return;
     }
     if (Number.isNaN(max) || max <= 0) {
-      addToast({ title: "Enter a usage limit above 0.", color: "danger" });
+      toastError("Enter a usage limit above 0.");
       return;
     }
 
@@ -242,8 +244,8 @@ export function CouponsTab({
               isFiltered ? (
                 <EmptyState
                   icon={IconTag}
-                  title={search.trim() ? `No results for "${search.trim()}"` : "No discounts match these filters"}
-                  description="Check the spelling or clear filters."
+                  title={search.trim() ? emptyStates.noResults(search.trim()).title : "No discounts match these filters"}
+                  description={emptyStates.noResults("").description}
                   action={
                     <UiButton
                       variant="secondary"
@@ -253,7 +255,7 @@ export function CouponsTab({
                         setStatusFilter([]);
                       }}
                     >
-                      Clear filters
+                      {emptyStates.noResults("").action}
                     </UiButton>
                   }
                 />

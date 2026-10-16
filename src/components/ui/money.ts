@@ -13,6 +13,7 @@ export interface FormatMoneyOptions {
 }
 
 const MINUS = "−";
+const EMPTY = "—";
 
 /** Typographic minus before the currency sign: "−₹20.50", never "-₹20.5". */
 function withMinus(text: string): string {
@@ -25,6 +26,11 @@ export function formatMoney(
 ): string {
   const value = Number(amount ?? 0);
   const safe = Number.isFinite(value) ? value : 0;
+  // Past ₹1,000Cr, en-IN compact writes "₹1LCr"; keep counting in crores instead ("₹1,250Cr").
+  if (compact && currency === "INR" && Math.abs(safe) >= 1e10) {
+    const sign = safe < 0 ? MINUS : showSign ? "+" : "";
+    return `${sign}₹${formatCount(Math.round(Math.abs(safe) / 1e7))}Cr`;
+  }
   // Fractions are either none or exactly two digits: ₹49.5 is never shown.
   const fraction = compact ? 1 : whole ? 0 : paise || !Number.isInteger(safe) ? 2 : 0;
   const text = new Intl.NumberFormat("en-IN", {
@@ -39,25 +45,30 @@ export function formatMoney(
   return withMinus(compact ? text.replace(/K$/, "k") : text);
 }
 
-/** Plain numbers with Indian grouping (12,34,567). */
+/** Plain numbers with Indian grouping (12,34,567); compact: 25k · 1.2L · 3.4Cr. */
 export function formatCount(value: number | null | undefined, compact = false): string {
   const n = Number(value ?? 0);
-  return withMinus(
-    new Intl.NumberFormat("en-IN", {
-      notation: compact ? "compact" : "standard",
-      maximumFractionDigits: compact ? 1 : 0,
-    }).format(Number.isFinite(n) ? n : 0),
-  );
+  const text = new Intl.NumberFormat("en-IN", {
+    notation: compact ? "compact" : "standard",
+    maximumFractionDigits: compact ? 1 : 0,
+  }).format(Number.isFinite(n) ? n : 0);
+  return withMinus(compact ? text.replace(/K$/, "k") : text);
 }
 
-/** "+6.7%" / "−2%" / "0%". Input is already a percentage (6.7 means 6.7%). Max 1 decimal, no trailing ".0". */
-export function formatDelta(value: number, digits = 1): string {
-  const sign = value > 0 ? "+" : value < 0 ? MINUS : "";
-  return `${sign}${formatPercent(Math.abs(value), digits)}`;
+/**
+ * "+6.7%" / "−2%" / "0%". Input is already a percentage (6.7 means 6.7%). Max 1 decimal, no trailing ".0".
+ * Returns "—" when there is no change to show (null, or a zero base giving Infinity/NaN), never "−100.0%".
+ */
+export function formatDelta(value: number | null | undefined, digits = 1): string {
+  if (value == null || !Number.isFinite(value)) return EMPTY;
+  const rounded = Number(value.toFixed(digits));
+  const sign = rounded > 0 ? "+" : rounded < 0 ? MINUS : "";
+  return `${sign}${formatPercent(Math.abs(rounded), digits)}`;
 }
 
-/** "2.4%" / "17%": max 1 decimal, no trailing ".0". */
-export function formatPercent(value: number, digits = 1): string {
-  const n = Number.isFinite(value) ? value : 0;
-  return `${Number(n.toFixed(digits))}%`;
+/** "2.4%" / "17%" / "−3%": max 1 decimal, no trailing ".0", Indian grouping. "—" when not a number. */
+export function formatPercent(value: number | null | undefined, digits = 1): string {
+  if (value == null || !Number.isFinite(value)) return EMPTY;
+  const text = new Intl.NumberFormat("en-IN", { maximumFractionDigits: digits }).format(value);
+  return `${withMinus(text === "-0" ? "0" : text)}%`;
 }

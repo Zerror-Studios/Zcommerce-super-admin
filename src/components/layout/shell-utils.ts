@@ -1,6 +1,7 @@
 /* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /** Shell helpers: keyboard shortcuts, remembered sidebar state, relative times. */
 import { useEffect } from "react";
+import { formatRelative } from "../ui/format-date";
 
 /** ⌘K / Ctrl+K opens the palette; ⌘\ / Ctrl+\ toggles the sidebar; ⌘J / Ctrl+J opens the assistant (when given). */
 export function useShellHotkeys({
@@ -48,22 +49,9 @@ export function storeFlag(key: string, value: boolean) {
   }
 }
 
-const DAY = 24 * 60 * 60 * 1000;
-const weekday = new Intl.DateTimeFormat("en-IN", { weekday: "short" });
-const dayMonth = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" });
-
 /** Relative time for feeds (docs/design/05-wording.md §2): 2m · 1h · Yesterday · Mon, then "14 Oct". */
 export function relativeTime(value: string | Date, now: Date = new Date()): string {
-  const date = new Date(value);
-  const diff = now.getTime() - date.getTime();
-  if (Number.isNaN(diff)) return "";
-  const minutes = Math.max(0, Math.round(diff / 60000));
-  if (minutes < 1) return "now";
-  if (minutes < 60) return `${minutes}m`;
-  if (isSameDay(date, now)) return `${Math.round(minutes / 60)}h`;
-  if (isSameDay(date, new Date(now.getTime() - DAY))) return "Yesterday";
-  if (diff < 7 * DAY) return weekday.format(date);
-  return dayMonth.format(date);
+  return formatRelative(value, now);
 }
 
 export function isSameDay(a: Date, b: Date): boolean {

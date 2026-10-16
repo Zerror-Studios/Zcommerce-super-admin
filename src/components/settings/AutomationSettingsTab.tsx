@@ -1,10 +1,12 @@
 import { addToast, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type Selection } from "@heroui/react";
+import { toastError } from "../ui";
 import { useMemo, useState } from "react";
 import type { Client, Subscription } from "../../types";
 import { subscriptions } from "../../lib/mockData";
 import { selectionToIdSet } from "../../lib/tableSelection";
 import { daysUntil, formatDate } from "../../lib/utils";
 import { useClients } from "../../providers/ClientsProvider";
+import { toasts } from "../../copy";
 import { dataTableClassNames, dataTableSelectionProps, tablePanelClassName } from "../common/dataTableStyles";
 import { StatusChip } from "../common/StatusChip";
 import { TableToolbar } from "../common/TableToolbar";
@@ -124,12 +126,12 @@ export function AutomationSettingsTab() {
 
   const handleSend = () => {
     if (selectedCount === 0) {
-      addToast({ title: "Select at least one store.", color: "danger" });
+      toastError("Select at least one store.");
       return;
     }
 
     addToast({
-      title: `Reminder sent to ${plural(selectedCount, "store")}.`,
+      title: toasts.reminderSent(selectedCount),
       color: "success",
     });
     setSelected(new Set());
@@ -215,7 +217,7 @@ export function AutomationSettingsTab() {
           <TableToolbar
             search={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search stores"
+            searchPlaceholder="Search stores to remind"
             endContent={
               <>
                 <Select

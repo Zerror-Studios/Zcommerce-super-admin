@@ -62,6 +62,7 @@ import { Tabs } from "./Tabs";
 import { Textarea } from "./Textarea";
 import { Tooltip } from "./Tooltip";
 import { TONES } from "./tones";
+import { toastError } from "./toast";
 import { AiInsightCard, AiSuggestion, AiThinking, Sparkle, TodaysBrief, WriteWithAiButton } from "./Ai";
 import { setAiEnabled, useAiEnabled } from "./ai-flag";
 import { AskBar } from "../layout/Assistant";
@@ -335,7 +336,7 @@ export default function DevUiPage() {
         <Button variant="secondary" onPress={() => setModalOpen(true)}>Open modal</Button>
         <Button variant="destructive" onPress={() => setConfirmOpen(true)}>Delete store</Button>
         <Button variant="secondary" onPress={() => addToast({ title: "Product saved." })}>Toast</Button>
-        <Button variant="secondary" onPress={() => addToast({ title: "Couldn't save the product.", description: "Check your connection and try again.", color: "danger" })}>Error toast</Button>
+        <Button variant="secondary" onPress={() => toastError("Couldn't save the product.", { description: "Check your connection and try again." })}>Error toast</Button>
       </Section>
 
       <Section title="IDs, shortcuts, navigation">

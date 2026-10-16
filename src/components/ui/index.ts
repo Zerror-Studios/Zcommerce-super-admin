@@ -3,6 +3,8 @@
  * Shared UI layer. Feature code imports from here, not from @heroui/react.
  * HeroUI building blocks without design-system styling of their own are re-exported as-is.
  */
+export { AppToastProvider } from "./AppToastProvider";
+export { toastError } from "./toast";
 export { Badge } from "./Badge";
 export type { BadgeProps } from "./Badge";
 export { Button } from "./Button";
@@ -57,6 +59,8 @@ export { StatusChip } from "./StatusChip";
 export type { StatusChipProps } from "./StatusChip";
 export { apexBaseOptions, areaGradientStops, categoryColor, chartColors, planColor, planColors, recharts } from "./chart-theme";
 export { formatCount, formatDelta, formatMoney, formatPercent } from "./money";
+export { formatDate, formatDateTime, formatRange, formatRelative } from "./format-date";
+export type { DateInput } from "./format-date";
 export type { FormatMoneyOptions } from "./money";
 export { STATUS_MAP, getExpiryStatus, getHealthBand, getStatus, normalizeStatus, statusTone } from "./status-map";
 export type { StatusDomain, StatusInfo } from "./status-map";
@@ -95,6 +99,6 @@ export { RankedBars } from "./RankedBars";
 export type { RankedBarItem } from "./RankedBars";
 export { SelectionBar } from "./SelectionBar";
 export type { SelectionBarProps } from "./SelectionBar";
-export { AiInsightCard, AiSpectrumDefs, AiSuggestion, AiThinking, Sparkle, TodaysBrief, WriteWithAiButton } from "./Ai";
+export { AiFeedback, AiInsightCard, AiSpectrumDefs, AiSuggestion, AiThinking, Sparkle, TodaysBrief, WriteWithAiButton } from "./Ai";
 export type { AiInsightCardProps, AiSuggestionProps, AiThinkingProps, TodaysBriefProps } from "./Ai";
 export { isAiEnabled, setAiEnabled, useAiEnabled } from "./ai-flag";

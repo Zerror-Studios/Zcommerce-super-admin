@@ -90,7 +90,7 @@ export function NotificationsPanel({
 
           <div className="custom-scroll max-h-[min(560px,70vh)] overflow-y-auto">
             {groups.length === 0 ? (
-              <EmptyState icon={IconNotifications} title="You're all caught up" description="New notifications show up here." className="py-10" />
+              <EmptyState icon={IconNotifications} title="You're all caught up" description="New activity will show up here." className="py-10" />
             ) : (
               groups.map((group) => (
                 <div key={group.title}>

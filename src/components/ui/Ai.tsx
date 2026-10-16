@@ -87,7 +87,6 @@ export interface AiInsightCardProps {
 
 /** Insight (Analytics, store detail): max one per page. Helpful / Not helpful feedback is local for now. */
 export function AiInsightCard({ title, body, action, source, onDismiss, when = "just now", className }: AiInsightCardProps) {
-  const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
   return (
     <section className={cx("ai-edge p-5", className)}>
       <p className="flex items-center gap-1.5 text-caption text-fg-subtle">
@@ -112,23 +111,40 @@ export function AiInsightCard({ title, body, action, source, onDismiss, when = "
       ) : null}
       <div className="mt-4 border-t border-line-subtle pt-3 text-caption text-fg-subtle">
         <p>{source}</p>
-        <p className="mt-1">
-          {feedback ? (
-            "Thanks for the feedback."
-          ) : (
-            <>
-              <button type="button" className="hover:text-fg" onClick={() => setFeedback("up")}>
-                Helpful
-              </button>{" "}
-              ·{" "}
-              <button type="button" className="hover:text-fg" onClick={() => setFeedback("down")}>
-                Not helpful
-              </button>
-            </>
-          )}
-        </p>
+        <AiFeedback className="mt-1" />
       </div>
     </section>
+  );
+}
+
+// ─── Feedback ────────────────────────────────────────────────────────────────
+
+/**
+ * "Helpful · Not helpful" under every AI answer and insight (docs/design/06-qa-checklist.md §AI).
+ * Local only until there's an endpoint; `onFeedback` lets the app record it.
+ */
+export function AiFeedback({ onFeedback, className }: { onFeedback?: (helpful: boolean) => void; className?: string }) {
+  const [sent, setSent] = useState(false);
+  const send = (helpful: boolean) => {
+    setSent(true);
+    onFeedback?.(helpful);
+  };
+  return (
+    <p className={cx("text-caption text-fg-subtle", className)}>
+      {sent ? (
+        "Thanks for the feedback."
+      ) : (
+        <>
+          <button type="button" className="rounded-xs hover:text-fg" onClick={() => send(true)}>
+            Helpful
+          </button>{" "}
+          ·{" "}
+          <button type="button" className="rounded-xs hover:text-fg" onClick={() => send(false)}>
+            Not helpful
+          </button>
+        </>
+      )}
+    </p>
   );
 }
 

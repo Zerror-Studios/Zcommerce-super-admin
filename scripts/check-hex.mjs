@@ -13,7 +13,21 @@ import { join, relative, sep } from "node:path";
 const ROOT = process.cwd();
 const SCAN_DIR = join(ROOT, "src");
 const EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".css"];
-const ALLOWED = ["src/styles/tokens.css", "src/theme/heroui-theme.js", "src/gql/"];
+// Besides tokens: content styles for the rich-text editor and storefront previews (they style the merchant's
+// content, not the admin UI), third-party brand logos, and editor content defaults.
+const ALLOWED = [
+  "src/styles/tokens.css",
+  "src/theme/heroui-theme.js",
+  "src/gql/",
+  "src/styles/stories.css",
+  "src/styles/blockeditor.css",
+  "src/styles/embedpopup.css",
+  "src/styles/imagedrop.css",
+  "src/helpers/extension/",
+  "src/store/slices/editorSlice.ts",
+  "src/config/marketplaceApps.tsx",
+  "src/App.css",
+];
 const HEX_PATTERN = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b/g;
 
 const maxIndex = process.argv.indexOf("--max");

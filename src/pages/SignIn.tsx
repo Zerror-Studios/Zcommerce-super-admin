@@ -4,6 +4,7 @@ import { useAuth } from "../providers/AuthProvider";
 import { IconHide, IconView } from "../components/ui/icons";
 import { Button as UiButton } from "../components/ui";
 import { AuthField, AuthLayout } from "../components/layout/AuthLayout";
+import { toasts } from "../copy";
 
 export function SignIn() {
   const { isAuthenticated, signIn } = useAuth();
@@ -31,7 +32,7 @@ export function SignIn() {
     const ok = signIn(email, password);
     setSubmitting(false);
     if (!ok) {
-      setErrors({ password: "Couldn't log in. Check your email and password." });
+      setErrors({ password: toasts.wrongLogin });
       return;
     }
     // No "Signed in" toast (docs/design/04-super-admin.md §4.8).

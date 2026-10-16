@@ -103,11 +103,15 @@ export function StatCard({
   );
 }
 
-function Delta({ delta, unit, label }: { delta?: number | null; unit: "%" | "pts"; label: ReactNode }) {
-  if (delta == null && !label) return null;
-  const tone = delta == null || delta === 0 ? "text-fg-muted" : delta > 0 ? "text-tone-success" : "text-tone-danger-text";
-  const Arrow = delta == null || delta === 0 ? null : delta > 0 ? IconTrendUp : IconTrendDown;
-  const amount = delta == null ? null : unit === "pts" ? `${Number(Math.abs(delta).toFixed(1))} pts` : formatPercent(Math.abs(delta));
+function Delta({ delta: raw, unit, label }: { delta?: number | null; unit: "%" | "pts"; label: ReactNode }) {
+  if (raw == null && !label) return null;
+  // A zero base (Infinity / NaN) has no meaningful change: show "—", never "−100.0%".
+  const known = raw != null && Number.isFinite(raw);
+  const delta = known ? Number(raw) : 0;
+  const shown = Number(Math.abs(delta).toFixed(1));
+  const tone = !known || shown === 0 ? "text-fg-muted" : delta > 0 ? "text-tone-success" : "text-tone-danger-text";
+  const Arrow = !known || shown === 0 ? null : delta > 0 ? IconTrendUp : IconTrendDown;
+  const amount = raw == null ? null : !known ? "—" : unit === "pts" ? `${shown} pts` : formatPercent(Math.abs(delta));
   return (
     <p className="mt-1 flex flex-wrap items-center gap-x-1 text-caption">
       {amount != null ? (

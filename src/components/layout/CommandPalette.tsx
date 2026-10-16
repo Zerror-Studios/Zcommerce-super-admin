@@ -6,6 +6,7 @@
 import { ModalBody, ModalContent } from "@heroui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Button } from "../ui/Button";
 import { cx } from "../ui/cx";
 import { IconSearch } from "../ui/icons";
 import { Modal } from "../ui/Modal";
@@ -124,7 +125,23 @@ export function CommandPalette({ isOpen, onClose, groups, placeholder = "Search 
 
           <div id="command-palette-list" ref={listRef} role="listbox" className="custom-scroll max-h-[min(420px,60vh)] overflow-y-auto p-2">
             {visible.length === 0 ? (
-              <p className="px-3 py-8 text-center text-body text-fg-muted">No results for "{query}"</p>
+              query.trim() ? (
+              <div className="flex flex-col items-center px-3 py-8 text-center">
+                <p className="text-body font-semibold text-fg">No results for "{query.trim()}"</p>
+                <p className="mt-1 text-body text-fg-muted">Check the spelling or clear the search.</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-4"
+                  onPress={() => {
+                    setQuery("");
+                    setCursor(0);
+                  }}
+                >
+                  Clear search
+                </Button>
+              </div>
+              ) : null
             ) : (
               visible.map((group) => (
                 <div key={group.title} className="mb-1">

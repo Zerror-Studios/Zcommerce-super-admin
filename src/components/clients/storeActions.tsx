@@ -2,6 +2,7 @@ import { addToast } from "@heroui/react";
 import type { Client } from "../../types";
 import { useClients } from "../../providers/ClientsProvider";
 import { ConfirmModal } from "../common/ConfirmModal";
+import { confirms, toasts } from "../../copy";
 
 export type StoreAction = "suspend" | "reactivate" | "delete";
 
@@ -26,40 +27,35 @@ export function StoreActionDialog({ client, action, onClose, onDeleted }: StoreA
       <ConfirmModal
         isOpen={client != null && action === "suspend"}
         onClose={onClose}
-        title={`Suspend ${name}?`}
-        description="The storefront goes offline and the owner can't log in until you reactivate it."
-        confirmLabel="Suspend store"
+        {...confirms.suspendStore(name)}
         confirmColor="warning"
         onConfirm={() => {
           if (!client) return;
           setClientStatus(client.id, "suspended");
-          addToast({ title: `${client.storeName} suspended.` });
+          addToast({ title: toasts.storeSuspended(client.storeName) });
         }}
       />
       <ConfirmModal
         isOpen={client != null && action === "reactivate"}
         onClose={onClose}
-        title={`Reactivate ${name}?`}
-        description="The storefront and the owner's dashboard come back online right away."
-        confirmLabel="Reactivate store"
+        {...confirms.reactivateStore(name)}
         confirmColor="primary"
         onConfirm={() => {
           if (!client) return;
           setClientStatus(client.id, "active");
-          addToast({ title: `${client.storeName} reactivated.` });
+          addToast({ title: toasts.storeReactivated(client.storeName) });
         }}
       />
       <ConfirmModal
         isOpen={client != null && action === "delete"}
         onClose={onClose}
-        title={`Delete ${name}?`}
-        description="All store data will be permanently deleted. This can't be undone."
-        confirmLabel="Delete store"
+        {...confirms.deleteStore(name)}
         confirmColor="danger"
         onConfirm={() => {
           if (!client) return;
           deleteClient(client.id);
-          addToast({ title: `${client.storeName} deleted.` });
+          // No Undo: deleting has no restore path yet (docs/design/05-wording.md §7, "Undo" only where possible).
+          addToast({ title: toasts.storeDeleted(client.storeName) });
           onDeleted?.();
         }}
       />

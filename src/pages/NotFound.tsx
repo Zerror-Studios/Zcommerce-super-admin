@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button, EmptyState, IconSearch } from "../components/ui";
+import { emptyStates } from "../copy";
 
 /** 404 inside the app shell (docs/design/02-components.md §9): "Page not found", "Go to Home". */
 export function NotFound() {
@@ -8,11 +9,11 @@ export function NotFound() {
     <div className="flex min-h-[60vh] items-center justify-center">
       <EmptyState
         icon={IconSearch}
-        title="Page not found"
-        description="The page you're looking for doesn't exist or has moved."
+        title={emptyStates.notFound.title}
+        description={emptyStates.notFound.description}
         action={
           <Button variant="secondary" onPress={() => navigate("/")}>
-            Go to Home
+            {emptyStates.notFound.action}
           </Button>
         }
       />

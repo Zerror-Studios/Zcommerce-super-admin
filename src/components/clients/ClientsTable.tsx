@@ -31,6 +31,7 @@ import {
 import { IconLogin, IconMore, IconSearch, IconStore } from "../ui/icons";
 import { StoreActionDialog, type StoreAction } from "./storeActions";
 import { logInToStore } from "./storeLogin";
+import { emptyStates } from "../../copy";
 
 export type StoreTab = "all" | "live" | "trial" | "unpaid" | "suspended";
 
@@ -348,24 +349,24 @@ export function ClientsTable({
     clients.length === 0 ? (
       <EmptyState
         icon={IconStore}
-        title="No stores yet"
-        description="Add your first store to start tracking billing and health."
+        title={emptyStates.stores.title}
+        description={emptyStates.stores.description}
         action={
           <UiButton variant="secondary" onPress={() => navigate("/stores/new")}>
-            Add store
+            {emptyStates.stores.action}
           </UiButton>
         }
       />
     ) : tab === "unpaid" && !hasFilters ? (
-      <EmptyState icon={IconStore} title="Everyone's paid" description="No unpaid invoices right now." />
+      <EmptyState icon={IconStore} title={emptyStates.unpaid.title} description={emptyStates.unpaid.description} />
     ) : (
       <EmptyState
         icon={IconSearch}
-        title={search.trim() ? `No results for "${search.trim()}"` : "No stores match"}
-        description="Check the spelling or clear filters."
+        title={search.trim() ? emptyStates.noResults(search.trim()).title : "No stores match"}
+        description={emptyStates.noResults("").description}
         action={
           <UiButton variant="secondary" onPress={clearFilters}>
-            Clear filters
+            {emptyStates.noResults("").action}
           </UiButton>
         }
       />

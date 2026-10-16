@@ -1,4 +1,5 @@
 import { formatCount, formatDelta, formatMoney } from "../components/ui/money";
+import { formatDate as kitFormatDate, formatDateTime as kitFormatDateTime } from "../components/ui/format-date";
 // Money and number formatting delegate to the shared formatters (component-specs §20) so both products match.
 export function formatCurrency(value: number, currency = "INR", compact = false): string {
   return formatMoney(value, { currency, compact });
@@ -12,23 +13,14 @@ export function formatPercent(value: number, digits = 1): string {
   return formatDelta(value, digits);
 }
 
-/** "14 Oct", or "14 Oct 2025" outside the current year (docs/design/05-wording.md §2). */
+/** "14 Oct", or "14 Oct 2025" outside the current year (docs/design/05-wording.md §2); shared kit helper. */
 export function formatDate(iso: string): string {
-  const date = new Date(iso);
-  return new Intl.DateTimeFormat("en-IN", {
-    month: "short",
-    day: "numeric",
-    ...(date.getFullYear() === new Date().getFullYear() ? {} : { year: "numeric" as const }),
-  }).format(date);
+  return kitFormatDate(iso);
 }
 
 /** "14 Oct, 4:58 pm". */
 export function formatDateTime(iso: string): string {
-  const date = new Date(iso);
-  const time = new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })
-    .format(date)
-    .replace(/\s?(AM|PM)$/i, (match) => ` ${match.trim().toLowerCase()}`);
-  return `${formatDate(iso)}, ${time}`;
+  return kitFormatDateTime(iso);
 }
 
 export function daysUntil(isoDate: string, from: Date = new Date()): number {

@@ -221,6 +221,12 @@ export function Sidebar({
             <DropdownMenu
               aria-label="Account"
               onAction={(key) => userMenu.find((item) => item.key === key)?.onAction()}
+              topContent={
+                <div className="px-2.5 pb-1 pt-1.5">
+                  <p className="text-caption text-fg-subtle">Signed in as</p>
+                  <p className="truncate text-label font-medium text-fg">{user.email || user.name}</p>
+                </div>
+              }
               bottomContent={userMenuFooter ? <p className="px-2.5 pb-1.5 pt-1 text-caption text-fg-subtle">{userMenuFooter}</p> : undefined}
             >
               <DropdownSection showDivider={dangerItems.length > 0} aria-label="Account">

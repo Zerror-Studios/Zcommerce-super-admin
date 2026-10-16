@@ -14,6 +14,7 @@ import { NotificationsPanel } from "./NotificationsPanel";
 import { Sidebar } from "./Sidebar";
 import { AiSpectrumDefs } from "../ui/Ai";
 import type { CommandGroup, NotificationEntry, UserMenuItem } from "./types";
+import { toasts } from "../../copy";
 
 const COLLAPSE_KEY = "zcommerce-sidebar-collapsed";
 const APP_VERSION = "1.01.000";
@@ -84,7 +85,7 @@ export function DashboardLayout() {
   const handleLogout = () => {
     signOut();
     navigate("/sign-in", { replace: true });
-    addToast({ title: "You've been logged out." });
+    addToast({ title: toasts.loggedOut });
   };
 
   const userMenu: UserMenuItem[] = [

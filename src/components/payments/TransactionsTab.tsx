@@ -24,6 +24,7 @@ import {
   tableRowClasses,
 } from "../ui";
 import { IconPayments } from "../ui/icons";
+import { emptyStates } from "../../copy";
 
 export interface TransactionsTabProps {
   transactions: Transaction[];
@@ -153,8 +154,8 @@ export function TransactionsTab({ transactions }: TransactionsTabProps) {
             isFiltered ? (
               <EmptyState
                 icon={IconPayments}
-                title={search.trim() ? `No results for "${search.trim()}"` : "No transactions match these filters"}
-                description="Check the spelling or clear filters."
+                title={search.trim() ? emptyStates.noResults(search.trim()).title : "No transactions match these filters"}
+                description={emptyStates.noResults("").description}
                 action={
                   <UiButton
                     variant="secondary"
@@ -164,7 +165,7 @@ export function TransactionsTab({ transactions }: TransactionsTabProps) {
                       setStatuses([]);
                     }}
                   >
-                    Clear filters
+                    {emptyStates.noResults("").action}
                   </UiButton>
                 }
               />

@@ -49,6 +49,7 @@ import {
   toneTextClasses,
 } from "../ui";
 import type { Tone } from "../ui";
+import { emptyStates, toasts } from "../../copy";
 
 const PAGE_SIZE = 8;
 const AS_OF = new Date("2026-10-06T12:00:00Z");
@@ -334,7 +335,7 @@ export function SubscriptionReportsTab() {
         <ErrorState
           className="rounded-card border border-line bg-surface"
           title="Couldn't load collections."
-          description="Something went wrong. Try again."
+          description={toasts.genericError}
           onRetry={() => {
             setError(null);
             reload();
@@ -391,7 +392,7 @@ export function SubscriptionReportsTab() {
       case "nextDueDate":
         return row[key] ? <span className="whitespace-nowrap num">{formatDate(row[key] as string)}</span> : muted;
       case "amountDue":
-        return row.amountDue > 0 ? <span className="block text-right num">{formatMoney(row.amountDue)}</span> : <span className="block text-right text-fg-subtle">—</span>;
+        return row.amountDue > 0 ? <span className="block text-right num">{formatMoney(row.amountDue, { whole: true })}</span> : <span className="block text-right text-fg-subtle">—</span>;
       case "daysOverdue":
         return row.daysOverdue > 0 ? (
           <span className={cx("block text-right font-medium num", toneTextClasses.danger)}>{formatCount(row.daysOverdue)}</span>
@@ -427,11 +428,11 @@ export function SubscriptionReportsTab() {
   const emptyContent = hasFilters ? (
     <EmptyState
       icon={IconBilling}
-      title={search.trim() ? `No results for "${search.trim()}"` : "Nothing matches these filters"}
-      description="Check the spelling or clear filters."
+      title={search.trim() ? emptyStates.noResults(search.trim()).title : "Nothing matches these filters"}
+      description={emptyStates.noResults("").description}
       action={
         <UiButton variant="secondary" size="sm" onPress={clearFilters}>
-          Clear filters
+          {emptyStates.noResults("").action}
         </UiButton>
       }
     />
@@ -527,7 +528,7 @@ export function SubscriptionReportsTab() {
             tabs={tabs}
             search={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search stores or owners"
+            searchPlaceholder={tableView === "shops" ? "Search billed stores" : "Search invoices"}
             columns={tableView === "shops" ? shopColumns : undefined}
             visibleColumns={tableView === "shops" ? visibleShopColumns : undefined}
             onVisibleColumnsChange={tableView === "shops" ? setVisibleShopColumns : undefined}
@@ -648,7 +649,7 @@ export function SubscriptionReportsTab() {
 
           <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
             <p className="text-label text-fg-muted num">
-              {activeRows.length === 0 ? "0 rows" : `${firstRow}–${lastRow} of ${formatCount(activeRows.length)}`}
+              {activeRows.length === 0 ? (tableView === "shops" ? "0 stores" : "0 invoices") : `${firstRow}–${lastRow} of ${formatCount(activeRows.length)}`}
             </p>
             <div className="flex items-center gap-2">
               <UiButton

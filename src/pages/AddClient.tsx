@@ -1,9 +1,11 @@
 import { addToast } from "@heroui/react";
+import { toastError } from "../components/ui";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ClientStatus, PlanName } from "../types";
 import { PageHeader } from "../components/common/PageHeader";
 import { useClients } from "../providers/ClientsProvider";
+import { toasts } from "../copy";
 import { Button as UiButton, Card, Input, Select, SelectItem } from "../components/ui";
 
 const planMrr: Record<PlanName, number> = {
@@ -29,15 +31,15 @@ export function AddClient() {
     const email = ownerEmail.trim().toLowerCase();
 
     if (!store) {
-      addToast({ title: "Enter a store name.", color: "danger" });
+      toastError("Enter a store name.");
       return;
     }
     if (!owner) {
-      addToast({ title: "Enter the owner's name.", color: "danger" });
+      toastError("Enter the owner's name.");
       return;
     }
     if (!email || !email.includes("@")) {
-      addToast({ title: "Enter a valid owner email.", color: "danger" });
+      toastError("Enter a valid owner email.");
       return;
     }
 
@@ -62,7 +64,7 @@ export function AddClient() {
       notes: "",
     });
 
-    addToast({ title: `${store} added.` });
+    addToast({ title: toasts.storeAdded(store) });
     navigate(`/stores/${id}`);
   };
 

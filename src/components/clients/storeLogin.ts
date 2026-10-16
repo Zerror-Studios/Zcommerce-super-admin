@@ -1,5 +1,6 @@
 import { addToast } from "@heroui/react";
 import type { Client } from "../../types";
+import { toasts } from "../../copy";
 
 /**
  * One-click support log-in (docs/design/04-super-admin.md §3.2). There is no impersonation mechanism yet,
@@ -8,5 +9,5 @@ import type { Client } from "../../types";
  */
 export function logInToStore(client: Client): void {
   void client;
-  addToast({ title: "Support log-in isn't available yet." });
+  addToast({ title: toasts.supportLoginUnavailable });
 }

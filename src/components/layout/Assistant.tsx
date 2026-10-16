@@ -6,7 +6,7 @@
 import { Drawer, DrawerBody, DrawerContent, DrawerFooter, DrawerHeader } from "@heroui/react";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { AiThinking, Sparkle } from "../ui/Ai";
+import { AiFeedback, AiThinking, Sparkle } from "../ui/Ai";
 import { Button } from "../ui/Button";
 import { cx } from "../ui/cx";
 import { IconAdd, IconArrowRight, IconClose } from "../ui/icons";
@@ -28,6 +28,8 @@ export interface AiAnswer {
 interface Turn {
   question: string;
   answer?: AiAnswer;
+  /** The request failed: the answer is our error line, so no source or feedback under it. */
+  failed?: boolean;
 }
 
 const MOD_KEY = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl ";
@@ -113,7 +115,9 @@ export function AssistantPanel({
     } catch {
       setTurns((list) =>
         list.map((turn, i) =>
-          i === list.length - 1 ? { ...turn, answer: { text: "Couldn't get an answer. Try again in a moment." } } : turn,
+          i === list.length - 1
+            ? { ...turn, answer: { text: "Couldn't get an answer. Try again in a moment." }, failed: true }
+            : turn,
         ),
       );
     } finally {
@@ -163,7 +167,7 @@ export function AssistantPanel({
             <div key={index} className="flex flex-col gap-3">
               <p className="self-end rounded-xl bg-surface-sunken px-3 py-2 text-body text-fg">{turn.question}</p>
               {turn.answer ? (
-                <AnswerView answer={turn.answer} onNavigate={(href) => { navigate(href); onClose(); }} />
+                <AnswerView answer={turn.answer} failed={turn.failed} onNavigate={(href) => { navigate(href); onClose(); }} />
               ) : (
                 <AiThinking status={thinkingLabel} />
               )}
@@ -222,7 +226,15 @@ export function AssistantPanel({
   );
 }
 
-function AnswerView({ answer, onNavigate }: { answer: AiAnswer; onNavigate: (href: string) => void }) {
+function AnswerView({
+  answer,
+  failed,
+  onNavigate,
+}: {
+  answer: AiAnswer;
+  failed?: boolean;
+  onNavigate: (href: string) => void;
+}) {
   return (
     <div className="flex flex-col gap-3 text-body text-fg">
       <div>{answer.text}</div>
@@ -270,6 +282,7 @@ function AnswerView({ answer, onNavigate }: { answer: AiAnswer; onNavigate: (hre
           {answer.used}
         </p>
       ) : null}
+      {failed ? null : <AiFeedback />}
     </div>
   );
 }

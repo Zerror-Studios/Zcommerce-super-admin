@@ -6,6 +6,7 @@ import { formatDate, formatDateTime } from "../../lib/utils";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { Button as UiButton, Card, Chip, CopyableId, EmptyState, Input, StatusChip, Switch, formatMoney } from "../ui";
 import { IconInvoice } from "../ui/icons";
+import { emptyStates } from "../../copy";
 
 export interface ClientBillingTabProps {
   client: Client;
@@ -122,7 +123,7 @@ export function ClientBillingTab({
           <TableBody
             items={transactions}
             emptyContent={
-              <EmptyState icon={IconInvoice} title="No invoices yet" description="Invoices for this store will appear here." />
+              <EmptyState icon={IconInvoice} title={emptyStates.storeInvoices.title} description={emptyStates.storeInvoices.description} />
             }
           >
             {(txn) => (

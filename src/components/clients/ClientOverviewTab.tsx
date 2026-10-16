@@ -13,7 +13,7 @@ import type { Client, Plan, Subscription } from "../../types";
 import { getStoreHealth } from "../../lib/storeHealth";
 import { formatDate } from "../../lib/utils";
 import { areaGradientStops, chartColors, recharts } from "../ui/chart-theme";
-import { AiInsightCard, Card, HealthScore, KpiStrip, StatCard, Tooltip as UiTooltip, formatCount, formatMoney, getHealthBand, useAiEnabled } from "../ui";
+import { AiInsightCard, Card, HealthScore, KpiStrip, StatCard, Tooltip as UiTooltip, formatCount, formatMoney, formatRange, getHealthBand, useAiEnabled } from "../ui";
 import { useState } from "react";
 import { storeInsight } from "../../lib/aiSamples";
 import { transactions } from "../../lib/mockData";
@@ -122,7 +122,7 @@ export function ClientOverviewTab({ client, subscription, plan }: ClientOverview
           <AiInsightCard
             title={insight.title}
             body={insight.body}
-            source="Based on this store's payments, orders and activity"
+            source={`Based on this store's payments, orders and activity, ${formatRange(new Date(new Date().getTime() - 30 * 86_400_000), new Date())}`}
             onDismiss={() => setInsightDismissed(true)}
           />
         ) : null}

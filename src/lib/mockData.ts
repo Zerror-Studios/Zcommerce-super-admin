@@ -745,14 +745,14 @@ export const activityFeed: ActivityItem[] = [
     id: "act-03",
     type: "failed_payment",
     title: "Failed payment",
-    description: "Orbit Gadgets — Stripe charge declined (?99)",
+    description: "Orbit Gadgets — Stripe charge declined (₹99)",
     timestamp: "2026-03-12T09:05:00Z",
   },
   {
     id: "act-04",
     type: "cancellation",
     title: "Cancellation",
-    description: "Alpine Botanics subscription canceled",
+    description: "Alpine Botanics subscription cancelled",
     timestamp: "2026-03-01T13:40:00Z",
   },
   {
@@ -808,7 +808,7 @@ export const notifications: Notification[] = [
     id: "ntf-03",
     category: "Analytics",
     title: "Analytics",
-    description: "Platform MRR grew 8.2% week over week",
+    description: "Monthly billing grew 8.2% week over week",
     timestamp: "2026-03-27T18:00:00Z",
     dateGroup: "Yesterday",
     read: true,
@@ -849,10 +849,10 @@ export const revenueTrend: RevenuePoint[] = [
 ];
 
 export const planDistribution: PlanDistribution[] = [
-  { name: "Free", value: 4, color: "#94A3B8" },
-  { name: "Starter", value: 5, color: "#60A5FA" },
-  { name: "Pro", value: 4, color: "#2563EB" },
-  { name: "Enterprise", value: 2, color: "#1E3A8A" },
+  { name: "Free", value: 4, color: "var(--zc-chart-cat-6)" },
+  { name: "Starter", value: 5, color: "var(--zc-chart-cat-2)" },
+  { name: "Pro", value: 4, color: "var(--zc-chart-cat-1)" },
+  { name: "Enterprise", value: 2, color: "var(--zc-chart-cat-3)" },
 ];
 
 export const dashboardStats: DashboardStats = {

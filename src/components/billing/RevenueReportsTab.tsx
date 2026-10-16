@@ -51,6 +51,7 @@ import {
   tableRowClasses,
   toneTextClasses,
 } from "../ui";
+import { emptyStates } from "../../copy";
 
 const defaultRange: DateRangeValue = {
   startDate: startOfMonth(new Date(2026, 3, 1)),
@@ -204,7 +205,7 @@ export function RevenueReportsTab() {
     return last && previous ? `${short(last)} vs ${short(previous)}` : "Plan bookings";
   }, [monthly]);
 
-  const noData = <EmptyState compact description="Not enough data for this period yet." />;
+  const noData = <EmptyState compact description={emptyStates.noData} />;
 
   return (
     <div>
@@ -238,24 +239,24 @@ export function RevenueReportsTab() {
           <StatCard
             bare
             label={<Explained tip="Successful payments minus refunds in this period. It can be below zero when refunds are larger than new payments.">Collected</Explained>}
-            value={formatMoney(kpis.netCollected)}
+            value={formatMoney(kpis.netCollected, { paise: true })}
             valueTone={kpis.netCollected < 0 ? "danger" : "default"}
             deltaLabel={
               kpis.refundedAmount > 0
-                ? `After ${formatMoney(kpis.refundedAmount)} refunded`
+                ? `After ${formatMoney(kpis.refundedAmount, { paise: true })} refunded`
                 : "Successful payments"
             }
           />
           <StatCard
             bare
             label="Pending"
-            value={formatMoney(kpis.pendingAmount)}
+            value={formatMoney(kpis.pendingAmount, { paise: true })}
             deltaLabel="Awaiting settlement"
           />
           <StatCard
             bare
             label="Failed"
-            value={formatMoney(kpis.failedAmount)}
+            value={formatMoney(kpis.failedAmount, { paise: true })}
             valueTone={kpis.failedAmount > 0 ? "danger" : "default"}
             deltaLabel="Charge failures"
           />
@@ -381,11 +382,11 @@ export function RevenueReportsTab() {
                 {(row) => (
                   <TableRow key={row.gateway}>
                     <TableCell className="font-medium">{row.gateway}</TableCell>
-                    <TableCell><span className={right}>{formatMoney(row.collected)}</span></TableCell>
+                    <TableCell><span className={right}>{formatMoney(row.collected, { paise: true })}</span></TableCell>
                     <TableCell>
-                      <span className={cx(right, row.failed > 0 && toneTextClasses.danger)}>{formatMoney(row.failed)}</span>
+                      <span className={cx(right, row.failed > 0 && toneTextClasses.danger)}>{formatMoney(row.failed, { paise: true })}</span>
                     </TableCell>
-                    <TableCell><span className={right}>{formatMoney(row.pending)}</span></TableCell>
+                    <TableCell><span className={right}>{formatMoney(row.pending, { paise: true })}</span></TableCell>
                     <TableCell><span className={right}>{formatPercent(row.sharePercent)}</span></TableCell>
                   </TableRow>
                 )}
@@ -421,9 +422,9 @@ export function RevenueReportsTab() {
                     </div>
                   </TableCell>
                   <TableCell>{row.plan}</TableCell>
-                  <TableCell><span className={cx(right, "font-medium")}>{formatMoney(row.collected)}</span></TableCell>
+                  <TableCell><span className={cx(right, "font-medium")}>{formatMoney(row.collected, { paise: true })}</span></TableCell>
                   <TableCell>
-                    <span className={cx(right, row.failed > 0 && toneTextClasses.danger)}>{formatMoney(row.failed)}</span>
+                    <span className={cx(right, row.failed > 0 && toneTextClasses.danger)}>{formatMoney(row.failed, { paise: true })}</span>
                   </TableCell>
                   <TableCell><span className={right}>{formatCount(row.txnCount)}</span></TableCell>
                 </TableRow>
