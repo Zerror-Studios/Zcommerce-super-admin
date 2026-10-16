@@ -156,9 +156,7 @@ export function ClientDetail() {
         </Section>
 
         <Section id="store-settings" title="Store settings">
-          <div className="max-w-content-form">
-            <ClientDangerZone client={client} onDeleted={() => navigate("/stores")} />
-          </div>
+          <ClientDangerZone client={client} onDeleted={() => navigate("/stores")} />
         </Section>
       </div>
 

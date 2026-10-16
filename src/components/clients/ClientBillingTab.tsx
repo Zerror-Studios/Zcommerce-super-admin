@@ -81,24 +81,73 @@ export function ClientBillingTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <Card title="Payment status" actions={<Chip tone={payment.tone}>{payment.label}</Chip>}>
-        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-          <StatusItem label="Next invoice">
-            {subscription ? formatDate(subscription.renewalDate) : <span className="text-fg-subtle">—</span>}
-          </StatusItem>
-          <StatusItem label="Amount due">
-            {subscription && subscription.amountDue > 0 ? (
-              <span className="num">{formatMoney(subscription.amountDue, { whole: true })}</span>
-            ) : (
-              <span className="text-fg-subtle">—</span>
-            )}
-          </StatusItem>
-          <StatusItem label="Grace period">{days(graceDays)}</StatusItem>
-          <StatusItem label="Suspension">
-            {payment.detail ?? <span className="text-fg-subtle">—</span>}
-          </StatusItem>
-        </dl>
-      </Card>
+      {/* Status and the grace-period control side by side (same right column as the store overview), history below. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <Card title="Payment status" className="h-full" actions={<Chip tone={payment.tone}>{payment.label}</Chip>}>
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+            <StatusItem label="Next invoice">
+              {subscription ? formatDate(subscription.renewalDate) : <span className="text-fg-subtle">—</span>}
+            </StatusItem>
+            <StatusItem label="Amount due">
+              {subscription && subscription.amountDue > 0 ? (
+                <span className="num">{formatMoney(subscription.amountDue, { whole: true })}</span>
+              ) : (
+                <span className="text-fg-subtle">—</span>
+              )}
+            </StatusItem>
+            <StatusItem label="Grace period">{days(graceDays)}</StatusItem>
+            <StatusItem label="Suspension">
+              {payment.detail ?? <span className="text-fg-subtle">—</span>}
+            </StatusItem>
+          </dl>
+        </Card>
+        <Card
+          className="h-full"
+          title="Grace period"
+          description={`Extra days before this store is suspended for non-payment. Default: ${days(defaultGracePeriodDays)}.`}
+        >
+          <div className="flex flex-col gap-4">
+            <Switch
+              isSelected={useOverride}
+              onValueChange={(next) => {
+                setUseOverride(next);
+                if (!next) {
+                  setDaysInput(String(defaultGracePeriodDays));
+                  setError(null);
+                }
+              }}
+            >
+              Custom grace period for this store
+            </Switch>
+
+            {useOverride ? (
+              <Input
+                type="number"
+                label="Grace period (days)"
+                min={0}
+                max={30}
+                value={daysInput}
+                onValueChange={setDaysInput}
+                isInvalid={!!error}
+                errorMessage={error}
+                description="0–30 days after the due date"
+                className="max-w-40"
+              />
+            ) : null}
+
+            <div className="flex items-center gap-2">
+              {dirty ? (
+                <UiButton variant="ghost" onPress={onCancel}>
+                  Cancel
+                </UiButton>
+              ) : null}
+              <UiButton variant="primary" isDisabled={!dirty} onPress={onSave}>
+                Save
+              </UiButton>
+            </div>
+          </div>
+        </Card>
+      </div>
 
       <Card title="Billing history" padding="none" className="overflow-hidden">
         <Table
@@ -142,52 +191,6 @@ export function ClientBillingTab({
             )}
           </TableBody>
         </Table>
-      </Card>
-
-      <Card
-        title="Grace period"
-        description={`Extra days before this store is suspended for non-payment. Default: ${days(defaultGracePeriodDays)}.`}
-      >
-        <div className="flex max-w-md flex-col gap-4">
-          <Switch
-            isSelected={useOverride}
-            onValueChange={(next) => {
-              setUseOverride(next);
-              if (!next) {
-                setDaysInput(String(defaultGracePeriodDays));
-                setError(null);
-              }
-            }}
-          >
-            Custom grace period for this store
-          </Switch>
-
-          {useOverride ? (
-            <Input
-              type="number"
-              label="Grace period (days)"
-              min={0}
-              max={30}
-              value={daysInput}
-              onValueChange={setDaysInput}
-              isInvalid={!!error}
-              errorMessage={error}
-              description="0–30 days after the due date"
-              className="max-w-40"
-            />
-          ) : null}
-
-          <div className="flex items-center gap-2">
-            {dirty ? (
-              <UiButton variant="ghost" onPress={onCancel}>
-                Cancel
-              </UiButton>
-            ) : null}
-            <UiButton variant="primary" isDisabled={!dirty} onPress={onSave}>
-              Save
-            </UiButton>
-          </div>
-        </div>
       </Card>
     </div>
   );

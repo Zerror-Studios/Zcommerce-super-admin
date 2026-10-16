@@ -5,6 +5,7 @@ import { Card, cx } from "../ui";
 export interface ClientUsageTabProps {
   client: Client;
   plan?: Plan;
+  className?: string;
 }
 
 interface UsageMetric {
@@ -22,7 +23,7 @@ function barClass(percent: number): string {
   return "bg-fg";
 }
 
-export function ClientUsageTab({ client, plan }: ClientUsageTabProps) {
+export function ClientUsageTab({ client, plan, className }: ClientUsageTabProps) {
   const limits = plan?.limits ?? {
     products: 25,
     storageGb: 1,
@@ -54,7 +55,7 @@ export function ClientUsageTab({ client, plan }: ClientUsageTabProps) {
   ];
 
   return (
-    <Card title="Plan usage" description={`Against the ${client.plan} plan limits`}>
+    <Card title="Plan usage" description={`Against the ${client.plan} plan limits`} className={className}>
       <div className="flex flex-col gap-4">
         {metrics.map((metric) => {
           const percent = Math.min(100, Math.round((metric.used / metric.limit) * 100));
