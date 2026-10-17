@@ -62,10 +62,10 @@ export const chartColors = {
 
 /** Fixed plan colors in both products (owner decision 2026-10-13: categorical palette instead of blue shades). */
 export const planColors: Record<string, string> = {
-  get Free() { return theme().categorical[3]; },
-  get Starter() { return theme().categorical[1]; },
-  get Pro() { return theme().categorical[0]; },
-  get Enterprise() { return theme().categorical[2]; },
+  get STARTER() { return theme().categorical[3]; },
+  get PREMIUM() { return theme().categorical[1]; },
+  get PLUS() { return theme().categorical[0]; },
+  get ENTERPRISE() { return theme().categorical[2]; },
 };
 
 export function planColor(plan: string): string {

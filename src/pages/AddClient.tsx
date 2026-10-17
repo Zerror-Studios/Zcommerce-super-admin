@@ -2,17 +2,18 @@ import { addToast } from "@heroui/react";
 import { toastError } from "../components/ui";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { ClientStatus, PlanName } from "../types";
+import { planNameEnum, type ClientStatus, type PlanName } from "../types";
+import { PLAN_LABELS, PLAN_NAMES } from "../lib/display-labels.util";
 import { PageHeader } from "../components/common/PageHeader";
 import { useClients } from "../providers/ClientsProvider";
 import { toasts } from "../copy";
 import { Button as UiButton, Card, Input, Select, SelectItem } from "../components/ui";
 
 const planMrr: Record<PlanName, number> = {
-  Free: 0,
-  Starter: 29,
-  Pro: 99,
-  Enterprise: 299,
+  STARTER: 0,
+  PREMIUM: 29,
+  PLUS: 99,
+  ENTERPRISE: 299,
 };
 
 /** Add store (docs/design/04-super-admin.md §3.3): 720px form, ghost Cancel + primary "Add store". */
@@ -22,7 +23,7 @@ export function AddClient() {
   const [storeName, setStoreName] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
-  const [plan, setPlan] = useState<PlanName>("Starter");
+  const [plan, setPlan] = useState<PlanName>(planNameEnum.PREMIUM);
   const [status, setStatus] = useState<ClientStatus>("trial");
 
   const handleCreate = () => {
@@ -106,21 +107,14 @@ export function AddClient() {
               selectedKeys={new Set([plan])}
               onSelectionChange={(keys) => {
                 const value = Array.from(keys)[0];
-                if (
-                  value === "Free" ||
-                  value === "Starter" ||
-                  value === "Pro" ||
-                  value === "Enterprise"
-                ) {
-                  setPlan(value);
-                }
+                const match = PLAN_NAMES.find((name) => name === value);
+                if (match) setPlan(match);
               }}
               disallowEmptySelection
             >
-              <SelectItem key="Free">Free</SelectItem>
-              <SelectItem key="Starter">Starter</SelectItem>
-              <SelectItem key="Pro">Pro</SelectItem>
-              <SelectItem key="Enterprise">Enterprise</SelectItem>
+              {PLAN_NAMES.map((name) => (
+                <SelectItem key={name}>{PLAN_LABELS[name]}</SelectItem>
+              ))}
             </Select>
             <Select
               label="Status"

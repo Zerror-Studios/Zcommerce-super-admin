@@ -8,7 +8,7 @@ const baseClient: Client = {
   storeName: "Test Store",
   ownerName: "Owner",
   ownerEmail: "o@test.com",
-  plan: "Pro",
+  plan: "PLUS",
   status: "active",
   mrr: 99,
   orders30d: 50,
@@ -37,8 +37,8 @@ describe("evaluateSubscriptionHealth", () => {
       id: "s1",
       clientId: "c1",
       clientName: "Test Store",
-      plan: "Pro",
-      status: "past_due",
+      plan: "PLUS",
+      status: "PAST_DUE",
       renewalDate: "2026-09-24",
       mrr: 0,
       amountDue: 99,
@@ -53,13 +53,13 @@ describe("evaluateSubscriptionHealth", () => {
     expect(result.reason).toBe("Payment overdue by 12 days");
   });
 
-  it("marks pending as at_risk", () => {
+  it("marks an unpaid renewal that is not yet due as at_risk", () => {
     const sub: Subscription = {
       id: "s1",
       clientId: "c1",
       clientName: "Test Store",
-      plan: "Starter",
-      status: "pending",
+      plan: "PREMIUM",
+      status: "ACTIVE",
       renewalDate: "2026-10-10",
       mrr: 29,
       amountDue: 29,
@@ -78,8 +78,8 @@ describe("evaluateSubscriptionHealth", () => {
       id: "s1",
       clientId: "c1",
       clientName: "Test Store",
-      plan: "Pro",
-      status: "active",
+      plan: "PLUS",
+      status: "ACTIVE",
       renewalDate: "2026-10-09",
       mrr: 99,
       amountDue: 0,
@@ -99,8 +99,8 @@ describe("evaluateSubscriptionHealth", () => {
       id: "s1",
       clientId: "c1",
       clientName: "Test Store",
-      plan: "Pro",
-      status: "active",
+      plan: "PLUS",
+      status: "ACTIVE",
       renewalDate: "2026-11-01",
       mrr: 99,
       amountDue: 0,
@@ -119,8 +119,8 @@ describe("evaluateSubscriptionHealth", () => {
       id: "s1",
       clientId: "c1",
       clientName: "Test Store",
-      plan: "Pro",
-      status: "active",
+      plan: "PLUS",
+      status: "ACTIVE",
       renewalDate: "2026-09-30",
       mrr: 99,
       amountDue: 99,
@@ -134,13 +134,97 @@ describe("evaluateSubscriptionHealth", () => {
     });
     expect(withoutOverride.bucket).toBe("unhealthy");
 
-    // Same overdue, but client promised to pay — 10-day grace → not unhealthy yet
+    // Same overdue, but client promised to pay — 10-day grace → at risk, in grace
     const withOverride = evaluateSubscriptionHealth({
       client: { ...baseClient, gracePeriodDays: 10 },
       subscription: sub,
       asOf,
       settings: DEFAULT_PLATFORM_SETTINGS,
     });
-    expect(withOverride.bucket).toBe("healthy");
+    expect(withOverride.bucket).toBe("at_risk");
+    expect(withOverride.isOverdueInGrace).toBe(true);
+  });
+
+  // PRD-002 SA-2: -grace <= daysUntilRenewal < 0 with money due is never healthy
+  describe("overdue in grace", () => {
+    const overdueSub = (renewalDate: string, amountDue = 99): Subscription => ({
+      id: "s1",
+      clientId: "c1",
+      clientName: "Test Store",
+      plan: "PLUS",
+      status: "ACTIVE",
+      renewalDate,
+      mrr: 99,
+      amountDue,
+    });
+
+    it("1 day overdue (grace 3) is at_risk with an in-grace reason", () => {
+      const result = evaluateSubscriptionHealth({
+        client: baseClient,
+        subscription: overdueSub("2026-10-05"),
+        asOf,
+      });
+      expect(result.bucket).toBe("at_risk");
+      expect(result.isOverdueInGrace).toBe(true);
+      expect(result.daysOverdue).toBe(1);
+      expect(result.reason).toBe("Overdue by 1 day · in grace period");
+    });
+
+    it("exactly at the grace boundary is still at_risk", () => {
+      const result = evaluateSubscriptionHealth({
+        client: baseClient,
+        subscription: overdueSub("2026-10-03"),
+        asOf,
+      });
+      expect(result.bucket).toBe("at_risk");
+      expect(result.daysOverdue).toBe(3);
+    });
+
+    it("one day past the grace boundary is unhealthy", () => {
+      const result = evaluateSubscriptionHealth({
+        client: baseClient,
+        subscription: overdueSub("2026-10-02"),
+        asOf,
+      });
+      expect(result.bucket).toBe("unhealthy");
+      expect(result.isOverdueInGrace).toBe(false);
+    });
+
+    it("a passed renewal with nothing due is not overdue in grace", () => {
+      const result = evaluateSubscriptionHealth({
+        client: baseClient,
+        subscription: overdueSub("2026-10-05", 0),
+        asOf,
+      });
+      expect(result.isOverdueInGrace).toBe(false);
+      expect(result.bucket).not.toBe("unhealthy");
+    });
+  });
+
+  it("marks a SUSPENDED subscription as unhealthy", () => {
+    const result = evaluateSubscriptionHealth({
+      client: baseClient,
+      subscription: {
+        id: "s1",
+        clientId: "c1",
+        clientName: "Test Store",
+        plan: "PLUS",
+        status: "SUSPENDED",
+        renewalDate: "2026-11-01",
+        mrr: 0,
+        amountDue: 0,
+      },
+      asOf,
+    });
+    expect(result.bucket).toBe("unhealthy");
+    expect(result.reason).toBe("Subscription suspended");
+  });
+
+  it("counts inactivity in whole UTC days", () => {
+    const result = evaluateSubscriptionHealth({
+      client: { ...baseClient, lastActive: "2026-10-05T23:59:00Z" },
+      asOf: new Date("2026-10-06T00:01:00Z"),
+    });
+    expect(result.daysSinceActive).toBe(1);
   });
 });

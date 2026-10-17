@@ -1,6 +1,7 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { getPlanLabel } from "../../lib/display-labels.util";
 import { clients } from "../../lib/mockData";
 import { SALES_DROP_ALERT_PERCENT, storeSalesByPlan, storeSalesRows, storeSalesSummary } from "../../lib/metrics";
 import { dataTableClassNames } from "../common/dataTableStyles";
@@ -92,7 +93,7 @@ export function StoreSalesTab() {
               <TableBody items={byPlan} emptyContent={noData}>
                 {(row) => (
                   <TableRow key={row.plan}>
-                    <TableCell className="font-medium">{row.plan}</TableCell>
+                    <TableCell className="font-medium">{getPlanLabel(row.plan)}</TableCell>
                     <TableCell><span className={right}>{formatMoney(row.sales, { whole: true })}</span></TableCell>
                     <TableCell><span className={right}>{formatPercent(row.sharePercent)}</span></TableCell>
                     <TableCell><span className={right}>{formatCount(row.orders)}</span></TableCell>
@@ -153,7 +154,7 @@ export function StoreSalesTab() {
                       <p className="truncate text-caption text-fg-subtle">{row.ownerEmail}</p>
                     </div>
                   </TableCell>
-                  <TableCell>{row.plan}</TableCell>
+                  <TableCell>{getPlanLabel(row.plan)}</TableCell>
                   <TableCell><span className={cx(right, "font-medium")}>{formatMoney(row.sales, { whole: true })}</span></TableCell>
                   <TableCell><Change value={row.changePercent} /></TableCell>
                   <TableCell><span className={right}>{formatCount(row.orders)}</span></TableCell>

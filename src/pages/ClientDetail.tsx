@@ -7,6 +7,7 @@ import { StoreActionDialog, type StoreAction } from "../components/clients/store
 import { logInToStore } from "../components/clients/storeLogin";
 import { PageHeader } from "../components/common/PageHeader";
 import { plans, subscriptions, transactions } from "../lib/mockData";
+import { findLatestSubscription } from "../lib/subscription-lookup.util";
 import { loadPlatformSettings } from "../lib/platformSettings";
 import { graceDaysFor, paymentState, storeLifecycle } from "../lib/storeStatus";
 import { useClients } from "../providers/ClientsProvider";
@@ -56,7 +57,7 @@ export function ClientDetail() {
   );
 
   const subscription = useMemo(
-    () => (client ? subscriptions.find((s) => s.clientId === client.id) : undefined),
+    () => (client ? findLatestSubscription(subscriptions, client.id) : undefined),
     [client],
   );
 

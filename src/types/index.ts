@@ -1,4 +1,14 @@
-export type PlanName = "Free" | "Starter" | "Pro" | "Enterprise";
+// PRD-002 SA-7: plan, subscription-status and gateway values mirror the
+// backend enums (plan.model.ts, subscription.model.ts, billing.model.ts).
+// Human-readable strings live in lib/display-labels.util.ts.
+export const planNameEnum = {
+  STARTER: "STARTER",
+  PREMIUM: "PREMIUM",
+  PLUS: "PLUS",
+  ENTERPRISE: "ENTERPRISE",
+} as const;
+
+export type PlanName = (typeof planNameEnum)[keyof typeof planNameEnum];
 
 export type ClientStatus = "active" | "trial" | "suspended";
 
@@ -12,25 +22,28 @@ export type UserStatus = "active" | "invited" | "disabled";
 
 export type TransactionStatus = "success" | "failed" | "refunded" | "pending";
 
-export type PaymentGateway = "Stripe" | "Razorpay";
+export const paymentGatewayEnum = {
+  NIMBBL: "NIMBBL",
+  RAZORPAY: "RAZORPAY",
+  STRIPE: "STRIPE",
+  MANUAL: "MANUAL",
+} as const;
+
+export type PaymentGateway =
+  (typeof paymentGatewayEnum)[keyof typeof paymentGatewayEnum];
+
+export const subscriptionStatusEnum = {
+  ACTIVE: "ACTIVE",
+  TRIAL: "TRIAL",
+  PAST_DUE: "PAST_DUE",
+  CANCELLED: "CANCELLED",
+  SUSPENDED: "SUSPENDED",
+} as const;
 
 export type SubscriptionStatus =
-  | "active"
-  | "past_due"
-  | "canceled"
-  | "trialing"
-  | "pending";
+  (typeof subscriptionStatusEnum)[keyof typeof subscriptionStatusEnum];
 
 export type SubscriptionHealthBucket = "healthy" | "at_risk" | "unhealthy";
-
-export type ActivityType =
-  | "signup"
-  | "upgrade"
-  | "downgrade"
-  | "cancellation"
-  | "failed_payment"
-  | "payout"
-  | "note";
 
 export type NotificationCategory = "All" | "Orders" | "Shipping" | "Analytics" | "Billing";
 
@@ -77,6 +90,7 @@ export interface Subscription {
   plan: PlanName;
   status: SubscriptionStatus;
   renewalDate: string;
+  /** Monthly-normalised price (yearly plans ÷ 12); the input to MRR. */
   mrr: number;
   amountDue: number;
   startedAt?: string;
@@ -94,16 +108,6 @@ export interface Transaction {
   date: string;
   dueDate?: string;
   transactionId: string;
-}
-
-export interface Payout {
-  id: string;
-  period: string;
-  amount: number;
-  commission: number;
-  status: "paid" | "pending" | "processing";
-  payoutDate: string;
-  gateway: PaymentGateway;
 }
 
 export interface Coupon {
@@ -126,23 +130,6 @@ export interface AdminUser {
   status: UserStatus;
   lastLogin: string;
   avatarInitials: string;
-}
-
-export interface AuditLog {
-  id: string;
-  adminName: string;
-  action: string;
-  target: string;
-  timestamp: string;
-  ipAddress: string;
-}
-
-export interface ActivityItem {
-  id: string;
-  type: ActivityType;
-  title: string;
-  description: string;
-  timestamp: string;
 }
 
 export interface Notification {

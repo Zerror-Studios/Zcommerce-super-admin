@@ -1,4 +1,5 @@
 import type { Client, Plan } from "../../types";
+import { getPlanLabel } from "../../lib/display-labels.util";
 import { formatNumber } from "../../lib/utils";
 import { Card, cx } from "../ui";
 
@@ -55,7 +56,7 @@ export function ClientUsageTab({ client, plan, className }: ClientUsageTabProps)
   ];
 
   return (
-    <Card title="Plan usage" description={`Against the ${client.plan} plan limits`} className={className}>
+    <Card title="Plan usage" description={`Against the ${getPlanLabel(client.plan)} plan limits`} className={className}>
       <div className="flex flex-col gap-4">
         {metrics.map((metric) => {
           const percent = Math.min(100, Math.round((metric.used / metric.limit) * 100));

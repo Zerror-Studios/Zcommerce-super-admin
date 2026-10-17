@@ -19,7 +19,8 @@ const txn = (clientId: string, amount: number, date: string, status: Transaction
 const sub = (clientId: string, status: Subscription["status"], renewalDate: string, amountDue = 0): Subscription =>
   ({ id: clientId, clientId, status, renewalDate, amountDue }) as Subscription;
 
-const NOW = new Date(2026, 9, 15); // 15 Oct 2026
+// An instant, like `new Date()` in the app; data dates are UTC (PRD-002 SA-5).
+const NOW = new Date("2026-10-15T12:00:00Z");
 
 describe("monthlyBilling", () => {
   it("sums monthly fees of every store except suspended ones", () => {
@@ -64,7 +65,7 @@ describe("outstanding / collectionRate", () => {
     const result = outstanding(
       {
         clients: [client("a", "active", 299), client("b", "active", 99), client("c", "active", 99)],
-        subscriptions: [sub("a", "past_due", "2026-10-03", 299), sub("b", "pending", "2026-10-20", 99), sub("c", "active", "2026-10-01", 0)],
+        subscriptions: [sub("a", "PAST_DUE", "2026-10-03", 299), sub("b", "ACTIVE", "2026-10-20", 99), sub("c", "ACTIVE", "2026-10-01", 0)],
         transactions: [],
       },
       NOW,
@@ -83,12 +84,12 @@ describe("store status", () => {
     expect(storeLifecycle(client("a", "suspended", 0)).tone).toBe("danger");
   });
   it("derives overdue with the suspension date from the grace period", () => {
-    const state = paymentState(sub("a", "past_due", "2026-10-12", 299), [], 7, NOW);
+    const state = paymentState(sub("a", "PAST_DUE", "2026-10-12", 299), [], 7, NOW);
     expect(state).toMatchObject({ label: "Overdue · 3 days", tone: "danger", detail: "Suspends on 19 Oct" });
   });
   it("shows due dates in the future and paid with the last payment date", () => {
-    expect(paymentState(sub("a", "pending", "2026-10-20", 99), [], 3, NOW).label).toBe("Due 20 Oct");
-    expect(paymentState(sub("a", "active", "2026-11-02"), [txn("a", 299, "2026-10-02T10:00:00Z")], 3, NOW).label).toBe(
+    expect(paymentState(sub("a", "ACTIVE", "2026-10-20", 99), [], 3, NOW).label).toBe("Due 20 Oct");
+    expect(paymentState(sub("a", "ACTIVE", "2026-11-02"), [txn("a", 299, "2026-10-02T10:00:00Z")], 3, NOW).label).toBe(
       "Paid · 2 Oct",
     );
   });

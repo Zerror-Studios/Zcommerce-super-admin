@@ -1,4 +1,9 @@
-import type { Client, Subscription } from "../types";
+import {
+  subscriptionStatusEnum,
+  type Client,
+  type Subscription,
+} from "../types";
+import { daysBetween } from "./utils";
 
 export interface StoreHealthResult {
   score: number;
@@ -57,28 +62,32 @@ export function getStoreHealth(
 
   // Billing / payment gateway health (0–20)
   const subStatus = subscription?.status;
-  if (subStatus === "active") {
-    score += 20;
-    factors.push("Payments healthy");
-  } else if (subStatus === "trialing") {
-    score += 12;
-    factors.push("Trial billing");
-  } else if (subStatus === "pending") {
+  if (
+    subStatus === subscriptionStatusEnum.ACTIVE &&
+    (subscription?.amountDue ?? 0) > 0
+  ) {
     score += 8;
     factors.push("Payment pending");
-  } else if (subStatus === "past_due") {
+  } else if (subStatus === subscriptionStatusEnum.ACTIVE) {
+    score += 20;
+    factors.push("Payments healthy");
+  } else if (subStatus === subscriptionStatusEnum.TRIAL) {
+    score += 12;
+    factors.push("Trial billing");
+  } else if (subStatus === subscriptionStatusEnum.PAST_DUE) {
     score += 3;
     factors.push("Payment issues");
-  } else if (subStatus === "canceled") {
+  } else if (subStatus === subscriptionStatusEnum.CANCELLED) {
     factors.push("Subscription cancelled");
+  } else if (subStatus === subscriptionStatusEnum.SUSPENDED) {
+    factors.push("Subscription suspended");
   } else if (client.status === "active") {
     score += 14;
     factors.push("Billing OK");
   }
 
   // Recent activity (0–15)
-  const lastActiveMs = Date.now() - new Date(client.lastActive).getTime();
-  const daysSinceActive = lastActiveMs / (1000 * 60 * 60 * 24);
+  const daysSinceActive = daysBetween(new Date(client.lastActive), new Date());
   if (daysSinceActive <= 2) {
     score += 15;
     factors.push("Recently active");

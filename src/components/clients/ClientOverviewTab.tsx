@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import type { ReactNode } from "react";
 import type { Client, Plan, Subscription } from "../../types";
+import { getPlanLabel } from "../../lib/display-labels.util";
 import { getStoreHealth } from "../../lib/storeHealth";
 import { formatDate } from "../../lib/utils";
 import { areaGradientStops, chartColors, recharts } from "../ui/chart-theme";
@@ -117,7 +118,7 @@ export function ClientOverviewTab({ client, subscription, plan }: ClientOverview
               value={health.score}
               deltaLabel={getHealthBand(health.score).label}
             />
-            <StatCard bare label="Monthly fee" value={client.mrr} format="money" deltaLabel={`${client.plan} plan`} />
+            <StatCard bare label="Monthly fee" value={client.mrr} format="money" deltaLabel={`${getPlanLabel(client.plan)} plan`} />
           </KpiStrip>
 
           {insight ? (
@@ -196,7 +197,7 @@ export function ClientOverviewTab({ client, subscription, plan }: ClientOverview
                   {client.ownerEmail}
                 </a>
               </ProfileRow>
-              <ProfileRow label="Plan">{subscription?.plan ?? client.plan}</ProfileRow>
+              <ProfileRow label="Plan">{getPlanLabel(subscription?.plan ?? client.plan)}</ProfileRow>
               <ProfileRow label="Joined">{formatDate(client.joinedDate)}</ProfileRow>
               <ProfileRow label="Renewal">
                 {subscription?.renewalDate ? formatDate(subscription.renewalDate) : <span className="text-fg-subtle">—</span>}

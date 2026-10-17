@@ -3,6 +3,7 @@ import { differenceInCalendarDays, endOfDay, startOfDay, startOfMonth, subDays }
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { PlanName, SubscriptionHealthBucket } from "../../types";
+import { getPlanLabel, PLAN_NAMES } from "../../lib/display-labels.util";
 import { clients, subscriptions, transactions } from "../../lib/mockData";
 import { collectionRate, earnedIn } from "../../lib/metrics";
 import { loadPlatformSettings } from "../../lib/platformSettings";
@@ -113,6 +114,7 @@ const drillLabels: Record<ReportDrillFilter, string> = {
   paid_month: "Paid in this period",
   pending: "Payment due",
   overdue: "Overdue",
+  overdue_grace: "Overdue, in grace period",
   renewals_7: "Renews within 7 days",
   renewals_30: "Renews within 30 days",
   churned_month: "Cancelled",
@@ -121,11 +123,11 @@ const drillLabels: Record<ReportDrillFilter, string> = {
 };
 
 const drillOptions: Record<TableView, ReportDrillFilter[]> = {
-  shops: ["all", "pending", "overdue", "renewals_7", "renewals_30", "churned_month"],
+  shops: ["all", "pending", "overdue", "overdue_grace", "renewals_7", "renewals_30", "churned_month"],
   payments: ["all", "paid_month", "pending", "overdue"],
 };
 
-const planOptions = ["all", "Free", "Starter", "Pro", "Enterprise"] as const;
+const planOptions = ["all", ...PLAN_NAMES] as const;
 
 function isDrill(value: string | null): value is ReportDrillFilter {
   return value != null && value in drillLabels;
@@ -294,6 +296,7 @@ export function SubscriptionReportsTab() {
       const csv = rowsToCsv(
         shopRows.map((r) => ({
           ...r,
+          plan: getPlanLabel(r.plan),
           health: healthDisplay[r.health].label,
           lastPaymentDate: r.lastPaymentDate ? formatDate(r.lastPaymentDate) : "",
           nextDueDate: r.nextDueDate ? formatDate(r.nextDueDate) : "",
@@ -305,6 +308,7 @@ export function SubscriptionReportsTab() {
       const csv = rowsToCsv(
         paymentRows.map((r) => ({
           ...r,
+          plan: getPlanLabel(r.plan),
           dueDate: r.dueDate ? formatDate(r.dueDate) : "",
           paidDate: r.paidDate ? formatDate(r.paidDate) : "",
         })),
@@ -359,7 +363,7 @@ export function SubscriptionReportsTab() {
       case "plan":
         return (
           <div className="whitespace-nowrap">
-            <p className="text-fg">{row.plan}</p>
+            <p className="text-fg">{getPlanLabel(row.plan)}</p>
             <p className="text-caption text-fg-subtle num">
               {row.mrr > 0 ? `${formatMoney(row.mrr, { whole: true })} / month` : "No fee"}
             </p>
@@ -384,7 +388,7 @@ export function SubscriptionReportsTab() {
         const display = healthDisplay[row.health];
         return (
           <Chip tone={display.tone} title={row.healthReason}>
-            {display.label}
+            {row.isOverdueInGrace ? `${display.label} · in grace` : display.label}
           </Chip>
         );
       }
@@ -559,7 +563,7 @@ export function SubscriptionReportsTab() {
                   disallowEmptySelection
                 >
                   {planOptions.map((p) => (
-                    <SelectItem key={p}>{p === "all" ? "All plans" : p}</SelectItem>
+                    <SelectItem key={p}>{p === "all" ? "All plans" : getPlanLabel(p)}</SelectItem>
                   ))}
                 </Select>
                 {tableView === "shops" ? (

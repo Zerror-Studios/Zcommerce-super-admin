@@ -1,32 +1,51 @@
-# React + TypeScript + Vite
+# zcom-super-admin — ZCommerce platform console
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+This is Zerror Studios' internal console for running the ZCommerce platform. It covers **client stores** (tenants), plans and subscriptions, billing and transactions, revenue analytics, coupons, and renewal automation. Tenant store staff use `../zcom-frontend` instead.
 
-Currently, two official plugins are available:
+> **Status: UI prototype.** All data comes from `src/lib/mockData.ts`, and sign-in accepts any credentials. The backend doesn't yet have a platform (cross-tenant) API, so connecting this app is a planned cross-repo T1 PRD.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+> Working here with Claude Code or as a new engineer? Read [`CLAUDE.md`](CLAUDE.md) first, then [`docs/README.md`](docs/README.md). UI work follows the design spec in [`docs/design/`](docs/design/README.md).
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Vite 8, React 19 and TypeScript 6 (strict), with react-router-dom 7.
+- HeroUI 2.8 with Tailwind CSS 4, themed by the design tokens in `src/styles/tokens.css` (Geist); HeroUI plugin in `hero.ts`.
+- recharts, lucide-react, vitest and oxlint.
 
-## Expanding the Oxlint configuration
+## Getting started
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm ci
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+No environment variables are needed yet.
+
+## Scripts
+
+| Task | Command |
+|---|---|
+| Dev | `npm run dev` |
+| Build (typechecks) | `npm run build` |
+| Lint | `npm run lint` (oxlint); `npm run lint:hex` flags hard-coded colours |
+| Tests | `npm test` / `npm run test:watch` (vitest; covers the `src/lib` report logic) |
+| Preview | `npm run preview` |
+
+## Structure
+
+- `src/App.tsx`: routes.
+- `src/pages/`: Home, Clients (`/stores`), ClientDetail, AddClient, Billing, Analytics, Settings, SignIn, NotFound.
+- `src/components/ui/`: the shared UI kit (see `docs/design/02-components.md`); `src/components/layout/`: shell, sidebar, command palette.
+- `src/components/common/`: older table and modal kits still in use.
+- `src/lib/`: pure, tested domain logic and the mock data.
+- `src/types/`: entity types.
+
+## Deployment
+
+Deployed on Vercel. `vercel.json` adds the SPA rewrite. Only deploy when someone explicitly asks you to.
+
+## Contributing
+
+- **Tiered PRD-first workflow.** T1 changes need an approved PRD in `docs/prd/`; T2 changes need a changelog line.
+- **Keep docs current.** Update this README and `CLAUDE.md` in the same change.
+- **Commit style.** Conventional Commits.

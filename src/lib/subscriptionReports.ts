@@ -1,23 +1,30 @@
 import {
-  differenceInCalendarDays,
-  endOfDay,
-  startOfDay,
-  subDays,
-} from "date-fns";
-import type {
-  Client,
-  PlanName,
-  PlatformSettings,
-  Subscription,
-  SubscriptionHealthBucket,
-  Transaction,
+  planNameEnum,
+  subscriptionStatusEnum,
+  type Client,
+  type PlanName,
+  type PlatformSettings,
+  type Subscription,
+  type SubscriptionHealthBucket,
+  type Transaction,
 } from "../types";
 import {
   evaluateSubscriptionHealth,
   type SubscriptionHealthResult,
 } from "./subscriptionHealth";
 import { DEFAULT_PLATFORM_SETTINGS } from "./platformSettings";
-import { daysUntil } from "./utils";
+import { latestSubscriptionByClient } from "./subscription-lookup.util";
+import {
+  MS_PER_DAY,
+  calendarDayEndUtc,
+  calendarDayStartUtc,
+  calendarMonthBoundsUtc,
+  calendarMonthOf,
+  daysBetween,
+  daysUntil,
+  utcDayStart,
+  utcMonthBounds,
+} from "./utils";
 
 export type ReportDrillFilter =
   | "all"
@@ -27,6 +34,7 @@ export type ReportDrillFilter =
   | "paid_month"
   | "pending"
   | "overdue"
+  | "overdue_grace"
   | "renewals_7"
   | "renewals_30"
   | "churned_month"
@@ -38,11 +46,11 @@ export interface ReportQueryInput {
   subscriptions: Subscription[];
   transactions: Transaction[];
   asOf?: Date;
-  /** Inclusive range start (preferred over `month`). */
+  /** Inclusive range start, a UI picker value (local fields); preferred over `month`. */
   rangeStart?: Date;
-  /** Inclusive range end (preferred over `month`). */
+  /** Inclusive range end, a UI picker value (local fields); preferred over `month`. */
   rangeEnd?: Date;
-  /** @deprecated Prefer rangeStart/rangeEnd. First day of month under review. */
+  /** @deprecated Prefer rangeStart/rangeEnd. Calendar month under review (local fields, day 1). */
   month?: Date;
   settings?: PlatformSettings;
   drill?: ReportDrillFilter;
@@ -66,6 +74,7 @@ export interface ShopReportRow {
   nextDueDate: string | null;
   amountDue: number;
   daysOverdue: number;
+  isOverdueInGrace: boolean;
   mrr: number;
 }
 
@@ -101,6 +110,8 @@ export interface SubscriptionReportOverview {
   healthyCount: number;
   atRiskCount: number;
   unhealthyCount: number;
+  /** At-risk shops whose renewal passed unpaid but are still in grace. */
+  overdueInGraceCount: number;
   paidThisMonth: { count: number; amount: number };
   pendingPayments: { count: number; amount: number };
   overduePayments: { count: number; amount: number };
@@ -114,30 +125,40 @@ export interface SubscriptionReportOverview {
   previousMonth: MonthSnapshot;
 }
 
-function monthBounds(month: Date): { start: Date; end: Date } {
-  const start = new Date(month.getFullYear(), month.getMonth(), 1);
-  const end = new Date(month.getFullYear(), month.getMonth() + 1, 0, 23, 59, 59, 999);
-  return { start, end };
-}
-
+/**
+ * UTC bounds of the period under review (PRD-002 SA-5): an explicit range
+ * when the UI passes one, else the calendar month (`month`, or `asOf`'s).
+ */
 function resolveRange(
   input: Pick<ReportQueryInput, "rangeStart" | "rangeEnd" | "month" | "asOf">,
 ): { start: Date; end: Date } {
   if (input.rangeStart && input.rangeEnd) {
     return {
-      start: startOfDay(input.rangeStart),
-      end: endOfDay(input.rangeEnd),
+      start: calendarDayStartUtc(input.rangeStart),
+      end: calendarDayEndUtc(input.rangeEnd),
     };
   }
   const asOf = input.asOf ?? new Date();
-  const month = input.month ?? new Date(asOf.getFullYear(), asOf.getMonth(), 1);
-  return monthBounds(month);
+  return calendarMonthBoundsUtc(input.month ?? calendarMonthOf(asOf));
 }
 
+/**
+ * The period before `start`..`end`: the previous calendar month for a whole
+ * month, else the same number of whole UTC days ending the day before `start`.
+ */
 function previousPeriod(start: Date, end: Date): { start: Date; end: Date } {
-  const length = differenceInCalendarDays(end, start) + 1;
-  const prevEnd = endOfDay(subDays(start, 1));
-  const prevStart = startOfDay(subDays(prevEnd, length - 1));
+  const year = start.getUTCFullYear();
+  const month = start.getUTCMonth() + 1;
+  const isWholeMonth =
+    start.getUTCDate() === 1 &&
+    utcMonthBounds(year, month).end.getTime() === end.getTime();
+  if (isWholeMonth) return utcMonthBounds(year, month - 1);
+
+  const lengthDays = daysBetween(start, end) + 1;
+  const prevEnd = new Date(start.getTime() - 1);
+  const prevStart = new Date(
+    utcDayStart(prevEnd).getTime() - (lengthDays - 1) * MS_PER_DAY,
+  );
   return { start: prevStart, end: prevEnd };
 }
 
@@ -185,7 +206,7 @@ export function buildShopReportRows(
     health = "all",
   } = input;
 
-  const byClient = new Map(subscriptions.map((s) => [s.clientId, s]));
+  const byClient = latestSubscriptionByClient(subscriptions);
   const q = search.trim().toLowerCase();
 
   return clients
@@ -212,6 +233,7 @@ export function buildShopReportRows(
         nextDueDate: sub?.renewalDate ?? null,
         amountDue: sub?.amountDue ?? 0,
         daysOverdue: healthResult.daysOverdue,
+        isOverdueInGrace: healthResult.isOverdueInGrace,
         mrr: sub?.mrr ?? client.mrr,
       } satisfies ShopReportRow;
     })
@@ -241,7 +263,7 @@ export function buildPaymentReportRows(
   } = input;
 
   const clientById = new Map(clients.map((c) => [c.id, c]));
-  const subByClient = new Map(subscriptions.map((s) => [s.clientId, s]));
+  const subByClient = latestSubscriptionByClient(subscriptions);
   const q = search.trim().toLowerCase();
 
   const fromTxns: PaymentReportRow[] = transactions.map((txn) => {
@@ -252,7 +274,7 @@ export function buildPaymentReportRows(
       clientId: txn.clientId,
       shopName: txn.clientName,
       ownerEmail: client?.ownerEmail ?? "—",
-      plan: sub?.plan ?? client?.plan ?? "Free",
+      plan: sub?.plan ?? client?.plan ?? planNameEnum.STARTER,
       amount: txn.amount,
       currency: txn.currency,
       dueDate: txn.dueDate ?? null,
@@ -264,8 +286,12 @@ export function buildPaymentReportRows(
   });
 
   // Synthetic pending/overdue rows from subscriptions without a matching pending txn
-  const pendingSubRows: PaymentReportRow[] = subscriptions
-    .filter((s) => s.amountDue > 0 && (s.status === "pending" || s.status === "past_due"))
+  const pendingSubRows: PaymentReportRow[] = Array.from(subByClient.values())
+    .filter(
+      (s) =>
+        s.amountDue > 0 &&
+        s.status !== subscriptionStatusEnum.CANCELLED,
+    )
     .filter((s) => !transactions.some((t) => t.clientId === s.clientId && t.status === "pending"))
     .map((s) => {
       const client = clientById.get(s.clientId);
@@ -279,7 +305,10 @@ export function buildPaymentReportRows(
         currency: "INR",
         dueDate: s.renewalDate,
         paidDate: null,
-        status: (s.status === "past_due" ? "overdue" : "pending") as PaymentReportRow["status"],
+        status: (s.status === subscriptionStatusEnum.PAST_DUE ||
+        daysUntil(s.renewalDate, asOf) < 0
+          ? "overdue"
+          : "pending") as PaymentReportRow["status"],
         paymentMethod: "—",
         transactionId: "—",
       };
@@ -293,53 +322,65 @@ export function buildPaymentReportRows(
   });
 }
 
+/**
+ * PRD-002 SA-3: a period is judged from its own rows — payments due in it,
+ * as they stood at its end (or at `asOf` for a running period) — never from
+ * today's subscription state.
+ */
 function periodSnapshot(
   input: ReportQueryInput,
+  payments: PaymentReportRow[],
   start: Date,
   end: Date,
+  asOf: Date,
 ): MonthSnapshot {
+  const cutoff = new Date(Math.min(end.getTime(), asOf.getTime()));
   const { subscriptions, transactions } = input;
+  const subByClient = latestSubscriptionByClient(subscriptions);
 
+  // 1. Cash collected inside the month
   const success = transactions.filter(
-    (t) => t.status === "success" && inRange(t.date, start, end),
+    (t) => t.status === "success" && inRange(t.date, start, cutoff),
   );
   const collectedAmount = success.reduce((sum, t) => sum + t.amount, 0);
 
-  const pendingSubs = subscriptions.filter(
-    (s) => s.status === "pending" && s.amountDue > 0,
+  // 2. What fell due in the month, and what was still unpaid at its cutoff
+  const dueRows = payments.filter(
+    (p) =>
+      inRange(p.dueDate, start, end) &&
+      (p.status === "paid" || p.status === "pending" || p.status === "overdue"),
   );
-  const overdueSubs = subscriptions.filter(
-    (s) => s.status === "past_due" && s.amountDue > 0,
+  const outstanding = dueRows.filter(
+    (p) => !p.paidDate || new Date(p.paidDate).getTime() > cutoff.getTime(),
   );
-
-  const pendingAmount =
-    pendingSubs.reduce((s, x) => s + x.amountDue, 0) +
-    overdueSubs.reduce((s, x) => s + x.amountDue, 0);
+  const pendingAmount = outstanding.reduce((sum, p) => sum + p.amount, 0);
 
   const expectedAmount =
-    subscriptions
-      .filter((s) => s.status !== "canceled" && s.mrr > 0)
-      .reduce((sum, s) => sum + s.mrr, 0) || collectedAmount + pendingAmount;
+    dueRows.reduce((sum, p) => sum + p.amount, 0) ||
+    collectedAmount + pendingAmount;
 
   const newSubscriptions = subscriptions.filter((s) =>
-    inRange(s.startedAt, start, end),
+    inRange(s.startedAt, start, cutoff),
   ).length;
 
   const renewals = success.filter((t) => {
-    const sub = subscriptions.find((s) => s.clientId === t.clientId);
+    const sub = subByClient.get(t.clientId);
     return sub?.startedAt ? !inRange(sub.startedAt, start, end) : true;
   }).length;
 
   const cancellations = subscriptions.filter((s) =>
-    inRange(s.canceledAt ?? (s.status === "canceled" ? s.renewalDate : null), start, end),
+    inRange(
+      s.canceledAt ??
+        (s.status === subscriptionStatusEnum.CANCELLED ? s.renewalDate : null),
+      start,
+      cutoff,
+    ),
   ).length;
-
-  const pendingCount = pendingSubs.length + overdueSubs.length;
 
   return {
     collectedCount: success.length,
     collectedAmount,
-    pendingCount,
+    pendingCount: outstanding.length,
     pendingAmount,
     expectedAmount,
     collectedPercent:
@@ -363,8 +404,10 @@ export function buildSubscriptionReportOverview(
   const pendingPayments = applyDrillToPayments(payments, "pending", start, end, asOf);
   const overduePayments = applyDrillToPayments(payments, "overdue", start, end, asOf);
 
-  const expectedRevenue = input.subscriptions
-    .filter((s) => s.status !== "canceled" && s.mrr > 0)
+  const expectedRevenue = Array.from(
+    latestSubscriptionByClient(input.subscriptions).values(),
+  )
+    .filter((s) => s.status !== subscriptionStatusEnum.CANCELLED && s.mrr > 0)
     .reduce((sum, s) => sum + s.mrr, 0);
   const collectedRevenue = paidMonthPayments.reduce((sum, t) => sum + t.amount, 0);
 
@@ -373,6 +416,7 @@ export function buildSubscriptionReportOverview(
     healthyCount: shops.filter((s) => s.health === "healthy").length,
     atRiskCount: shops.filter((s) => s.health === "at_risk").length,
     unhealthyCount: shops.filter((s) => s.health === "unhealthy").length,
+    overdueInGraceCount: shops.filter((s) => s.isOverdueInGrace).length,
     paidThisMonth: {
       count: paidMonthPayments.length,
       amount: collectedRevenue,
@@ -395,13 +439,16 @@ export function buildSubscriptionReportOverview(
     renewals30: applyDrillToShops(shops, "renewals_30", asOf).length,
     churnedThisMonth: input.subscriptions.filter((s) =>
       inRange(
-        s.canceledAt ?? (s.status === "canceled" ? s.renewalDate : null),
+        s.canceledAt ??
+          (s.status === subscriptionStatusEnum.CANCELLED
+            ? s.renewalDate
+            : null),
         start,
         end,
       ),
     ).length,
-    currentMonth: periodSnapshot(input, start, end),
-    previousMonth: periodSnapshot(input, prev.start, prev.end),
+    currentMonth: periodSnapshot(input, payments, start, end, asOf),
+    previousMonth: periodSnapshot(input, payments, prev.start, prev.end, asOf),
   };
 }
 
@@ -420,16 +467,27 @@ export function applyDrillToShops(
     case "unhealthy":
       return shops.filter((s) => s.health === "unhealthy");
     case "pending":
-      return shops.filter((s) => s.subscriptionStatus === "pending");
+      return shops.filter(
+        (s) =>
+          s.amountDue > 0 &&
+          s.daysOverdue === 0 &&
+          s.subscriptionStatus === subscriptionStatusEnum.ACTIVE,
+      );
     case "overdue":
-      return shops.filter((s) => s.subscriptionStatus === "past_due" || s.daysOverdue > 0);
+      return shops.filter(
+        (s) =>
+          s.subscriptionStatus === subscriptionStatusEnum.PAST_DUE ||
+          s.daysOverdue > 0,
+      );
+    case "overdue_grace":
+      return shops.filter((s) => s.isOverdueInGrace);
     case "renewals_7":
       return shops.filter(
         (s) =>
           s.nextDueDate &&
           daysUntil(s.nextDueDate, asOf) >= 0 &&
           daysUntil(s.nextDueDate, asOf) <= 7 &&
-          s.subscriptionStatus !== "canceled",
+          s.subscriptionStatus !== subscriptionStatusEnum.CANCELLED,
       );
     case "renewals_30":
       return shops.filter(
@@ -437,10 +495,12 @@ export function applyDrillToShops(
           s.nextDueDate &&
           daysUntil(s.nextDueDate, asOf) >= 0 &&
           daysUntil(s.nextDueDate, asOf) <= 30 &&
-          s.subscriptionStatus !== "canceled",
+          s.subscriptionStatus !== subscriptionStatusEnum.CANCELLED,
       );
     case "churned_month":
-      return shops.filter((s) => s.subscriptionStatus === "canceled");
+      return shops.filter(
+        (s) => s.subscriptionStatus === subscriptionStatusEnum.CANCELLED,
+      );
     case "paid_month":
     case "expected":
     case "new_month":
@@ -457,11 +517,7 @@ export function applyDrillToPayments(
   rangeEnd?: Date,
   asOf: Date = new Date(),
 ): PaymentReportRow[] {
-  const { start, end } = resolveRange({
-    rangeStart,
-    rangeEnd,
-    asOf,
-  });
+  const { start, end } = resolveRange({ rangeStart, rangeEnd, asOf });
 
   switch (drill) {
     case "paid_month":
@@ -477,15 +533,32 @@ export function applyDrillToPayments(
   }
 }
 
+// ─── CSV export (PRD-002 SA-6) ────────────────────────────────────────────
+
+/** Cells starting with these are read as formulas by spreadsheet apps. */
+const CSV_FORMULA_PREFIX = /^[=+\-@\t\r]/;
+
+/** Delay before revoking a download URL, so the browser can start it. */
+export const CSV_REVOKE_DELAY_MS = 1000;
+
+/** Neutralise formula injection, then quote per RFC 4180 when needed. */
+export function escapeCsvCell(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  let cell = String(value);
+  if (CSV_FORMULA_PREFIX.test(cell)) cell = `'${cell}`;
+  if (/[",\n\r]/.test(cell)) return `"${cell.replace(/"/g, '""')}"`;
+
+  return cell;
+}
+
 export function rowsToCsv(rows: Record<string, unknown>[], columns: { key: string; label: string }[]): string {
-  const escape = (v: unknown) => {
-    const s = v == null ? "" : String(v);
-    if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-    return s;
-  };
-  const header = columns.map((c) => escape(c.label)).join(",");
+  const header = columns.map((c) => escapeCsvCell(c.label)).join(",");
   const body = rows
-    .map((row) => columns.map((c) => escape(row[c.key])).join(","))
+    .map((row) => columns.map((c) => escapeCsvCell(row[c.key])).join(","))
     .join("\n");
   return `${header}\n${body}`;
 }
@@ -497,5 +570,6 @@ export function downloadCsv(filename: string, csv: string): void {
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  // Revoking synchronously can cancel the download in some browsers.
+  setTimeout(() => URL.revokeObjectURL(url), CSV_REVOKE_DELAY_MS);
 }

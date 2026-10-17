@@ -1,11 +1,12 @@
-import type {
-  Client,
-  PlatformSettings,
-  Subscription,
-  SubscriptionHealthBucket,
+import {
+  subscriptionStatusEnum,
+  type Client,
+  type PlatformSettings,
+  type Subscription,
+  type SubscriptionHealthBucket,
 } from "../types";
 import { formatMoney } from "../components/ui/money";
-import { daysUntil } from "./utils";
+import { daysBetween, daysUntil } from "./utils";
 import { DEFAULT_PLATFORM_SETTINGS } from "./platformSettings";
 
 export interface SubscriptionHealthResult {
@@ -14,6 +15,8 @@ export interface SubscriptionHealthResult {
   daysOverdue: number;
   daysUntilRenewal: number;
   daysSinceActive: number;
+  /** PRD-002 SA-2: renewal passed with money due, still inside grace. */
+  isOverdueInGrace: boolean;
 }
 
 export interface HealthInput {
@@ -23,13 +26,11 @@ export interface HealthInput {
   settings?: Pick<PlatformSettings, "health" | "gracePeriodDays">;
 }
 
-function startOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
 /**
  * Subscription-ops health for Reports.
  * Priority: Unhealthy > At risk > Healthy.
+ * An unpaid renewal inside the grace period is "At risk" (overdue in grace);
+ * past the grace period it is "Unhealthy".
  */
 export function evaluateSubscriptionHealth({
   client,
@@ -43,10 +44,7 @@ export function evaluateSubscriptionHealth({
 
   const daysSinceActive = Math.max(
     0,
-    Math.floor(
-      (startOfDay(asOf).getTime() - startOfDay(new Date(client.lastActive)).getTime()) /
-        (1000 * 60 * 60 * 24),
-    ),
+    daysBetween(new Date(client.lastActive), asOf),
   );
 
   const renewalDate = subscription?.renewalDate;
@@ -58,27 +56,35 @@ export function evaluateSubscriptionHealth({
   const amountDue = subscription?.amountDue ?? 0;
 
   // --- Unhealthy ---
-  if (client.status === "suspended") {
+  if (
+    client.status === "suspended" ||
+    subStatus === subscriptionStatusEnum.SUSPENDED
+  ) {
     return {
       bucket: "unhealthy",
-      reason: "Account suspended",
+      reason:
+        client.status === "suspended"
+          ? "Account suspended"
+          : "Subscription suspended",
       daysOverdue,
       daysUntilRenewal: Number.isFinite(daysUntilRenewal) ? daysUntilRenewal : 0,
       daysSinceActive,
+      isOverdueInGrace: false,
     };
   }
 
-  if (subStatus === "canceled") {
+  if (subStatus === subscriptionStatusEnum.CANCELLED) {
     return {
       bucket: "unhealthy",
       reason: "Subscription cancelled",
       daysOverdue,
       daysUntilRenewal: Number.isFinite(daysUntilRenewal) ? daysUntilRenewal : 0,
       daysSinceActive,
+      isOverdueInGrace: false,
     };
   }
 
-  if (subStatus === "past_due") {
+  if (subStatus === subscriptionStatusEnum.PAST_DUE) {
     return {
       bucket: "unhealthy",
       reason:
@@ -88,6 +94,7 @@ export function evaluateSubscriptionHealth({
       daysOverdue,
       daysUntilRenewal: Number.isFinite(daysUntilRenewal) ? daysUntilRenewal : 0,
       daysSinceActive,
+      isOverdueInGrace: false,
     };
   }
 
@@ -102,20 +109,33 @@ export function evaluateSubscriptionHealth({
       daysOverdue,
       daysUntilRenewal,
       daysSinceActive,
+      isOverdueInGrace: false,
     };
   }
 
   // --- At risk ---
-  if (subStatus === "pending") {
+  // PRD-002 SA-2: -grace <= daysUntilRenewal < 0 with money due.
+  if (renewalDate && daysUntilRenewal < 0 && amountDue > 0) {
     return {
       bucket: "at_risk",
-      reason:
-        amountDue > 0
-          ? `Payment pending (${formatMoney(amountDue, { whole: true })})`
-          : "Payment pending",
+      reason: `Overdue by ${daysOverdue} day${daysOverdue === 1 ? "" : "s"} · in grace period`,
+      daysOverdue,
+      daysUntilRenewal,
+      daysSinceActive,
+      isOverdueInGrace: true,
+    };
+  }
+
+  // Money due on a renewal that hasn't passed yet (backend has no
+  // PENDING subscription status; an unpaid ACTIVE renewal is "pending").
+  if (amountDue > 0) {
+    return {
+      bucket: "at_risk",
+      reason: `Payment pending (${formatMoney(amountDue, { whole: true })})`,
       daysOverdue,
       daysUntilRenewal: Number.isFinite(daysUntilRenewal) ? daysUntilRenewal : 0,
       daysSinceActive,
+      isOverdueInGrace: false,
     };
   }
 
@@ -133,6 +153,7 @@ export function evaluateSubscriptionHealth({
       daysOverdue: 0,
       daysUntilRenewal,
       daysSinceActive,
+      isOverdueInGrace: false,
     };
   }
 
@@ -146,6 +167,7 @@ export function evaluateSubscriptionHealth({
       daysOverdue,
       daysUntilRenewal: Number.isFinite(daysUntilRenewal) ? daysUntilRenewal : 0,
       daysSinceActive,
+      isOverdueInGrace: false,
     };
   }
 
@@ -156,5 +178,6 @@ export function evaluateSubscriptionHealth({
     daysOverdue: 0,
     daysUntilRenewal: Number.isFinite(daysUntilRenewal) ? daysUntilRenewal : 0,
     daysSinceActive,
+    isOverdueInGrace: false,
   };
 }

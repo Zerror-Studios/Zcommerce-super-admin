@@ -125,11 +125,13 @@ export const STATUS_MAP: Record<StatusDomain, Record<string, StatusInfo>> = {
   },
   plan: {
     active: s("Active", "success"),
+    trial: s("Trial", "info"), // added: Super Admin subscriptions (backend TRIAL)
     trialing: s("Trial", "info"),
     expiring_soon: s("Expiring soon", "warning"),
     pending: s("Pending", "warning"), // added: Super Admin subscriptions
     past_due: s("Overdue", "danger"),
     expired: s("Expired", "danger"),
+    suspended: s("Suspended", "danger"), // added: Super Admin subscriptions (backend SUSPENDED)
     cancelled: s("Cancelled", "danger"),
     canceled: s("Cancelled", "danger"), // added: US spelling
   },

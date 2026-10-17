@@ -1,7 +1,8 @@
 import { addToast, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type Selection } from "@heroui/react";
 import { toastError } from "../ui";
 import { useMemo, useState } from "react";
-import type { Client, Subscription } from "../../types";
+import { subscriptionStatusEnum, type Client, type Subscription } from "../../types";
+import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { subscriptions } from "../../lib/mockData";
 import { selectionToIdSet } from "../../lib/tableSelection";
 import { daysUntil, formatDate } from "../../lib/utils";
@@ -62,17 +63,13 @@ export function AutomationSettingsTab() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  const subscriptionByClientId = useMemo(() => {
-    const map = new Map<string, Subscription>();
-    subscriptions.forEach((sub) => map.set(sub.clientId, sub));
-    return map;
-  }, []);
+  const subscriptionByClientId = useMemo(() => latestSubscriptionByClient(subscriptions), []);
 
   const allStoreRows = useMemo(() => {
     const rows: StoreRow[] = [];
     clients.forEach((client) => {
       const subscription = subscriptionByClientId.get(client.id);
-      if (!subscription || subscription.status === "canceled") return;
+      if (!subscription || subscription.status === subscriptionStatusEnum.CANCELLED) return;
       rows.push({
         id: client.id,
         client,
@@ -98,7 +95,7 @@ export function AutomationSettingsTab() {
         case "all":
           return true;
         case "overdue":
-          return row.daysLeft < 0 || row.subscription.status === "past_due";
+          return row.daysLeft < 0 || row.subscription.status === subscriptionStatusEnum.PAST_DUE;
         default: {
           const max = Number(windowFilter);
           return row.daysLeft >= 0 && row.daysLeft <= max;

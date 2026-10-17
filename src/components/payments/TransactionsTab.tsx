@@ -8,6 +8,7 @@ import {
 } from "@heroui/react";
 import { useMemo, useState } from "react";
 import type { Transaction, TransactionStatus } from "../../types";
+import { getPaymentGatewayLabel, getPlanLabel } from "../../lib/display-labels.util";
 import { clients } from "../../lib/mockData";
 import { formatDateTime } from "../../lib/utils";
 import { dataTableFillClassNames, tablePanelFillClassName } from "../common/dataTableStyles";
@@ -97,7 +98,7 @@ export function TransactionsTab({ transactions }: TransactionsTabProps) {
         );
       case "plan":
         return client?.plan ? (
-          <span className="text-fg">{client.plan}</span>
+          <span className="text-fg">{getPlanLabel(client.plan)}</span>
         ) : (
           <span className="text-fg-subtle">—</span>
         );
@@ -110,7 +111,7 @@ export function TransactionsTab({ transactions }: TransactionsTabProps) {
       case "status":
         return <StatusChip domain="payment" status={txn.status} />;
       case "gateway":
-        return txn.gateway;
+        return getPaymentGatewayLabel(txn.gateway);
       case "transactionId":
         return <CopyableId value={txn.transactionId} className="text-label" />;
       default:

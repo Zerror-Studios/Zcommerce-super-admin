@@ -1,20 +1,30 @@
-import type {
-  Client,
-  PaymentGateway,
-  PlanName,
-  Transaction,
-  TransactionStatus,
+import {
+  planNameEnum,
+  subscriptionStatusEnum,
+  type Client,
+  type PaymentGateway,
+  type PlanName,
+  type Subscription,
+  type Transaction,
+  type TransactionStatus,
 } from "../types";
+import { PAYMENT_GATEWAYS, PLAN_NAMES } from "./display-labels.util";
+import { latestSubscriptionByClient } from "./subscription-lookup.util";
+import {
+  calendarDayEndUtc,
+  calendarDayStartUtc,
+  utcMonthBounds,
+} from "./utils";
 
 export interface MonthlyPlanRevenue {
   key: string; // YYYY-MM
   label: string;
   year: number;
   month: number; // 1-12
-  Free: number;
-  Starter: number;
-  Pro: number;
-  Enterprise: number;
+  STARTER: number;
+  PREMIUM: number;
+  PLUS: number;
+  ENTERPRISE: number;
 }
 
 export interface RevenueKpis {
@@ -64,38 +74,77 @@ export interface RevenueTrendPoint {
 
 /** Demo monthly subscription revenue by plan (2025-10 → 2026-09). */
 export const MONTHLY_PLAN_REVENUE: MonthlyPlanRevenue[] = [
-  { key: "2025-10", label: "Oct 2025", year: 2025, month: 10, Free: 0, Starter: 3800, Pro: 8600, Enterprise: 10800 },
-  { key: "2025-11", label: "Nov 2025", year: 2025, month: 11, Free: 0, Starter: 4000, Pro: 9100, Enterprise: 11200 },
-  { key: "2025-12", label: "Dec 2025", year: 2025, month: 12, Free: 0, Starter: 4300, Pro: 9600, Enterprise: 11800 },
-  { key: "2026-01", label: "Jan 2026", year: 2026, month: 1, Free: 0, Starter: 4500, Pro: 9900, Enterprise: 12200 },
-  { key: "2026-02", label: "Feb 2026", year: 2026, month: 2, Free: 0, Starter: 4700, Pro: 10300, Enterprise: 12800 },
-  { key: "2026-03", label: "Mar 2026", year: 2026, month: 3, Free: 0, Starter: 4900, Pro: 10700, Enterprise: 13400 },
-  { key: "2026-04", label: "Apr 2026", year: 2026, month: 4, Free: 0, Starter: 4200, Pro: 9800, Enterprise: 12000 },
-  { key: "2026-05", label: "May 2026", year: 2026, month: 5, Free: 0, Starter: 4600, Pro: 10200, Enterprise: 13200 },
-  { key: "2026-06", label: "Jun 2026", year: 2026, month: 6, Free: 0, Starter: 5100, Pro: 11100, Enterprise: 14000 },
-  { key: "2026-07", label: "Jul 2026", year: 2026, month: 7, Free: 0, Starter: 5400, Pro: 11800, Enterprise: 15100 },
-  { key: "2026-08", label: "Aug 2026", year: 2026, month: 8, Free: 0, Starter: 5800, Pro: 12400, Enterprise: 16200 },
-  { key: "2026-09", label: "Sep 2026", year: 2026, month: 9, Free: 0, Starter: 6100, Pro: 13100, Enterprise: 17100 },
+  { key: "2025-10", label: "Oct 2025", year: 2025, month: 10, STARTER: 0, PREMIUM: 3800, PLUS: 8600, ENTERPRISE: 10800 },
+  { key: "2025-11", label: "Nov 2025", year: 2025, month: 11, STARTER: 0, PREMIUM: 4000, PLUS: 9100, ENTERPRISE: 11200 },
+  { key: "2025-12", label: "Dec 2025", year: 2025, month: 12, STARTER: 0, PREMIUM: 4300, PLUS: 9600, ENTERPRISE: 11800 },
+  { key: "2026-01", label: "Jan 2026", year: 2026, month: 1, STARTER: 0, PREMIUM: 4500, PLUS: 9900, ENTERPRISE: 12200 },
+  { key: "2026-02", label: "Feb 2026", year: 2026, month: 2, STARTER: 0, PREMIUM: 4700, PLUS: 10300, ENTERPRISE: 12800 },
+  { key: "2026-03", label: "Mar 2026", year: 2026, month: 3, STARTER: 0, PREMIUM: 4900, PLUS: 10700, ENTERPRISE: 13400 },
+  { key: "2026-04", label: "Apr 2026", year: 2026, month: 4, STARTER: 0, PREMIUM: 4200, PLUS: 9800, ENTERPRISE: 12000 },
+  { key: "2026-05", label: "May 2026", year: 2026, month: 5, STARTER: 0, PREMIUM: 4600, PLUS: 10200, ENTERPRISE: 13200 },
+  { key: "2026-06", label: "Jun 2026", year: 2026, month: 6, STARTER: 0, PREMIUM: 5100, PLUS: 11100, ENTERPRISE: 14000 },
+  { key: "2026-07", label: "Jul 2026", year: 2026, month: 7, STARTER: 0, PREMIUM: 5400, PLUS: 11800, ENTERPRISE: 15100 },
+  { key: "2026-08", label: "Aug 2026", year: 2026, month: 8, STARTER: 0, PREMIUM: 5800, PLUS: 12400, ENTERPRISE: 16200 },
+  { key: "2026-09", label: "Sep 2026", year: 2026, month: 9, STARTER: 0, PREMIUM: 6100, PLUS: 13100, ENTERPRISE: 17100 },
 ];
 
-const PLANS: PlanName[] = ["Free", "Starter", "Pro", "Enterprise"];
+const PLANS: PlanName[] = PLAN_NAMES;
 
-function monthStart(year: number, month: number): Date {
-  return new Date(year, month - 1, 1);
-}
-
-function monthEnd(year: number, month: number): Date {
-  return new Date(year, month, 0, 23, 59, 59, 999);
-}
-
+// Ranges come from the date picker (local calendar days); rows and
+// transactions are UTC. Compare both on UTC calendar days (PRD-002 SA-5).
 function monthOverlapsRange(
   row: MonthlyPlanRevenue,
   start: Date,
   end: Date,
 ): boolean {
-  const s = monthStart(row.year, row.month);
-  const e = monthEnd(row.year, row.month);
-  return s <= end && e >= start;
+  const { start: s, end: e } = utcMonthBounds(row.year, row.month);
+  return s <= calendarDayEndUtc(end) && e >= calendarDayStartUtc(start);
+}
+
+// ─── MRR (PRD-002 SA-4) ───────────────────────────────────────────────────
+// One definition, used by the KPI card, the plan breakdown and the trend:
+// MRR = sum of the monthly-normalised price (`Subscription.mrr`) of paying,
+// non-trial subscriptions — status ACTIVE, mrr > 0 — that had started and
+// were not cancelled at the given instant. One (latest) subscription per
+// client is counted.
+
+/** MRR one subscription contributes at `at`; 0 when it doesn't count. */
+export function subscriptionMrrAt(subscription: Subscription, at: Date): number {
+  const atMs = at.getTime();
+
+  if (subscription.status !== subscriptionStatusEnum.ACTIVE) return 0;
+  if (subscription.mrr <= 0) return 0;
+  if (
+    subscription.startedAt &&
+    new Date(subscription.startedAt).getTime() > atMs
+  ) {
+    return 0;
+  }
+  if (
+    subscription.canceledAt &&
+    new Date(subscription.canceledAt).getTime() <= atMs
+  ) {
+    return 0;
+  }
+
+  return subscription.mrr;
+}
+
+/** Subscriptions that count towards MRR at `at` (latest per client). */
+export function mrrSubscriptionsAt(
+  subscriptions: Subscription[],
+  at: Date,
+): Subscription[] {
+  return Array.from(latestSubscriptionByClient(subscriptions, at).values())
+    .filter((subscription) => subscriptionMrrAt(subscription, at) > 0);
+}
+
+/** Platform MRR at `at`. */
+export function computeMrr(subscriptions: Subscription[], at: Date): number {
+  return mrrSubscriptionsAt(subscriptions, at).reduce(
+    (sum, subscription) => sum + subscriptionMrrAt(subscription, at),
+    0,
+  );
 }
 
 export function filterMonthlyPlanRevenue(
@@ -107,7 +156,7 @@ export function filterMonthlyPlanRevenue(
 }
 
 export function monthTotal(row: MonthlyPlanRevenue): number {
-  return row.Free + row.Starter + row.Pro + row.Enterprise;
+  return row.STARTER + row.PREMIUM + row.PLUS + row.ENTERPRISE;
 }
 
 export function filterTransactionsInRange(
@@ -115,8 +164,8 @@ export function filterTransactionsInRange(
   start: Date,
   end: Date,
 ): Transaction[] {
-  const startMs = start.getTime();
-  const endMs = end.getTime();
+  const startMs = calendarDayStartUtc(start).getTime();
+  const endMs = calendarDayEndUtc(end).getTime();
   return transactions.filter((txn) => {
     const t = new Date(txn.date).getTime();
     return t >= startMs && t <= endMs;
@@ -136,12 +185,21 @@ export function buildRevenueKpis(input: {
   monthly: MonthlyPlanRevenue[];
   allMonthly: MonthlyPlanRevenue[];
   transactions: Transaction[];
-  clients: Client[];
+  subscriptions: Subscription[];
   rangeStart: Date;
   rangeEnd: Date;
+  /** Instant for the live MRR figures. Default: now. */
+  asOf?: Date;
 }): RevenueKpis {
-  const { monthly, allMonthly, transactions, clients, rangeStart, rangeEnd } =
-    input;
+  const {
+    monthly,
+    allMonthly,
+    transactions,
+    subscriptions,
+    rangeStart,
+    rangeEnd,
+    asOf = new Date(),
+  } = input;
 
   const planRevenue = monthly.reduce((sum, row) => sum + monthTotal(row), 0);
   const inRange = filterTransactionsInRange(transactions, rangeStart, rangeEnd);
@@ -150,12 +208,8 @@ export function buildRevenueKpis(input: {
   const pending = sumByStatus(inRange, "pending");
   const failed = sumByStatus(inRange, "failed");
 
-  const payingStores = clients.filter(
-    (c) => c.status === "active" && c.mrr > 0,
-  ).length;
-  const activeMrr = clients
-    .filter((c) => c.status === "active" || c.status === "trial")
-    .reduce((sum, c) => sum + c.mrr, 0);
+  const payingStores = mrrSubscriptionsAt(subscriptions, asOf).length;
+  const activeMrr = computeMrr(subscriptions, asOf);
 
   let momChangePercent: number | null = null;
   if (monthly.length > 0) {
@@ -185,13 +239,16 @@ export function buildRevenueKpis(input: {
 export function buildPlanBreakdown(
   monthly: MonthlyPlanRevenue[],
   clients: Client[],
+  subscriptions: Subscription[],
+  asOf: Date = new Date(),
 ): PlanBreakdownRow[] {
   const revenueByPlan: Record<PlanName, number> = {
-    Free: 0,
-    Starter: 0,
-    Pro: 0,
-    Enterprise: 0,
+    STARTER: 0,
+    PREMIUM: 0,
+    PLUS: 0,
+    ENTERPRISE: 0,
   };
+  const mrrSubscriptions = mrrSubscriptionsAt(subscriptions, asOf);
   for (const row of monthly) {
     for (const plan of PLANS) revenueByPlan[plan] += row[plan];
   }
@@ -205,7 +262,9 @@ export function buildPlanBreakdown(
       revenue,
       sharePercent: total === 0 ? 0 : (revenue / total) * 100,
       storeCount: planClients.length,
-      mrr: planClients.reduce((s, c) => s + c.mrr, 0),
+      mrr: mrrSubscriptions
+        .filter((sub) => sub.plan === plan)
+        .reduce((sum, sub) => sum + subscriptionMrrAt(sub, asOf), 0),
     };
   }).filter((row) => row.revenue > 0 || row.storeCount > 0);
 }
@@ -216,8 +275,7 @@ export function buildGatewayBreakdown(
   end: Date,
 ): GatewayBreakdownRow[] {
   const inRange = filterTransactionsInRange(transactions, start, end);
-  const gateways: PaymentGateway[] = ["Stripe", "Razorpay"];
-  const rows = gateways.map((gateway) => {
+  const rows = PAYMENT_GATEWAYS.map((gateway) => {
     const subset = inRange.filter((t) => t.gateway === gateway);
     return {
       gateway,
@@ -275,7 +333,7 @@ export function buildTopStoreRevenue(
         clientId,
         storeName: client?.storeName ?? clientId,
         ownerEmail: client?.ownerEmail ?? "—",
-        plan: client?.plan ?? "Free",
+        plan: client?.plan ?? planNameEnum.STARTER,
         collected: stats.collected,
         failed: stats.failed,
         txnCount: stats.txnCount,
@@ -285,21 +343,31 @@ export function buildTopStoreRevenue(
     .slice(0, limit);
 }
 
-/** Revenue = month plan bookings; MRR = 3‑month trailing average of bookings. */
+/**
+ * Revenue = month plan bookings; MRR = platform MRR at each month's end
+ * (same definition as the KPI card). Computed over the full history, then
+ * sliced to the selected range, so a point never depends on the range.
+ */
 export function buildTrendWithMrr(
-  monthly: MonthlyPlanRevenue[],
+  allMonthly: MonthlyPlanRevenue[],
+  subscriptions: Subscription[],
+  rangeStart: Date,
+  rangeEnd: Date,
 ): RevenueTrendPoint[] {
-  return monthly.map((row, index, arr) => {
-    const revenue = monthTotal(row);
-    const window = arr.slice(Math.max(0, index - 2), index + 1);
-    const mrr = Math.round(
-      window.reduce((s, r) => s + monthTotal(r), 0) / window.length,
-    );
+  const points = allMonthly.map((row) => {
+    const { end } = utcMonthBounds(row.year, row.month);
     return {
-      month: row.label.replace(/ 20\d\d$/, ""),
-      fullLabel: row.label,
-      revenue,
-      mrr,
+      row,
+      point: {
+        month: row.label.replace(/ 20\d\d$/, ""),
+        fullLabel: row.label,
+        revenue: monthTotal(row),
+        mrr: computeMrr(subscriptions, end),
+      },
     };
   });
+
+  return points
+    .filter(({ row }) => monthOverlapsRange(row, rangeStart, rangeEnd))
+    .map(({ point }) => point);
 }

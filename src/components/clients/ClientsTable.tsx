@@ -1,7 +1,9 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type SortDescriptor } from "@heroui/react";
 import { useMemo, useState, type Key } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import type { Client, ClientStatus, PlanName, Subscription } from "../../types";
+import { subscriptionStatusEnum, type Client, type ClientStatus, type Subscription } from "../../types";
+import { getPlanLabel, PLAN_LABELS, PLAN_NAMES } from "../../lib/display-labels.util";
+import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { subscriptions, transactions } from "../../lib/mockData";
 import { loadPlatformSettings } from "../../lib/platformSettings";
 import { getStoreHealth } from "../../lib/storeHealth";
@@ -87,7 +89,8 @@ const statusLabels: Record<ClientStatus, string> = { active: "Live", trial: "Tri
 function isUnpaid(subscription?: Subscription): boolean {
   return (
     subscription != null &&
-    (subscription.status === "pending" || subscription.status === "past_due") &&
+    (subscription.status === subscriptionStatusEnum.ACTIVE ||
+      subscription.status === subscriptionStatusEnum.PAST_DUE) &&
     subscription.amountDue > 0
   );
 }
@@ -161,11 +164,7 @@ export function ClientsTable({
   const now = useMemo(() => new Date(), []);
   const platformGraceDays = useMemo(() => loadPlatformSettings().gracePeriodDays, []);
 
-  const subscriptionByClientId = useMemo(() => {
-    const map = new Map<string, Subscription>();
-    subscriptions.forEach((sub) => map.set(sub.clientId, sub));
-    return map;
-  }, []);
+  const subscriptionByClientId = useMemo(() => latestSubscriptionByClient(subscriptions), []);
 
   // Search and Filter apply first; the tab counts are taken from that set.
   const searched = useMemo(() => {
@@ -289,7 +288,7 @@ export function ClientsTable({
       case "mrr":
         return <span className="num">{formatMoney(client.mrr, { whole: true })}</span>;
       case "plan":
-        return <span>{client.plan}</span>;
+        return <span>{getPlanLabel(client.plan)}</span>;
       case "renewalDate":
         return <RenewalBadge subscription={subscription} />;
       case "actions": {
@@ -418,9 +417,9 @@ export function ClientsTable({
           <>
             <FilterCheckboxGroup
               label="Plan"
-              options={(["Free", "Starter", "Pro", "Enterprise"] as PlanName[]).map((planOption) => ({
+              options={PLAN_NAMES.map((planOption) => ({
                 key: planOption,
-                label: planOption,
+                label: PLAN_LABELS[planOption],
               }))}
               value={plans}
               onChange={(value) => {

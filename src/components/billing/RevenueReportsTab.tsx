@@ -2,7 +2,8 @@ import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from 
 import { endOfDay, endOfMonth, startOfMonth } from "date-fns";
 import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { clients, transactions } from "../../lib/mockData";
+import { getPaymentGatewayLabel, getPlanLabel, PLAN_LABELS } from "../../lib/display-labels.util";
+import { clients, subscriptions, transactions } from "../../lib/mockData";
 import { monthlyBilling } from "../../lib/metrics";
 import {
   MONTHLY_PLAN_REVENUE,
@@ -58,7 +59,7 @@ const defaultRange: DateRangeValue = {
   endDate: endOfDay(endOfMonth(new Date(2026, 8, 1))),
 };
 
-const PLAN_KEYS = ["Starter", "Pro", "Enterprise"] as const;
+const PLAN_KEYS = ["PREMIUM", "PLUS", "ENTERPRISE"] as const;
 
 /** Static tables inside cards: no fixed scroll height, rows are not clickable unless stated. */
 const cardTableClassNames = {
@@ -133,7 +134,10 @@ export function RevenueReportsTab() {
     [range.endDate, range.startDate],
   );
 
-  const trend = useMemo(() => buildTrendWithMrr(monthly), [monthly]);
+  const trend = useMemo(
+    () => buildTrendWithMrr(MONTHLY_PLAN_REVENUE, subscriptions, range.startDate, range.endDate),
+    [range.endDate, range.startDate],
+  );
 
   const kpis = useMemo(
     () =>
@@ -141,7 +145,7 @@ export function RevenueReportsTab() {
         monthly,
         allMonthly: MONTHLY_PLAN_REVENUE,
         transactions,
-        clients,
+        subscriptions,
         rangeStart: range.startDate,
         rangeEnd: range.endDate,
       }),
@@ -152,7 +156,7 @@ export function RevenueReportsTab() {
   const billing = useMemo(() => monthlyBilling(clients), []);
 
   const planRows = useMemo(
-    () => buildPlanBreakdown(monthly, clients),
+    () => buildPlanBreakdown(monthly, clients, subscriptions),
     [monthly],
   );
 
@@ -181,16 +185,16 @@ export function RevenueReportsTab() {
   const exportCsv = () => {
     const columns = [
       { key: "label", label: "Month" },
-      { key: "Starter", label: "Starter" },
-      { key: "Pro", label: "Pro" },
-      { key: "Enterprise", label: "Enterprise" },
+      { key: "PREMIUM", label: PLAN_LABELS.PREMIUM },
+      { key: "PLUS", label: PLAN_LABELS.PLUS },
+      { key: "ENTERPRISE", label: PLAN_LABELS.ENTERPRISE },
       { key: "total", label: "Total" },
     ];
     const rows = monthly.map((row: MonthlyPlanRevenue) => ({
       label: row.label,
-      Starter: row.Starter,
-      Pro: row.Pro,
-      Enterprise: row.Enterprise,
+      PREMIUM: row.PREMIUM,
+      PLUS: row.PLUS,
+      ENTERPRISE: row.ENTERPRISE,
       total: monthTotal(row),
     }));
     downloadCsv("revenue-by-plan.csv", rowsToCsv(rows, columns));
@@ -328,6 +332,7 @@ export function RevenueReportsTab() {
                       <Bar
                         key={plan}
                         dataKey={plan}
+                        name={PLAN_LABELS[plan]}
                         stackId="plans"
                         fill={planColors[plan]}
                         radius={index === PLAN_KEYS.length - 1 ? [4, 4, 0, 0] : undefined}
@@ -355,7 +360,7 @@ export function RevenueReportsTab() {
               <TableBody items={planRows} emptyContent={noData}>
                 {(row) => (
                   <TableRow key={row.plan}>
-                    <TableCell className="font-medium">{row.plan}</TableCell>
+                    <TableCell className="font-medium">{getPlanLabel(row.plan)}</TableCell>
                     <TableCell><span className={right}>{formatMoney(row.revenue, { whole: true })}</span></TableCell>
                     <TableCell><span className={right}>{formatPercent(row.sharePercent)}</span></TableCell>
                     <TableCell><span className={right}>{formatCount(row.storeCount)}</span></TableCell>
@@ -382,7 +387,7 @@ export function RevenueReportsTab() {
               <TableBody items={gatewayRows} emptyContent={noData}>
                 {(row) => (
                   <TableRow key={row.gateway}>
-                    <TableCell className="font-medium">{row.gateway}</TableCell>
+                    <TableCell className="font-medium">{getPaymentGatewayLabel(row.gateway)}</TableCell>
                     <TableCell><span className={right}>{formatMoney(row.collected, { paise: true })}</span></TableCell>
                     <TableCell>
                       <span className={cx(right, row.failed > 0 && toneTextClasses.danger)}>{formatMoney(row.failed, { paise: true })}</span>
@@ -422,7 +427,7 @@ export function RevenueReportsTab() {
                       </p>
                     </div>
                   </TableCell>
-                  <TableCell>{row.plan}</TableCell>
+                  <TableCell>{getPlanLabel(row.plan)}</TableCell>
                   <TableCell><span className={cx(right, "font-medium")}>{formatMoney(row.collected, { paise: true })}</span></TableCell>
                   <TableCell>
                     <span className={cx(right, row.failed > 0 && toneTextClasses.danger)}>{formatMoney(row.failed, { paise: true })}</span>

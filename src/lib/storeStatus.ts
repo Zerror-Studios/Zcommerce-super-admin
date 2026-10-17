@@ -3,7 +3,13 @@
  * payment badge are derived here and shown as two separate columns. Never "Active" next to "Expired".
  */
 import type { Tone } from "../components/ui/tones";
-import type { Client, Subscription, Transaction } from "../types";
+import {
+  subscriptionStatusEnum,
+  type Client,
+  type Subscription,
+  type Transaction,
+} from "../types";
+import { MS_PER_DAY, daysBetween, utcDayStart } from "./utils";
 
 export interface StatusBadge {
   label: string;
@@ -12,12 +18,11 @@ export interface StatusBadge {
   detail?: string;
 }
 
-const DAY = 24 * 60 * 60 * 1000;
-const dayMonth = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" });
-
-function startOfDay(date: Date): number {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-}
+const dayMonth = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
 
 /** Store lifecycle. The data has active / trial / suspended; Building and Cancelled don't exist yet. */
 export function storeLifecycle(client: Client): StatusBadge {
@@ -45,14 +50,19 @@ export function paymentState(
 ): StatusBadge {
   if (!subscription) return { label: "No plan", tone: "neutral" };
   const due = new Date(subscription.renewalDate);
-  const daysPast = Math.round((startOfDay(now) - startOfDay(due)) / DAY);
+  // Whole UTC days, the one rounding rule (PRD-002 SA-5).
+  const daysPast = daysBetween(due, now);
 
-  if (subscription.status === "canceled") return { label: "Cancelled", tone: "neutral" };
-  if (subscription.status === "trialing") return { label: "Trial", tone: "info" };
+  if (subscription.status === subscriptionStatusEnum.CANCELLED) return { label: "Cancelled", tone: "neutral" };
+  if (subscription.status === subscriptionStatusEnum.SUSPENDED) return { label: "Suspended", tone: "danger" };
+  if (subscription.status === subscriptionStatusEnum.TRIAL) return { label: "Trial", tone: "info" };
 
-  const unpaid = subscription.status === "past_due" || subscription.status === "pending";
+  // The backend has no PENDING status: an ACTIVE subscription with money due is "due" (PRD-002 SA-7).
+  const unpaid =
+    subscription.status === subscriptionStatusEnum.PAST_DUE ||
+    (subscription.status === subscriptionStatusEnum.ACTIVE && subscription.amountDue > 0);
   if (unpaid && daysPast > 0) {
-    const suspends = new Date(startOfDay(due) + graceDays * DAY);
+    const suspends = new Date(utcDayStart(due).getTime() + graceDays * MS_PER_DAY);
     return {
       label: `Overdue · ${daysPast} ${daysPast === 1 ? "day" : "days"}`,
       tone: "danger",

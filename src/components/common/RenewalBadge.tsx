@@ -1,5 +1,5 @@
 import { daysUntil } from "../../lib/utils";
-import type { Subscription } from "../../types";
+import { subscriptionStatusEnum, type Subscription } from "../../types";
 import { PlanExpiryBadge } from "../ui/PlanExpiryBadge";
 import type { StatusInfo } from "../ui/status-map";
 
@@ -16,10 +16,10 @@ export function RenewalBadge({ subscription }: RenewalBadgeProps) {
   if (!subscription) return <span className="text-fg-subtle">—</span>;
 
   let override: StatusInfo | undefined;
-  if (subscription.status === "past_due") {
+  if (subscription.status === subscriptionStatusEnum.PAST_DUE) {
     const days = Math.abs(daysUntil(subscription.renewalDate));
     override = { label: `Overdue · ${days} ${days === 1 ? "day" : "days"}`, tone: "danger" };
-  } else if (subscription.status === "canceled") {
+  } else if (subscription.status === subscriptionStatusEnum.CANCELLED) {
     override = { label: "Cancelled", tone: "neutral" };
   }
 

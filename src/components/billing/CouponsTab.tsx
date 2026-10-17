@@ -2,6 +2,7 @@ import { addToast, Table, TableBody, TableCell, TableColumn, TableHeader, TableR
 import { toastError } from "../ui";
 import { useMemo, useState } from "react";
 import type { Coupon, PlanName } from "../../types";
+import { getPlanLabel, PLAN_NAMES } from "../../lib/display-labels.util";
 import { selectionToIdSet } from "../../lib/tableSelection";
 import { formatDate } from "../../lib/utils";
 import { dataTableFillClassNames, dataTableSelectionProps, tablePanelFillClassName } from "../common/dataTableStyles";
@@ -48,13 +49,7 @@ const columns = [
   { key: "active", label: "Status" },
 ] as const;
 
-const planOptions: Array<PlanName | "All"> = [
-  "All",
-  "Free",
-  "Starter",
-  "Pro",
-  "Enterprise",
-];
+const planOptions: Array<PlanName | "All"> = ["All", ...PLAN_NAMES];
 
 type CouponStatus = "active" | "inactive" | "expired";
 
@@ -102,7 +97,7 @@ export function CouponsTab({
       const matchesSearch =
         !query ||
         coupon.code.toLowerCase().includes(query) ||
-        String(coupon.appliesTo).toLowerCase().includes(query);
+        getPlanLabel(coupon.appliesTo).toLowerCase().includes(query);
       const statusKey = couponStatus(coupon);
       const matchesStatus =
         statusFilter.length === 0 || statusFilter.includes(statusKey);
@@ -129,7 +124,7 @@ export function CouponsTab({
           ? `${coupon.discountValue}%`
           : formatMoney(coupon.discountValue);
       case "appliesTo":
-        return coupon.appliesTo === "All" ? "All plans" : coupon.appliesTo;
+        return coupon.appliesTo === "All" ? "All plans" : getPlanLabel(coupon.appliesTo);
       case "redemptions":
         return (
           <span className="block text-right num">
@@ -335,7 +330,7 @@ export function CouponsTab({
                   disallowEmptySelection
                 >
                   {planOptions.map((option) => (
-                    <SelectItem key={option}>{option === "All" ? "All plans" : option}</SelectItem>
+                    <SelectItem key={option}>{option === "All" ? "All plans" : getPlanLabel(option)}</SelectItem>
                   ))}
                 </Select>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
