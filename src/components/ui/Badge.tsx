@@ -14,7 +14,7 @@ export function Badge({ count, max = 99, className, ...rest }: BadgeProps) {
   return (
     <span
       className={cx(
-        "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-nav-count px-1.5 text-[11px] font-semibold leading-none text-brand-on tabular-nums",
+        "inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-nav-count px-1.5 text-[11px] font-semibold leading-none text-brand-on tabular-nums",
         className,
       )}
       {...rest}

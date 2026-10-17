@@ -117,7 +117,7 @@ export function Sidebar({
       </span>
       {collapsed ? null : <span className="flex-1 truncate text-left">Notifications</span>}
       {!collapsed && unreadCount > 0 ? (
-        <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-nav-count px-1.5 text-[11px] font-semibold leading-none text-brand-on num">
+        <span className="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-nav-count px-1.5 text-[11px] font-semibold leading-none text-brand-on num">
           {unreadCount > 99 ? "99+" : unreadCount}
           <span className="sr-only"> unread</span>
         </span>
