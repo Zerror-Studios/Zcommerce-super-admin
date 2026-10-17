@@ -1,4 +1,4 @@
-# Zcommerce UI System — START HERE
+# Zcom UI System — START HERE
 
 **Version 1.0 · 15 Oct 2026 · Owner: Zerror Studios**
 Applies to both apps: **Merchant Admin** (store owners) and **Super Admin** (Zerror team).
@@ -9,7 +9,7 @@ Applies to both apps: **Merchant Admin** (store owners) and **Super Admin** (Zer
 
 **This is a restyle of an existing, mature product, not a rebuild.**
 
-Zcommerce already has a robust, working dashboard with many pages, forms, tables, flows, permissions and integrations. This folder defines a **design system** (look, layout, components, wording) and how it should be applied. Your job is to apply it **sensibly across everything that already exists**.
+Zcom already has a robust, working dashboard with many pages, forms, tables, flows, permissions and integrations. This folder defines a **design system** (look, layout, components, wording) and how it should be applied. Your job is to apply it **sensibly across everything that already exists**.
 
 Hard rules:
 
@@ -62,7 +62,7 @@ Work one phase at a time. At the end of each phase: commit, take screenshots of 
 | **4 · Login** | Both apps. |
 | **5 · Merchant Admin pages** | In the order listed in `03-merchant-admin.md`. |
 | **6 · Super Admin pages** | Per `04-super-admin.md`. |
-| **7 · AI layer** | Components behind a feature flag `ai`; mocked responses if the backend isn't ready. |
+| **7 · AI layer** | AI components, always on (the `ai` flag was removed 2026-10-17); mocked responses if the backend isn't ready. |
 | **8 · Wording + QA** | Apply `05-wording.md` everywhere; run the full checklist; fix. |
 
 ---

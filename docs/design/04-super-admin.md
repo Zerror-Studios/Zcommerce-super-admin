@@ -24,6 +24,8 @@ Applies to the Super Admin app (today on `localhost:5174`). Same shell, tokens a
 
 ---
 
+- **Assistant (owner change 2026-10-17):** same AI shell as the Merchant dashboard: Ask bar floating at the bottom ("Ask anything about your stores…"), ⌘J, "Ask AI: ‹query›" as the last row of ⌘K, and the assistant panel. Sample answers come from the same data as the pages (earnings, overdue payments, store health, stores).
+
 ## 2. Shared definitions (use one definition everywhere)
 
 Put these in one place in code (e.g. `metrics.ts`) so Home, Billing and Analytics always agree. Today Home shows MRR ₹1,282 and Revenue shows "Active MRR ₹982" — that must never happen again.
@@ -158,5 +160,5 @@ Types: Payment received · Payment failed · Store overdue · Store will be susp
 5. "$" icon for INR on store detail.
 6. Toast "Alpine Botanics was removed from local state." → "Aura Apparel deleted." + Undo where possible.
 7. "Emails queued … (demo)" → "Reminder sent to 1 store."
-8. Green "Signed in · Welcome back to Zcommerce Admin" toast after login → remove.
-9. Browser tab title → "{Page} · Zcommerce Super admin".
+8. Green "Signed in · Welcome back to Zcom Admin" toast after login → remove.
+9. Browser tab title → "{Page} · Zcom Super admin".

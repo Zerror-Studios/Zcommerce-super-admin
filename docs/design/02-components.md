@@ -28,7 +28,7 @@ All values come from `tokens.css`. Build each item once as a shared component us
 
 ### Sidebar contents, top to bottom
 
-1. **Wordmark** (padding 6px 10px 14px): 22px white rounded square with a black "Z" (radius 6) + "zcommerce" 15px/600 white. Super Admin: add "Super admin" 12px/500 `--nav-text-muted` after it (plain text, no pill).
+1. **Wordmark** (padding 6px 10px 14px; owner change 2026-10-17): text-only "Zcom" logotype, 19px Geist 700, tracking -0.04em, white — no "Z" tile. Right-aligned stack on the right, its last line on the logo baseline: product label 11px/500 `--nav-text` ("Super admin" / "Admin") with the version as "v1.0.0" 10px muted under it. Collapsed: a bold "Z" only.
 2. **Search field**: 32px, `--nav-surface` bg, 1px `--nav-border`, radius 8, search icon, placeholder "Search" (Super Admin: "Search stores"), `⌘K` key hint on the right. Click or ⌘K opens the command palette (§13).
 3. **Navigation** — 13px/500, 32px rows, radius 8, 16px stroke icons (1.75 stroke).
    - Inactive: text `--nav-text`, icon `--nav-icon`. Hover: bg `--nav-hover-bg`, text white. Active: bg `--nav-active-bg`, text and icon white. **No blue in the sidebar** except the unread count pill.
@@ -59,7 +59,7 @@ Page header
 - **Descriptions:** remove generic ones ("Create, manage, and organize your product listings"). Keep only useful ones.
 - **Date range:** one secondary button "📅 Last 30 days ⌄" with presets (Today, Yesterday, Last 7 days, Last 30 days, This month, Last month, This year, Custom) and a "Compare to previous period" toggle inside. Show comparisons inside KPI deltas, not as a sentence beside the picker.
 - **Detail pages** (order, product, customer, store): back link + title + status badge(s) + actions; two columns: main (flex 2) and side (320–360px) for status, metadata, notes, timeline.
-- **Forms/settings:** 720px column; sticky bar appears when dirty: "Unsaved changes · Discard · Save".
+- **Forms/settings:** full content width in the Merchant dashboard (owner change 2026-10-17; was 720px); sticky bar appears when dirty: "Unsaved changes · Discard · Save".
 - Bottom padding 96px on pages where the AI Ask bar floats.
 
 ### Nearest pattern (for anything not described)
@@ -202,7 +202,7 @@ Footer:        1–20 of 248                                       Previous  Nex
 
 ## 16. AI layer (ref 01, 03, 04)
 
-One visual language everywhere: the **sparkle icon** + the **spectrum colours**. All AI components behind a feature flag `ai`.
+One visual language everywhere: the **sparkle icon** + the **spectrum colours**. AI components are always on (owner change 2026-10-17: the `ai` feature flag and its switch were removed).
 
 ### Sparkle icon
 Define the gradient once at app root (`<linearGradient id="ai-spectrum">` with `--ai-1 → --ai-2 → --ai-3`) and use:
@@ -241,12 +241,12 @@ AI copy: say what it looked at and how sure it is ("usually", "likely"). Never "
 
 - Remove the split layout and the right-hand marketing panel with the dashboard screenshot.
 - Page `#08090C` with a faint dot grid (`radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px)` at 22px) fading into solid at the edges (radial vignette).
-- Centre column 380px: wordmark ("Z" tile 26px + "zcommerce" 16/600 white; Super Admin adds "Super admin" muted) → 22px gap → card.
+- Centre column 380px: text-only logotype (no "Z" tile): "Zcom" 28px Geist 800, tracking -0.045em, white; Super Admin adds "Super admin" muted on the baseline (owner change 2026-10-17) → 22px gap → card.
 - Card: `#0C0D11`, radius 16, padding 28px, **rotating spectrum edge** (same technique as `.ai-live`, 6s per turn, conic with transparent gaps so a soft arc travels; halo blur 28px, opacity .6). Static under reduced motion.
 - Content: "Log in" 18/600 white → "Use the email linked to your store." 14px `#8A8F99` (Super Admin: "Zerror team access only.") → Email → Password ("Forgot?" link right of the label, eye toggle inside the field) → 40px full-width **white** button "Log in" (black text, 600).
 - Fields: 40px, `#0F1115`, 1px `#262930`, radius 8, white text; focus border `#7C9BFF` + 3px ring rgba(124,155,255,.22). Keep autofill dark (`-webkit-box-shadow: 0 0 0 40px #0F1115 inset; -webkit-text-fill-color: #fff`).
-- Below the card (Merchant only): "New to Zcommerce? **Start your store**".
-- Footer: "© 2026 Zcommerce · Privacy · Terms" 12px `#7A7F89`.
+- Below the card (Merchant only): "New to Zcom? **Start your store**".
+- Footer: "© 2026 Zcom · Privacy · Terms" 12px `#7A7F89`.
 - States: wrong credentials → inline error under password, keep email; spinner on submit; lock-out message after repeated failures (keep existing rules). No red asterisks. Keep existing 2FA/SSO flows if any, restyled.
 - After logout: land here + bottom toast "You've been logged out."
 

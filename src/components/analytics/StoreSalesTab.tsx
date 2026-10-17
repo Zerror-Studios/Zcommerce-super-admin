@@ -36,7 +36,7 @@ function Change({ value }: { value: number | null }) {
 
 /**
  * Analytics › Store sales: what stores sell to their own customers (their orders), as opposed to
- * Platform revenue, which is what stores pay Zcommerce. All figures cover the last 30 days.
+ * Platform revenue, which is what stores pay Zcom. All figures cover the last 30 days.
  */
 export function StoreSalesTab() {
   const navigate = useNavigate();

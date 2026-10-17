@@ -2,12 +2,15 @@ import { addToast } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { allNavItems, mainNavItems } from "../../config/navigation";
-import { notifications as sampleNotifications } from "../../lib/mockData";
+import { ASSISTANT_SUGGESTIONS, sampleAssistantAnswer } from "../../lib/aiSamples";
+import { notifications as sampleNotifications, subscriptions, transactions } from "../../lib/mockData";
+import { loadPlatformSettings } from "../../lib/platformSettings";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import type { Notification } from "../../types";
 import { IconAdd, IconBilling, IconNotifications, IconStore, IconWarning } from "../ui/icons";
 import { AppShell } from "./AppShell";
+import { AskBar, AssistantPanel } from "./Assistant";
 import { readStoredFlag, storeFlag, useShellHotkeys } from "./shell-utils";
 import { CommandPalette } from "./CommandPalette";
 import { NotificationsPanel } from "./NotificationsPanel";
@@ -17,6 +20,7 @@ import type { CommandGroup, NotificationEntry } from "./types";
 import { toasts } from "../../copy";
 
 const COLLAPSE_KEY = "zcommerce-sidebar-collapsed";
+const APP_VERSION = "1.0.0";
 
 function pathMatches(pathname: string, href: string, end = false): boolean {
   if (end) return pathname === href;
@@ -73,11 +77,31 @@ export function DashboardLayout() {
     });
   }, []);
   const openPalette = useCallback(() => setPaletteOpen(true), []);
-  useShellHotkeys({ onSearch: openPalette, onToggleSidebar: toggleSidebar });
+
+  // AI layer: Ask bar, assistant panel, ⌘J and "Ask AI" in ⌘K (same as the Merchant dashboard).
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [pendingQuestion, setPendingQuestion] = useState<string | undefined>();
+  const openAssistant = useCallback((question?: string) => {
+    setPendingQuestion(question);
+    setIsAssistantOpen(true);
+  }, []);
+  const askHotkey = useCallback(() => openAssistant(), [openAssistant]);
+  const askAssistant = useCallback(
+    (question: string) =>
+      sampleAssistantAnswer(question, {
+        clients,
+        subscriptions,
+        transactions,
+        platformGraceDays: loadPlatformSettings().gracePeriodDays,
+        now: new Date(),
+      }),
+    [clients],
+  );
+  useShellHotkeys({ onSearch: openPalette, onToggleSidebar: toggleSidebar, onAsk: askHotkey });
 
   const pageLabel = pageLabelFor(location.pathname);
   useEffect(() => {
-    document.title = pageLabel ? `${pageLabel} · Zcommerce Super admin` : "Zcommerce Super admin";
+    document.title = pageLabel ? `${pageLabel} · Zcom Super admin` : "Zcom Super admin";
   }, [pageLabel]);
 
   const handleLogout = () => {
@@ -134,6 +158,7 @@ export function DashboardLayout() {
   const sidebarProps = {
     items,
     productLabel: "Super admin",
+    productVersion: APP_VERSION,
     searchPlaceholder: "Search stores",
     onOpenSearch: openPalette,
     unreadCount,
@@ -151,6 +176,7 @@ export function DashboardLayout() {
         isDrawerOpen={mobileOpen}
         onDrawerOpenChange={setMobileOpen}
         mobileTitle={pageLabel}
+        floating={(hidden) => <AskBar placeholder="Ask anything about your stores…" hidden={hidden} onOpen={openAssistant} />}
         mobileActions={panel(
           <button
             type="button"
@@ -165,8 +191,23 @@ export function DashboardLayout() {
         <Outlet />
       </AppShell>
 
-      <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} groups={commandGroups} placeholder="Search stores, pages and actions" />
+      <CommandPalette
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        groups={commandGroups}
+        placeholder="Search stores, pages and actions"
+        onAskAi={openAssistant}
+      />
       <AiSpectrumDefs />
+      <AssistantPanel
+        isOpen={isAssistantOpen}
+        onClose={() => setIsAssistantOpen(false)}
+        pendingQuestion={pendingQuestion}
+        onPendingConsumed={() => setPendingQuestion(undefined)}
+        onAsk={askAssistant}
+        suggestions={ASSISTANT_SUGGESTIONS}
+        thinkingLabel="Looking at your stores…"
+      />
     </>
   );
 }

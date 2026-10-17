@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * One status mapping for both products (status-mappings.md). The same status always gets the same tone.
  * Keys are normalised (lowercase, spaces/hyphens → "_"). Unknown values render neutral with a humanised label.

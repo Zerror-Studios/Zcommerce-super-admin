@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Date formatting (docs/design/05-wording.md §2). Fixed English month and weekday names, so the output
  * doesn't depend on the browser's locale data (en-IN in recent ICU writes "Sept"; the spec says "Sep").

@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Shared UI layer. Feature code imports from here, not from @heroui/react.
  * HeroUI building blocks without design-system styling of their own are re-exported as-is.
@@ -101,4 +101,4 @@ export { SelectionBar } from "./SelectionBar";
 export type { SelectionBarProps } from "./SelectionBar";
 export { AiFeedback, AiInsightCard, AiSpectrumDefs, AiSuggestion, AiThinking, Sparkle, TodaysBrief, WriteWithAiButton } from "./Ai";
 export type { AiInsightCardProps, AiSuggestionProps, AiThinkingProps, TodaysBriefProps } from "./Ai";
-export { isAiEnabled, setAiEnabled, useAiEnabled } from "./ai-flag";
+export { isAiEnabled, useAiEnabled } from "./ai-flag";

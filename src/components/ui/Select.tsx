@@ -1,11 +1,11 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 import { Select as HeroSelect } from "@heroui/react";
 import type { SelectProps as HeroSelectProps } from "@heroui/react";
 import { cx } from "./cx";
 import { fieldHeight, getDropdownClasses } from "./field-styles";
 import type { FieldSize } from "./field-styles";
 import { IconCaret } from "./icons";
-import { menuItemClasses, menuPopoverClasses } from "./menu-styles";
+import { menuItemClasses, menuMotionProps, menuPopoverClasses } from "./menu-styles";
 
 export interface SelectProps<T extends object = object>
   extends Omit<HeroSelectProps<T>, "size" | "variant" | "radius"> {
@@ -17,6 +17,7 @@ export function Select<T extends object = object>({
   size = "md",
   classNames,
   listboxProps,
+  popoverProps,
   selectorIcon,
   labelPlacement = "outside",
   ...rest
@@ -28,6 +29,7 @@ export function Select<T extends object = object>({
       size={size}
       labelPlacement={labelPlacement}
       selectorIcon={selectorIcon ?? <IconCaret aria-hidden className="size-3" />}
+      popoverProps={{ ...popoverProps, motionProps: popoverProps?.motionProps ?? menuMotionProps }}
       listboxProps={{
         ...listboxProps,
         itemClasses: {

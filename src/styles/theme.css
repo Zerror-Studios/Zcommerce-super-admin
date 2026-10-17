@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 @custom-variant dark (&:where(.dark, .dark *)); /* light only: never toggled, keeps dark: inert */
 /* Viewport height breakpoint (896px): extra content only where it fits without page scroll (sign-in panel). */
 @custom-variant tall (@media (min-height: 56rem));
@@ -148,6 +148,12 @@
     outline: none;
     box-shadow: var(--zc-focus-ring);
   }
+  /* HeroUI fields draw the ring on their wrapper (field-styles.ts); the inner input, textarea or date segment
+     must not draw a second one inside it. */
+  [data-slot="input"]:focus-visible,
+  [data-slot="segment"]:focus-visible {
+    box-shadow: none;
+  }
   /* Lucide icons (components/ui/icons.ts) ship with stroke 2; the spec draws them at 1.75. */
   svg[fill="none"][stroke-linejoin="round"] {
     stroke-width: 1.75;
@@ -273,3 +279,10 @@ button.font-normal.min-w-max.tap-highlight-transparent {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+
+/* Menus (kit Dropdown/Select): the 4px slide from the anchor of "fade + 4px slide, 140ms" (02-components). Framer
+   does the fade (menuMotionProps); HeroUI's resolved placement picks the direction. Reduced motion cuts it to 1ms. */
+.zc-menu { animation: zc-menu-in var(--zc-dur-fast) var(--zc-ease) both; }
+.zc-menu[data-placement^="top"] { --zc-menu-from: 4px; }
+.zc-menu[data-placement^="bottom"] { --zc-menu-from: -4px; }
+@keyframes zc-menu-in { from { translate: 0 var(--zc-menu-from, 0); } to { translate: 0 0; } }

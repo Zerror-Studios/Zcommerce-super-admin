@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Chart theme (component-specs §24). Colors come from the CSS variables in tokens.css. They are read lazily
  * (on first use, when a chart renders), not at module load: if a chart module is imported before the

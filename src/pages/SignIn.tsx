@@ -40,7 +40,7 @@ export function SignIn() {
   };
 
   return (
-    <AuthLayout title="Log in" documentTitle="Log in · Zcommerce Super admin" subtitle="Zerror team access only." productLabel="Super admin">
+    <AuthLayout title="Log in" documentTitle="Log in · Zcom Super admin" subtitle="Zerror team access only." productLabel="Super admin">
       <form noValidate className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <AuthField
           id="signin-email"

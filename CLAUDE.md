@@ -6,9 +6,9 @@ These are the engineering rules for Claude Code and developers in this repo. The
 
 **Architecture.** Read `docs/architecture/solution-architecture.md` for the diagrams and design of this repo. The platform-wide view is in `../ARCHITECTURE.md`, when the workspace root is present.
 
-## 0. Workspace rules (shared by every ZCommerce repo)
+## 0. Workspace rules (shared by every Zcom repo)
 
-This repo is one part of the ZCommerce platform. The full map is in the workspace root `../CLAUDE.md` (`../../CLAUDE.md` for storefronts), when that file is present. The rules below are mandatory here even when it isn't.
+This repo is one part of the Zcom platform. The full map is in the workspace root `../CLAUDE.md` (`../../CLAUDE.md` for storefronts), when that file is present. The rules below are mandatory here even when it isn't.
 
 1. **PRD first (tiered).**
    - **T1** covers: a new feature, page or module; a GraphQL contract change; a model or event change; auth, tenant, permission or billing logic; a new integration. T1 needs a PRD in `docs/prd/` with **Status: Approved** before any code. If none exists, draft one from `docs/prd/_TEMPLATE.md` (Status *Draft*) and **stop for approval**.
@@ -42,10 +42,10 @@ This repo is one part of the ZCommerce platform. The full map is in the workspac
 
 ## 1. What this is
 
-The **Zerror Studios platform console** for ZCommerce. The Zerror team uses it to manage *client stores* (tenants), their plans and subscriptions, platform billing and revenue reporting, coupons, and renewal automation. Tenant store staff use `../zcom-frontend`; this app is not for them.
+The **Zerror Studios platform console** for Zcom. The Zerror team uses it to manage *client stores* (tenants), their plans and subscriptions, platform billing and revenue reporting, coupons, and renewal automation. Tenant store staff use `../zcom-frontend`; this app is not for them.
 
 **Status: UI prototype on mock data.**
-- There are **no API calls**: no fetch, axios, Apollo, or `import.meta.env` (the only `import.meta.env` read is the `VITE_FEATURE_AI` flag, §5).
+- There are **no API calls**: no fetch, axios, Apollo, or `import.meta.env`.
 - All data comes from `src/lib/mockData.ts`, or from in-memory React state seeded from it.
 - Sign-in is fake. Any non-blank email and password works, and auth is a boolean in `localStorage`.
 - The backend has **no platform-level (cross-tenant) API yet**. `platform` subgraph operations are tenant-scoped (`mySubscription`, `activePlans`, …). `isSuperAdmin` in auth is a tenant-owner flag, not platform auth. Connecting this app is a **T1, cross-repo PRD**: it needs a backend design for platform auth, tenant listing, plans and coupons. Don't wire it up ad hoc.
@@ -74,7 +74,7 @@ src/components/
   ui/                   the shared UI kit (docs/design/02-components.md): Button, Card, StatCard, KpiStrip, StatusChip, Chip,
                         Modal, Select, Input, Tabs, EmptyState, ErrorState, HealthScore, Ai (brief/insight), toast helpers,
                         money.ts / format-date.ts formatters, status-map.ts (SYNCED with the merchant admin), chart-theme.ts,
-                        icons.ts, tones.ts, DevUiPage (/dev/ui showcase and AI flag switch)
+                        icons.ts, tones.ts, DevUiPage (/dev/ui showcase)
   layout/               AppShell, DashboardLayout, Sidebar, PageHeader, CommandPalette, NotificationsPanel, Assistant, AuthLayout
   auth/RequireAuth.tsx  redirect to /sign-in when unauthenticated, else <Outlet/>
   common/               PageHeader, ConfirmModal, StatusChip (kind → shared domain), RenewalBadge, StoreHealthCell, TableToolbar,
@@ -95,7 +95,7 @@ docs/design/            the approved design spec (README, foundations, component
 - Authenticated pages sit inside `<RequireAuth>` → `DashboardLayout`. Only `/sign-in` is public, and it is wrapped in `GuestOnly`.
 - **Stores.** Visible text says "store/stores" and the routes are `/stores`, `/stores/new`, `/stores/:id`. The old `/clients…` URLs redirect. Code identifiers (`Client`, `ClientsProvider`, `pages/Clients.tsx`) are unchanged.
 - **Section pages:** `/billing/:section` (`subscriptions`, `transactions`, `reminders`), `/analytics/:section` (`revenue`, `store-sales`) and `/settings/:section` validate `:section` against a local `sections` const and redirect on bad values. The bare paths redirect to their default section; `/settings` itself is a card grid. To add a tab, extend that const and `src/config/navigation.ts` together.
-- `/dev/ui` is the kit showcase (also toggles the AI flag). `*` renders `NotFound`. `vercel.json` rewrites all paths to `index.html`, so the app is a SPA on Vercel.
+- `/dev/ui` is the kit showcase. `*` renders `NotFound`. `vercel.json` rewrites all paths to `index.html`, so the app is a SPA on Vercel.
 
 ## 4. Data and state
 
@@ -118,7 +118,7 @@ docs/design/            the approved design spec (README, foundations, component
 
   Prefix new keys with `zcommerce-`, and never store tokens or real customer data there.
 - **"Log in" to a store** has no real mechanism yet: every button calls `logInToStore()` in `src/components/clients/storeLogin.ts`, which shows a toast. Implement impersonation there.
-- **AI features** are behind the `ai` flag (`VITE_FEATURE_AI=true`, or the switch on `/dev/ui`), off by default. Today's brief (Home) and the store insight (store detail) are written by `src/lib/aiSamples.ts` from lib/metrics + lib/storeStatus data; replace with real calls when an assistant backend exists.
+- **AI features** are always on (owner decision 2026-10-17; the `ai` flag, `VITE_FEATURE_AI` and the `/dev/ui` switch were removed — `useAiEnabled()` returns true). Today's brief (Home), the store insight (store detail) and the assistant (Ask bar at the bottom, ⌘J, "Ask AI" in ⌘K, wired in `DashboardLayout.tsx`, owner request 2026-10-17) are written by `src/lib/aiSamples.ts` from lib/metrics, lib/storeStatus and lib/subscriptionReports data; replace with real calls when an assistant backend exists.
 - **When the backend exists,** follow the admin frontend's pattern: one API client in `src/lib/`, operations in `src/graphql/<domain>.ts`, and server-computed money. Check the root `CLAUDE.md` §5 contract rules.
 
 ## 5. UI and design system

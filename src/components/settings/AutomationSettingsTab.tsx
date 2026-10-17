@@ -48,9 +48,9 @@ const columns = [
 ] as const;
 
 const EMAIL_SUBJECT =
-  "Your Zcommerce subscription renews in {{days}} days";
+  "Your Zcom subscription renews in {{days}} days";
 const EMAIL_BODY =
-  "Hi {{ownerName}},\n\nYour store {{storeName}} on the {{plan}} plan renews on {{renewalDate}} (in {{days}} days).\n\nPlease ensure your payment method is up to date to avoid service interruption.\n\n— Zcommerce";
+  "Hi {{ownerName}},\n\nYour store {{storeName}} on the {{plan}} plan renews on {{renewalDate}} (in {{days}} days).\n\nPlease ensure your payment method is up to date to avoid service interruption.\n\n— Zcom";
 
 function plural(count: number, word: string) {
   return `${count} ${word}${count === 1 ? "" : "s"}`;

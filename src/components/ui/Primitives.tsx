@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Small shared pieces from docs/design/02-components.md that had no component before:
  * BackLink (§2), SaveBar (§2), CopyableId (§18), Kbd (§13), SegmentedControl (§8).
@@ -62,7 +62,7 @@ export function SaveBar({
     <div
       aria-hidden={!isVisible}
       className={cx(
-        "sticky bottom-4 z-[var(--zc-z-sticky)] mx-auto mt-6 flex w-full max-w-content-form items-center justify-between gap-3 rounded-card border border-line bg-surface px-4 py-2.5 shadow-popover transition-all duration-base ease-standard",
+        "sticky bottom-4 z-[var(--zc-z-sticky)] mt-6 flex w-full items-center justify-between gap-3 rounded-card border border-line bg-surface px-4 py-2.5 shadow-popover transition-all duration-base ease-standard",
         isVisible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0",
       )}
     >

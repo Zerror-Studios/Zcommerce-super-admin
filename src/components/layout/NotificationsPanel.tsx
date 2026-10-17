@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Notifications panel (docs/design/02-components.md §12, ref 05): opens like the command palette, a centred
  * 640px modal near the top of the screen, from the bell row or the mobile header. Header with "Mark all as read", underline tabs, "Today" / "Earlier" groups,

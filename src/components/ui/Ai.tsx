@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * AI layer (docs/design/02-components.md §16, ref 01/03/04). One visual language: the sparkle icon and the
  * spectrum, reserved for AI. Three states on every AI surface: ready (.ai-edge), thinking (.ai-live, only while

@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Login screen for both dashboards (docs/design/02-components.md §17, ref 02): dark page with a faint dot grid,
  * a 380px centre column with the wordmark and a small card whose spectrum edge slowly rotates.
@@ -15,7 +15,7 @@ export interface AuthLayoutProps {
   subtitle?: ReactNode;
   /** Muted label after the wordmark ("Super admin"). */
   productLabel?: string;
-  /** Line under the card (Merchant: "New to Zcommerce? Start your store"). */
+  /** Line under the card (Merchant: "New to Zcom? Start your store"). */
   belowCard?: ReactNode;
   children: ReactNode;
 }
@@ -38,11 +38,9 @@ export function AuthLayout({ title, documentTitle, subtitle, productLabel, below
 
       <main className="relative flex flex-1 items-center justify-center px-4 py-12">
         <div className="w-full max-w-[380px]">
-          <div className="mb-[22px] flex items-center justify-center gap-2.5">
-            <span aria-hidden className="flex size-[26px] items-center justify-center rounded-[7px] bg-surface text-[15px] font-semibold text-fg">
-              Z
-            </span>
-            <span className="text-base font-semibold text-brand-on">zcommerce</span>
+          {/* Text-only logotype: heavy Geist with tight tracking, no "Z" tile. */}
+          <div className="mb-[22px] flex items-baseline justify-center gap-2.5">
+            <span className="text-[28px] font-extrabold leading-none tracking-[-0.045em] text-brand-on">Zcom</span>
             {productLabel ? <span className="text-label font-medium text-auth-muted">{productLabel}</span> : null}
           </div>
 
@@ -59,7 +57,7 @@ export function AuthLayout({ title, documentTitle, subtitle, productLabel, below
       </main>
 
       <footer className="relative flex justify-center gap-4 pb-6 text-caption text-auth-footer">
-        <span>© {year} Zcommerce</span>
+        <span>© {year} Zcom</span>
         <span>Privacy</span>
         <span>Terms</span>
       </footer>

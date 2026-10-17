@@ -10,7 +10,7 @@
 
 ## 1. Purpose
 
-This is Zerror Studios' internal console for operating the ZCommerce platform:
+This is Zerror Studios' internal console for operating the Zcom platform:
 - onboarding and managing **client stores** (tenants);
 - plans and subscriptions, billing transactions and revenue reports;
 - coupons and renewal-reminder automation;

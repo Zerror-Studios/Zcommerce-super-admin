@@ -86,7 +86,7 @@ Applies to the merchant app (today on `localhost:5173`). Uses the shell, compone
 ### 2.10 Settings
 - **Index:** replace the grid of icon cards with a **grouped list**: group title (13/600 secondary) → card with 52px rows: 16px icon in `--text-secondary` (no tile), title 14/500, description 13px secondary, chevron. Hover `--bg-subtle` only (today Receipts looks permanently selected — fix).
   - Groups (map existing pages): **Store** (Store details, Plan & billing, Domains) · **Store & checkout** (Receipts, Tax, Locations, Shipping & delivery, Payments) · **Team** (Members, Roles) · **Notifications** · **Advanced** (Login history, About).
-- **Settings pages:** 720px column, section cards, sticky save bar.
+- **Settings pages:** full-width section cards (owner change 2026-10-17; was a 720px column), sticky save bar.
 - **Shipping & delivery:** flatten (no cards in cards). Sections: Shipping origin (one row: address + "Default" neutral badge + ghost Edit) · General rates (simple table Zone · Countries · Method · Rate) · Custom profiles (list rows; secondary "Add shipping profile") · Packaging. Remove mono "1 country" chips and arrow buttons. "Cancel" on Create profile becomes ghost, not red.
 - **Tax:** radio card ("Prices include tax" / "Add tax at checkout") then Tax rules table with empty state.
 - **Members** (was Users): Member (avatar, name, email) · Role (plain text) · Status · Last active. Owner row: lock icon with tooltip. Primary "Invite member". "My Login History" moves to user menu › Login history.
@@ -106,5 +106,5 @@ Applies to the merchant app (today on `localhost:5173`). Uses the shell, compone
 3. `/admin/marketing/coupons` renders a 404 outside the shell.
 4. Notifications grouped under "24 December" with today's times — fix grouping/dates.
 5. Toasts show developer wording; "You have logged out!" (see `05-wording.md`).
-6. Browser tab title "ZCommerce | Powerful Ecommer…" → "{Page} · {Store name} · Zcommerce".
+6. Browser tab title "ZCommerce | Powerful Ecommer…" → "{Page} · {Store name} · Zcom".
 7. Skeletons that never resolve to empty/error states.

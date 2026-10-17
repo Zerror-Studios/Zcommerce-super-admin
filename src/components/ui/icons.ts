@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Icon registry (docs/design/02-components.md §1): Lucide stroke icons via react-icons/lu, one glyph per meaning.
  * Import icons from here, never from react-icons directly, so both products use the same glyph.
