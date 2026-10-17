@@ -9,7 +9,7 @@ Put all user-facing strings in one place per app (e.g. `copy.ts` / i18n files) s
 - **Sentence case** for every title, label, button, tab, badge and menu item ("Add product", not "Add New Product").
 - **No exclamation marks. No "Oops". No ALL CAPS.**
 - Never show internal words to users: "local state", "demo", "null", "undefined", error codes, stack traces. Log them; show a human message.
-- Product name: "Zcommerce". Avoid hype words: "powerful", "magic", "smart", "AI-powered", "simple".
+- Product name: "Zcom". Avoid hype words: "powerful", "magic", "smart", "AI-powered", "simple".
 - Indian English spelling: colour, behaviour, analyse, organisation, cancelled.
 
 ## 2. Formatting
@@ -92,12 +92,12 @@ Children: All orders · Abandoned checkouts · Returns · All products · Invent
 
 | Today | New |
 |---|---|
-| ZCOMMERCE SUPER ADMIN (pill) | zcommerce Super admin (plain text) |
-| Dashboard · Platform-wide overview across all Zcommerce client stores. | Platform overview · October 2026 · 7 stores |
+| ZCOMMERCE SUPER ADMIN (pill) | zcom Super admin (plain text) |
+| Dashboard · Platform-wide overview across all Zcom client stores. | Platform overview · October 2026 · 7 stores |
 | Total Revenue | Earned this month / Earned this year |
 | Monthly Recurring Revenue / Active MRR | Monthly billing |
 | Total Stores / Clients | Stores |
-| Clients (15) · Monitor and manage every client store on the Zcommerce platform. | Stores (count muted) — no description |
+| Clients (15) · Monitor and manage every client store on the Zcom platform. | Stores (count muted) — no description |
 | Add client | Add store |
 | Login (row pill) / Login as client | Log in |
 | Store Health · 0 · Critical | Health · 0 Critical (score + label) |
@@ -155,7 +155,7 @@ Children: All orders · Abandoned checkouts · Returns · All products · Invent
 | Today | New |
 |---|---|
 | You have logged out! | You've been logged out. |
-| Signed in · Welcome back to Zcommerce Admin. | (no toast) |
+| Signed in · Welcome back to Zcom Admin. | (no toast) |
 | Failed to load lookbooks | Couldn't load lookbooks. Retry (inline + toast) |
 | Client deleted · Alpine Botanics was removed from local state. | Alpine Botanics deleted. Undo |
 | Emails queued · Reminder email will be sent to 1 store (demo). | Reminder sent to 1 store. |

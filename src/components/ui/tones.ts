@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Status tones (docs/design/02-components.md §10). The tone carries meaning; the same status gets the same tone
  * everywhere. "danger" is the spec's "critical" tone.

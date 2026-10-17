@@ -1,8 +1,21 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /** Menu popover and item classes shared by Select and Dropdown (docs/design/02-components.md §11). */
 
-/** Popover: white surface, 1px border, 12px radius, popover shadow, 4px padding. */
-export const menuPopoverClasses = "rounded-xl border border-line bg-surface p-1 !shadow-popover";
+/** Popover: white surface, 1px border, 12px radius, popover shadow, 4px padding. `zc-menu` adds the 4px slide (theme.css). */
+export const menuPopoverClasses = "zc-menu rounded-xl border border-line bg-surface p-1 !shadow-popover";
+
+/**
+ * Menu motion (docs/design/02-components.md: "fade + 4px slide from anchor, 140ms"). Replaces HeroUI's default
+ * spring that scales from 0.8: the scaled text re-rasterises as it settles, which reads as a flicker.
+ * Framer only fades; the slide is a CSS animation on `.zc-menu` keyed off the resolved placement.
+ */
+export const menuMotionProps = {
+  variants: {
+    initial: { opacity: 0 },
+    enter: { opacity: 1, transition: { duration: 0.14, ease: [0.2, 0, 0, 1] as const } },
+    exit: { opacity: 0, transition: { duration: 0.08, ease: [0.4, 0, 1, 1] as const } },
+  },
+};
 
 /** Item: 32px, 8px radius, 14px text; muted fill on hover/keyboard focus; soft primary when selected. */
 export const menuItemClasses = {

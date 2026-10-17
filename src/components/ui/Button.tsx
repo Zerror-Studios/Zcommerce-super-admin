@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 import { Button as HeroButton } from "@heroui/react";
 import type { ButtonProps as HeroButtonProps } from "@heroui/react";
 import { forwardRef, type ReactNode } from "react";

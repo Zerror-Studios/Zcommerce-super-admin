@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Dark sidebar (docs/design/02-components.md §1, ref 01/05/07). Top to bottom: wordmark → search (⌘K) →
  * navigation → divider + secondary items → spacer → Notifications → Settings → user row (or a plain Log out row).
@@ -30,8 +30,12 @@ export interface SidebarProps {
   secondaryItems?: NavItem[];
   /** Settings, pinned to the bottom above the user row. */
   settingsItem?: NavItem;
-  /** Muted label after the wordmark ("Super admin"). */
+  /** Links in the bottom group, right after Notifications (Merchant: Help & learn). */
+  bottomItems?: NavItem[];
+  /** Muted label at the right of the wordmark ("Super admin", "Admin"). */
   productLabel?: string;
+  /** App version, shown under the product label. */
+  productVersion?: string;
   searchPlaceholder?: string;
   /** Opens the command palette. */
   onOpenSearch?: () => void;
@@ -41,8 +45,6 @@ export interface SidebarProps {
   renderNotifications?: (row: ReactNode) => ReactNode;
   user?: SidebarUser;
   userMenu?: UserMenuItem[];
-  /** Small line at the bottom of the user menu (app version). */
-  userMenuFooter?: ReactNode;
   /** Single-account apps (Super admin): without `user`, the bottom row is a plain "Log out" row. */
   onLogout?: () => void;
   /** Icons only (64px) when true. */
@@ -91,14 +93,15 @@ export function Sidebar({
   items,
   secondaryItems = [],
   settingsItem,
+  bottomItems = [],
   productLabel,
+  productVersion,
   searchPlaceholder = "Search",
   onOpenSearch,
   unreadCount = 0,
   renderNotifications,
   user,
   userMenu = [],
-  userMenuFooter,
   onLogout,
   collapsed = false,
   onToggleCollapse,
@@ -151,14 +154,19 @@ export function Sidebar({
       )}
     >
       {/* Wordmark */}
-      <div className={cx("flex items-center gap-2 pb-3.5 pt-4", collapsed ? "justify-center" : "px-2.5")}>
-        <span aria-hidden className="flex size-[22px] shrink-0 items-center justify-center rounded-[6px] bg-surface text-[13px] font-semibold text-fg">
-          Z
-        </span>
-        {collapsed ? <span className="sr-only">zcommerce</span> : (
-          <span className="flex min-w-0 flex-1 items-baseline gap-2">
-            <span className="text-[15px] font-semibold text-nav-fg-strong">zcommerce</span>
-            {productLabel ? <span className="truncate text-caption font-medium text-nav-fg-muted">{productLabel}</span> : null}
+      {/* Text-only logotype like the login page: "Zcom" left; product label and version stacked on the right. */}
+      <div className={cx("flex min-h-9 items-center gap-2 pb-3.5 pt-4", collapsed ? "justify-center" : "px-2.5")}>
+        {collapsed ? (
+          <span aria-label="Zcom" className="text-[17px] font-bold leading-none tracking-[-0.04em] text-nav-fg-strong">Z</span>
+        ) : (
+          <span className="flex min-w-0 flex-1 items-baseline-last justify-between gap-2">
+            <span className="text-[19px] font-bold leading-none tracking-[-0.04em] text-nav-fg-strong">Zcom</span>
+            {productLabel || productVersion ? (
+              <span className="flex min-w-0 flex-col items-end text-right leading-none">
+                {productLabel ? <span className="truncate text-[11px] font-medium leading-[13px] text-nav-fg">{productLabel}</span> : null}
+                {productVersion ? <span className="text-[10px] leading-3 text-nav-fg-muted">v{productVersion}</span> : null}
+              </span>
+            ) : null}
           </span>
         )}
         {onClose ? (
@@ -203,13 +211,14 @@ export function Sidebar({
         ) : null}
       </nav>
 
-      {/* Bottom: notifications, settings */}
+      {/* Bottom: notifications, bottom links, settings */}
       <div className="flex flex-col gap-0.5 pb-2 pt-2">
         {renderNotifications ? (
           <WithTooltip show={collapsed} label="Notifications">
             {renderNotifications(notificationsRow)}
           </WithTooltip>
         ) : null}
+        {bottomItems.length ? <NavList items={bottomItems} collapsed={collapsed} isActive={isActive} onNavigate={onNavigate} /> : null}
         {settingsItem ? <NavList items={[settingsItem]} collapsed={collapsed} isActive={isActive} onNavigate={onNavigate} /> : null}
       </div>
 
@@ -243,7 +252,6 @@ export function Sidebar({
                   <p className="truncate text-label font-medium text-fg">{user.email || user.name}</p>
                 </div>
               }
-              bottomContent={userMenuFooter ? <p className="px-2.5 pb-1.5 pt-1 text-caption text-fg-subtle">{userMenuFooter}</p> : undefined}
             >
               {/* An empty section would still draw a divider and padding, so it's left out when unused. */}
               {[

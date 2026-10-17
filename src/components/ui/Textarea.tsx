@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 import { Textarea as HeroTextarea } from "@heroui/react";
 import type { TextAreaProps as HeroTextAreaProps } from "@heroui/react";
 import { cx } from "./cx";

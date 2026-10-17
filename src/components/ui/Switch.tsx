@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 import { Switch as HeroSwitch } from "@heroui/react";
 import type { SwitchProps as HeroSwitchProps } from "@heroui/react";
 import { cx } from "./cx";

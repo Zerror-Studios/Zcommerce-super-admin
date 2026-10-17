@@ -26,7 +26,7 @@ export const mainNavItems: NavItem[] = [
     to: "/analytics",
     icon: IconAnalytics,
     children: [
-      // What stores pay Zcommerce, and what stores sell to their own customers.
+      // What stores pay Zcom, and what stores sell to their own customers.
       { label: "Platform revenue", to: "/analytics/revenue" },
       { label: "Store sales", to: "/analytics/store-sales" },
     ],

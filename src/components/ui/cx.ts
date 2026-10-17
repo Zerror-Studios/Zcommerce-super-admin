@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /** Anything HeroUI accepts in a classNames slot (strings, falsy values, nested arrays). */
 export type ClassValue = string | number | bigint | boolean | null | undefined | readonly ClassValue[];
 

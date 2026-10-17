@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Ask bar + assistant panel (docs/design/02-components.md §16 items 3–4, ref 01/04). Render only when the `ai`
  * flag is on. The app supplies `onAsk`; until a backend exists it returns sample answers marked as such.

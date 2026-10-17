@@ -2,7 +2,7 @@
 
 ## 1. Goal
 
-Zcommerce is heading into a funding round. Both dashboards must read as a **serious, premium SaaS product**: as easy as Wix, as consistent and dense as Shopify's 2026 admin, with Apple-level calm and polish, and an AI layer that feels native rather than bolted on.
+Zcom is heading into a funding round. Both dashboards must read as a **serious, premium SaaS product**: as easy as Wix, as consistent and dense as Shopify's 2026 admin, with Apple-level calm and polish, and an AI layer that feels native rather than bolted on.
 
 Today's problems (from the screen recordings): Wix-like decoration (pill buttons, light-blue table headers, a navy top bar, 30px bold titles, icon tiles on every card, the same cactus illustration on every empty page), too many outlined blue buttons competing, inconsistent wording and formatting, and visible "under development" states.
 
@@ -31,8 +31,8 @@ Today's problems (from the screen recordings): Wix-like decoration (pill buttons
 | Density | **Comfortable**: 14px body, 56px table rows, 36px controls. |
 | Typeface | **Geist** for UI, **Geist Mono** only for IDs, codes and shortcuts. |
 | Corners | 8px buttons/inputs, 12px cards/tables/popovers, 16px modals/login card. **No pill buttons.** |
-| Primary colour | **Zcommerce Blue `#1F5EFF`**. |
-| Product name | "Zcommerce" in sentences; lower-case "zcommerce" wordmark next to a white "Z" tile in the sidebar and login. Never ZCOMMERCE / ZCommerce / Zcom in the UI. |
+| Primary colour | **Zcom Blue `#1F5EFF`**. |
+| Product name | "Zcom" in sentences; text-only "Zcom" logotype (no "Z" tile) in the sidebar and login (02-components §1, §17). Never ZCOM / Zcommerce / ZCommerce in the UI. |
 | Language | Indian English spelling (colour, behaviour, analyse), sentence case everywhere. |
 
 ## 4. Colour rules
@@ -58,7 +58,7 @@ All values are in `tokens.css`. Rules:
 ## 6. Spacing and layout
 
 - 4px grid. Common gaps: 4/8 inside controls, 12/16 inside cards, 16 between cards, 20 header → content, 32 page side padding (16 on mobile).
-- Content max-width: 1200px (dashboards, detail pages), 1440px (wide tables), 720px (settings forms). Centred.
+- Content max-width: 1200px (dashboards, detail pages), 1440px (wide tables). Centred. Merchant settings and form pages use the full content width (owner change 2026-10-17; was a 720px column).
 - Card padding: 16px 20px header, 20px body. Table cells: 14–16px side padding.
 - Breakpoints: ≥1280 full; 1024–1279 sidebar collapsible; <1024 sidebar becomes a drawer; <640 single column, tables scroll horizontally inside their card. No horizontal page scroll ever.
 

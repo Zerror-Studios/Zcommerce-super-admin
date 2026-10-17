@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /** Number formatting (docs/design/05-wording.md §2): en-IN grouping (₹4,82,650), INR by default. */
 export interface FormatMoneyOptions {
   currency?: string;

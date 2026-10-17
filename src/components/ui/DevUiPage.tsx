@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Hidden component showcase at /dev/ui (docs/design/README.md, Phase 2): every shared component in every
  * state, for visual QA. Not linked from navigation; renders only in development builds.
@@ -63,8 +63,7 @@ import { Textarea } from "./Textarea";
 import { Tooltip } from "./Tooltip";
 import { TONES } from "./tones";
 import { toastError } from "./toast";
-import { AiInsightCard, AiSuggestion, AiThinking, Sparkle, TodaysBrief, WriteWithAiButton } from "./Ai";
-import { setAiEnabled, useAiEnabled } from "./ai-flag";
+import { AiInsightCard, AiSuggestion, AiThinking, TodaysBrief, WriteWithAiButton } from "./Ai";
 import { AskBar } from "../layout/Assistant";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -89,7 +88,6 @@ export default function DevUiPage() {
   const [dirty, setDirty] = useState(false);
   const [segment, setSegment] = useState<"revenue" | "orders">("revenue");
   const [search, setSearch] = useState("");
-  const aiEnabled = useAiEnabled();
 
   if (!import.meta.env.DEV) return null;
 
@@ -277,19 +275,7 @@ export default function DevUiPage() {
         <div className="flex w-80 flex-col gap-2"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-24 w-full" /></div>
       </Section>
 
-      <Section title="AI layer (feature flag)">
-        <div className="flex w-full items-center justify-between gap-4 rounded-card border border-line bg-surface px-5 py-4">
-          <div>
-            <p className="flex items-center gap-2 text-body font-semibold text-fg">
-              <Sparkle /> AI features in this browser
-            </p>
-            <p className="text-label text-fg-muted">
-              Shows Today&apos;s brief, insight cards, the Ask bar and Write with AI. Answers are samples until the assistant
-              backend exists.
-            </p>
-          </div>
-          <Switch isSelected={aiEnabled} onValueChange={setAiEnabled} aria-label="AI features" />
-        </div>
+      <Section title="AI layer">
         <TodaysBrief
           className="w-full"
           message="Sessions are up 17% this month, but conversion slipped to 2.4%."

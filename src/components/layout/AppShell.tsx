@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * App frame (docs/design/02-components.md §1–2): dark sidebar on the left, no top bar; only the content area
  * scrolls. Below 1024px the sidebar becomes an off-canvas drawer and a 52px light header shows a menu button,

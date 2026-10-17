@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /* HeroUI reads hex values, not CSS variables. Keep these equal to src/styles/tokens.css (docs/design/tokens.css). */
 const primary = {
   50: '#EEF3FF', 100: '#DCE6FF', 200: '#B9CCFF', 300: '#8DADFF', 400: '#5B8CFF',

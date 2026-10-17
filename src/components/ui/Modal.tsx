@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 import { Modal as HeroModal } from "@heroui/react";
 import type { ModalProps as HeroModalProps } from "@heroui/react";
 import { cx } from "./cx";

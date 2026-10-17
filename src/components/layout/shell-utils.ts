@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /** Shell helpers: keyboard shortcuts, remembered sidebar state, relative times. */
 import { useEffect } from "react";
 import { formatRelative } from "../ui/format-date";

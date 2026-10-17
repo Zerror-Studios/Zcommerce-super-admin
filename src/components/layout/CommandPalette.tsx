@@ -1,4 +1,4 @@
-/* SYNCED FILE (zcommerce-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Command palette (docs/design/02-components.md §13): ⌘K / Ctrl+K anywhere, or the sidebar search.
  * Centred 640px modal, 48px search input, sections (Pages · Stores · Actions …), arrow keys + Enter, Esc closes.

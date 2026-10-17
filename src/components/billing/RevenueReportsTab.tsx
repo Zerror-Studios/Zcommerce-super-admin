@@ -211,7 +211,7 @@ export function RevenueReportsTab() {
     <div>
       <PageHeader
         title="Platform revenue"
-        description="What stores pay Zcommerce for their plans."
+        description="What stores pay Zcom for their plans."
         actions={
           <>
             <DateRangeComparison value={range} onChange={setRange} />
