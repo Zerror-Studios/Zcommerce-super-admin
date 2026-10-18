@@ -36,7 +36,12 @@ export const mainNavItems: NavItem[] = [
 ];
 
 /** Pages behind the Settings cards. */
-export const settingsPages = [{ label: "Discounts", to: "/settings/discounts" }];
+export const settingsPages = [
+  { label: "Discounts", to: "/settings/discounts" },
+  { label: "Billing rules", to: "/settings/billing-rules" },
+  { label: "Team", to: "/settings/team" },
+  { label: "Audit log", to: "/settings/audit" },
+];
 
 /** Every page, for page titles and the command palette (settings pages are listed under Settings). */
 export const allNavItems: NavItem[] = mainNavItems.map((item) =>

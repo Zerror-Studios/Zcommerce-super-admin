@@ -1,14 +1,15 @@
-import { addToast } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { allNavItems, mainNavItems } from "../../config/navigation";
 import { ASSISTANT_SUGGESTIONS, sampleAssistantAnswer } from "../../lib/aiSamples";
-import { notifications as sampleNotifications, subscriptions, transactions } from "../../lib/mockData";
-import { loadPlatformSettings } from "../../lib/platformSettings";
+import { client as apollo } from "../../lib/apollo-client";
+import { toPickerDay } from "../../lib/api-report-adapters";
+import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
+import { PLATFORM_REVENUE_OVERVIEW } from "../../graphql/reports";
+import type { PlatformRevenueOverview } from "../../types/platform-api";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
-import type { Notification } from "../../types";
-import { IconAdd, IconBilling, IconNotifications, IconStore, IconWarning } from "../ui/icons";
+import { IconAdd, IconNotifications, IconStore } from "../ui/icons";
 import { AppShell } from "./AppShell";
 import { AskBar, AssistantPanel } from "./Assistant";
 import { readStoredFlag, storeFlag, useShellHotkeys } from "./shell-utils";
@@ -17,7 +18,6 @@ import { NotificationsPanel } from "./NotificationsPanel";
 import { Sidebar } from "./Sidebar";
 import { AiSpectrumDefs } from "../ui/Ai";
 import type { CommandGroup, NotificationEntry } from "./types";
-import { toasts } from "../../copy";
 
 const COLLAPSE_KEY = "zcommerce-sidebar-collapsed";
 const APP_VERSION = "1.0.0";
@@ -38,21 +38,6 @@ function pageLabelFor(pathname: string): string | undefined {
   return undefined;
 }
 
-/** Sample notifications mapped to the Super Admin tabs (docs/design/02-components.md §12): Payments · Stores · Health. */
-function toEntry(item: Notification): NotificationEntry {
-  const payments = item.category === "Billing";
-  const failed = /fail|overdue|suspend/i.test(item.description);
-  return {
-    id: item.id,
-    category: payments ? "payments" : "stores",
-    title: item.description,
-    time: item.timestamp,
-    unread: !item.read,
-    icon: failed ? IconWarning : payments ? IconBilling : IconStore,
-    critical: failed,
-  };
-}
-
 const NOTIFICATION_TABS = [
   { key: "payments", label: "Payments" },
   { key: "stores", label: "Stores" },
@@ -61,14 +46,15 @@ const NOTIFICATION_TABS = [
 
 export function DashboardLayout() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { signOut } = useAuth();
-  const { clients } = useClients();
+  const { signOut, can } = useAuth();
+  const { clients, subscriptions } = useClients();
+  const canAddStore = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
 
   const [collapsed, setCollapsed] = useState(() => readStoredFlag(COLLAPSE_KEY));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationEntry[]>(() => sampleNotifications.map(toEntry));
+  // No notifications feed exists yet (PRD-005 §8 Q14: the sample data went with mock mode); the panel shows its empty state.
+  const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
 
   const toggleSidebar = useCallback(() => {
     setCollapsed((prev) => {
@@ -91,11 +77,19 @@ export function DashboardLayout() {
       sampleAssistantAnswer(question, {
         clients,
         subscriptions,
-        transactions,
-        platformGraceDays: loadPlatformSettings().gracePeriodDays,
-        now: new Date(),
+        // Money comes from the server rollup, fetched only when asked (root CLAUDE.md §4).
+        loadMonthSummary: async () => {
+          const now = new Date();
+          const { data } = await apollo.query<{ platformRevenueOverview: PlatformRevenueOverview }>({
+            query: PLATFORM_REVENUE_OVERVIEW,
+            variables: { range: { start: toPickerDay(new Date(now.getFullYear(), now.getMonth(), 1)), end: toPickerDay(now) } },
+            fetchPolicy: "network-only",
+          });
+          const summary = data.platformRevenueOverview.summary;
+          return { earnedMonth: summary.earnedMonth, paidStoresMonth: summary.paidStoresMonth };
+        },
       }),
-    [clients],
+    [clients, subscriptions],
   );
   useShellHotkeys({ onSearch: openPalette, onToggleSidebar: toggleSidebar, onAsk: askHotkey });
 
@@ -104,10 +98,10 @@ export function DashboardLayout() {
     document.title = pageLabel ? `${pageLabel} · Zcom Super admin` : "Zcom Super admin";
   }, [pageLabel]);
 
+  // `signOut` ends with `clearAuth`, which hard-reloads to /sign-in; the
+  // sign-in page shows the "logged out" notice itself (review C-L5).
   const handleLogout = () => {
-    signOut();
-    navigate("/sign-in", { replace: true });
-    addToast({ title: toasts.loggedOut });
+    void signOut();
   };
 
   const items = useMemo(
@@ -136,9 +130,11 @@ export function DashboardLayout() {
           href: `/stores/${client.id}`,
         })),
       },
-      { title: "Actions", items: [{ id: "add-store", label: "Add store", icon: IconAdd, href: "/stores/new" }] },
+      ...(canAddStore
+        ? [{ title: "Actions", items: [{ id: "add-store", label: "Add store", icon: IconAdd, href: "/stores/new" }] }]
+        : []),
     ],
-    [clients],
+    [canAddStore, clients],
   );
 
   const unreadCount = notifications.filter((item) => item.unread).length;

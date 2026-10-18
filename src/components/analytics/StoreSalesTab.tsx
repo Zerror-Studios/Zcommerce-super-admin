@@ -2,8 +2,8 @@ import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from 
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { getPlanLabel } from "../../lib/display-labels.util";
-import { clients } from "../../lib/mockData";
-import { SALES_DROP_ALERT_PERCENT, storeSalesByPlan, storeSalesRows, storeSalesSummary } from "../../lib/metrics";
+import { useClients } from "../../providers/ClientsProvider";
+import { SALES_DROP_ALERT_PERCENT, storeSalesByPlan, storeSalesRows, storeSalesSummary } from "../../lib/store-sales";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { PageHeader } from "../common/PageHeader";
 import {
@@ -40,9 +40,10 @@ function Change({ value }: { value: number | null }) {
  */
 export function StoreSalesTab() {
   const navigate = useNavigate();
-  const summary = useMemo(() => storeSalesSummary(clients), []);
-  const rows = useMemo(() => storeSalesRows(clients), []);
-  const byPlan = useMemo(() => storeSalesByPlan(clients), []);
+  const { clients } = useClients();
+  const summary = useMemo(() => storeSalesSummary(clients), [clients]);
+  const rows = useMemo(() => storeSalesRows(clients), [clients]);
+  const byPlan = useMemo(() => storeSalesByPlan(clients), [clients]);
   const needsLook = useMemo(
     () => rows.filter((row) => row.orders === 0 || (row.changePercent != null && row.changePercent <= -SALES_DROP_ALERT_PERCENT)),
     [rows],

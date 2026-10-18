@@ -1,22 +1,13 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { endOfDay, endOfMonth, startOfMonth } from "date-fns";
+import { endOfDay, startOfMonth, subMonths } from "date-fns";
 import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { getPaymentGatewayLabel, getPlanLabel, PLAN_LABELS } from "../../lib/display-labels.util";
-import { clients, subscriptions, transactions } from "../../lib/mockData";
-import { monthlyBilling } from "../../lib/metrics";
-import {
-  MONTHLY_PLAN_REVENUE,
-  buildGatewayBreakdown,
-  buildPlanBreakdown,
-  buildRevenueKpis,
-  buildTopStoreRevenue,
-  buildTrendWithMrr,
-  filterMonthlyPlanRevenue,
-  monthTotal,
-  type MonthlyPlanRevenue,
-} from "../../lib/revenueReports";
-import { downloadCsv, rowsToCsv } from "../../lib/subscriptionReports";
+import { useRevenueOverview } from "../../hooks/use-platform-reports";
+import { monthTotal } from "../../lib/api-report-adapters";
+import { downloadCsv, rowsToCsv } from "../../lib/report-csv";
+import type { MonthlyPlanRevenue } from "../../types/reports";
+import { toasts } from "../../copy";
 import {
   DateRangeComparison,
   type DateRangeValue,
@@ -42,6 +33,7 @@ import {
   Button as UiButton,
   Card,
   EmptyState,
+  ErrorState,
   KpiStrip,
   StatCard,
   Tooltip,
@@ -54,9 +46,10 @@ import {
 } from "../ui";
 import { emptyStates } from "../../copy";
 
+// The last six months, to today.
 const defaultRange: DateRangeValue = {
-  startDate: startOfMonth(new Date(2026, 3, 1)),
-  endDate: endOfDay(endOfMonth(new Date(2026, 8, 1))),
+  startDate: startOfMonth(subMonths(new Date(), 5)),
+  endDate: endOfDay(new Date()),
 };
 
 const PLAN_KEYS = ["PREMIUM", "PLUS", "ENTERPRISE"] as const;
@@ -124,58 +117,9 @@ export function RevenueReportsTab() {
   const navigate = useNavigate();
   const [range, setRange] = useState<DateRangeValue>(defaultRange);
 
-  const monthly = useMemo(
-    () =>
-      filterMonthlyPlanRevenue(
-        MONTHLY_PLAN_REVENUE,
-        range.startDate,
-        range.endDate,
-      ),
-    [range.endDate, range.startDate],
-  );
-
-  const trend = useMemo(
-    () => buildTrendWithMrr(MONTHLY_PLAN_REVENUE, subscriptions, range.startDate, range.endDate),
-    [range.endDate, range.startDate],
-  );
-
-  const kpis = useMemo(
-    () =>
-      buildRevenueKpis({
-        monthly,
-        allMonthly: MONTHLY_PLAN_REVENUE,
-        transactions,
-        subscriptions,
-        rangeStart: range.startDate,
-        rangeEnd: range.endDate,
-      }),
-    [monthly, range.endDate, range.startDate],
-  );
-
-  // One definition with Home and Billing (docs/design/04-super-admin.md §2), not revenueReports' activeMrr.
-  const billing = useMemo(() => monthlyBilling(clients), []);
-
-  const planRows = useMemo(
-    () => buildPlanBreakdown(monthly, clients, subscriptions),
-    [monthly],
-  );
-
-  const gatewayRows = useMemo(
-    () =>
-      buildGatewayBreakdown(transactions, range.startDate, range.endDate),
-    [range.endDate, range.startDate],
-  );
-
-  const topStores = useMemo(
-    () =>
-      buildTopStoreRevenue(
-        transactions,
-        clients,
-        range.startDate,
-        range.endDate,
-      ),
-    [range.endDate, range.startDate],
-  );
+  // PRD-005 FR-5.3: every figure comes from the server rollup.
+  const api = useRevenueOverview(range);
+  const { monthly, trend, kpis, billing, planRows, gatewayRows, topStores } = api.data;
 
   const monthlyLabelled = useMemo(
     () => monthly.map((row) => ({ ...row, short: row.label.replace(/ 20\d\d$/, "") })),
@@ -200,11 +144,10 @@ export function RevenueReportsTab() {
     downloadCsv("revenue-by-plan.csv", rowsToCsv(rows, columns));
   };
 
-  // "Sep vs Aug" for the Bookings delta (buildRevenueKpis compares the last month in range with the one before).
+  // "Sep vs Aug" for the Bookings delta (the server compares the last month in range with the one before).
   const momLabel = useMemo(() => {
     const last = monthly[monthly.length - 1];
-    const index = last ? MONTHLY_PLAN_REVENUE.findIndex((row) => row.key === last.key) : -1;
-    const previous = index > 0 ? MONTHLY_PLAN_REVENUE[index - 1] : undefined;
+    const previous = monthly.length > 1 ? monthly[monthly.length - 2] : undefined;
     const short = (row: MonthlyPlanRevenue) => row.label.replace(/ 20\d\d$/, "");
     return last && previous ? `${short(last)} vs ${short(previous)}` : "Plan bookings";
   }, [monthly]);
@@ -231,10 +174,14 @@ export function RevenueReportsTab() {
         }
       />
 
+      {api.error ? (
+        <ErrorState title="Couldn't load platform revenue." description={toasts.genericError} onRetry={() => void api.refetch()} />
+      ) : null}
       <div className="space-y-4">
         <KpiStrip>
           <StatCard
             bare
+            isLoading={api.loading}
             label={<Explained tip="Plan bookings for the months in this period">Bookings</Explained>}
             value={kpis.planRevenue}
             format="money"
@@ -243,6 +190,7 @@ export function RevenueReportsTab() {
           />
           <StatCard
             bare
+            isLoading={api.loading}
             label={<Explained tip="Successful payments minus refunds in this period. It can be below zero when refunds are larger than new payments.">Collected</Explained>}
             value={formatMoney(kpis.netCollected, { paise: true })}
             valueTone={kpis.netCollected < 0 ? "danger" : "default"}
@@ -254,12 +202,14 @@ export function RevenueReportsTab() {
           />
           <StatCard
             bare
+            isLoading={api.loading}
             label="Pending"
             value={formatMoney(kpis.pendingAmount, { paise: true })}
             deltaLabel="Awaiting settlement"
           />
           <StatCard
             bare
+            isLoading={api.loading}
             label="Failed"
             value={formatMoney(kpis.failedAmount, { paise: true })}
             valueTone={kpis.failedAmount > 0 ? "danger" : "default"}
@@ -267,6 +217,7 @@ export function RevenueReportsTab() {
           />
           <StatCard
             bare
+            isLoading={api.loading}
             label={<Explained tip="Monthly recurring revenue">Monthly billing</Explained>}
             value={billing}
             format="money"
@@ -366,7 +317,7 @@ export function RevenueReportsTab() {
                     <TableCell><span className={right}>{formatCount(row.storeCount)}</span></TableCell>
                     <TableCell>
                       <span className={right}>
-                        {formatMoney(monthlyBilling(clients.filter((client) => client.plan === row.plan)), { whole: true })}
+                        {formatMoney(row.mrr, { whole: true })}
                       </span>
                     </TableCell>
                   </TableRow>

@@ -1,15 +1,13 @@
 /**
  * Sample AI copy for the `ai` feature flag (docs/design/04-super-admin.md §3.1, §3.4). No model is called: the brief
- * and insights are written from the same data the page shows (lib/metrics, lib/storeStatus, lib/storeHealth),
- * so they're never wrong about the numbers. Replace with real calls when the assistant backend exists.
+ * and insights are written from the same server data the page shows (payment badge, health score, usage
+ * snapshot), so they're never wrong about the numbers. Replace with real calls when the assistant backend exists.
  */
 import type { AiAnswer } from "../components/layout";
 import { formatMoney } from "../components/ui/money";
-import type { Client, Subscription, Transaction } from "../types";
-import { earnedIn, monthPeriod, storesPaidIn } from "./metrics";
+import type { Client, Subscription } from "../types";
 import { getStoreHealth } from "./storeHealth";
-import { graceDaysFor, paymentState } from "./storeStatus";
-import { buildPaymentReportRows } from "./subscriptionReports";
+import { paymentState } from "./storeStatus";
 
 function names(list: string[]): string {
   if (list.length <= 2) return list.join(" and ");
@@ -20,19 +18,16 @@ function names(list: string[]): string {
 export function platformBrief(input: {
   clients: Client[];
   subscriptions: Subscription[];
-  transactions: Transaction[];
-  platformGraceDays: number;
-  now: Date;
 }): { message: string; action: { label: string; href: string } } | null {
-  const { clients, subscriptions, transactions, platformGraceDays, now } = input;
+  const { clients, subscriptions } = input;
   const pastGrace: string[] = [];
   const critical: string[] = [];
   for (const client of clients) {
     if (client.status === "suspended") continue;
     const sub = subscriptions.find((s) => s.clientId === client.id);
-    const state = paymentState(sub, transactions, graceDaysFor(client, platformGraceDays), now);
+    const state = paymentState(sub);
     if (state.detail === "Past grace period") pastGrace.push(client.storeName);
-    if (getStoreHealth(client, sub).score < 50) critical.push(client.storeName);
+    if (getStoreHealth(client).score < 50) critical.push(client.storeName);
   }
   if (pastGrace.length) {
     return {
@@ -55,11 +50,8 @@ export function platformBrief(input: {
 export function storeInsight(
   client: Client,
   subscription: Subscription | undefined,
-  transactions: Transaction[],
-  platformGraceDays: number,
-  now: Date,
 ): { title: string; body: string } | null {
-  const state = paymentState(subscription, transactions, graceDaysFor(client, platformGraceDays), now);
+  const state = paymentState(subscription);
   if (state.tone === "danger" && state.label.startsWith("Overdue")) {
     return {
       title: "Payment is overdue",
@@ -72,7 +64,7 @@ export function storeInsight(
         .join(" "),
     };
   }
-  const health = getStoreHealth(client, subscription);
+  const health = getStoreHealth(client);
   if (health.score < 50) {
     return {
       title: "Store health is critical",
@@ -90,71 +82,66 @@ export function storeInsight(
 
 // ─── Assistant (Ask bar, ⌘J, "Ask AI" in ⌘K) ────────────────────────────────
 
+/** This month's money, read from the server rollup when the question needs it. */
+export interface MonthSummary {
+  earnedMonth: number;
+  paidStoresMonth: number;
+}
+
 export interface AssistantData {
   clients: Client[];
   subscriptions: Subscription[];
-  transactions: Transaction[];
-  platformGraceDays: number;
-  now: Date;
+  /** Fetched only for money questions (platformRevenueOverview); never computed here. */
+  loadMonthSummary: () => Promise<MonthSummary>;
 }
 
 export const ASSISTANT_SUGGESTIONS = ["How much did we earn this month?", "Which stores are overdue?", "Which stores need attention?"];
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/** Sample assistant reply, worked out from the same data the pages show. Marked `sample` until a model is connected. */
+/**
+ * Sample assistant reply, worked out from the same server data the pages show
+ * (payment badges, health scores, the revenue rollup). Marked `sample` until a
+ * model is connected.
+ */
 export async function sampleAssistantAnswer(question: string, data: AssistantData): Promise<AiAnswer> {
-  await wait(1000);
-  const { clients, subscriptions, transactions, platformGraceDays, now } = data;
+  const { clients, subscriptions } = data;
   const q = question.toLowerCase();
 
   if (/overdue|unpaid|\bdue\b|grace|suspend|payment/.test(q)) {
-    // Same open invoices as Billing › Collections and the Outstanding KPI, so the numbers always agree.
-    const open = buildPaymentReportRows({ clients, subscriptions, transactions, asOf: now }).filter(
-      (row) => row.status === "pending" || row.status === "overdue",
-    );
-    if (!open.length) return { text: "No store has a payment due or overdue right now.", used: "Used: subscriptions, payments", sample: true };
-    const byStore = new Map<string, { name: string; amount: number; overdue: boolean }>();
-    for (const row of open) {
-      const entry = byStore.get(row.clientId) ?? { name: row.shopName, amount: 0, overdue: false };
-      entry.amount += row.amount;
-      entry.overdue ||= row.status === "overdue";
-      byStore.set(row.clientId, entry);
-    }
-    const stores = [...byStore.entries()].sort((a, b) => Number(b[1].overdue) - Number(a[1].overdue) || b[1].amount - a[1].amount);
-    const total = open.reduce((sum, row) => sum + row.amount, 0);
-    const overdueCount = stores.filter(([, store]) => store.overdue).length;
+    // The server's payment badge per store: the same one the Stores table shows.
+    const open = clients
+      .filter((client) => client.status !== "suspended")
+      .map((client) => {
+        const sub = subscriptions.find((s) => s.clientId === client.id);
+        return { client, sub, state: paymentState(sub) };
+      })
+      .filter(({ state }) => state.tone === "danger" || state.tone === "warning");
+    if (!open.length) return { text: "No store has a payment due or overdue right now.", used: "Used: subscriptions, invoices", sample: true };
+    const overdue = open.filter(({ state }) => state.tone === "danger");
+    const total = open.reduce((sum, { sub }) => sum + (sub?.amountDue ?? 0), 0);
+    const sorted = [...overdue, ...open.filter(({ state }) => state.tone !== "danger")];
     return {
-      text: `${stores.length} ${stores.length === 1 ? "store has" : "stores have"} ${formatMoney(total, { whole: true })} outstanding; ${overdueCount} ${overdueCount === 1 ? "is" : "are"} overdue.`,
+      text: `${open.length} ${open.length === 1 ? "store has" : "stores have"} ${formatMoney(total, { whole: true })} outstanding; ${overdue.length} ${overdue.length === 1 ? "is" : "are"} overdue.`,
       card: {
         title: "Payments due or overdue",
-        rows: stores.slice(0, 5).map(([clientId, store]) => {
-          const client = clients.find((c) => c.id === clientId);
-          const sub = subscriptions.find((sb) => sb.clientId === clientId);
-          const state = client ? paymentState(sub, transactions, graceDaysFor(client, platformGraceDays), now) : null;
-          const detail = store.overdue && state?.tone === "danger" ? state.label.replace("Overdue · ", "Overdue ") : store.overdue ? "Overdue" : "Due";
-          return {
-            label: store.name,
-            value: `${formatMoney(store.amount, { whole: true })} · ${detail}`,
-            tone: store.overdue ? ("danger" as const) : undefined,
-          };
-        }),
+        rows: sorted.slice(0, 5).map(({ client, sub, state }) => ({
+          label: client.storeName,
+          value: `${formatMoney(sub?.amountDue ?? 0, { whole: true })} · ${state.label}`,
+          tone: state.tone === "danger" ? ("danger" as const) : undefined,
+        })),
       },
       actions: [
         { label: "Open collections", href: "/billing/subscriptions", primary: true },
         { label: "Payment reminders", href: "/billing/reminders" },
       ],
-      used: "Used: subscriptions, payments",
+      used: "Used: subscriptions, invoices",
       sample: true,
     };
   }
 
   if (/earn|revenue|income|collect|money|month/.test(q)) {
-    const period = monthPeriod(now);
-    const earned = earnedIn(transactions, period);
-    const paid = storesPaidIn(transactions, period);
+    const { earnedMonth, paidStoresMonth } = await data.loadMonthSummary();
     return {
-      text: `${formatMoney(earned, { whole: true })} earned this month from ${paid} ${paid === 1 ? "store" : "stores"}.`,
+      text: `${formatMoney(earnedMonth, { whole: true })} earned this month from ${paidStoresMonth} ${paidStoresMonth === 1 ? "store" : "stores"}.`,
       actions: [{ label: "Open platform revenue", href: "/analytics/revenue", primary: true }],
       used: "Used: payments · this month",
       sample: true,
@@ -164,7 +151,7 @@ export async function sampleAssistantAnswer(question: string, data: AssistantDat
   if (/health|attention|risk|critical|check|falling|drop/.test(q)) {
     const rows = clients
       .filter((client) => client.status !== "suspended")
-      .map((client) => ({ client, health: getStoreHealth(client, subscriptions.find((s) => s.clientId === client.id)) }))
+      .map((client) => ({ client, health: getStoreHealth(client) }))
       .filter(({ client, health }) => health.score < 50 || client.growthPercent <= -20)
       .sort((a, b) => a.health.score - b.health.score);
     if (!rows.length) return { text: "Every store looks healthy right now.", used: "Used: store health", sample: true };

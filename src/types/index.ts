@@ -29,6 +29,8 @@ export const paymentGatewayEnum = {
   MANUAL: "MANUAL",
 } as const;
 
+export type PlatformPaymentProvider = "MANUAL" | "NIMBBL" | "RAZORPAY" | "STRIPE";
+
 export type PaymentGateway =
   (typeof paymentGatewayEnum)[keyof typeof paymentGatewayEnum];
 
@@ -44,8 +46,6 @@ export type SubscriptionStatus =
   (typeof subscriptionStatusEnum)[keyof typeof subscriptionStatusEnum];
 
 export type SubscriptionHealthBucket = "healthy" | "at_risk" | "unhealthy";
-
-export type NotificationCategory = "All" | "Orders" | "Shipping" | "Analytics" | "Billing";
 
 export interface Plan {
   id: string;
@@ -81,6 +81,19 @@ export interface Client {
   notes: string;
   /** Per-store override; falls back to platform default when unset. */
   gracePeriodDays?: number;
+  // ── Server-side fields (PRD-005 Phase 2) ──
+  slug?: string;
+  domain?: string;
+  ownerPhone?: string;
+  onboarding?: {
+    status: "PROVISIONING" | "READY" | "FAILED";
+    error: string | null;
+    steps: { key: string; status: "PENDING" | "DONE" | "FAILED"; error: string | null }[];
+  };
+  /** Server-computed store health; `lib/storeHealth` prefers it when present. */
+  health?: { score: number; factors: string[] };
+  /** Server-computed payment badge; `lib/storeStatus` prefers it when present. */
+  paymentState?: { label: string; tone: "success" | "warning" | "danger" | "info" | "neutral"; detail: string | null };
 }
 
 export interface Subscription {
@@ -95,6 +108,8 @@ export interface Subscription {
   amountDue: number;
   startedAt?: string;
   canceledAt?: string;
+  /** Server-computed payment badge; `lib/storeStatus` shows it. */
+  paymentState?: { label: string; tone: "success" | "warning" | "danger" | "info" | "neutral"; detail: string | null };
 }
 
 export interface Transaction {
@@ -132,16 +147,6 @@ export interface AdminUser {
   avatarInitials: string;
 }
 
-export interface Notification {
-  id: string;
-  category: Exclude<NotificationCategory, "All">;
-  title: string;
-  description: string;
-  timestamp: string;
-  dateGroup: string;
-  read: boolean;
-}
-
 export interface RevenuePoint {
   month: string;
   revenue: number;
@@ -171,11 +176,16 @@ export interface PlatformSettings {
     inactiveAfterDays: number;
   };
   gracePeriodDays: number;
+  /** ADR-002 amendment: the platform payment provider is a setting (Razorpay next). */
+  billing?: { provider: PlatformPaymentProvider; configured: boolean };
   reminders: {
     daysBeforeDue: number[];
     daysAfterDue: number[];
     email: boolean;
     sms: boolean;
     whatsapp: boolean;
+    /** Renewal reminder text with {{ownerName}}, {{storeName}}, {{plan}}, {{renewalDate}}, {{days}}. */
+    template?: string;
   };
+  yearKind?: "CALENDAR" | "FINANCIAL";
 }

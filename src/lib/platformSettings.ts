@@ -1,6 +1,6 @@
 import type { PlatformSettings } from "../types";
 
-/** Default thresholds for subscription-ops health (Reports module). */
+/** Defaults shown until `platformSettings` has loaded (PRD-005 FR-7.1). */
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   health: {
     expiringWithinDays: 7,
@@ -16,30 +16,14 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   },
 };
 
-export const PLATFORM_SETTINGS_KEY = "zcommerce-platform-settings";
+// The SettingsProvider stores the server's settings here, so every screen
+// reads one copy through `loadPlatformSettings()` without learning the API.
+let serverSettings: PlatformSettings | null = null;
 
-export function loadPlatformSettings(): PlatformSettings {
-  try {
-    const raw = localStorage.getItem(PLATFORM_SETTINGS_KEY);
-    if (!raw) return structuredClone(DEFAULT_PLATFORM_SETTINGS);
-    const parsed = JSON.parse(raw) as Partial<PlatformSettings>;
-    return {
-      health: {
-        ...DEFAULT_PLATFORM_SETTINGS.health,
-        ...parsed.health,
-      },
-      gracePeriodDays:
-        parsed.gracePeriodDays ?? DEFAULT_PLATFORM_SETTINGS.gracePeriodDays,
-      reminders: {
-        ...DEFAULT_PLATFORM_SETTINGS.reminders,
-        ...parsed.reminders,
-      },
-    };
-  } catch {
-    return structuredClone(DEFAULT_PLATFORM_SETTINGS);
-  }
+export function setServerPlatformSettings(settings: PlatformSettings | null): void {
+  serverSettings = settings;
 }
 
-export function savePlatformSettings(settings: PlatformSettings): void {
-  localStorage.setItem(PLATFORM_SETTINGS_KEY, JSON.stringify(settings));
+export function loadPlatformSettings(): PlatformSettings {
+  return serverSettings ?? DEFAULT_PLATFORM_SETTINGS;
 }

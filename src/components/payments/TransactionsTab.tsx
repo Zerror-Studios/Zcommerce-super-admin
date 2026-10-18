@@ -9,7 +9,7 @@ import {
 import { useMemo, useState } from "react";
 import type { Transaction, TransactionStatus } from "../../types";
 import { getPaymentGatewayLabel, getPlanLabel } from "../../lib/display-labels.util";
-import { clients } from "../../lib/mockData";
+import { useClients } from "../../providers/ClientsProvider";
 import { formatDateTime } from "../../lib/utils";
 import { dataTableFillClassNames, tablePanelFillClassName } from "../common/dataTableStyles";
 import {
@@ -22,6 +22,7 @@ import {
   EmptyState,
   StatusChip,
   formatMoney,
+  Skeleton,
   tableRowClasses,
 } from "../ui";
 import { IconPayments } from "../ui/icons";
@@ -29,6 +30,7 @@ import { emptyStates } from "../../copy";
 
 export interface TransactionsTabProps {
   transactions: Transaction[];
+  isLoading?: boolean;
 }
 
 const columnOptions = [
@@ -49,7 +51,8 @@ const statusOptions: { key: TransactionStatus; label: string }[] = [
   { key: "refunded", label: "Refunded" },
 ];
 
-export function TransactionsTab({ transactions }: TransactionsTabProps) {
+export function TransactionsTab({ transactions, isLoading = false }: TransactionsTabProps) {
+  const { clients } = useClients();
   const [search, setSearch] = useState("");
   const [statuses, setStatuses] = useState<string[]>([]);
   const [visibleColumns, setVisibleColumns] = useState(
@@ -58,7 +61,7 @@ export function TransactionsTab({ transactions }: TransactionsTabProps) {
 
   const clientById = useMemo(
     () => new Map(clients.map((c) => [c.id, c])),
-    [],
+    [clients],
   );
 
   const filtered = useMemo(() => {
@@ -150,6 +153,8 @@ export function TransactionsTab({ transactions }: TransactionsTabProps) {
           )}
         </TableHeader>
         <TableBody
+          isLoading={isLoading}
+          loadingContent={<Skeleton className="h-10 w-full rounded-lg" />}
           items={filtered}
           emptyContent={
             isFiltered ? (

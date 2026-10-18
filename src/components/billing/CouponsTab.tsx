@@ -38,6 +38,8 @@ export interface CouponsTabProps {
   onCreate: (coupon: Coupon) => void;
   createOpen: boolean;
   onCreateOpenChange: (open: boolean) => void;
+  /** Hides the empty-state "Create discount" for roles without coupons:manage. */
+  canCreate?: boolean;
 }
 
 const columns = [
@@ -76,6 +78,7 @@ export function CouponsTab({
   onCreate,
   createOpen,
   onCreateOpenChange,
+  canCreate = true,
 }: CouponsTabProps) {
   const [code, setCode] = useState("");
   const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
@@ -260,9 +263,11 @@ export function CouponsTab({
                   title="No discounts yet"
                   description="Create a code to give stores a discount on their plan."
                   action={
-                    <UiButton variant="secondary" size="sm" onPress={() => onCreateOpenChange(true)}>
-                      Create discount
-                    </UiButton>
+                    canCreate ? (
+                      <UiButton variant="secondary" size="sm" onPress={() => onCreateOpenChange(true)}>
+                        Create discount
+                      </UiButton>
+                    ) : undefined
                   }
                 />
               )

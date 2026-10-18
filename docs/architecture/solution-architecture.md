@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Living document. Verified against code on **2026-10-13** |
 | **Parent** | Workspace `../ARCHITECTURE.md` |
-| **Maturity** | **UI prototype on mock data.** The backend integration is **[Target]**; it needs a cross-repo T1 PRD and ADRs |
+| **Maturity** | **API-only (PRD-005 Phases 0–4, 2026-10-17).** Real sign-in, stores, lifecycle, subscriptions, billing, reports, Team, audit and impersonation from the `platform-admin` subgraph; the mock prototype was removed (Q14). Not yet run in a browser against a live gateway. |
 
 ---
 
@@ -23,11 +23,9 @@ Tenant staff use `zcom-frontend`; this console sits *above* all tenants.
 ```mermaid
 flowchart LR
     Z(["👤 Zerror team"]) --> SA["zcom-super-admin<br/>Vercel SPA"]
-    SA --> MOCK[("src/lib/mockData.ts<br/>+ in-memory providers<br/>+ localStorage")]
-    SA -. "[Target] GraphQL with platform-scoped token" .-> GW["zcom-backend gateway"]
-    GW -. "[Target]" .-> PLT["platform subgraph<br/>(master DB: Plan, Subscription, db_configs)"]
-    PLT -. "[Target] cross-tenant aggregates" .-> TDBs[("tenant DBs<br/>usage, orders, revenue")]
-    style MOCK fill:#fff3cd,stroke:#b58900
+    SA -->|"one Apollo client,<br/>platform token (aud platform-admin) + refresh cookie"| GW["zcom-backend gateway /v1/graphql"]
+    GW --> PADM["platform-admin subgraph :4014<br/>(master DB: platform_user, platform_session, audit;<br/>reads db_configs, plan, subscription)"]
+    PADM --> TDBs[("tenant DBs<br/>provisioning, usage snapshots, impersonation")]
 ```
 
 ## 3. Application architecture (current)
@@ -36,15 +34,15 @@ flowchart LR
 flowchart TB
     MAIN["main.tsx<br/>StrictMode > BrowserRouter > AppProviders > App"] --> PROV
     subgraph PROV["providers/AppProviders"]
-        HP["HeroUIProvider (navigate, useHref)"] --> TP["ToastProvider bottom-right"] --> AUP["AuthProvider<br/>boolean in localStorage zcommerce-admin-auth"] --> CLP["ClientsProvider<br/>in-memory clients seeded from mockData"]
+        HP["HeroUIProvider (navigate, useHref)"] --> TP["ToastProvider bottom-right"] --> AUP["AuthProvider<br/>platform session: token in memory, refresh cookie"] --> SP["SettingsProvider<br/>platformSettings"] --> CLP["ClientsProvider<br/>platformTenants + platformPlans via api-adapters"]
     end
     PROV --> APP["App.tsx &lt;Routes&gt;"]
     APP --> GO["GuestOnly → /sign-in"]
     APP --> RA["RequireAuth → DashboardLayout (Sidebar + Topbar)"]
     RA --> PG["pages: Home · Clients · ClientDetail · AddClient<br/>Billing/:section · Analytics/:section · Settings/:section"]
     PG --> CMP["components/{clients,billing,dashboard,payments,settings}<br/>+ common kits (buttonStyles, modalStyles, dataTableStyles, inputStyle)"]
-    PG --> LIB["lib/ pure logic (tested)<br/>subscriptionHealth · subscriptionReports · revenueReports<br/>storeHealth · platformSettings · tableSelection"]
-    LIB --> MD[("lib/mockData.ts")]
+    PG --> HK["hooks/use-platform-reports<br/>revenue, collections, payments, coupons"]
+    PG --> LIB["lib/ pure logic (tested)<br/>api-adapters · api-report-adapters · periods · store-sales · report-csv<br/>storeStatus · storeHealth · platformSettings"]
     PG --> TY["types/index.ts"]
 ```
 
@@ -59,7 +57,7 @@ flowchart TB
 | `/clients/:id` | ClientDetail | Overview / Billing / Usage tabs, danger zone, "Login as store" |
 | `/billing/:section` | Billing | `subscriptions`, `transactions` |
 | `/analytics/:section` | Analytics | `revenue` |
-| `/settings/:section` | Settings | `discounts` (coupons), `automation` (renewal reminders) |
+| `/settings/:section` | Settings | `discounts` (coupons), `billing-rules` (platform settings), `team` (platform users, API only), `audit` (audit log, API only); `automation` redirects to `/billing/reminders` |
 
 ## 4. Domain model (front-end types)
 
@@ -125,9 +123,11 @@ flowchart LR
 
 This logic lives in `lib/subscriptionHealth.ts`, which has tests in `subscriptionHealth.test.ts`. The reports in `subscriptionReports.ts` and `revenueReports.ts` reconcile their overview totals with the drill-down counts, and those are tested too.
 
-## 6. [Target] Integration architecture
+## 6. Integration architecture (PRD-005)
 
-The backend has **no cross-tenant API and no platform identity** today. The design below is a proposal. Each numbered decision needs an ADR before it's built.
+**Current (Phase 1, 2026-10-17).** The backend has the platform principal (ADR-001, Accepted) and the `platform-admin` subgraph. This repo talks to it through `src/lib/apollo-client.ts` (auth link, silent refresh on `TOKEN_EXPIRED` with a single-flight, cross-tab lock, proactive refresh, error codes), with the access token in memory (`lib/session-store.ts`) and the refresh token in the `__Host-zc_platform_rt` cookie. `AuthProvider` restores the session on load (`platformRefreshToken` → `platformMe`), runs the TOTP step on `MFA_REQUIRED`, and sends manage roles to `/mfa` to enrol. `ClientsProvider` maps `platformTenants` / `platformPlans` onto the console's `Client`, `Subscription` and `Plan` types (`lib/api-adapters.ts`) so every screen reads them unchanged. ADR-5 is answered: Apollo cache for server data, React context for session and UI state only. **Phase 2 (same day):** `ClientsProvider` also runs the lifecycle mutations (create with provisioning, update, notes, suspend with a reason, reactivate, soft delete with the slug), `SettingsProvider` holds the server settings, and the store page gained the provisioning card, subscription actions and editable notes; health and payment badges are server-computed (ADR-2 answered with daily usage snapshots in the master DB).
+
+**Target (Phases 2–4).** The sequence below is the full design from the PRD; the identity decision (ADR-1 here) is ADR-001 in the backend and is done.
 
 ```mermaid
 sequenceDiagram
@@ -189,7 +189,6 @@ flowchart LR
 
 | Gap | Impact | Path |
 |---|---|---|
-| Fake sign-in on a publicly hosted URL | Anyone can open the console; only mock data is exposed today | Restrict access until ADR-1 is done |
-| No backend API | The console can't operate the real platform | Cross-repo T1 PRD (backend source of truth) |
+| Vercel topology | `/v1/graphql` has no rewrite and a `SameSite=Strict` cookie cannot cross sites, so sessions cannot be kept on Vercel as configured | PRD-005 Q6: serve the console behind the CloudFront edge or add the rewrite (review C-H3) |
 | Vocabulary mismatch with backend plans and statuses | Integration bugs | Settle it in the PRD |
-| Unused components and mock exports; mixed icon libraries; hard-coded hexes | Maintainability | T2 clean-ups when the code is touched |
+| No notifications feed | The panel is empty | Feed it from `platformAuditLog` or events (T1) |

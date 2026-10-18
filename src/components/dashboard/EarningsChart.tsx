@@ -1,19 +1,21 @@
 import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { Client, Transaction } from "../../types";
-import { earnedIn, monthlyBilling, yearPeriod } from "../../lib/metrics";
+import type { MonthlyPlanRevenue } from "../../types/reports";
+import { monthTotal } from "../../lib/api-report-adapters";
 import { Card, Skeleton, chartColors, formatMoney, recharts } from "../ui";
 
 export interface EarningsChartProps {
-  clients: Client[];
-  transactions: Transaction[];
+  /** The year's plan revenue by month from `platformRevenueOverview` (PRD-005 FR-5.3). */
+  monthly: MonthlyPlanRevenue[];
+  /** Current monthly billing (ACTIVE subscriptions), drawn for the months still ahead. */
+  monthlyBilling: number;
   now?: Date;
   isLoading?: boolean;
 }
 
 interface EarningsPoint {
   month: string;
-  /** Earned in the month (lib/metrics earnedIn); null for future months. */
+  /** Billed in the month; null for future months. */
   collected: number | null;
   /** Monthly billing for months still ahead; null for past months. */
   projected: number | null;
@@ -22,26 +24,21 @@ interface EarningsPoint {
 const monthShort = new Intl.DateTimeFormat("en-IN", { month: "short" });
 
 /**
- * One bar per month of the year, from the first month with payment data: collected months solid (chart-1),
- * months still ahead as dashed outlines at the current monthly billing (same rule as projectedForYear).
+ * One bar per month of the year, from the first month with data: past months solid (chart-1),
+ * months still ahead as dashed outlines at the current monthly billing (same rule as the server's projection).
  */
-function buildEarnings(clients: Client[], transactions: Transaction[], now: Date): EarningsPoint[] {
-  const year = yearPeriod(now, "calendar");
+function buildEarnings(monthly: MonthlyPlanRevenue[], billing: number, now: Date): EarningsPoint[] {
+  const year = now.getFullYear();
   const currentMonth = now.getMonth();
-  const firstDataMonth = transactions
-    .map((txn) => new Date(txn.date))
-    .filter((date) => date >= year.start && date < year.end)
-    .reduce((min, date) => Math.min(min, date.getMonth()), currentMonth);
-  const billing = monthlyBilling(clients);
+  const byMonth = new Map(monthly.filter((row) => row.year === year).map((row) => [row.month - 1, monthTotal(row)]));
+  const firstDataMonth = [...byMonth.keys()].reduce((min, month) => Math.min(min, month), currentMonth);
 
   const points: EarningsPoint[] = [];
   for (let month = firstDataMonth; month < 12; month += 1) {
-    const start = new Date(now.getFullYear(), month, 1);
-    const end = new Date(now.getFullYear(), month + 1, 1);
     const isFuture = month > currentMonth;
     points.push({
-      month: monthShort.format(start),
-      collected: isFuture ? null : earnedIn(transactions, { start, end }),
+      month: monthShort.format(new Date(year, month, 1)),
+      collected: isFuture ? null : (byMonth.get(month) ?? 0),
       projected: isFuture ? billing : null,
     });
   }
@@ -60,7 +57,7 @@ function EarningsTooltip({ active, payload, label }: { active?: boolean; payload
     <div className="rounded-xl border border-line bg-surface px-3 py-2 shadow-popover">
       <p className="text-caption text-fg-muted">{label}</p>
       <p className="text-caption font-medium text-fg num">
-        {entry.dataKey === "projected" ? "Projected" : "Collected"}: {formatMoney(entry.value ?? 0, { whole: true })}
+        {entry.dataKey === "projected" ? "Projected" : "Billed"}: {formatMoney(entry.value ?? 0, { whole: true })}
       </p>
     </div>
   );
@@ -85,8 +82,8 @@ function ProjectedBar(props: { x?: number; y?: number; width?: number; height?: 
 }
 
 /** "Earnings · {year}" (docs/design/04-super-admin.md §3.1). */
-export function EarningsChart({ clients, transactions, now = new Date(), isLoading }: EarningsChartProps) {
-  const data = useMemo(() => buildEarnings(clients, transactions, now), [clients, transactions, now]);
+export function EarningsChart({ monthly, monthlyBilling, now = new Date(), isLoading }: EarningsChartProps) {
+  const data = useMemo(() => buildEarnings(monthly, monthlyBilling, now), [monthly, monthlyBilling, now]);
   const hasProjected = data.some((point) => point.projected != null);
 
   return (
@@ -97,7 +94,7 @@ export function EarningsChart({ clients, transactions, now = new Date(), isLoadi
         <div className="flex items-center gap-3 text-caption text-fg-muted">
           <span className="inline-flex items-center gap-1.5">
             <span aria-hidden className="size-2.5 rounded-xs bg-chart-1" />
-            Collected
+            Billed
           </span>
           {hasProjected ? (
             <span className="inline-flex items-center gap-1.5">

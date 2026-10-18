@@ -4,10 +4,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { subscriptionStatusEnum, type Client, type ClientStatus, type Subscription } from "../../types";
 import { getPlanLabel, PLAN_LABELS, PLAN_NAMES } from "../../lib/display-labels.util";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
-import { subscriptions, transactions } from "../../lib/mockData";
-import { loadPlatformSettings } from "../../lib/platformSettings";
+import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
+import { useAuth } from "../../providers/AuthProvider";
+import { useClients } from "../../providers/ClientsProvider";
 import { getStoreHealth } from "../../lib/storeHealth";
-import { graceDaysFor, paymentState, storeLifecycle } from "../../lib/storeStatus";
+import { paymentState, storeLifecycle } from "../../lib/storeStatus";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { FilterCheckboxGroup, TableToolbar } from "../common/TableToolbar";
 import { RenewalBadge } from "../common/RenewalBadge";
@@ -85,7 +86,7 @@ const defaultColumnKeys: ColumnKey[] = ["storeName", "status", "payment", "store
 
 const statusLabels: Record<ClientStatus, string> = { active: "Live", trial: "Trial", suspended: "Suspended" };
 
-/** Unpaid = something issued and not yet paid (same rule as `outstanding()` in lib/metrics). */
+/** Unpaid = something issued and not yet paid (the server's open-invoice rule, as in Collections). */
 function isUnpaid(subscription?: Subscription): boolean {
   return (
     subscription != null &&
@@ -121,7 +122,7 @@ function compareClients(a: Client, b: Client, column: ColumnKey, byClientId: Map
     case "renewalDate":
       return (byClientId.get(a.id)?.renewalDate ?? "").localeCompare(byClientId.get(b.id)?.renewalDate ?? "");
     case "storeHealth":
-      return getStoreHealth(a, byClientId.get(a.id)).score - getStoreHealth(b, byClientId.get(b.id)).score;
+      return getStoreHealth(a).score - getStoreHealth(b).score;
     case "sales":
       return a.revenue - b.revenue;
     case "mrr":
@@ -149,6 +150,11 @@ export function ClientsTable({
   initialTab = "all",
 }: ClientsTableProps) {
   const navigate = useNavigate();
+  const { subscriptions } = useClients();
+  const { can } = useAuth();
+  // Client-side mirror of the backend guard (review C-M5): the server still decides.
+  const canManage = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
+  const canImpersonate = can(PLATFORM_PERMISSIONS.TENANTS_IMPERSONATE);
   const [tab, setTab] = useState<StoreTab>(initialTab);
   const [search, setSearch] = useState("");
   const [plans, setPlans] = useState<string[]>([]);
@@ -161,10 +167,8 @@ export function ClientsTable({
   });
   const [pending, setPending] = useState<{ client: Client; action: StoreAction } | null>(null);
 
-  const now = useMemo(() => new Date(), []);
-  const platformGraceDays = useMemo(() => loadPlatformSettings().gracePeriodDays, []);
 
-  const subscriptionByClientId = useMemo(() => latestSubscriptionByClient(subscriptions), []);
+  const subscriptionByClientId = useMemo(() => latestSubscriptionByClient(subscriptions), [subscriptions]);
 
   // Search and Filter apply first; the tab counts are taken from that set.
   const searched = useMemo(() => {
@@ -235,7 +239,7 @@ export function ClientsTable({
         navigate(`/stores/${client.id}`);
         break;
       case "login":
-        logInToStore(client);
+        void logInToStore(client);
         break;
       case "suspend":
       case "reactivate":
@@ -269,7 +273,7 @@ export function ClientsTable({
         return <Chip tone={lifecycle.tone}>{lifecycle.label}</Chip>;
       }
       case "payment": {
-        const state = paymentState(subscription, transactions, graceDaysFor(client, platformGraceDays), now);
+        const state = paymentState(subscription);
         return (
           <div className="flex flex-col items-start gap-0.5">
             <Chip tone={state.tone}>{state.label}</Chip>
@@ -278,7 +282,7 @@ export function ClientsTable({
         );
       }
       case "storeHealth":
-        return <StoreHealthCell client={client} subscription={subscription} />;
+        return <StoreHealthCell client={client} />;
       case "sales":
         return client.revenue > 0 ? (
           <span className="num">{formatMoney(client.revenue, { whole: true })}</span>
@@ -299,14 +303,16 @@ export function ClientsTable({
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
-            <UiButton
-              variant="ghost"
-              size="sm"
-              startIcon={<IconLogin aria-hidden />}
-              onPress={() => logInToStore(client)}
-            >
-              Log in
-            </UiButton>
+            {canImpersonate ? (
+              <UiButton
+                variant="ghost"
+                size="sm"
+                startIcon={<IconLogin aria-hidden />}
+                onPress={() => void logInToStore(client)}
+              >
+                Log in
+              </UiButton>
+            ) : null}
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
                 <IconButton aria-label={`More actions for ${client.storeName}`} size="sm" showTooltip={false}>
@@ -314,18 +320,22 @@ export function ClientsTable({
                 </IconButton>
               </DropdownTrigger>
               <DropdownMenu aria-label={`Actions for ${client.storeName}`} onAction={(actionKey) => onMenuAction(client, actionKey)}>
-                <DropdownSection showDivider aria-label="Store">
+                <DropdownSection showDivider={canManage} aria-label="Store">
                   <DropdownItem key="view">View details</DropdownItem>
-                  <DropdownItem key="login">Log in</DropdownItem>
-                  <DropdownItem key={isSuspended ? "reactivate" : "suspend"}>
-                    {isSuspended ? "Reactivate store" : "Suspend store"}
-                  </DropdownItem>
+                  {canImpersonate ? <DropdownItem key="login">Log in</DropdownItem> : null}
+                  {canManage ? (
+                    <DropdownItem key={isSuspended ? "reactivate" : "suspend"}>
+                      {isSuspended ? "Reactivate store" : "Suspend store"}
+                    </DropdownItem>
+                  ) : null}
                 </DropdownSection>
-                <DropdownSection aria-label="Danger">
-                  <DropdownItem key="delete" className={menuItemDangerClasses}>
-                    Delete store
-                  </DropdownItem>
-                </DropdownSection>
+                {canManage ? (
+                  <DropdownSection aria-label="Danger">
+                    <DropdownItem key="delete" className={menuItemDangerClasses}>
+                      Delete store
+                    </DropdownItem>
+                  </DropdownSection>
+                ) : null}
               </DropdownMenu>
             </Dropdown>
           </div>
@@ -351,9 +361,11 @@ export function ClientsTable({
         title={emptyStates.stores.title}
         description={emptyStates.stores.description}
         action={
-          <UiButton variant="secondary" onPress={() => navigate("/stores/new")}>
-            {emptyStates.stores.action}
-          </UiButton>
+          canManage ? (
+            <UiButton variant="secondary" onPress={() => navigate("/stores/new")}>
+              {emptyStates.stores.action}
+            </UiButton>
+          ) : undefined
         }
       />
     ) : tab === "unpaid" && !hasFilters ? (

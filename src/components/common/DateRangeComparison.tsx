@@ -14,7 +14,7 @@ import { DateRange, type Range, type RangeKeyDict } from "react-date-range";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 import "./dateRangeComparison.css";
-import { yearPeriod } from "../../lib/metrics";
+import { yearPeriod } from "../../lib/periods";
 import { chartColors } from "../ui/chart-theme";
 import { cx } from "../ui/cx";
 import { IconCalendar, IconCaret, IconCheck } from "../ui/icons";

@@ -2,7 +2,7 @@
 
 This is Zerror Studios' internal console for running the ZCommerce platform. It covers **client stores** (tenants), plans and subscriptions, billing and transactions, revenue analytics, coupons, and renewal automation. Tenant store staff use `../zcom-frontend` instead.
 
-> **Status: UI prototype.** All data comes from `src/lib/mockData.ts`, and sign-in accepts any credentials. The backend doesn't yet have a platform (cross-tenant) API, so connecting this app is a planned cross-repo T1 PRD.
+> **Status: API-only (PRD-005 Phases 0–4, 2026-10-17).** Sign-in is real (platform account, optional TOTP); stores, plans, subscriptions, the store lifecycle, subscription actions, billing rules, invoices, payments, discounts, reminders, every revenue and collections figure, Team, the audit log and "Log in to store" come from the backend `platform-admin` subgraph. The mock prototype was removed; notifications have no feed yet. Not yet run against a live gateway in a browser.
 
 > Working here with Claude Code or as a new engineer? Read [`CLAUDE.md`](CLAUDE.md) first, then [`docs/README.md`](docs/README.md). UI work follows the design spec in [`docs/design/`](docs/design/README.md).
 
@@ -19,7 +19,9 @@ npm ci
 npm run dev
 ```
 
-No environment variables are needed yet.
+Copy `.env.example` to `.env`. Names: `VITE_GATEWAY_URL` (local dev: `/v1/graphql`, served by the Vite dev proxy; **production: `https://api.zcommerce.com/v1/graphql`**, ADR-003 / PRD-007: the console on `platform.zcommerce.com` calls the API host directly, same-site, so the `SameSite=Strict` platform cookie is sent; `vercel.json` has no API rewrite), `API_GATEWAY_URL` (the backend gateway the Vite dev proxy forwards to), `VITE_REFRESH_TIMEOUT_MS`.
+
+The backend needs the `platform-admin` service running (see `../zcom-backend/README.md`) and at least one platform user: `npm run platform:bootstrap-owner -- --email you@zerror.in` in the backend prints a one-time set-password link that opens `/set-password` here.
 
 ## Scripts
 
@@ -28,7 +30,8 @@ No environment variables are needed yet.
 | Dev | `npm run dev` |
 | Build (typechecks) | `npm run build` |
 | Lint | `npm run lint` (oxlint); `npm run lint:hex` flags hard-coded colours |
-| Tests | `npm test` / `npm run test:watch` (vitest; covers the `src/lib` report logic) |
+| Contract check | `npm run validate:ops` validates every GraphQL operation against the backend `platform-admin` schema |
+| Tests | `npm test` / `npm run test:watch` (vitest; covers the `src/lib` adapters and helpers) |
 | Preview | `npm run preview` |
 
 ## Structure
@@ -37,7 +40,8 @@ No environment variables are needed yet.
 - `src/pages/`: Home, Clients (`/stores`), ClientDetail, AddClient, Billing, Analytics, Settings, SignIn, NotFound.
 - `src/components/ui/`: the shared UI kit (see `docs/design/02-components.md`); `src/components/layout/`: shell, sidebar, command palette.
 - `src/components/common/`: older table and modal kits still in use.
-- `src/lib/`: pure, tested domain logic and the mock data.
+- `src/lib/`: pure, tested domain logic and the API layer (`apollo-client.ts`, `session-store.ts`, `auth-channel.ts`, `api-adapters.ts`).
+- `src/graphql/`: GraphQL operations per domain (`auth`, `tenants`, `plans`, `subscriptions`); `src/types/platform-api.ts` holds the API shapes.
 - `src/types/`: entity types.
 
 ## Deployment

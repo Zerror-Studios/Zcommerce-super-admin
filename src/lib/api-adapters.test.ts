@@ -1,0 +1,141 @@
+import { describe, expect, it } from "vitest";
+import { subscriptionsOf, toClient, toPlan, toSubscription } from "./api-adapters";
+import type { PlatformPlan, PlatformSubscription, PlatformTenant } from "../types/platform-api";
+
+const plan: PlatformPlan = {
+  id: "plan-plus",
+  tenantId: null,
+  name: "PLUS",
+  price: { monthly: 4999, yearly: 48000, currency: "INR" },
+  limits: {
+    maxSkus: 5000,
+    emailsPerMonth: 10000,
+    smsPerMonth: 1000,
+    whatsappPerMonth: 1000,
+    maxStaffAccounts: 10,
+    internationalMarkets: 2,
+    developmentHours: 4,
+  },
+  features: {
+    onlineStore: true,
+    blogSystem: "ADVANCED",
+    lookCreation: true,
+    analytics: "ADVANCED",
+    salesChannels: true,
+    prioritySupport: "6_HOURS",
+    unlimitedWebHosting: true,
+    sslCertificate: true,
+  },
+  isActive: true,
+  createdAt: "2026-01-01T00:00:00.000Z",
+};
+
+const subscription: PlatformSubscription = {
+  id: "sub-1",
+  tenantId: "t-1",
+  tenantName: "Nahara",
+  plan,
+  status: "PAST_DUE",
+  billingCycle: "YEARLY",
+  mrr: 4000,
+  amountDue: 48000,
+  renewalDate: "2026-10-10T00:00:00.000Z",
+  startedAt: "2026-01-01T00:00:00.000Z",
+  trialEndsAt: null,
+  cancelledAt: null,
+  cancelAtPeriodEnd: false,
+  daysOverdue: 7,
+};
+
+const tenant: PlatformTenant = {
+  id: "t-1",
+  slug: "nahara",
+  name: "Nahara",
+  domain: "nahara.in",
+  region: "ap-south-1",
+  status: "ACTIVE",
+  timezone: "Asia/Kolkata",
+  currency: "INR",
+  owner: { name: "Asha", email: "asha@nahara.in", phone: null },
+  billing: { contactEmail: null, gstin: null },
+  onboarding: { status: "READY", error: null, steps: [] },
+  gracePeriodDaysOverride: 10,
+  notes: "VIP",
+  plan,
+  subscription,
+  monthlyFee: 4000,
+  healthScore: 88,
+  healthFactors: ["Account active", "Payments healthy"],
+  paymentState: { label: "Overdue · 7 days", tone: "danger", detail: "Past grace period" },
+  subscriptionHealth: { bucket: "unhealthy", reason: "Payment overdue by 7 days", daysOverdue: 7, daysUntilRenewal: -7, isOverdueInGrace: false },
+  usage: { date: "2026-10-17", products: 120, orders30d: 40, revenue30d: 95000, growthPercent: 12.5, storageMb: 512, staffCount: 3, lastActiveAt: "2026-10-16T09:30:00.000Z" },
+  suspendedAt: null,
+  suspendReason: null,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-10-01T00:00:00.000Z",
+};
+
+describe("api adapters", () => {
+  it("maps a tenant onto the console Client shape", () => {
+    const client = toClient(tenant);
+    expect(client).toMatchObject({
+      id: "t-1",
+      storeName: "Nahara",
+      ownerEmail: "asha@nahara.in",
+      plan: "PLUS",
+      status: "active",
+      mrr: 4000,
+      notes: "VIP",
+      gracePeriodDays: 10,
+      joinedDate: "2026-01-01T00:00:00.000Z",
+      orders30d: 40,
+      revenue: 95000,
+      growthPercent: 12.5,
+      lastActive: "2026-10-16T09:30:00.000Z",
+      slug: "nahara",
+      health: { score: 88, factors: ["Account active", "Payments healthy"] },
+    });
+    expect(client.usage).toEqual({ products: 120, storageGb: 0.5, bandwidthGb: 0 });
+    expect(client.paymentState?.label).toBe("Overdue · 7 days");
+  });
+
+  it("hands the server payment badge to subscriptions and the health libs prefer server values", async () => {
+    const [row] = subscriptionsOf([tenant]);
+    expect(row.paymentState?.tone).toBe("danger");
+    const { getStoreHealth } = await import("./storeHealth");
+    const { paymentState } = await import("./storeStatus");
+    expect(getStoreHealth(toClient(tenant)).score).toBe(88);
+    expect(paymentState(row).label).toBe("Overdue · 7 days");
+  });
+
+  it("derives trial and suspended statuses", () => {
+    expect(toClient({ ...tenant, status: "SUSPENDED" }).status).toBe("suspended");
+    expect(
+      toClient({ ...tenant, subscription: { ...subscription, status: "TRIAL" } }).status,
+    ).toBe("trial");
+    expect(toClient({ ...tenant, subscription: null, monthlyFee: 0 }).mrr).toBe(0);
+  });
+
+  it("maps subscriptions and keeps the backend enum values", () => {
+    const row = toSubscription(subscription);
+    expect(row).toMatchObject({
+      clientId: "t-1",
+      clientName: "Nahara",
+      plan: "PLUS",
+      status: "PAST_DUE",
+      mrr: 4000,
+      amountDue: 48000,
+    });
+    expect(row.canceledAt).toBeUndefined();
+    expect(subscriptionsOf([tenant, { ...tenant, id: "t-2", subscription: null }])).toHaveLength(1);
+  });
+
+  it("maps plans with a readable feature list and store count", () => {
+    const mapped = toPlan(plan, [tenant, { ...tenant, id: "t-2" }]);
+    expect(mapped.priceMonthly).toBe(4999);
+    expect(mapped.clientCount).toBe(2);
+    expect(mapped.limits.products).toBe(5000);
+    expect(mapped.features).toContain("Advanced blog");
+    expect(mapped.features).toContain("6 hours support");
+  });
+});

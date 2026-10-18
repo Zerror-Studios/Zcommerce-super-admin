@@ -1,4 +1,4 @@
-import type { Client, Subscription } from "../../types";
+import type { Client } from "../../types";
 import { getStoreHealth } from "../../lib/storeHealth";
 import { cx } from "../ui/cx";
 import { getHealthBand } from "../ui/status-map";
@@ -7,7 +7,6 @@ import { Tooltip } from "../ui/Tooltip";
 
 export interface StoreHealthCellProps {
   client: Client;
-  subscription?: Subscription;
 }
 
 /**
@@ -15,8 +14,8 @@ export interface StoreHealthCellProps {
  * (80+ Healthy, 50–79 At risk, <50 Critical). The score still comes from getStoreHealth (unchanged);
  * the factors behind it are in the tooltip.
  */
-export function StoreHealthCell({ client, subscription }: StoreHealthCellProps) {
-  const health = getStoreHealth(client, subscription);
+export function StoreHealthCell({ client }: StoreHealthCellProps) {
+  const health = getStoreHealth(client);
   const band = getHealthBand(health.score);
   return (
     <Tooltip content={health.factors.join(" · ")}>

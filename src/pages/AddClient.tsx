@@ -1,72 +1,107 @@
 import { addToast } from "@heroui/react";
 import { toastError } from "../components/ui";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { planNameEnum, type ClientStatus, type PlanName } from "../types";
-import { PLAN_LABELS, PLAN_NAMES } from "../lib/display-labels.util";
+import type { CreateTenantInput, TenantRegion } from "../types/platform-api";
+import { PLAN_LABELS } from "../lib/display-labels.util";
+import { errorCodeOf } from "../lib/apollo-client";
+import { mutationFailureCopy } from "../lib/mutation-errors";
 import { PageHeader } from "../components/common/PageHeader";
-import { useClients } from "../providers/ClientsProvider";
+import { OwnerCredentialsDialog } from "../components/clients/OwnerCredentialsDialog";
+import { useClients, type CreateStoreResult } from "../providers/ClientsProvider";
 import { toasts } from "../copy";
-import { Button as UiButton, Card, Input, Select, SelectItem } from "../components/ui";
+import { Button as UiButton, Card, Input, Select, SelectItem, Switch, formatMoney } from "../components/ui";
 
-const planMrr: Record<PlanName, number> = {
-  STARTER: 0,
-  PREMIUM: 29,
-  PLUS: 99,
-  ENTERPRISE: 299,
-};
+// ─── Shared ───────────────────────────────────────────────────────────────
 
-/** Add store (docs/design/04-super-admin.md §3.3): 720px form, ghost Cancel + primary "Add store". */
+const REGIONS: { key: TenantRegion; label: string }[] = [
+  { key: "ap_south_1", label: "India (Mumbai)" },
+  { key: "us_east_1", label: "US East (Virginia)" },
+  { key: "eu_west_1", label: "EU West (Ireland)" },
+];
+
+const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])?$/;
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
+
+/** Add store (docs/design/04-super-admin.md §3.3, PRD-005 FR-3.3): 720px form, ghost Cancel + primary "Add store". */
 export function AddClient() {
   const navigate = useNavigate();
-  const { addClient } = useClients();
+  const { plans, createStore } = useClients();
   const [storeName, setStoreName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [domain, setDomain] = useState("");
+  const [region, setRegion] = useState<TenantRegion>("ap_south_1");
   const [ownerName, setOwnerName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
-  const [plan, setPlan] = useState<PlanName>(planNameEnum.PREMIUM);
-  const [status, setStatus] = useState<ClientStatus>("trial");
+  const [ownerPhone, setOwnerPhone] = useState("");
+  const [planId, setPlanId] = useState("");
+  const [billingCycle, setBillingCycle] = useState<CreateTenantInput["billingCycle"]>("MONTHLY");
+  const [startActive, setStartActive] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [created, setCreated] = useState<CreateStoreResult | null>(null);
 
-  const handleCreate = () => {
-    const store = storeName.trim();
-    const owner = ownerName.trim();
-    const email = ownerEmail.trim().toLowerCase();
+  const effectiveSlug = slugTouched ? slug : slugify(storeName);
+  const selectedPlanId = planId || plans[0]?.id || "";
+  const selectedPlan = useMemo(() => plans.find((plan) => plan.id === selectedPlanId), [plans, selectedPlanId]);
 
-    if (!store) {
-      toastError("Enter a store name.");
-      return;
+  const validate = (): boolean => {
+    const next: Record<string, string> = {};
+    if (!storeName.trim()) next.name = "Enter a store name.";
+    if (!SLUG_PATTERN.test(effectiveSlug)) next.slug = "3–40 lower-case letters, digits and hyphens.";
+    if (domain.trim() && !/^([a-z0-9-]+\.)+[a-z]{2,}$/i.test(domain.trim())) next.domain = "Enter a valid domain.";
+    if (!ownerName.trim()) next.ownerName = "Enter the owner's name.";
+    if (!ownerEmail.trim().includes("@")) next.ownerEmail = "Enter a valid owner email.";
+    if (!selectedPlanId) next.planId = "Choose a plan.";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const handleCreate = async () => {
+    if (!validate()) return;
+    setSubmitting(true);
+    try {
+      const result = await createStore({
+        name: storeName.trim(),
+        slug: effectiveSlug,
+        domain: domain.trim().toLowerCase() || null,
+        region,
+        ownerName: ownerName.trim(),
+        ownerEmail: ownerEmail.trim().toLowerCase(),
+        ownerPhone: ownerPhone.trim() || null,
+        planId: selectedPlanId,
+        billingCycle,
+        startActive,
+      });
+      if (result.client.onboarding?.status === "READY") {
+        addToast({ title: toasts.storeAdded(result.client.storeName) });
+      } else {
+        toastError(toasts.storeProvisioningFailed(result.client.storeName));
+      }
+      setCreated(result);
+    } catch (error) {
+      const code = errorCodeOf(error);
+      const field = (error as { graphQLErrors?: Array<{ extensions?: { field?: string } }> })?.graphQLErrors?.[0]
+        ?.extensions?.field;
+      if ((code === "CONFLICT" || code === "BAD_USER_INPUT") && field) {
+        setErrors({ [field]: (error as Error).message });
+      } else {
+        // FORBIDDEN and MFA_REQUIRED are reported once by the Apollo link (review C-M5).
+        const message = mutationFailureCopy(error);
+        if (message) toastError(message);
+      }
+    } finally {
+      setSubmitting(false);
     }
-    if (!owner) {
-      toastError("Enter the owner's name.");
-      return;
-    }
-    if (!email || !email.includes("@")) {
-      toastError("Enter a valid owner email.");
-      return;
-    }
-
-    const now = new Date().toISOString();
-    const mrr = status === "suspended" ? 0 : planMrr[plan];
-    const id = `cli-${Date.now()}`;
-
-    addClient({
-      id,
-      storeName: store,
-      ownerName: owner,
-      ownerEmail: email,
-      plan,
-      status,
-      mrr,
-      orders30d: 0,
-      revenue: 0,
-      growthPercent: 0,
-      lastActive: now,
-      joinedDate: now.slice(0, 10),
-      usage: { products: 0, storageGb: 0, bandwidthGb: 0 },
-      notes: "",
-    });
-
-    addToast({ title: toasts.storeAdded(store) });
-    navigate(`/stores/${id}`);
   };
 
   return (
@@ -74,67 +109,115 @@ export function AddClient() {
       <PageHeader back={{ href: "/stores", label: "Stores" }} title="Add store" />
 
       <div className="flex flex-col gap-4">
-        <Card title="Store details">
+        <Card title="Store details" description="The slug names the database and the key prefix; it can't change later.">
           <div className="flex flex-col gap-4">
             <Input
               label="Store name"
               placeholder="Drift Skate Co."
               value={storeName}
               onValueChange={setStoreName}
+              isInvalid={!!errors.name}
+              errorMessage={errors.name}
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
-                label="Owner name"
-                placeholder="Leo Martinez"
-                value={ownerName}
-                onValueChange={setOwnerName}
+                label="Slug"
+                placeholder="drift-skate"
+                value={effectiveSlug}
+                onValueChange={(value) => {
+                  setSlugTouched(true);
+                  setSlug(value.toLowerCase());
+                }}
+                isInvalid={!!errors.slug}
+                errorMessage={errors.slug}
+                description="Database: zcom_<slug>"
               />
               <Input
-                label="Owner email"
-                type="email"
-                placeholder="leo@store.com"
-                value={ownerEmail}
-                onValueChange={setOwnerEmail}
+                label="Storefront domain (optional)"
+                placeholder="driftskate.in"
+                value={domain}
+                onValueChange={setDomain}
+                isInvalid={!!errors.domain}
+                errorMessage={errors.domain}
               />
             </div>
+            <Select
+              label="Region"
+              selectedKeys={new Set([region])}
+              onSelectionChange={(keys) => {
+                const value = Array.from(keys)[0];
+                const match = REGIONS.find((item) => item.key === value);
+                if (match) setRegion(match.key);
+              }}
+              disallowEmptySelection
+            >
+              {REGIONS.map((item) => (
+                <SelectItem key={item.key}>{item.label}</SelectItem>
+              ))}
+            </Select>
+          </div>
+        </Card>
+
+        <Card title="Owner" description="Gets the owner login for the store dashboard.">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Input
+              label="Owner name"
+              placeholder="Leo Martinez"
+              value={ownerName}
+              onValueChange={setOwnerName}
+              isInvalid={!!errors.ownerName}
+              errorMessage={errors.ownerName}
+            />
+            <Input
+              label="Owner email"
+              type="email"
+              placeholder="leo@store.com"
+              value={ownerEmail}
+              onValueChange={setOwnerEmail}
+              isInvalid={!!errors.ownerEmail}
+              errorMessage={errors.ownerEmail}
+            />
+            <Input label="Owner phone (optional)" type="tel" placeholder="+91" value={ownerPhone} onValueChange={setOwnerPhone} />
           </div>
         </Card>
 
         <Card title="Subscription">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Select
-              label="Plan"
-              selectedKeys={new Set([plan])}
-              onSelectionChange={(keys) => {
-                const value = Array.from(keys)[0];
-                const match = PLAN_NAMES.find((name) => name === value);
-                if (match) setPlan(match);
-              }}
-              disallowEmptySelection
-            >
-              {PLAN_NAMES.map((name) => (
-                <SelectItem key={name}>{PLAN_LABELS[name]}</SelectItem>
-              ))}
-            </Select>
-            <Select
-              label="Status"
-              selectedKeys={new Set([status])}
-              onSelectionChange={(keys) => {
-                const value = Array.from(keys)[0];
-                if (
-                  value === "active" ||
-                  value === "trial" ||
-                  value === "suspended"
-                ) {
-                  setStatus(value);
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Select
+                label="Plan"
+                selectedKeys={selectedPlanId ? new Set([selectedPlanId]) : new Set()}
+                onSelectionChange={(keys) => {
+                  const value = Array.from(keys)[0];
+                  if (typeof value === "string") setPlanId(value);
+                }}
+                disallowEmptySelection
+                isInvalid={!!errors.planId}
+                errorMessage={errors.planId}
+                description={
+                  selectedPlan ? `${formatMoney(selectedPlan.priceMonthly, { whole: true })} / month` : undefined
                 }
-              }}
-              disallowEmptySelection
-            >
-              <SelectItem key="trial">Trial</SelectItem>
-              <SelectItem key="active">Live</SelectItem>
-              <SelectItem key="suspended">Suspended</SelectItem>
-            </Select>
+              >
+                {plans.map((plan) => (
+                  <SelectItem key={plan.id}>{PLAN_LABELS[plan.name]}</SelectItem>
+                ))}
+              </Select>
+              <Select
+                label="Billing cycle"
+                selectedKeys={new Set([billingCycle])}
+                onSelectionChange={(keys) => {
+                  const value = Array.from(keys)[0];
+                  if (value === "MONTHLY" || value === "YEARLY") setBillingCycle(value);
+                }}
+                disallowEmptySelection
+              >
+                <SelectItem key="MONTHLY">Monthly</SelectItem>
+                <SelectItem key="YEARLY">Yearly</SelectItem>
+              </Select>
+            </div>
+            <Switch isSelected={startActive} onValueChange={setStartActive}>
+              Start live (skip the 14-day trial)
+            </Switch>
           </div>
         </Card>
 
@@ -142,11 +225,22 @@ export function AddClient() {
           <UiButton variant="ghost" onPress={() => navigate("/stores")}>
             Cancel
           </UiButton>
-          <UiButton variant="primary" onPress={handleCreate}>
+          <UiButton variant="primary" isLoading={submitting} onPress={() => void handleCreate()}>
             Add store
           </UiButton>
         </div>
       </div>
+
+      {created ? (
+        <OwnerCredentialsDialog
+          isOpen
+          storeName={created.client.storeName}
+          ownerEmail={created.client.ownerEmail}
+          temporaryPassword={created.ownerTemporaryPassword}
+          onClose={() => navigate(`/stores/${created.client.id}`)}
+        />
+      ) : null}
     </div>
   );
 }
+

@@ -1,18 +1,33 @@
-import type { ReactNode } from "react";
+import { Suspense, lazy, type ReactNode } from "react";
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
-import { RequireAuth } from "./components/auth/RequireAuth";
+import { RequireAuth, SessionLoading, SessionUnreachable } from "./components/auth/RequireAuth";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
-import DevUiPage from "./components/ui/DevUiPage";
-import { Analytics } from "./pages/Analytics";
-import { AddClient } from "./pages/AddClient";
-import { Billing } from "./pages/Billing";
-import { ClientDetail } from "./pages/ClientDetail";
-import { Clients } from "./pages/Clients";
-import { Home } from "./pages/Home";
-import { NotFound } from "./pages/NotFound";
-import { Settings } from "./pages/Settings";
-import { SignIn } from "./pages/SignIn";
+import { Spinner } from "./components/ui";
 import { useAuth } from "./providers/AuthProvider";
+
+// Review C-L11: each page is its own chunk, so the sign-in screen doesn't
+// ship recharts and the store pages. The pages use named exports.
+const Analytics = lazy(() => import("./pages/Analytics").then((m) => ({ default: m.Analytics })));
+const AddClient = lazy(() => import("./pages/AddClient").then((m) => ({ default: m.AddClient })));
+const Billing = lazy(() => import("./pages/Billing").then((m) => ({ default: m.Billing })));
+const ClientDetail = lazy(() => import("./pages/ClientDetail").then((m) => ({ default: m.ClientDetail })));
+const Clients = lazy(() => import("./pages/Clients").then((m) => ({ default: m.Clients })));
+const Home = lazy(() => import("./pages/Home").then((m) => ({ default: m.Home })));
+const Mfa = lazy(() => import("./pages/Mfa").then((m) => ({ default: m.Mfa })));
+const NotFound = lazy(() => import("./pages/NotFound").then((m) => ({ default: m.NotFound })));
+const SetPassword = lazy(() => import("./pages/SetPassword").then((m) => ({ default: m.SetPassword })));
+const Settings = lazy(() => import("./pages/Settings").then((m) => ({ default: m.Settings })));
+const SignIn = lazy(() => import("./pages/SignIn").then((m) => ({ default: m.SignIn })));
+const DevUiPage = lazy(() => import("./components/ui/DevUiPage"));
+
+/** Inside the shell while a page chunk loads: the same spinner as the session restore. */
+function PageLoading() {
+  return (
+    <div className="flex min-h-64 items-center justify-center" role="status">
+      <Spinner size="lg" aria-label="Loading" />
+    </div>
+  );
+}
 
 function LegacyStoreRedirect() {
   const { id } = useParams();
@@ -20,13 +35,16 @@ function LegacyStoreRedirect() {
 }
 
 function GuestOnly({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  if (isAuthenticated) return <Navigate to="/" replace />;
+  const { status } = useAuth();
+  if (status === "loading") return <SessionLoading />;
+  if (status === "unreachable") return <SessionUnreachable />;
+  if (status === "authenticated") return <Navigate to="/" replace />;
   return children;
 }
 
 export default function App() {
   return (
+    <Suspense fallback={<PageLoading />}>
     <Routes>
       <Route
         path="/sign-in"
@@ -36,6 +54,8 @@ export default function App() {
           </GuestOnly>
         }
       />
+      {/* Invite and reset links (PRD-005 FR-1.5): the token is the credential, so no session is needed. */}
+      <Route path="/set-password" element={<SetPassword />} />
 
       <Route element={<RequireAuth />}>
         <Route element={<DashboardLayout />}>
@@ -59,6 +79,9 @@ export default function App() {
           <Route path="settings/automation" element={<Navigate to="/billing/reminders" replace />} />
           <Route path="settings/:section" element={<Settings />} />
 
+          {/* MFA enrolment (PRD-005 FR-1.4). */}
+          <Route path="mfa" element={<Mfa />} />
+
           {/* Hidden component showcase (restyle Phase 2); renders only in development builds. */}
           <Route path="dev/ui" element={<DevUiPage />} />
 
@@ -67,5 +90,6 @@ export default function App() {
         </Route>
       </Route>
     </Routes>
+    </Suspense>
   );
 }

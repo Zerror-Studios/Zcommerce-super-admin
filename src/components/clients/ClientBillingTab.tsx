@@ -1,19 +1,21 @@
 import { addToast, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import type { Client, Subscription, Transaction } from "../../types";
+import type { Client, Subscription } from "../../types";
+import { usePayments } from "../../hooks/use-platform-reports";
 import { graceDaysFor, paymentState } from "../../lib/storeStatus";
 import { formatDate, formatDateTime } from "../../lib/utils";
 import { dataTableClassNames } from "../common/dataTableStyles";
-import { Button as UiButton, Card, Chip, CopyableId, EmptyState, Input, StatusChip, Switch, formatMoney } from "../ui";
+import { Button as UiButton, Card, Chip, CopyableId, EmptyState, ErrorState, Input, Skeleton, StatusChip, Switch, formatMoney } from "../ui";
 import { IconInvoice } from "../ui/icons";
 import { emptyStates } from "../../copy";
 
 export interface ClientBillingTabProps {
   client: Client;
   subscription?: Subscription;
-  transactions: Transaction[];
   defaultGracePeriodDays: number;
   onSaveGracePeriod: (days: number | undefined) => void;
+  /** False for roles without tenants:manage: the override is shown but not editable. */
+  canEdit?: boolean;
 }
 
 const txnColumns = [
@@ -31,10 +33,13 @@ function days(n: number): string {
 export function ClientBillingTab({
   client,
   subscription,
-  transactions,
   defaultGracePeriodDays,
   onSaveGracePeriod,
+  canEdit = true,
 }: ClientBillingTabProps) {
+  // PRD-005 FR-5.2: this store's platform payments (payment_log)
+  const payments = usePayments({ tenantId: client.id });
+  const transactions = payments.data;
   const savedOverride = client.gracePeriodDays;
   const [useOverride, setUseOverride] = useState(savedOverride != null);
   const [daysInput, setDaysInput] = useState(String(savedOverride ?? defaultGracePeriodDays));
@@ -54,7 +59,7 @@ export function ClientBillingTab({
   }, [useOverride, daysInput, savedOverride]);
 
   const graceDays = graceDaysFor(client, defaultGracePeriodDays);
-  const payment = paymentState(subscription, transactions, graceDays, new Date());
+  const payment = paymentState(subscription);
 
   const onSave = () => {
     if (!useOverride) {
@@ -109,6 +114,7 @@ export function ClientBillingTab({
           <div className="flex flex-col gap-4">
             <Switch
               isSelected={useOverride}
+              isDisabled={!canEdit}
               onValueChange={(next) => {
                 setUseOverride(next);
                 if (!next) {
@@ -128,6 +134,7 @@ export function ClientBillingTab({
                 max={30}
                 value={daysInput}
                 onValueChange={setDaysInput}
+                isDisabled={!canEdit}
                 isInvalid={!!error}
                 errorMessage={error}
                 description="0–30 days after the due date"
@@ -141,7 +148,7 @@ export function ClientBillingTab({
                   Cancel
                 </UiButton>
               ) : null}
-              <UiButton variant="primary" isDisabled={!dirty} onPress={onSave}>
+              <UiButton variant="primary" isDisabled={!dirty || !canEdit} onPress={onSave}>
                 Save
               </UiButton>
             </div>
@@ -150,6 +157,15 @@ export function ClientBillingTab({
       </div>
 
       <Card title="Billing history" padding="none" className="overflow-hidden">
+        {payments.error ? (
+          <ErrorState inline title="Couldn't load the billing history." onRetry={() => void payments.refetch()} />
+        ) : payments.loading ? (
+          <div className="space-y-3 p-4">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton key={index} className="h-10 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : (
         <Table
           aria-label="Billing history"
           removeWrapper
@@ -191,6 +207,7 @@ export function ClientBillingTab({
             )}
           </TableBody>
         </Table>
+        )}
       </Card>
     </div>
   );

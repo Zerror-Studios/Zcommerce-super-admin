@@ -17,9 +17,8 @@ import { areaGradientStops, chartColors, recharts } from "../ui/chart-theme";
 import { AiInsightCard, Card, HealthScore, KpiStrip, StatCard, Tooltip as UiTooltip, formatCount, formatMoney, formatRange, getHealthBand, useAiEnabled } from "../ui";
 import { useState } from "react";
 import { storeInsight } from "../../lib/aiSamples";
-import { transactions } from "../../lib/mockData";
-import { loadPlatformSettings } from "../../lib/platformSettings";
 import { ClientUsageTab } from "./ClientUsageTab";
+import { NotesCard } from "./NotesCard";
 
 export interface ClientOverviewTabProps {
   client: Client;
@@ -79,14 +78,14 @@ function ChartTooltip({ active, payload, label }: CustomTooltipProps) {
 /** Store detail › Overview (docs/design/04-super-admin.md §3.4): KPIs → Performance → Health → Plan usage; Profile and Notes on the side. */
 export function ClientOverviewTab({ client, subscription, plan }: ClientOverviewTabProps) {
   const trend = buildClientTrend(client);
-  const health = getStoreHealth(client, subscription);
+  const health = getStoreHealth(client);
   // growthPercent −100 means the comparison can't be shown as a real change (docs/design/05-wording.md §2).
   const growthUnknown = client.growthPercent <= -100;
   // Insight card (AI flag), written from this store's own payment and health data.
   const aiEnabled = useAiEnabled();
   const [insightDismissed, setInsightDismissed] = useState(false);
   const insight = aiEnabled && !insightDismissed
-    ? storeInsight(client, subscription, transactions, loadPlatformSettings().gracePeriodDays, new Date())
+    ? storeInsight(client, subscription)
     : null;
 
   return (
@@ -208,13 +207,7 @@ export function ClientOverviewTab({ client, subscription, plan }: ClientOverview
             </dl>
           </Card>
 
-          <Card title="Notes" className="flex-1">
-            {client.notes ? (
-              <p className="whitespace-pre-line text-body text-fg">{client.notes}</p>
-            ) : (
-              <p className="text-body text-fg-muted">No notes yet.</p>
-            )}
-          </Card>
+          <NotesCard client={client} className="flex-1" />
         </div>
       </div>
 

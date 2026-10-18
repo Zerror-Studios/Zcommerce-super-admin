@@ -3,13 +3,17 @@ import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { ClientBillingTab } from "../components/clients/ClientBillingTab";
 import { ClientDangerZone } from "../components/clients/ClientDangerZone";
 import { ClientOverviewTab } from "../components/clients/ClientOverviewTab";
+import { OnboardingCard } from "../components/clients/OnboardingCard";
+import { SubscriptionActions } from "../components/clients/SubscriptionActions";
 import { StoreActionDialog, type StoreAction } from "../components/clients/storeActions";
 import { logInToStore } from "../components/clients/storeLogin";
 import { PageHeader } from "../components/common/PageHeader";
-import { plans, subscriptions, transactions } from "../lib/mockData";
 import { findLatestSubscription } from "../lib/subscription-lookup.util";
+import { mutationFailureCopy } from "../lib/mutation-errors";
+import { PLATFORM_PERMISSIONS } from "../lib/permissions";
 import { loadPlatformSettings } from "../lib/platformSettings";
-import { graceDaysFor, paymentState, storeLifecycle } from "../lib/storeStatus";
+import { paymentState, storeLifecycle } from "../lib/storeStatus";
+import { useAuth } from "../providers/AuthProvider";
 import { useClients } from "../providers/ClientsProvider";
 import { IconLogin, IconMore, IconStore } from "../components/ui/icons";
 import {
@@ -24,6 +28,7 @@ import {
   EmptyState,
   IconButton,
   menuItemDangerClasses,
+  toastError,
 } from "../components/ui";
 
 /** One titled block on the store page. */
@@ -45,29 +50,38 @@ function Section({ id, title, children }: { id: string; title: string; children:
 export function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getClient, updateClient } = useClients();
+  const { getClient, updateClient, plans, subscriptions, loading } = useClients();
+  const { can } = useAuth();
   const [action, setAction] = useState<StoreAction | null>(null);
+  // Client-side mirror of the backend guard (review C-M5): the server still decides.
+  const canManage = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
+  const canImpersonate = can(PLATFORM_PERMISSIONS.TENANTS_IMPERSONATE);
+  const canManageBilling = can(PLATFORM_PERMISSIONS.BILLING_MANAGE);
 
   const client = id ? getClient(id) : undefined;
   const defaultGracePeriodDays = loadPlatformSettings().gracePeriodDays;
 
   const plan = useMemo(
     () => (client ? plans.find((p) => p.name === client.plan) : undefined),
-    [client],
+    [client, plans],
   );
 
   const subscription = useMemo(
     () => (client ? findLatestSubscription(subscriptions, client.id) : undefined),
-    [client],
-  );
-
-  const clientTransactions = useMemo(
-    () => (client ? transactions.filter((t) => t.clientId === client.id) : []),
-    [client],
+    [client, subscriptions],
   );
 
   if (!id) {
     return <Navigate to="/stores" replace />;
+  }
+
+  // Deep links land here before `platformTenants` has answered: wait, don't say "not found".
+  if (!client && loading) {
+    return (
+      <div>
+        <PageHeader back={{ href: "/stores", label: "Stores" }} title="Loading store…" />
+      </div>
+    );
   }
 
   if (!client) {
@@ -91,12 +105,7 @@ export function ClientDetail() {
   }
 
   const lifecycle = storeLifecycle(client);
-  const payment = paymentState(
-    subscription,
-    transactions,
-    graceDaysFor(client, defaultGracePeriodDays),
-    new Date(),
-  );
+  const payment = paymentState(subscription);
   const isSuspended = client.status === "suspended";
 
   const onMenuAction = (key: Key) => {
@@ -117,6 +126,7 @@ export function ClientDetail() {
         description={`${client.ownerName} · ${client.ownerEmail}`}
         actions={
           <>
+            {canManage ? (
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
                 <IconButton aria-label="More actions" showTooltip={false}>
@@ -136,29 +146,47 @@ export function ClientDetail() {
                 </DropdownSection>
               </DropdownMenu>
             </Dropdown>
-            <UiButton variant="primary" startIcon={<IconLogin aria-hidden />} onPress={() => logInToStore(client)}>
-              Log in
-            </UiButton>
+            ) : null}
+            {canImpersonate ? (
+              <UiButton variant="primary" startIcon={<IconLogin aria-hidden />} onPress={() => void logInToStore(client)}>
+                Log in
+              </UiButton>
+            ) : null}
           </>
         }
       />
 
       <div className="space-y-8">
+        <OnboardingCard client={client} />
         <ClientOverviewTab client={client} subscription={subscription} plan={plan} />
+
+        {canManageBilling ? (
+          <Section id="store-subscription" title="Subscription">
+            <SubscriptionActions client={client} subscription={subscription} plans={plans} />
+          </Section>
+        ) : null}
 
         <Section id="store-billing" title="Billing">
           <ClientBillingTab
             client={client}
             subscription={subscription}
-            transactions={clientTransactions}
             defaultGracePeriodDays={defaultGracePeriodDays}
-            onSaveGracePeriod={(days) => updateClient(client.id, { gracePeriodDays: days })}
+            onSaveGracePeriod={(days) =>
+              // The save is fire-and-forget for the form; a failure still has to be seen (review C-L6).
+              updateClient(client.id, { gracePeriodDays: days }).catch((error: unknown) => {
+                const message = mutationFailureCopy(error);
+                if (message) toastError(message);
+              })
+            }
+            canEdit={canManage}
           />
         </Section>
 
-        <Section id="store-settings" title="Store settings">
-          <ClientDangerZone client={client} onDeleted={() => navigate("/stores")} />
-        </Section>
+        {canManage ? (
+          <Section id="store-settings" title="Store settings">
+            <ClientDangerZone client={client} onDeleted={() => navigate("/stores")} />
+          </Section>
+        ) : null}
       </div>
 
       <StoreActionDialog

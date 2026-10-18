@@ -57,7 +57,9 @@ export const toasts = {
   storeReactivated: (name: string) => `${name} reactivated.`,
   storeAdded: (name: string) => `${name} added.`,
   reminderSent: (count: number) => `Reminder sent to ${plural(count, "store", "stores")}.`,
-  supportLoginUnavailable: "Support log-in isn't available yet.",
+  storeProvisioningFailed: (name: string) => `${name} was created but a provisioning step failed. Open the store to retry.`,
+  mfaRequired: "Turn on two-step verification before changing platform data.",
+  forbidden: "You don't have permission to do that.",
 } as const;
 
 // ─── Confirmation dialogs (§8) ───────────────────────────────────────────────

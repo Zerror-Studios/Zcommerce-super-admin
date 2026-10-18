@@ -4,7 +4,9 @@ import { SubscriptionReportsTab } from "../components/billing/SubscriptionReport
 import { PageHeader } from "../components/common/PageHeader";
 import { AutomationSettingsTab } from "../components/settings/AutomationSettingsTab";
 import { TransactionsTab } from "../components/payments/TransactionsTab";
-import { transactions } from "../lib/mockData";
+import { ErrorState } from "../components/ui";
+import { toasts } from "../copy";
+import { usePayments } from "../hooks/use-platform-reports";
 
 /** Subscriptions › Collections (route "subscriptions", unchanged), Transactions and Payment reminders. */
 const sections = ["subscriptions", "transactions", "reminders"] as const;
@@ -13,6 +15,8 @@ type BillingSection = (typeof sections)[number];
 
 export function Billing() {
   const { section } = useParams<{ section: string }>();
+  // PRD-005 FR-5.2: platform payments (payment_log)
+  const payments = usePayments();
 
   const active = useMemo(() => {
     if (!section || !(sections as readonly string[]).includes(section)) return null;
@@ -39,10 +43,14 @@ export function Billing() {
     <div>
       <PageHeader
         title="Transactions"
-        count={transactions.length}
-        description="Payments across Stripe and Razorpay"
+        count={payments.loading ? undefined : payments.data.length}
+        description="What stores paid Zcommerce for their plans"
       />
-      <TransactionsTab transactions={transactions} />
+      {payments.error ? (
+        <ErrorState title="Couldn't load transactions." description={toasts.genericError} onRetry={() => void payments.refetch()} />
+      ) : (
+        <TransactionsTab transactions={payments.data} isLoading={payments.loading} />
+      )}
     </div>
   );
 }

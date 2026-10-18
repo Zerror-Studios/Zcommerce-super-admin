@@ -3,10 +3,16 @@ import { toastError } from "../ui";
 import { useMemo, useState } from "react";
 import { subscriptionStatusEnum, type Client, type Subscription } from "../../types";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
-import { subscriptions } from "../../lib/mockData";
 import { selectionToIdSet } from "../../lib/tableSelection";
 import { daysUntil, formatDate } from "../../lib/utils";
+import { mutationFailureCopy } from "../../lib/mutation-errors";
+import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
+import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
+import { useApolloClient, useMutation } from "@apollo/client";
+import { useEffect } from "react";
+import { PREVIEW_RENEWAL_REMINDER, SEND_RENEWAL_REMINDERS } from "../../graphql/billing";
+import type { ReminderBatch, ReminderPreview } from "../../types/platform-api";
 import { toasts } from "../../copy";
 import { dataTableClassNames, dataTableSelectionProps, tablePanelClassName } from "../common/dataTableStyles";
 import { StatusChip } from "../common/StatusChip";
@@ -57,13 +63,20 @@ function plural(count: number, word: string) {
 }
 
 export function AutomationSettingsTab() {
-  const { clients } = useClients();
+  const { clients, subscriptions } = useClients();
+  const { can } = useAuth();
+  // Sending needs billing:manage; previewing only billing:read (review C-M5).
+  const canSend = can(PLATFORM_PERMISSIONS.BILLING_MANAGE);
   const [search, setSearch] = useState("");
   const [windowFilter, setWindowFilter] = useState<WindowFilter>("30");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [preview, setPreview] = useState<ReminderPreview | null>(null);
+  const apollo = useApolloClient();
+  const [sendReminders] = useMutation<{ sendRenewalReminders: ReminderBatch }>(SEND_RENEWAL_REMINDERS);
 
-  const subscriptionByClientId = useMemo(() => latestSubscriptionByClient(subscriptions), []);
+  const subscriptionByClientId = useMemo(() => latestSubscriptionByClient(subscriptions), [subscriptions]);
 
   const allStoreRows = useMemo(() => {
     const rows: StoreRow[] = [];
@@ -121,19 +134,56 @@ export function AutomationSettingsTab() {
     setSelected(selectionToIdSet(keys, storeRows.map((row) => row.id)));
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (selectedCount === 0) {
       toastError("Select at least one store.");
       return;
     }
-
-    addToast({
-      title: toasts.reminderSent(selectedCount),
-      color: "success",
-    });
+    // PRD-005 FR-7.3: the server renders, logs and queues the reminders
+    setSending(true);
+    try {
+      const { data } = await sendReminders({ variables: { tenantIds: [...selected] } });
+      const batch = data?.sendRenewalReminders;
+      if (batch?.skipped.length) {
+        toastError(`${batch.skipped.length} skipped: ${batch.skipped[0].reason}`);
+      }
+      addToast({ title: toasts.reminderSent(batch?.queued ?? 0), color: "success" });
+    } catch (error) {
+      // BAD_USER_INPUT and CONFLICT carry the server's message; FORBIDDEN and
+      // MFA_REQUIRED are reported once by the Apollo link (review C-L6).
+      const message = mutationFailureCopy(error);
+      if (message) toastError(message);
+      return;
+    } finally {
+      setSending(false);
+    }
     setSelected(new Set());
     setPreviewOpen(false);
   };
+
+  // The preview for the first selected store, rendered by the server.
+  useEffect(() => {
+    if (!previewOpen) return;
+    const [first] = [...selected];
+    const tenantId = first ?? storeRows[0]?.id;
+    if (!tenantId) return;
+    let cancelled = false;
+    apollo
+      .query<{ previewRenewalReminder: ReminderPreview }>({
+        query: PREVIEW_RENEWAL_REMINDER,
+        variables: { tenantId },
+        fetchPolicy: "network-only",
+      })
+      .then(({ data }) => {
+        if (!cancelled) setPreview(data.previewRenewalReminder);
+      })
+      .catch(() => {
+        if (!cancelled) setPreview(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apollo, previewOpen, selected, storeRows]);
 
   const renderCell = (row: StoreRow, key: string) => {
     const { client, subscription, daysLeft } = row;
@@ -201,14 +251,17 @@ export function AutomationSettingsTab() {
         {selectedCount > 0 ? (
           <SelectionBar count={selectedCount} onClear={() => setSelected(new Set())}>
             {previewButton}
-            <UiButton
-              variant="ghost"
-              size="sm"
-              startIcon={<IconSend aria-hidden />}
-              onPress={handleSend}
-            >
-              Send reminder
-            </UiButton>
+            {canSend ? (
+              <UiButton
+                variant="ghost"
+                size="sm"
+                startIcon={<IconSend aria-hidden />}
+                isLoading={sending}
+                onPress={() => void handleSend()}
+              >
+                Send reminder
+              </UiButton>
+            ) : null}
           </SelectionBar>
         ) : (
           <TableToolbar
@@ -304,13 +357,13 @@ export function AutomationSettingsTab() {
                 <div>
                   <p className="text-label font-medium text-fg">Subject</p>
                   <p className="mt-1.5 rounded-lg border border-line bg-surface-muted px-3 py-2 text-body text-fg">
-                    {EMAIL_SUBJECT}
+                    {preview?.subject ?? EMAIL_SUBJECT}
                   </p>
                 </div>
                 <div>
                   <p className="text-label font-medium text-fg">Message</p>
                   <p className="mt-1.5 whitespace-pre-wrap rounded-lg border border-line bg-surface-muted px-4 py-3 text-body text-fg">
-                    {EMAIL_BODY}
+                    {preview?.body ?? EMAIL_BODY}
                   </p>
                 </div>
                 <p className="text-caption text-fg-muted">
@@ -327,8 +380,9 @@ export function AutomationSettingsTab() {
                 </UiButton>
                 <UiButton
                   variant="primary"
-                  isDisabled={selectedCount === 0}
-                  onPress={handleSend}
+                  isDisabled={selectedCount === 0 || !canSend}
+                  isLoading={sending}
+                  onPress={() => void handleSend()}
                 >
                   {selectedCount > 0 ? `Send reminder to ${plural(selectedCount, "store")}` : "Send reminder"}
                 </UiButton>

@@ -1,11 +1,22 @@
 import { useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { CouponsTab } from "../components/billing/CouponsTab";
+import { BillingRulesSettings } from "../components/settings/BillingRulesSettings";
+import { TeamSettings } from "../components/settings/TeamSettings";
+import { AuditLogSettings } from "../components/settings/AuditLogSettings";
 import { PageHeader } from "../components/common/PageHeader";
 import { ShortcutsDialog } from "../components/layout/AppShell";
-import { coupons as initialCoupons } from "../lib/mockData";
+import { useMutation } from "@apollo/client";
+import { CREATE_PLATFORM_COUPON } from "../graphql/billing";
+import { toCouponInput } from "../lib/api-report-adapters";
+import { useCoupons } from "../hooks/use-platform-reports";
+import { mutationFailureCopy } from "../lib/mutation-errors";
+import { PLATFORM_PERMISSIONS } from "../lib/permissions";
+import { useAuth } from "../providers/AuthProvider";
+import { ErrorState, Skeleton, toastError } from "../components/ui";
+import { toasts } from "../copy";
 import type { Coupon } from "../types";
-import { IconAdd, IconExpand, IconKeyboard, IconPercent } from "../components/ui/icons";
+import { IconAdd, IconBilling, IconExpand, IconKeyboard, IconLock, IconPercent, IconUser } from "../components/ui/icons";
 import { Button as UiButton } from "../components/ui";
 
 /** Settings › Discounts. Payment reminders moved to Subscriptions (/settings/automation redirects there). */
@@ -13,6 +24,18 @@ const sections = {
   discounts: {
     title: "Discounts",
     description: undefined,
+  },
+  "billing-rules": {
+    title: "Billing rules",
+    description: "Grace period, health thresholds and the renewal reminder schedule.",
+  },
+  team: {
+    title: "Team",
+    description: "Zerror staff who can sign in to this console, and what they can do.",
+  },
+  audit: {
+    title: "Audit log",
+    description: "Every change made from this console, newest first.",
   },
 } as const;
 
@@ -32,11 +55,16 @@ const settingsGroups: { title: string; items: SettingsRow[] }[] = [
     title: "Subscriptions",
     items: [
       { title: "Discounts", desc: "Discount codes stores can apply to their plan.", icon: IconPercent, link: "/settings/discounts" },
+      { title: "Billing rules", desc: "Grace period, health thresholds and reminder schedule.", icon: IconBilling, link: "/settings/billing-rules" },
     ],
   },
   {
     title: "Account",
-    items: [{ title: "Keyboard shortcuts", desc: "Keys for search, the sidebar and other quick actions.", icon: IconKeyboard }],
+    items: [
+      { title: "Team", desc: "Invite Zerror staff, change roles, reset two-step verification.", icon: IconUser, link: "/settings/team" },
+      { title: "Audit log", desc: "Who changed what, and when.", icon: IconLock, link: "/settings/audit" },
+      { title: "Keyboard shortcuts", desc: "Keys for search, the sidebar and other quick actions.", icon: IconKeyboard },
+    ],
   },
 ];
 
@@ -95,8 +123,22 @@ function SettingsIndex() {
 
 export function Settings() {
   const { section } = useParams<{ section: string }>();
-  const [coupons, setCoupons] = useState<Coupon[]>(initialCoupons);
+  const { can } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
+  // PRD-005 FR-7.2: platform discounts live on the server
+  const apiCoupons = useCoupons();
+  const [createCoupon] = useMutation(CREATE_PLATFORM_COUPON);
+  const coupons = apiCoupons.data;
+  const canManageCoupons = can(PLATFORM_PERMISSIONS.COUPONS_MANAGE);
+  const canManageUsers = can(PLATFORM_PERMISSIONS.USERS_MANAGE);
+  const onCreate = (coupon: Coupon) => {
+    void createCoupon({ variables: { input: toCouponInput(coupon) } })
+      .then(() => apiCoupons.refetch())
+      .catch((error) => {
+        const message = mutationFailureCopy(error);
+        if (message) toastError(message);
+      });
+  };
 
   const active = useMemo(() => {
     if (!section || !(section in sections)) return null;
@@ -117,7 +159,7 @@ export function Settings() {
         count={active === "discounts" ? coupons.length : undefined}
         description={meta.description}
         actions={
-          active === "discounts" ? (
+          active === "discounts" && canManageCoupons ? (
             <UiButton
               variant="primary"
               startIcon={<IconAdd aria-hidden />}
@@ -125,18 +167,41 @@ export function Settings() {
             >
               Create discount
             </UiButton>
+          ) : active === "team" && canManageUsers ? (
+            <UiButton variant="primary" startIcon={<IconAdd aria-hidden />} onPress={() => setCreateOpen(true)}>
+              Invite member
+            </UiButton>
           ) : undefined
         }
       />
 
-      {active === "discounts" ? (
+      {/* Discounts: loading and error states before the table (review C-M1). */}
+      {active === "discounts" && apiCoupons.error ? (
+        <ErrorState
+          title="Couldn't load the discounts."
+          description={toasts.genericError}
+          onRetry={() => void apiCoupons.refetch()}
+        />
+      ) : active === "discounts" && apiCoupons.loading ? (
+        <div className="space-y-3 p-4" role="status" aria-label="Loading discounts">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Skeleton key={index} className="h-10 w-full rounded-lg" />
+          ))}
+        </div>
+      ) : active === "discounts" ? (
         <CouponsTab
           coupons={coupons}
-          onCreate={(coupon) => setCoupons((prev) => [coupon, ...prev])}
+          onCreate={onCreate}
           createOpen={createOpen}
           onCreateOpenChange={setCreateOpen}
+          canCreate={canManageCoupons}
         />
       ) : null}
+
+      {active === "billing-rules" ? <BillingRulesSettings /> : null}
+
+      {active === "team" ? <TeamSettings createOpen={createOpen} onCreateOpenChange={setCreateOpen} /> : null}
+      {active === "audit" ? <AuditLogSettings /> : null}
 
     </div>
   );

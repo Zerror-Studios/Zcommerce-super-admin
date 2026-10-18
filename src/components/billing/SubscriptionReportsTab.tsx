@@ -1,25 +1,18 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { differenceInCalendarDays, endOfDay, startOfDay, startOfMonth, subDays } from "date-fns";
+import { endOfDay, startOfDay, startOfMonth } from "date-fns";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { PlanName, SubscriptionHealthBucket } from "../../types";
 import { getPlanLabel, PLAN_NAMES } from "../../lib/display-labels.util";
-import { clients, subscriptions, transactions } from "../../lib/mockData";
-import { collectionRate, earnedIn } from "../../lib/metrics";
-import { loadPlatformSettings } from "../../lib/platformSettings";
-import { graceDaysFor, paymentState } from "../../lib/storeStatus";
-import {
-  applyDrillToPayments,
-  applyDrillToShops,
-  buildPaymentReportRows,
-  buildShopReportRows,
-  buildSubscriptionReportOverview,
-  downloadCsv,
-  rowsToCsv,
-  type PaymentReportRow,
-  type ReportDrillFilter,
-  type ShopReportRow,
-} from "../../lib/subscriptionReports";
+import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
+import { useClients } from "../../providers/ClientsProvider";
+import { useCollections } from "../../hooks/use-platform-reports";
+import { useDebouncedValue } from "../../hooks/use-debounced-value";
+import { InvoiceRowActions } from "./InvoiceRowActions";
+import { collectionRate } from "../../lib/periods";
+import { downloadCsv, rowsToCsv } from "../../lib/report-csv";
+import { paymentState } from "../../lib/storeStatus";
+import type { PaymentReportRow, ReportDrillFilter, ShopReportRow } from "../../types/reports";
 import { formatDate } from "../../lib/utils";
 import {
   DateRangeComparison,
@@ -53,7 +46,8 @@ import type { Tone } from "../ui";
 import { emptyStates, toasts } from "../../copy";
 
 const PAGE_SIZE = 8;
-const AS_OF = new Date("2026-10-06T12:00:00Z");
+// Today, when the page loaded; the server judges every row against its own clock.
+const AS_OF = new Date();
 
 const defaultRange: DateRangeValue = {
   startDate: startOfMonth(new Date(2026, 9, 1)),
@@ -133,17 +127,6 @@ function isDrill(value: string | null): value is ReportDrillFilter {
   return value != null && value in drillLabels;
 }
 
-function previousPeriodOf(start: Date, end: Date) {
-  const length = differenceInCalendarDays(end, start) + 1;
-  const prevEnd = endOfDay(subDays(start, 1));
-  return { start: startOfDay(subDays(prevEnd, length - 1)), end: prevEnd };
-}
-
-/** Exclusive-end period for lib/metrics from an inclusive date range. */
-function toPeriod(start: Date, end: Date) {
-  return { start, end: new Date(end.getTime() + 1) };
-}
-
 function AppliedFilter({ children, onRemove }: { children: ReactNode; onRemove: () => void }) {
   return (
     <span className="inline-flex h-7 items-center gap-1 rounded-lg border border-line bg-surface pl-2.5 pr-1 text-label text-fg">
@@ -164,11 +147,12 @@ const muted = <span className="text-fg-subtle">—</span>;
 
 export function SubscriptionReportsTab() {
   const navigate = useNavigate();
+  const { subscriptions, plans: planList } = useClients();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [range, setRange] = useState<DateRangeValue>(defaultRange);
   const [search, setSearch] = useState("");
+  // The rollup runs on the server: wait for typing to stop (review C-M6).
+  const debouncedSearch = useDebouncedValue(search);
   const [plan, setPlan] = useState<PlanName | "all">("all");
   const [health, setHealth] = useState<SubscriptionHealthBucket | "all">("all");
   const [page, setPage] = useState(1);
@@ -199,62 +183,27 @@ export function SubscriptionReportsTab() {
   const setDrill = (show: ReportDrillFilter) => updateParams({ show });
   const setTableView = (tab: TableView) => updateParams({ tab });
 
-  const reload = () => {
-    setLoading(true);
-    setError(null);
-    window.setTimeout(() => setLoading(false), 400);
-  };
-
-  useEffect(() => {
-    reload();
-  }, []);
-
-  const settings = useMemo(() => loadPlatformSettings(), []);
-
-  const queryInput = useMemo(
-    () => ({
-      clients,
-      subscriptions,
-      transactions,
-      asOf: AS_OF,
-      rangeStart: range.startDate,
-      rangeEnd: range.endDate,
-      settings,
-      search,
-      plan,
-      health,
-    }),
-    [range.endDate, range.startDate, search, plan, health, settings],
-  );
-
-  const overview = useMemo(
-    () => (error ? null : buildSubscriptionReportOverview(queryInput)),
-    [queryInput, error],
-  );
-
-  const shopRows = useMemo(() => {
-    const base = buildShopReportRows(queryInput);
-    return applyDrillToShops(base, drill, AS_OF);
-  }, [queryInput, drill]);
-
-  const paymentRows = useMemo(() => {
-    const base = buildPaymentReportRows(queryInput);
-    return applyDrillToPayments(
-      base,
-      drill,
-      range.startDate,
-      range.endDate,
-      AS_OF,
-    );
-  }, [queryInput, drill, range.endDate, range.startDate]);
+  // PRD-005 FR-5.3: the server applies the range, filters and drill.
+  const api = useCollections({
+    startDate: range.startDate,
+    endDate: range.endDate,
+    drill,
+    search: debouncedSearch,
+    planId: plan === "all" ? null : (planList.find((p) => p.name === plan)?.id ?? null),
+    health,
+  });
+  const loading = api.loading;
+  const error = api.error;
+  const overview = error ? null : (api.data?.overview ?? null);
+  const shopRows = api.data?.shopRows ?? [];
+  const paymentRows = api.data?.paymentRows ?? [];
 
   // KPI strip (docs/design/04-super-admin.md §3.5): Billed = Collected + Pending + Overdue, so the cells add up
-  // and the collection rate is lib/metrics collectionRate(). Pending/Overdue match the table drill-downs.
+  // and the collection rate is lib/periods collectionRate(). Pending/Overdue match the table drill-downs.
   const kpis = useMemo(() => {
     if (!overview) return null;
-    const collected = earnedIn(transactions, toPeriod(range.startDate, range.endDate));
-    const previous = previousPeriodOf(range.startDate, range.endDate);
-    const previousCollected = earnedIn(transactions, toPeriod(previous.start, previous.end));
+    const collected = overview.currentMonth.collectedAmount;
+    const previousCollected = overview.previousMonth.collectedAmount;
     const open = overview.pendingPayments.amount + overview.overduePayments.amount;
     return {
       billed: collected + open,
@@ -265,10 +214,9 @@ export function SubscriptionReportsTab() {
       pending: overview.pendingPayments,
       overdue: overview.overduePayments,
     };
-  }, [overview, range.endDate, range.startDate]);
+  }, [overview]);
 
-  const subscriptionByClient = useMemo(() => new Map(subscriptions.map((s) => [s.clientId, s])), []);
-  const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), []);
+  const subscriptionByClient = useMemo(() => latestSubscriptionByClient(subscriptions), [subscriptions]);
 
   useEffect(() => {
     setPage(1);
@@ -340,10 +288,7 @@ export function SubscriptionReportsTab() {
           className="rounded-card border border-line bg-surface"
           title="Couldn't load collections."
           description={toasts.genericError}
-          onRetry={() => {
-            setError(null);
-            reload();
-          }}
+          onRetry={() => void api.refetch()}
         />
       </div>
     );
@@ -370,13 +315,7 @@ export function SubscriptionReportsTab() {
           </div>
         );
       case "payment": {
-        const client = clientById.get(row.clientId);
-        const state = paymentState(
-          subscriptionByClient.get(row.clientId),
-          transactions,
-          client ? graceDaysFor(client, settings.gracePeriodDays) : settings.gracePeriodDays,
-          AS_OF,
-        );
+        const state = paymentState(subscriptionByClient.get(row.clientId));
         return (
           <div className="flex flex-col items-start gap-0.5">
             <Chip tone={state.tone}>{state.label}</Chip>
@@ -424,6 +363,8 @@ export function SubscriptionReportsTab() {
         return row[key] ? <span className="whitespace-nowrap num">{formatDate(row[key] as string)}</span> : muted;
       case "status":
         return <StatusChip domain="payment" status={row.status} />;
+      case "actions":
+        return <InvoiceRowActions row={row} onChanged={api.refetch} />;
       default:
         return String(row[key as keyof PaymentReportRow] ?? "—");
     }
@@ -634,7 +575,7 @@ export function SubscriptionReportsTab() {
             </Table>
           ) : (
             <Table aria-label="Invoices" classNames={{ ...dataTableClassNames, tr: tableRowClasses }}>
-              <TableHeader columns={paymentColumns}>
+              <TableHeader columns={[...paymentColumns, { key: "actions", label: "" }]}>
                 {(column) => (
                   <TableColumn key={column.key} align={rightAligned.has(column.key) ? "end" : "start"}>
                     {column.label}
