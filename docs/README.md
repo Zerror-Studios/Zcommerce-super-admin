@@ -19,7 +19,7 @@ This is the index of every document in this repo. **Keep it current:** any doc y
 | [PRD-002](prd/PRD-002-audit-remediation.md) | Platform audit remediation (pointer; source of truth in `../zcom-backend/docs/prd/`): WS-G fixes SA-1 to SA-8 | Approved; round 1 done; rounds 2 and 3 needed no change here (source PRD Implemented 2026-10-14) | zcom-super-admin (+ all repos) |
 | [PRD-005](prd/PRD-005-platform-admin-api.md) | Platform admin API and super-admin integration (pointer; source of truth in `../zcom-backend/docs/prd/`): this repo's phases (Apollo client, real sign-in + MFA, screens moved to the API domain by domain, report logic moved server-side, mock data deleted) | **Approved** 2026-10-17; Phases 1–3 implemented the same day (`api` mode: sign-in, MFA, Stores, lifecycle, subscription actions, billing rules, Home KPIs, Platform revenue, Collections with invoice actions, Transactions, Discounts, Reminders); Phase 4 open | zcom-super-admin, zcom-backend |
 | [PRD-006](prd/PRD-006-billing-core-payment-provider.md) | Platform payment provider setting (pointer → backend `../../zcom-backend/docs/prd/PRD-006-billing-core-payment-provider.md`) | Implemented 2026-10-18 |
-| [PRD-007](prd/PRD-007-shared-host-admin-login.md) | Shared platform hosts (pointer → backend): console on `platform.zcommerce.com`, store links to `admin.zcommerce.com/store/{slug}` | **Approved** 2026-10-18 |
+| [PRD-007](prd/PRD-007-shared-host-admin-login.md) | Shared platform hosts (pointer → backend): console on `platform.zerrorstudios.com`, store links to `store.zerrorstudios.com/store/{slug}` | **Approved** 2026-10-18 |
 
 ## Architecture
 

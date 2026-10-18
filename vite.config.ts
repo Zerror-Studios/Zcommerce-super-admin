@@ -2,8 +2,37 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 
-export default defineConfig(({ mode }) => {
+/**
+ * True when `url` is an absolute https URL with a host. A production bundle
+ * is served from a static host with no proxy, so a relative gateway path
+ * (or the "/v1/graphql" fallback in src/config/data-source.ts) makes every
+ * API call hit that host (301, then 404) instead of the API.
+ */
+function isAbsoluteHttpsUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && parsed.host !== "";
+  } catch {
+    return false;
+  }
+}
+
+export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+
+  // ADR-004: the deployed console must call the API host directly. A local
+  // build against the dev proxy can use `vite build --mode development`.
+  if (
+    command === "build" &&
+    mode === "production" &&
+    !isAbsoluteHttpsUrl(env.VITE_GATEWAY_URL ?? "")
+  ) {
+    throw new Error(
+      "VITE_GATEWAY_URL must be an absolute https URL for a production " +
+        "build, e.g. https://api.zerrorstudios.com/v1/graphql. A relative " +
+        "path or an unset value only works with the dev proxy.",
+    );
+  }
 
   return {
     plugins: [react(), tailwindcss()],

@@ -147,7 +147,7 @@ docs/design/            the approved design spec (README, foundations, component
 |---|---|---|
 | Install | `npm ci` | package-lock.json |
 | Dev | `npm run dev` | Vite |
-| Build | `npm run build` | `tsc -b && vite build`, so it **typechecks** (strict) |
+| Build | `npm run build` | `tsc -b && vite build`, so it **typechecks** (strict); a production build fails unless `VITE_GATEWAY_URL` is an absolute `https://` URL (`vite.config.ts`; the deployed bundle has no proxy, so the `/v1/graphql` fallback would call the static host) |
 | Lint | `npm run lint` | oxlint (`react/rules-of-hooks` error, `only-export-components` warn) |
 | Hex check | `npm run lint:hex` | flags hard-coded colours |
 | Test | `npm test` / `npm run test:watch` | vitest, node environment, `src/**/*.test.ts` (lib logic only, 59 tests) |
