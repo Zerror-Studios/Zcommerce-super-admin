@@ -50,7 +50,7 @@ const PAGE_SIZE = 8;
 const AS_OF = new Date();
 
 const defaultRange: DateRangeValue = {
-  startDate: startOfMonth(new Date(2026, 9, 1)),
+  startDate: startOfMonth(AS_OF),
   endDate: endOfDay(AS_OF),
 };
 
@@ -300,7 +300,7 @@ export function SubscriptionReportsTab() {
     switch (key) {
       case "storeName":
         return (
-          <div className="min-w-0">
+          <div className="min-w-0 max-w-64">
             <p className="truncate whitespace-nowrap font-medium text-fg">{row.storeName}</p>
             <p className="truncate text-caption text-fg-subtle">{row.ownerEmail}</p>
           </div>
@@ -351,7 +351,7 @@ export function SubscriptionReportsTab() {
     switch (key) {
       case "shopName":
         return (
-          <div className="min-w-0">
+          <div className="min-w-0 max-w-64">
             <p className="truncate whitespace-nowrap font-medium text-fg">{row.shopName}</p>
             <p className="truncate text-caption text-fg-subtle">{row.ownerEmail}</p>
           </div>
@@ -392,7 +392,7 @@ export function SubscriptionReportsTab() {
       aria-label="Collections view"
       selectedKey={tableView}
       onSelectionChange={(key) => setTableView(key as TableView)}
-      classNames={{ base: "h-full", tabList: "h-full border-b-0", tab: "h-full" }}
+      classNames={{ base: "h-full min-w-0 max-w-full", tabList: "h-full border-b-0", tab: "h-full" }}
     >
       <Tab
         key="shops"
@@ -535,7 +535,7 @@ export function SubscriptionReportsTab() {
                 <AppliedFilter onRemove={() => setDrill("all")}>Show: {drillLabels[drill]}</AppliedFilter>
               ) : null}
               {plan !== "all" ? (
-                <AppliedFilter onRemove={() => setPlan("all")}>Plan: {plan}</AppliedFilter>
+                <AppliedFilter onRemove={() => setPlan("all")}>Plan: {getPlanLabel(plan)}</AppliedFilter>
               ) : null}
               {health !== "all" ? (
                 <AppliedFilter onRemove={() => setHealth("all")}>Health: {healthDisplay[health].label}</AppliedFilter>

@@ -52,7 +52,8 @@ const defaultRange: DateRangeValue = {
   endDate: endOfDay(new Date()),
 };
 
-const PLAN_KEYS = ["PREMIUM", "PLUS", "ENTERPRISE"] as const;
+// Every backend tier: the server books Starter revenue too, and the CSV total includes it.
+const PLAN_KEYS = ["STARTER", "PREMIUM", "PLUS", "ENTERPRISE"] as const;
 
 /** Static tables inside cards: no fixed scroll height, rows are not clickable unless stated. */
 const cardTableClassNames = {
@@ -129,6 +130,7 @@ export function RevenueReportsTab() {
   const exportCsv = () => {
     const columns = [
       { key: "label", label: "Month" },
+      { key: "STARTER", label: PLAN_LABELS.STARTER },
       { key: "PREMIUM", label: PLAN_LABELS.PREMIUM },
       { key: "PLUS", label: PLAN_LABELS.PLUS },
       { key: "ENTERPRISE", label: PLAN_LABELS.ENTERPRISE },
@@ -136,6 +138,7 @@ export function RevenueReportsTab() {
     ];
     const rows = monthly.map((row: MonthlyPlanRevenue) => ({
       label: row.label,
+      STARTER: row.STARTER,
       PREMIUM: row.PREMIUM,
       PLUS: row.PLUS,
       ENTERPRISE: row.ENTERPRISE,
@@ -174,9 +177,10 @@ export function RevenueReportsTab() {
         }
       />
 
+      {/* On error show only the error, not a page of zeros (the figures below would read as real). */}
       {api.error ? (
         <ErrorState title="Couldn't load platform revenue." description={toasts.genericError} onRetry={() => void api.refetch()} />
-      ) : null}
+      ) : (
       <div className="space-y-4">
         <KpiStrip>
           <StatCard
@@ -369,7 +373,7 @@ export function RevenueReportsTab() {
                   onClick={() => navigate(`/stores/${row.clientId}`)}
                 >
                   <TableCell>
-                    <div className="min-w-0">
+                    <div className="min-w-0 max-w-64">
                       <p className="truncate whitespace-nowrap font-medium text-fg">
                         {row.storeName}
                       </p>
@@ -390,6 +394,7 @@ export function RevenueReportsTab() {
           </Table>
         </Card>
       </div>
+      )}
     </div>
   );
 }

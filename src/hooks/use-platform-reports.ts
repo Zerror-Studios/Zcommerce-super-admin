@@ -47,13 +47,15 @@ export function useRevenueOverview(range: { startDate: Date; endDate: Date }): H
     skip: !isAuthenticated,
     fetchPolicy: "cache-and-network",
   });
+  // Keep the last answer on screen while a new range loads (no skeleton flash).
+  const raw = query.data ?? query.previousData;
   const data = useMemo(
-    () => (query.data ? toRevenueView(query.data.platformRevenueOverview) : EMPTY_REVENUE),
-    [query.data],
+    () => (raw ? toRevenueView(raw.platformRevenueOverview) : EMPTY_REVENUE),
+    [raw],
   );
   return {
     data,
-    loading: query.loading && !query.data,
+    loading: query.loading && !raw,
     error: query.error ?? null,
     refetch: query.refetch,
   };
@@ -81,13 +83,15 @@ export function useCollections(args: CollectionsArgs): HookState<CollectionsView
     skip: !isAuthenticated,
     fetchPolicy: "cache-and-network",
   });
+  // Keep the last answer on screen while new filters load (no skeleton flash).
+  const raw = query.data ?? query.previousData;
   const data = useMemo(
-    () => (query.data ? toCollectionsView(query.data.platformCollections) : null),
-    [query.data],
+    () => (raw ? toCollectionsView(raw.platformCollections) : null),
+    [raw],
   );
   return {
     data,
-    loading: query.loading && !query.data,
+    loading: query.loading && !raw,
     error: query.error ?? null,
     refetch: query.refetch,
   };
@@ -97,14 +101,16 @@ export interface PaymentsArgs {
   /** One store's payments (the store page); omitted for the Transactions page. */
   tenantId?: string;
   limit?: number;
+  /** Don't fetch (the screen that needs it is not shown). */
+  skip?: boolean;
 }
 
 /** Platform payments, newest first. */
-export function usePayments({ tenantId, limit = 200 }: PaymentsArgs = {}): HookState<Transaction[]> {
+export function usePayments({ tenantId, limit = 200, skip = false }: PaymentsArgs = {}): HookState<Transaction[]> {
   const { isAuthenticated } = useAuth();
   const query = useQuery<{ platformPayments: PlatformList<PlatformPayment> }>(PLATFORM_PAYMENTS, {
     variables: { filter: tenantId ? { tenantId } : null, limit, offset: 0 },
-    skip: !isAuthenticated,
+    skip: skip || !isAuthenticated,
     fetchPolicy: "cache-and-network",
   });
   const data = useMemo(
@@ -119,10 +125,10 @@ export function usePayments({ tenantId, limit = 200 }: PaymentsArgs = {}): HookS
   };
 }
 
-export function useCoupons(): HookState<Coupon[]> {
+export function useCoupons({ skip = false }: { skip?: boolean } = {}): HookState<Coupon[]> {
   const { isAuthenticated } = useAuth();
   const query = useQuery<{ platformCoupons: PlatformCoupon[] }>(PLATFORM_COUPONS, {
-    skip: !isAuthenticated,
+    skip: skip || !isAuthenticated,
     fetchPolicy: "cache-and-network",
   });
   const data = useMemo(() => (query.data?.platformCoupons ?? []).map(toCoupon), [query.data]);

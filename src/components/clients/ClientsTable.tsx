@@ -262,7 +262,7 @@ export function ClientsTable({
             >
               {initials(client.storeName)}
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 max-w-64">
               <p className="truncate font-medium text-fg">{client.storeName}</p>
               <p className="truncate text-caption text-fg-subtle">{client.ownerEmail}</p>
             </div>
@@ -410,7 +410,7 @@ export function ClientsTable({
               setTab(String(key) as StoreTab);
               resetToFirstPage();
             }}
-            classNames={{ base: "self-stretch", tabList: "h-full border-b-0", tab: "h-13", panel: "hidden" }}
+            classNames={{ base: "min-w-0 max-w-full self-stretch", tabList: "h-full border-b-0", tab: "h-13", panel: "hidden" }}
           >
             {tabItems.map((item) => (
               <Tab

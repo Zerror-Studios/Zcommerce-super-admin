@@ -13,6 +13,7 @@ interface UsageMetric {
   key: string;
   label: string;
   used: number;
+  /** 0 when the plan sets no limit (storage is not on the backend plan yet). */
   limit: number;
   unit: string;
 }
@@ -25,12 +26,10 @@ function barClass(percent: number): string {
 }
 
 export function ClientUsageTab({ client, plan, className }: ClientUsageTabProps) {
-  const limits = plan?.limits ?? {
-    products: 25,
-    storageGb: 1,
-    bandwidthGb: 10,
-  };
+  // No plan match (e.g. a custom plan): show usage without a limit, never made-up limits.
+  const limits = plan?.limits ?? { products: 0, storageGb: 0, bandwidthGb: 0 };
 
+  // Bandwidth is not measured yet (the adapter always sends 0), so it is left out.
   const metrics: UsageMetric[] = [
     {
       key: "products",
@@ -46,20 +45,14 @@ export function ClientUsageTab({ client, plan, className }: ClientUsageTabProps)
       limit: limits.storageGb,
       unit: "GB",
     },
-    {
-      key: "bandwidth",
-      label: "Bandwidth",
-      used: client.usage.bandwidthGb,
-      limit: limits.bandwidthGb,
-      unit: "GB",
-    },
   ];
 
   return (
     <Card title="Plan usage" description={`Against the ${getPlanLabel(client.plan)} plan limits`} className={className}>
       <div className="flex flex-col gap-4">
         {metrics.map((metric) => {
-          const percent = Math.min(100, Math.round((metric.used / metric.limit) * 100));
+          const hasLimit = metric.limit > 0;
+          const percent = hasLimit ? Math.min(100, Math.round((metric.used / metric.limit) * 100)) : 0;
           const unitSuffix = metric.unit ? ` ${metric.unit}` : "";
           return (
             <div key={metric.key} className="flex flex-col gap-1.5">
@@ -67,10 +60,11 @@ export function ClientUsageTab({ client, plan, className }: ClientUsageTabProps)
                 <span className="font-medium text-fg">{metric.label}</span>
                 <span className="text-fg-muted num">
                   {formatNumber(metric.used)}
-                  {unitSuffix} / {formatNumber(metric.limit)}
                   {unitSuffix}
+                  {hasLimit ? ` / ${formatNumber(metric.limit)}${unitSuffix}` : " · no limit set"}
                 </span>
               </div>
+              {hasLimit ? (
               <div
                 role="progressbar"
                 aria-label={`${metric.label} usage`}
@@ -81,6 +75,7 @@ export function ClientUsageTab({ client, plan, className }: ClientUsageTabProps)
               >
                 <div className={cx("h-full rounded-full", barClass(percent))} style={{ width: `${percent}%` }} />
               </div>
+              ) : null}
             </div>
           );
         })}

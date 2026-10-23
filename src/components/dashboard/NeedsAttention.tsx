@@ -47,7 +47,7 @@ function buildItems({ clients, subscriptions, now }: NeedsAttentionProps): Atten
       return { client, sub, state };
     })
     .filter(({ sub, state }) => sub && state.tone === "danger")
-    .map(({ client, sub, state }) => ({ client, state, days: -daysUntil(sub!.renewalDate, now) }))
+    .map(({ client, sub, state }) => ({ client, state, days: Math.max(0, -daysUntil(sub!.renewalDate, now)) }))
     .sort((a, b) => b.days - a.days)
     .forEach(({ client, state, days }) => {
       items.push({
@@ -147,7 +147,7 @@ export function NeedsAttention(props: NeedsAttentionProps) {
               >
                 <span aria-hidden className={cx("mt-2 size-1.5 shrink-0 rounded-full", toneDotClasses[item.tone])} />
                 <span className="min-w-0">
-                  <span className="block text-body text-fg">{item.title}</span>
+                  <span className="block text-body text-fg wrap-anywhere">{item.title}</span>
                   {item.detail ? <span className="block truncate text-label text-fg-muted">{item.detail}</span> : null}
                 </span>
               </button>

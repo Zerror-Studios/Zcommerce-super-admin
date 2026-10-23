@@ -125,19 +125,23 @@ export function Settings() {
   const { section } = useParams<{ section: string }>();
   const { can } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
-  // PRD-005 FR-7.2: platform discounts live on the server
-  const apiCoupons = useCoupons();
+  // PRD-005 FR-7.2: platform discounts live on the server (read only on Discounts).
+  const apiCoupons = useCoupons({ skip: section !== "discounts" });
   const [createCoupon] = useMutation(CREATE_PLATFORM_COUPON);
   const coupons = apiCoupons.data;
   const canManageCoupons = can(PLATFORM_PERMISSIONS.COUPONS_MANAGE);
   const canManageUsers = can(PLATFORM_PERMISSIONS.USERS_MANAGE);
-  const onCreate = (coupon: Coupon) => {
-    void createCoupon({ variables: { input: toCouponInput(coupon) } })
-      .then(() => apiCoupons.refetch())
-      .catch((error) => {
-        const message = mutationFailureCopy(error);
-        if (message) toastError(message);
-      });
+  // Resolves true once the server has the code, so the dialog only says "created" then.
+  const onCreate = async (coupon: Coupon): Promise<boolean> => {
+    try {
+      await createCoupon({ variables: { input: toCouponInput(coupon) } });
+      await apiCoupons.refetch();
+      return true;
+    } catch (error) {
+      const message = mutationFailureCopy(error);
+      if (message) toastError(message);
+      return false;
+    }
   };
 
   const active = useMemo(() => {

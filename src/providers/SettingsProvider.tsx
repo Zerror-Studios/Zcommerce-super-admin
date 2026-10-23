@@ -55,6 +55,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, [serverSettings]);
 
   const settings = serverSettings ?? DEFAULT_PLATFORM_SETTINGS;
+  // `refetch` is stable; the query result object is not (it would rebuild the context every render).
+  const { refetch } = query;
 
   const updateSettings = useCallback(
     async (next: PlatformSettings) => {
@@ -62,9 +64,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         mutation: UPDATE_PLATFORM_SETTINGS,
         variables: { input: toPlatformSettingsInput(next) },
       });
-      await query.refetch();
+      await refetch();
     },
-    [apollo, query],
+    [apollo, refetch],
   );
 
   const value = useMemo<SettingsContextValue>(

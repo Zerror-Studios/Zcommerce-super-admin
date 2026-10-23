@@ -21,6 +21,7 @@ import { IconMessages, IconSend, IconView } from "../ui/icons";
 import {
   Button as UiButton,
   EmptyState,
+  ErrorState,
   KpiStrip,
   Modal,
   ModalBody,
@@ -30,6 +31,7 @@ import {
   Select,
   SelectItem,
   SelectionBar,
+  Skeleton,
   StatCard,
   cx,
   tableRowClasses,
@@ -63,7 +65,7 @@ function plural(count: number, word: string) {
 }
 
 export function AutomationSettingsTab() {
-  const { clients, subscriptions } = useClients();
+  const { clients, subscriptions, loading, error, refetch } = useClients();
   const { can } = useAuth();
   // Sending needs billing:manage; previewing only billing:read (review C-M5).
   const canSend = can(PLATFORM_PERMISSIONS.BILLING_MANAGE);
@@ -191,7 +193,7 @@ export function AutomationSettingsTab() {
     switch (key) {
       case "storeName":
         return (
-          <div className="min-w-0">
+          <div className="min-w-0 max-w-64">
             <p className="truncate font-medium text-fg">{client.storeName}</p>
             <p className="truncate text-caption text-fg-subtle">{client.ownerEmail}</p>
           </div>
@@ -233,13 +235,19 @@ export function AutomationSettingsTab() {
     </UiButton>
   );
 
+  // The rows come from the store list: show its error, not "No stores in this window".
+  if (error) {
+    return <ErrorState title="Couldn't load the stores." description={toasts.genericError} onRetry={() => void refetch()} />;
+  }
+
   return (
     <div className="space-y-4">
       <KpiStrip>
-        <StatCard bare label="Expiring in 30 days" value={counts.within30} deltaLabel="Stores due for renewal" />
-        <StatCard bare label="Expiring in 7 days" value={counts.within7} deltaLabel="Stores due this week" />
+        <StatCard bare label="Expiring in 30 days" value={counts.within30} deltaLabel="Stores due for renewal" isLoading={loading} />
+        <StatCard bare label="Expiring in 7 days" value={counts.within7} deltaLabel="Stores due this week" isLoading={loading} />
         <StatCard
           bare
+          isLoading={loading}
           label="Overdue"
           value={counts.overdue}
           valueTone={counts.overdue > 0 ? "danger" : "default"}
@@ -320,6 +328,8 @@ export function AutomationSettingsTab() {
           </TableHeader>
           <TableBody
             items={storeRows}
+            isLoading={loading}
+            loadingContent={<Skeleton className="h-10 w-full rounded-lg" />}
             emptyContent={
               <EmptyState
                 icon={IconMessages}
