@@ -15,8 +15,8 @@ type BillingSection = (typeof sections)[number];
 
 export function Billing() {
   const { section } = useParams<{ section: string }>();
-  // PRD-005 FR-5.2: platform payments (payment_log)
-  const payments = usePayments();
+  // PRD-005 FR-5.2: platform payments (payment_log), read only on Transactions.
+  const payments = usePayments({ skip: section !== "transactions" });
 
   const active = useMemo(() => {
     if (!section || !(sections as readonly string[]).includes(section)) return null;
@@ -44,7 +44,7 @@ export function Billing() {
       <PageHeader
         title="Transactions"
         count={payments.loading ? undefined : payments.data.length}
-        description="What stores paid Zcommerce for their plans"
+        description="What stores paid Zcom for their plans"
       />
       {payments.error ? (
         <ErrorState title="Couldn't load transactions." description={toasts.genericError} onRetry={() => void payments.refetch()} />

@@ -129,7 +129,7 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
     switch (key) {
       case "name":
         return (
-          <div className="min-w-0">
+          <div className="min-w-0 max-w-64">
             <p className="truncate font-medium text-fg">{user.name}{user.id === me?.id ? " (you)" : ""}</p>
             <p className="truncate text-caption text-fg-subtle">{user.email}</p>
           </div>
@@ -179,7 +179,8 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
             ))}
           </div>
         ) : (
-          <Table aria-label="Platform team" removeWrapper classNames={{ ...dataTableClassNames, tr: tableRowClasses }}>
+          // removeWrapper: the base slot is the scroll box, so wide rows scroll inside the card on phones.
+          <Table aria-label="Platform team" removeWrapper classNames={{ ...dataTableClassNames, base: "overflow-x-auto bg-surface", tr: tableRowClasses }}>
             <TableHeader columns={columns}>
               {(column) => <TableColumn key={column.key} align={column.key === "actions" ? "end" : "start"}>{column.label}</TableColumn>}
             </TableHeader>
@@ -201,7 +202,7 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
             {setupUrl ? (
               <div className="flex flex-col gap-3">
                 <p className="text-body text-fg-muted">Send this link to the new member. It sets their password and works for 48 hours.</p>
-                <CopyableId value={setupUrl} />
+                <CopyableId value={setupUrl} className="max-w-full break-all text-left text-label" />
               </div>
             ) : (
               <div className="flex flex-col gap-4">

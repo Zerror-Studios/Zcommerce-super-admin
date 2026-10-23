@@ -52,7 +52,7 @@ export function SetPassword() {
 
   if (!token) {
     return (
-      <AuthLayout title="Set your password" documentTitle="Set password · Zcommerce Super admin" subtitle="This link is missing its token. Open the invite link exactly as it was sent." productLabel="Super admin">
+      <AuthLayout title="Set your password" documentTitle="Set password · Zcom Super admin" subtitle="This link is missing its token. Open the invite link exactly as it was sent." productLabel="Super admin">
         <UiButton variant="secondary" size="lg" className="w-full" onPress={() => navigate("/sign-in")}>
           Go to log in
         </UiButton>
@@ -61,7 +61,7 @@ export function SetPassword() {
   }
 
   return (
-    <AuthLayout title="Set your password" documentTitle="Set password · Zcommerce Super admin" subtitle="Choose the password for your Zerror platform account." productLabel="Super admin">
+    <AuthLayout title="Set your password" documentTitle="Set password · Zcom Super admin" subtitle="Choose the password for your Zerror platform account." productLabel="Super admin">
       <form noValidate className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <AuthField
           id="set-password"

@@ -75,7 +75,8 @@ export function AuditLogSettings() {
           ))}
         </div>
       ) : (
-        <Table aria-label="Audit log" removeWrapper classNames={{ ...dataTableClassNames, tr: tableRowClasses }}>
+        // removeWrapper: the base slot is the scroll box, so wide rows scroll inside the card on phones.
+        <Table aria-label="Audit log" removeWrapper classNames={{ ...dataTableClassNames, base: "overflow-x-auto bg-surface", tr: tableRowClasses }}>
           <TableHeader columns={columns}>{(column) => <TableColumn key={column.key}>{column.label}</TableColumn>}</TableHeader>
           <TableBody items={rows} emptyContent={<EmptyState title="Nothing logged yet" description="Platform changes appear here as they happen." />}>
             {(row) => (
@@ -94,7 +95,7 @@ export function AuditLogSettings() {
         </Table>
       )}
       {pages > 1 ? (
-        <div className="flex items-center justify-between border-t border-line px-4 py-3 text-caption text-fg-muted">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-3 text-caption text-fg-muted">
           <span>Page {page + 1} of {pages} · {total} entries</span>
           <div className="flex gap-2">
             <UiButton variant="ghost" size="sm" isDisabled={page === 0} onPress={() => setPage((value) => value - 1)}>Previous</UiButton>

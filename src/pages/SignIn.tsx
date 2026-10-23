@@ -87,7 +87,7 @@ export function SignIn() {
     return (
       <AuthLayout
         title="Two-step verification"
-        documentTitle="Verify · Zcommerce Super admin"
+        documentTitle="Verify · Zcom Super admin"
         subtitle={`Enter the code from your authenticator app for ${email.trim()}.`}
         productLabel="Super admin"
       >

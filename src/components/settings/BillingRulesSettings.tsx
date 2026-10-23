@@ -76,7 +76,7 @@ export function BillingRulesSettings() {
         />
       </Card>
 
-      <Card title="Payment provider" description="How stores pay Zcommerce. Secrets live in the server environment; this only picks which provider is live.">
+      <Card title="Payment provider" description="How stores pay Zcom. Secrets live in the server environment; this only picks which provider is live.">
         <div className="flex flex-col gap-3">
           <Select
             label="Provider"

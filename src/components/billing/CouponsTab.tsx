@@ -35,7 +35,8 @@ import { emptyStates } from "../../copy";
 
 export interface CouponsTabProps {
   coupons: Coupon[];
-  onCreate: (coupon: Coupon) => void;
+  /** Resolves true when the server created the code; the dialog stays open otherwise. */
+  onCreate: (coupon: Coupon) => Promise<boolean>;
   createOpen: boolean;
   onCreateOpenChange: (open: boolean) => void;
   /** Hides the empty-state "Create discount" for roles without coupons:manage. */
@@ -61,6 +62,11 @@ const statusDisplay: Record<CouponStatus, { label: string; tone: Tone }> = {
   expired: { label: "Expired", tone: "neutral" },
 };
 
+/** Default "Expires on": 31 December of the current year. */
+function defaultExpiry(): string {
+  return `${new Date().getFullYear()}-12-31`;
+}
+
 /**
  * Display status (docs/design/04-super-admin.md §3.8): a code past its expiry date shows "Expired" even if it
  * is still flagged active. Derived at render time; the stored coupon is not changed.
@@ -85,7 +91,7 @@ export function CouponsTab({
   const [discountValue, setDiscountValue] = useState("10");
   const [appliesTo, setAppliesTo] = useState<PlanName | "All">("All");
   const [maxRedemptions, setMaxRedemptions] = useState("100");
-  const [expiresAt, setExpiresAt] = useState("2026-12-31");
+  const [expiresAt, setExpiresAt] = useState(defaultExpiry);
   const [active, setActive] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -93,6 +99,7 @@ export function CouponsTab({
     columns.map((column) => column.key),
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [creating, setCreating] = useState(false);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -151,11 +158,11 @@ export function CouponsTab({
     setDiscountValue("10");
     setAppliesTo("All");
     setMaxRedemptions("100");
-    setExpiresAt("2026-12-31");
+    setExpiresAt(defaultExpiry());
     setActive(true);
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const trimmed = code.trim().toUpperCase();
     const value = Number(discountValue);
     const max = Number(maxRedemptions);
@@ -172,7 +179,8 @@ export function CouponsTab({
       return;
     }
 
-    onCreate({
+    setCreating(true);
+    const created = await onCreate({
       id: `cpn-${Date.now()}`,
       code: trimmed,
       discountType,
@@ -183,6 +191,8 @@ export function CouponsTab({
       expiresAt,
       active,
     });
+    setCreating(false);
+    if (!created) return;
     onCreateOpenChange(false);
     resetForm();
     addToast({
@@ -361,7 +371,7 @@ export function CouponsTab({
                 <UiButton variant="ghost" onPress={close}>
                   Cancel
                 </UiButton>
-                <UiButton variant="primary" onPress={handleCreate}>
+                <UiButton variant="primary" isLoading={creating} onPress={() => void handleCreate()}>
                   Create discount
                 </UiButton>
               </ModalFooter>

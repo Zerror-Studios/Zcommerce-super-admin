@@ -11,10 +11,11 @@ import { PageHeader } from "../components/common/PageHeader";
 import { findLatestSubscription } from "../lib/subscription-lookup.util";
 import { mutationFailureCopy } from "../lib/mutation-errors";
 import { PLATFORM_PERMISSIONS } from "../lib/permissions";
-import { loadPlatformSettings } from "../lib/platformSettings";
 import { paymentState, storeLifecycle } from "../lib/storeStatus";
 import { useAuth } from "../providers/AuthProvider";
 import { useClients } from "../providers/ClientsProvider";
+import { usePlatformSettings } from "../providers/SettingsProvider";
+import { toasts } from "../copy";
 import { IconLogin, IconMore, IconStore } from "../components/ui/icons";
 import {
   Button as UiButton,
@@ -26,6 +27,7 @@ import {
   DropdownSection,
   DropdownTrigger,
   EmptyState,
+  ErrorState,
   IconButton,
   menuItemDangerClasses,
   toastError,
@@ -50,7 +52,9 @@ function Section({ id, title, children }: { id: string; title: string; children:
 export function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getClient, updateClient, plans, subscriptions, loading } = useClients();
+  const { getClient, updateClient, plans, subscriptions, loading, error, refetch } = useClients();
+  // Read through the provider so the page re-renders when the server settings arrive.
+  const { settings } = usePlatformSettings();
   const { can } = useAuth();
   const [action, setAction] = useState<StoreAction | null>(null);
   // Client-side mirror of the backend guard (review C-M5): the server still decides.
@@ -59,7 +63,7 @@ export function ClientDetail() {
   const canManageBilling = can(PLATFORM_PERMISSIONS.BILLING_MANAGE);
 
   const client = id ? getClient(id) : undefined;
-  const defaultGracePeriodDays = loadPlatformSettings().gracePeriodDays;
+  const defaultGracePeriodDays = settings.gracePeriodDays;
 
   const plan = useMemo(
     () => (client ? plans.find((p) => p.name === client.plan) : undefined),
@@ -80,6 +84,16 @@ export function ClientDetail() {
     return (
       <div>
         <PageHeader back={{ href: "/stores", label: "Stores" }} title="Loading store…" />
+      </div>
+    );
+  }
+
+  // The list failed to load: say so, don't claim the store doesn't exist.
+  if (!client && error) {
+    return (
+      <div>
+        <PageHeader back={{ href: "/stores", label: "Stores" }} title="Store" />
+        <ErrorState title="Couldn't load the store." description={toasts.genericError} onRetry={() => void refetch()} />
       </div>
     );
   }
@@ -116,14 +130,14 @@ export function ClientDetail() {
     <div>
       <PageHeader
         back={{ href: "/stores", label: "Stores" }}
-        title={client.storeName}
+        title={<span className="wrap-anywhere">{client.storeName}</span>}
         badges={
           <>
             <Chip tone={lifecycle.tone}>{lifecycle.label}</Chip>
             <Chip tone={payment.tone}>{payment.label}</Chip>
           </>
         }
-        description={`${client.ownerName} · ${client.ownerEmail}`}
+        description={<span className="wrap-anywhere">{`${client.ownerName} · ${client.ownerEmail}`}</span>}
         actions={
           <>
             {canManage ? (

@@ -9,7 +9,9 @@ import { PageHeader } from "../common/PageHeader";
 import {
   Card,
   EmptyState,
+  ErrorState,
   KpiStrip,
+  Skeleton,
   StatCard,
   cx,
   formatCount,
@@ -19,7 +21,7 @@ import {
   tableRowClasses,
   toneTextClasses,
 } from "../ui";
-import { emptyStates } from "../../copy";
+import { emptyStates, toasts } from "../../copy";
 
 const cardTableClassNames = {
   ...dataTableClassNames,
@@ -40,7 +42,7 @@ function Change({ value }: { value: number | null }) {
  */
 export function StoreSalesTab() {
   const navigate = useNavigate();
-  const { clients } = useClients();
+  const { clients, loading, error, refetch } = useClients();
   const summary = useMemo(() => storeSalesSummary(clients), [clients]);
   const rows = useMemo(() => storeSalesRows(clients), [clients]);
   const byPlan = useMemo(() => storeSalesByPlan(clients), [clients]);
@@ -56,6 +58,15 @@ export function StoreSalesTab() {
     <div>
       <PageHeader title="Store sales" description="What stores sold to their customers in the last 30 days, compared with the 30 days before." />
 
+      {/* The figures come from the store list: show its loading and error states, not zeros. */}
+      {error ? (
+        <ErrorState title="Couldn't load the stores." description={toasts.genericError} onRetry={() => void refetch()} />
+      ) : loading ? (
+        <div className="space-y-4" role="status" aria-label="Loading store sales">
+          <Skeleton className="h-24 w-full rounded-card" />
+          <Skeleton className="h-72 w-full rounded-card" />
+        </div>
+      ) : (
       <div className="space-y-4">
         <KpiStrip>
           <StatCard
@@ -124,7 +135,7 @@ export function StoreSalesTab() {
                 {(row) => (
                   <TableRow key={row.clientId} className="cursor-pointer" onClick={() => openStore(row.clientId)}>
                     <TableCell>
-                      <p className="truncate font-medium text-fg">{row.storeName}</p>
+                      <p className="max-w-56 truncate font-medium text-fg">{row.storeName}</p>
                       <p className="truncate text-caption text-fg-subtle">{row.orders === 0 ? "No orders" : `${formatCount(row.orders)} orders`}</p>
                     </TableCell>
                     <TableCell><span className={right}>{formatMoney(row.sales, { whole: true })}</span></TableCell>
@@ -150,7 +161,7 @@ export function StoreSalesTab() {
               {(row) => (
                 <TableRow key={row.clientId} className="cursor-pointer" onClick={() => openStore(row.clientId)}>
                   <TableCell>
-                    <div className="min-w-0">
+                    <div className="min-w-0 max-w-64">
                       <p className="truncate whitespace-nowrap font-medium text-fg">{row.storeName}</p>
                       <p className="truncate text-caption text-fg-subtle">{row.ownerEmail}</p>
                     </div>
@@ -168,6 +179,7 @@ export function StoreSalesTab() {
           </Table>
         </Card>
       </div>
+      )}
     </div>
   );
 }
