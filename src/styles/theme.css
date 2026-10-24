@@ -194,6 +194,12 @@
   textarea::placeholder {
     color: var(--zc-fg-placeholder);
   }
+  /* The shared SearchInput draws its own clear button; hide the browser's. */
+  input[type="search"]::-webkit-search-cancel-button,
+  input[type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+  }
   :focus-visible {
     outline: none;
     box-shadow: var(--zc-focus-ring);

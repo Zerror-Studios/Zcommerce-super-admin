@@ -1,7 +1,7 @@
-import { Checkbox, CheckboxGroup, DropdownItem, DropdownTrigger, Input, Popover, PopoverContent, PopoverTrigger } from "@heroui/react";
+import { Checkbox, CheckboxGroup, DropdownItem, DropdownTrigger, Popover, PopoverContent, PopoverTrigger } from "@heroui/react";
 import type { ReactNode } from "react";
-import { getTableSearchClasses, tableSearchIconClass } from "../ui/field-styles";
-import { IconColumns, IconFilters, IconSearch } from "../ui/icons";
+import { SearchInput } from "../ui/SearchInput";
+import { IconColumns, IconFilters } from "../ui/icons";
 import { Button as UiButton, Dropdown as UiDropdown, DropdownMenu as UiDropdownMenu } from "../ui";
 import { tableCheckboxClassNames } from "../ui/table-styles";
 
@@ -35,16 +35,12 @@ export function TableToolbar({
   tabs,
 }: TableToolbarProps) {
   const searchField = (
-    <Input
-      aria-label={searchPlaceholder}
+    <SearchInput
+      placement="toolbar"
       placeholder={searchPlaceholder}
       value={search}
       onValueChange={onSearchChange}
-      radius="md"
-      isClearable
       onClear={() => onSearchChange("")}
-      startContent={<IconSearch aria-hidden className={tableSearchIconClass} />}
-      classNames={getTableSearchClasses()}
     />
   );
 
