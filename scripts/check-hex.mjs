@@ -17,6 +17,7 @@ const EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".css"];
 // content, not the admin UI), third-party brand logos, and editor content defaults.
 const ALLOWED = [
   "src/styles/tokens.css",
+  "src/styles/tokens-expression.css",
   "src/theme/heroui-theme.js",
   "src/gql/",
   "src/styles/stories.css",

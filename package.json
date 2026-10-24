@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint:hex": "node scripts/check-hex.mjs",
+    "lint:px": "node scripts/check-px.mjs --max 43",
     "validate:ops": "node scripts/validate-ops.mjs"
   },
   "dependencies": {
