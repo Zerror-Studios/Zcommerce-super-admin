@@ -148,6 +148,7 @@ export {
   LuCalendarDays as IconCalendarDays,
   LuLogIn as IconLogin,
   LuLock as IconLock,
+  LuShieldCheck as IconSupport,
   LuChevronLeft as IconPrevPage,
   LuChevronRight as IconNextPage,
   LuGripVertical as IconDragHandle,

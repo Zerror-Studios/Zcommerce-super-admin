@@ -1,10 +1,13 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
- * Command palette (docs/design/02-components.md §13): ⌘K / Ctrl+K anywhere, or the sidebar search.
- * Centred 640px modal, 48px search input, sections (Pages · Stores · Actions …), arrow keys + Enter, Esc closes.
+ * Command palette (docs/design/02-components.md §13, 09 §3.3): ⌘K / Ctrl+K anywhere, or the sidebar search.
+ * Centred 640px modal, 48px search input, sections (Products · Orders · Pages · Actions …), arrow keys + Enter,
+ * Esc closes. With `onSearch`, typing (2+ characters, 300ms debounce) asks the server and its groups come first,
+ * 5 each with "Show all N". Before typing, the last 5 opened items show as Recent.
  */
 import { ModalBody, ModalContent } from "@heroui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Spinner } from "../ui/Spinner";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../ui/Button";
 import { cx } from "../ui/cx";
@@ -23,9 +26,47 @@ export interface CommandPaletteProps {
   placeholder?: string;
   /** When the `ai` flag is on: last row "Ask AI: ‹query›" opens the assistant with the query. */
   onAskAi?: (query: string) => void;
+  /** Server search; resolves to groups with up to 5 items (and total / showAllHref). */
+  onSearch?: (query: string) => Promise<CommandGroup[]>;
+  /** localStorage key for recent items; recents are off without it. */
+  recentKey?: string;
 }
 
 const MAX_PER_GROUP = 8;
+const MAX_RECENT = 5;
+const SEARCH_DEBOUNCE = 300;
+
+type RecentItem = Pick<CommandItem, "id" | "label" | "href"> & { hint?: string };
+
+function readRecent(key?: string): RecentItem[] {
+  if (!key) return [];
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(key) ?? "[]");
+    return Array.isArray(saved) ? saved.filter((item) => item?.id && item?.href).slice(0, MAX_RECENT) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecent(key: string | undefined, item: CommandItem) {
+  if (!key || !item.href) return;
+  const entry: RecentItem = { id: item.id, label: item.label, href: item.href, hint: typeof item.hint === "string" ? item.hint : undefined };
+  const next = [entry, ...readRecent(key).filter((recent) => recent.id !== item.id)].slice(0, MAX_RECENT);
+  try {
+    window.localStorage.setItem(key, JSON.stringify(next));
+  } catch {
+    /* storage blocked: no recents */
+  }
+}
+
+/** Appends "Show all N" when the server found more than it returned. */
+function withShowAll(group: CommandGroup): CommandItem[] {
+  const items = group.items.slice(0, 5);
+  if (group.showAllHref && group.total != null && group.total > items.length) {
+    items.push({ id: `${group.title}-show-all`, label: `Show all ${group.total.toLocaleString("en-IN")}`, href: group.showAllHref });
+  }
+  return items;
+}
 
 function matches(item: CommandItem, query: string): boolean {
   if (!query) return true;
@@ -36,17 +77,62 @@ function matches(item: CommandItem, query: string): boolean {
     .every((word) => haystack.includes(word));
 }
 
-export function CommandPalette({ isOpen, onClose, groups, placeholder = "Search pages and actions", onAskAi }: CommandPaletteProps) {
+export function CommandPalette({
+  isOpen,
+  onClose,
+  groups,
+  placeholder = "Search pages and actions",
+  onAskAi,
+  onSearch,
+  recentKey,
+}: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
+  const [serverGroups, setServerGroups] = useState<CommandGroup[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [recent, setRecent] = useState<RecentItem[]>([]);
   const navigate = useNavigate();
   const listRef = useRef<HTMLDivElement>(null);
+  const requestId = useRef(0);
+
+  useEffect(() => {
+    if (isOpen) setRecent(readRecent(recentKey));
+  }, [isOpen, recentKey]);
+
+  useEffect(() => {
+    const term = query.trim();
+    const id = ++requestId.current;
+    if (!onSearch || term.length < 2) {
+      setServerGroups([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const timer = window.setTimeout(() => {
+      onSearch(term)
+        .then((found) => {
+          if (id === requestId.current) setServerGroups(found);
+        })
+        .catch(() => {
+          if (id === requestId.current) setServerGroups([]);
+        })
+        .finally(() => {
+          if (id === requestId.current) setSearching(false);
+        });
+    }, SEARCH_DEBOUNCE);
+    return () => window.clearTimeout(timer);
+  }, [query, onSearch]);
 
   const visible = useMemo(() => {
-    const found = groups
-      .map((group) => ({ ...group, items: group.items.filter((item) => matches(item, query.trim())).slice(0, MAX_PER_GROUP) }))
-      .filter((group) => group.items.length > 0);
     const asked = query.trim();
+    const local = groups
+      .map((group) => ({ ...group, items: group.items.filter((item) => matches(item, asked)).slice(0, MAX_PER_GROUP) }))
+      .filter((group) => group.items.length > 0);
+    const remote = asked
+      ? serverGroups.map((group) => ({ ...group, items: withShowAll(group) })).filter((group) => group.items.length > 0)
+      : [];
+    const recentGroup: CommandGroup[] = !asked && recent.length ? [{ title: "Recent", items: recent }] : [];
+    const found = [...recentGroup, ...remote, ...local];
     if (onAskAi && asked) {
       found.push({
         title: "Assistant",
@@ -54,7 +140,7 @@ export function CommandPalette({ isOpen, onClose, groups, placeholder = "Search 
       });
     }
     return found;
-  }, [groups, query, onAskAi]);
+  }, [groups, query, onAskAi, serverGroups, recent]);
   const flat = useMemo(() => visible.flatMap((group) => group.items), [visible]);
 
   useEffect(() => {
@@ -70,6 +156,7 @@ export function CommandPalette({ isOpen, onClose, groups, placeholder = "Search 
 
   const run = (item: CommandItem | undefined) => {
     if (!item) return;
+    if (!item.id.endsWith("-show-all")) saveRecent(recentKey, item);
     close();
     if (item.onSelect) item.onSelect();
     else if (item.href) navigate(item.href);
@@ -120,12 +207,13 @@ export function CommandPalette({ isOpen, onClose, groups, placeholder = "Search 
               className="h-full flex-1 bg-transparent text-base text-fg outline-hidden placeholder:text-fg-placeholder"
               style={{ boxShadow: "none" }}
             />
+            {searching ? <Spinner size="sm" aria-label="Searching" /> : null}
             <Kbd>Esc</Kbd>
           </div>
 
           <div id="command-palette-list" ref={listRef} role="listbox" className="custom-scroll max-h-[min(420px,60vh)] overflow-y-auto p-2">
             {visible.length === 0 ? (
-              query.trim() ? (
+              query.trim() && !searching ? (
               <div className="flex flex-col items-center px-3 py-8 text-center">
                 <p className="text-body font-semibold text-fg">No results for "{query.trim()}"</p>
                 <p className="mt-1 text-body text-fg-muted">Check the spelling or clear the search.</p>

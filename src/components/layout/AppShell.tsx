@@ -24,8 +24,10 @@ export interface AppShellProps {
   mobileActions?: ReactNode;
   /** Extra classes for the content area. */
   contentClassName?: string;
-  /** Content above the page inside the main area (e.g. the support-session banner). */
+  /** Content above the page inside the main area. */
   banner?: ReactNode;
+  /** Full-width strip at the very top of the window, above the sidebar and the page (SupportBanner, 08 §1.1). */
+  topBanner?: ReactNode;
   /**
    * Floating element at the bottom centre of the main area (the AI Ask bar). Receives `hidden`, true while the
    * user scrolls down. Pages get 96px of bottom padding so it never covers save bars or table footers.
@@ -43,13 +45,16 @@ export function AppShell({
   mobileActions,
   contentClassName,
   banner,
+  topBanner,
   floating,
   children,
 }: AppShellProps) {
   const [floatingHidden, setFloatingHidden] = useState(false);
   const lastScroll = useRef(0);
   return (
-    <div className="flex h-dvh overflow-hidden bg-page">
+    <div className="flex h-dvh flex-col overflow-hidden bg-page">
+      {topBanner}
+      <div className="flex min-h-0 flex-1">
       {sidebar ? <div className="relative z-20 hidden h-full shrink-0 lg:block">{sidebar}</div> : null}
 
       <div className="relative flex min-w-0 flex-1 flex-col">
@@ -95,6 +100,7 @@ export function AppShell({
             <div className="w-full max-w-[560px]">{floating(floatingHidden)}</div>
           </div>
         ) : null}
+      </div>
       </div>
 
       {drawerSidebar ? (

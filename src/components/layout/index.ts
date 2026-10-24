@@ -10,6 +10,8 @@ export { NotificationsPanel } from "./NotificationsPanel";
 export type { NotificationsPanelProps } from "./NotificationsPanel";
 export { PageHeader } from "./PageHeader";
 export type { PageHeaderProps } from "./PageHeader";
+export { SupportBanner } from "./SupportBanner";
+export type { SupportBannerProps } from "./SupportBanner";
 export { Sidebar } from "./Sidebar";
 export type { SidebarProps, SidebarUser } from "./Sidebar";
 export type {

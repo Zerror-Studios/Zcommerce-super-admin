@@ -1,7 +1,8 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Dark sidebar (docs/design/02-components.md §1, ref 01/05/07). Top to bottom: wordmark → search (⌘K) →
- * navigation → divider + secondary items → spacer → Notifications → Settings → user row (or a plain Log out row).
+ * navigation → divider + secondary items → spacer → Notifications → Settings → user row (avatar, name,
+ * "{Store} · {Role}"; no email) or a plain red Log out row.
  * 248px, or a 64px icon rail when collapsed. Only the active section shows its children. No blue except
  * the unread count pill.
  */
@@ -9,6 +10,7 @@ import { DropdownItem, DropdownSection, DropdownTrigger } from "@heroui/react";
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { cx } from "../ui/cx";
+import { Avatar } from "../ui/Media";
 import { Dropdown, DropdownMenu } from "../ui/Dropdown";
 import { IconClose, IconCollapseSidebar, IconLogout, IconNotifications, IconSearch } from "../ui/icons";
 import { menuItemDangerClasses } from "../ui/menu-styles";
@@ -18,9 +20,12 @@ import type { NavItem, UserMenuItem } from "./types";
 
 export interface SidebarUser {
   name: string;
+  /** Shown at the top of the account menu only; never in the sidebar row (08 §1.4). */
   email?: string;
-  /** Two letters; derived from the name when omitted. */
-  initials?: string;
+  /** Second line of the row: "{Store} · {Role}". */
+  subtitle?: string;
+  /** Profile photo; gradient initials when missing. */
+  avatarUrl?: string | null;
 }
 
 export interface SidebarProps {
@@ -72,12 +77,6 @@ const rowBase = cx(
 
 const rowIdle = "text-nav-fg hover:bg-nav-hover hover:text-nav-fg-strong [&_svg]:text-nav-icon hover:[&_svg]:text-nav-fg-strong";
 const rowActive = "bg-nav-active text-nav-fg-strong [&_svg]:text-nav-fg-strong";
-
-function initialsOf(user: SidebarUser): string {
-  if (user.initials) return user.initials;
-  const parts = user.name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "U";
-}
 
 function WithTooltip({ show, label, children }: { show: boolean; label: string; children: ReactNode }) {
   return show ? (
@@ -232,13 +231,11 @@ export function Sidebar({
                 aria-label={`Account menu for ${user.name}`}
                 className={cx("flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 text-left hover:bg-nav-hover", focusRing)}
               >
-                <span aria-hidden className="flex size-[26px] shrink-0 items-center justify-center rounded-[7px] bg-nav-active text-[11px] font-semibold text-nav-fg-strong">
-                  {initialsOf(user)}
-                </span>
+                <Avatar name={user.name} src={user.avatarUrl} size="md" />
                 {collapsed ? null : (
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-label font-medium text-nav-fg-strong">{user.name}</span>
-                    {user.email ? <span className="block truncate text-caption text-nav-fg-muted">{user.email}</span> : null}
+                    {user.subtitle ? <span className="block truncate text-caption text-nav-fg-muted">{user.subtitle}</span> : null}
                   </span>
                 )}
               </button>
@@ -248,8 +245,8 @@ export function Sidebar({
               onAction={(key) => userMenu.find((item) => item.key === key)?.onAction()}
               topContent={
                 <div className="px-2.5 pb-1 pt-1.5">
-                  <p className="text-caption text-fg-subtle">Signed in as</p>
-                  <p className="truncate text-label font-medium text-fg">{user.email || user.name}</p>
+                  <p className="truncate text-label font-medium text-fg">{user.name}</p>
+                  <p className="truncate text-caption text-fg-subtle">{user.email || user.subtitle}</p>
                 </div>
               }
             >
@@ -283,7 +280,11 @@ export function Sidebar({
               type="button"
               onClick={onLogout}
               aria-label={collapsed ? "Log out" : undefined}
-              className={cx(rowBase, rowIdle, "min-w-0 flex-1", collapsed && "justify-center px-0")}
+              className={cx(
+                rowBase,
+                "min-w-0 flex-1 text-auth-error hover:bg-nav-hover [&_svg]:text-auth-error",
+                collapsed && "justify-center px-0",
+              )}
             >
               <IconLogout aria-hidden className="size-4 shrink-0" />
               {collapsed ? null : <span className="flex-1 truncate text-left">Log out</span>}

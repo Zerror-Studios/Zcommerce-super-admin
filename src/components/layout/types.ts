@@ -75,4 +75,8 @@ export interface CommandItem {
 export interface CommandGroup {
   title: string;
   items: CommandItem[];
+  /** Server results: total matches, for the "Show all N" row. */
+  total?: number;
+  /** Where "Show all N" goes (the list page with the search applied). */
+  showAllHref?: string;
 }
