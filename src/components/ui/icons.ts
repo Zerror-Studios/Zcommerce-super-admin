@@ -148,6 +148,11 @@ export {
   LuCalendarDays as IconCalendarDays,
   LuLogIn as IconLogin,
   LuLock as IconLock,
+  LuChevronLeft as IconPrevPage,
+  LuChevronRight as IconNextPage,
+  LuGripVertical as IconDragHandle,
+  LuArrowUp as IconSortAsc,
+  LuArrowDown as IconSortDesc,
 } from "react-icons/lu";
 
 /* Filled glyphs where a fill carries the meaning: brand logo, status dot, rating star. */

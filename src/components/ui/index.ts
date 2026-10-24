@@ -106,3 +106,9 @@ export type { AiAskInputProps, AiInsightCardProps, AiSuggestionProps, AiThinking
 export { isAiEnabled, useAiEnabled } from "./ai-flag";
 export { PaneHeader, PaneList, TwoPaneCard } from "./TwoPane";
 export type { PaneGroup, PaneHeaderProps, PaneItem, PaneListProps, TwoPaneCardProps } from "./TwoPane";
+export { CellText, DataTable, TableSkeletonRows } from "./DataTable";
+export type { DataTableColumn, DataTableProps } from "./DataTable";
+export { DEFAULT_PAGE_SIZE, PAGE_SIZES, TablePagination } from "./TablePagination";
+export type { TablePaginationProps } from "./TablePagination";
+export { usePersistentColumns, useTableUrlState } from "./table-state";
+export type { SortDirection, TableSort, TableUrlOptions, TableUrlState } from "./table-state";
