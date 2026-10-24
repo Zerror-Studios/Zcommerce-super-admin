@@ -104,3 +104,5 @@ export type { SelectionBarProps } from "./SelectionBar";
 export { AiAskInput, AiAvatar, AiFeedback, AiInsightCard, AiSpectrumDefs, AiSuggestion, AiThinking, Sparkle, TodaysBrief, WriteWithAiButton } from "./Ai";
 export type { AiAskInputProps, AiInsightCardProps, AiSuggestionProps, AiThinkingProps, BriefLine, TodaysBriefProps } from "./Ai";
 export { isAiEnabled, useAiEnabled } from "./ai-flag";
+export { PaneHeader, PaneList, TwoPaneCard } from "./TwoPane";
+export type { PaneGroup, PaneHeaderProps, PaneItem, PaneListProps, TwoPaneCardProps } from "./TwoPane";
