@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/common/PageHeader";
 import { TotpQrCode } from "../components/auth/TotpQrCode";
 import { Button as UiButton, Card, CopyableId, Input } from "../components/ui";
+import { IconLock } from "../components/ui/icons";
 
 /** "JBSW Y3DP EHPK 3PXP": easier to type into an app than one long run. */
 function groupKey(secret: string): string {
@@ -103,6 +104,9 @@ export function Mfa() {
   return (
     <div className="mx-auto w-full max-w-[720px]">
       <PageHeader
+        type="page"
+        icon={<IconLock aria-hidden />}
+        section="slate"
         title="Two-step verification"
         description="Required for owners, admins and billing managers before any change to platform data."
       />

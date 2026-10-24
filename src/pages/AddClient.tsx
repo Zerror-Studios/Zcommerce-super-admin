@@ -106,7 +106,7 @@ export function AddClient() {
 
   return (
     <div className="mx-auto max-w-content-form">
-      <PageHeader back={{ href: "/stores", label: "Stores" }} title="Add store" />
+      <PageHeader type="detail" back={{ href: "/stores", label: "Stores" }} title="Add store" />
 
       <div className="flex flex-col gap-4">
         <Card title="Store details" description="The slug names the database and the key prefix; it can't change later.">

@@ -1,11 +1,13 @@
-import { addToast, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type Selection } from "@heroui/react";
+import { addToast, type Selection } from "@heroui/react";
 import { toastError } from "../ui";
 import { useMemo, useState } from "react";
 import type { Coupon, PlanName } from "../../types";
 import { getPlanLabel, PLAN_NAMES } from "../../lib/display-labels.util";
 import { selectionToIdSet } from "../../lib/tableSelection";
 import { formatDate } from "../../lib/utils";
-import { dataTableFillClassNames, dataTableSelectionProps, tablePanelFillClassName } from "../common/dataTableStyles";
+import { joinParam, splitParam } from "../../lib/store-table.util";
+import { useUrlSearch } from "../../hooks/use-url-search";
+import { AppliedFilters } from "../common/AppliedFilters";
 import {
   FilterCheckboxGroup,
   TableToolbar,
@@ -27,7 +29,11 @@ import {
   Switch,
   formatCount,
   formatMoney,
-  tableRowClasses,
+  DataTable,
+  TablePagination,
+  usePersistentColumns,
+  useTableUrlState,
+  type DataTableColumn,
 } from "../ui";
 import type { Tone } from "../ui";
 import { IconTag } from "../ui/icons";
@@ -51,6 +57,17 @@ const columns = [
   { key: "expiresAt", label: "Expires" },
   { key: "active", label: "Status" },
 ] as const;
+
+const tableColumns: DataTableColumn[] = columns.map((column) => ({
+  ...column,
+  align: column.key === "redemptions" ? "end" : undefined,
+}));
+
+const statusOptions = [
+  { key: "active", label: "Active" },
+  { key: "inactive", label: "Inactive" },
+  { key: "expired", label: "Expired" },
+];
 
 const planOptions: Array<PlanName | "All"> = ["All", ...PLAN_NAMES];
 
@@ -93,33 +110,41 @@ export function CouponsTab({
   const [maxRedemptions, setMaxRedemptions] = useState("100");
   const [expiresAt, setExpiresAt] = useState(defaultExpiry);
   const [active, setActive] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(
+  // Search, status filter and page live in the URL; Columns is remembered (docs/design/09 §3.1).
+  const table = useTableUrlState();
+  const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
+  const statusFilter = splitParam(table.filters.status);
+  const statusKey = statusFilter.join();
+  const [visibleColumns, setVisibleColumns] = usePersistentColumns(
+    "discounts",
     columns.map((column) => column.key),
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
 
   const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = table.search.trim().toLowerCase();
+    const wanted = statusKey ? statusKey.split(",") : [];
     return coupons.filter((coupon) => {
       const matchesSearch =
         !query ||
         coupon.code.toLowerCase().includes(query) ||
         getPlanLabel(coupon.appliesTo).toLowerCase().includes(query);
-      const statusKey = couponStatus(coupon);
+      const couponState = couponStatus(coupon);
       const matchesStatus =
-        statusFilter.length === 0 || statusFilter.includes(statusKey);
+        wanted.length === 0 || wanted.includes(couponState);
       return matchesSearch && matchesStatus;
     });
-  }, [coupons, search, statusFilter]);
+  }, [coupons, table.search, statusKey]);
 
-  const dataColumns = columns.filter((column) =>
-    visibleColumns.includes(column.key),
-  );
-  const headerColumns = dataColumns;
-  const isFiltered = search.trim() !== "" || statusFilter.length > 0;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / table.pageSize));
+  const page = Math.min(table.page, pageCount);
+  const pageRows = filtered.slice((page - 1) * table.pageSize, page * table.pageSize);
+  const isFiltered = table.search.trim() !== "" || statusFilter.length > 0;
+  const clearFilters = () => {
+    setSearch("");
+    table.clearFilters();
+  };
 
   const handleSelectionChange = (keys: Selection) => {
     setSelected(selectionToIdSet(keys, filtered.map((item) => item.id)));
@@ -204,95 +229,83 @@ export function CouponsTab({
 
   return (
     <>
-      <div className={tablePanelFillClassName}>
-        {selected.size > 0 ? (
-          <SelectionBar count={selected.size} onClear={() => setSelected(new Set())} />
-        ) : (
-          <TableToolbar
-            search={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Search discounts"
-            columns={[...columns].map((column) => ({
-              key: column.key,
-              label: column.label,
-            }))}
-            visibleColumns={visibleColumns}
-            onVisibleColumnsChange={setVisibleColumns}
-            filterContent={
-              <FilterCheckboxGroup
-                label="Status"
-                options={[
-                  { key: "active", label: "Active" },
-                  { key: "inactive", label: "Inactive" },
-                  { key: "expired", label: "Expired" },
-                ]}
-                value={statusFilter}
-                onChange={setStatusFilter}
-              />
-            }
+      <DataTable
+        aria-label="Discounts"
+        columns={tableColumns}
+        visibleColumns={visibleColumns}
+        rows={pageRows}
+        getRowKey={(coupon) => coupon.id}
+        renderCell={renderCell}
+        selectedKeys={selected}
+        onSelectionChange={handleSelectionChange}
+        stickyFirstColumn
+        scrollClassName="max-h-[70vh]"
+        bulkBar={<SelectionBar count={selected.size} onClear={() => setSelected(new Set())} />}
+        toolbar={
+          <>
+            <TableToolbar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search discounts"
+              columns={columns.map((column) => ({ key: column.key, label: column.label }))}
+              visibleColumns={Array.from(visibleColumns)}
+              onVisibleColumnsChange={(keys) => setVisibleColumns(new Set(keys))}
+              filterContent={
+                <FilterCheckboxGroup
+                  label="Status"
+                  options={statusOptions}
+                  value={statusFilter}
+                  onChange={(value) => table.setFilter("status", joinParam(value))}
+                />
+              }
+            />
+            <AppliedFilters
+              items={statusFilter.map((status) => ({
+                key: status,
+                label: `Status: ${statusOptions.find((o) => o.key === status)?.label ?? status}`,
+                onRemove: () => table.setFilter("status", joinParam(statusFilter.filter((s) => s !== status))),
+              }))}
+              onClearAll={clearFilters}
+            />
+          </>
+        }
+        footer={
+          <TablePagination
+            page={page}
+            pageSize={table.pageSize}
+            total={filtered.length}
+            onPageChange={table.setPage}
+            onPageSizeChange={table.setPageSize}
           />
-        )}
-        <Table
-          aria-label="Discounts"
-          {...dataTableSelectionProps}
-          selectedKeys={selected}
-          onSelectionChange={handleSelectionChange}
-          classNames={{ ...dataTableFillClassNames, tr: tableRowClasses }}
-        >
-          <TableHeader columns={headerColumns}>
-            {(column) => (
-              <TableColumn key={column.key} align={column.key === "redemptions" ? "end" : "start"}>
-                {column.label}
-              </TableColumn>
-            )}
-          </TableHeader>
-          <TableBody
-            items={filtered}
-            emptyContent={
-              isFiltered ? (
-                <EmptyState
-                  icon={IconTag}
-                  title={search.trim() ? emptyStates.noResults(search.trim()).title : "No discounts match these filters"}
-                  description={emptyStates.noResults("").description}
-                  action={
-                    <UiButton
-                      variant="secondary"
-                      size="sm"
-                      onPress={() => {
-                        setSearch("");
-                        setStatusFilter([]);
-                      }}
-                    >
-                      {emptyStates.noResults("").action}
-                    </UiButton>
-                  }
-                />
-              ) : (
-                <EmptyState
-                  icon={IconTag}
-                  title="No discounts yet"
-                  description="Create a code to give stores a discount on their plan."
-                  action={
-                    canCreate ? (
-                      <UiButton variant="secondary" size="sm" onPress={() => onCreateOpenChange(true)}>
-                        Create discount
-                      </UiButton>
-                    ) : undefined
-                  }
-                />
-              )
-            }
-          >
-            {(coupon) => (
-              <TableRow key={coupon.id}>
-                {(columnKey) => (
-                  <TableCell>{renderCell(coupon, String(columnKey))}</TableCell>
-                )}
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+        }
+        emptyContent={
+          isFiltered ? (
+            <EmptyState
+              icon={IconTag}
+              title={table.search.trim() ? emptyStates.noResults(table.search.trim()).title : "No discounts match these filters"}
+              description={emptyStates.noResults("").description}
+              action={
+                <UiButton variant="secondary" size="sm" onPress={clearFilters}>
+                  {emptyStates.noResults("").action}
+                </UiButton>
+              }
+            />
+          ) : (
+            <EmptyState
+              icon={IconTag}
+              title="No discounts yet"
+              description="Create a code to give stores a discount on their plan."
+              action={
+                canCreate ? (
+                  <UiButton variant="secondary" size="sm" onPress={() => onCreateOpenChange(true)}>
+                    Create discount
+                  </UiButton>
+                ) : undefined
+              }
+            />
+          )
+        }
+      />
 
       <Modal
         isOpen={createOpen}

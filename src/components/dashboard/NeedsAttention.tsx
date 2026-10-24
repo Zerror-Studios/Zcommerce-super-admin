@@ -82,7 +82,7 @@ function buildItems({ clients, subscriptions, now }: NeedsAttentionProps): Atten
         tone: "warning",
         title: `${plural(due.length, "payment", "payments")} due on ${formatDate(date)}`,
         detail: names(due),
-        href: due.length === 1 ? `/stores/${due[0].id}` : "/stores?status=unpaid",
+        href: due.length === 1 ? `/stores/${due[0].id}` : "/stores?tab=unpaid",
       });
     });
 
@@ -113,7 +113,7 @@ function buildItems({ clients, subscriptions, now }: NeedsAttentionProps): Atten
       tone: "neutral",
       title: `${plural(suspended.length, "store is", "stores are")} suspended`,
       detail: names(suspended),
-      href: suspended.length === 1 ? `/stores/${suspended[0].id}` : "/stores?status=suspended",
+      href: suspended.length === 1 ? `/stores/${suspended[0].id}` : "/stores?tab=suspended",
     });
   }
 

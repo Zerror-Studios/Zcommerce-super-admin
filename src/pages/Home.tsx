@@ -6,7 +6,7 @@ import { EarningsChart } from "../components/dashboard/EarningsChart";
 import { NeedsAttention } from "../components/dashboard/NeedsAttention";
 import { Button, ErrorState, KpiStrip, StatCard, TodaysBrief, useAiEnabled } from "../components/ui";
 import { platformBrief } from "../lib/aiSamples";
-import { IconAdd } from "../components/ui/icons";
+import { IconAdd, IconHome } from "../components/ui/icons";
 import { toasts } from "../copy";
 import { PLATFORM_PERMISSIONS } from "../lib/permissions";
 import { useAuth } from "../providers/AuthProvider";
@@ -60,6 +60,9 @@ export function Home() {
   return (
     <div className="space-y-4">
       <PageHeader
+        type="page"
+        icon={<IconHome aria-hidden />}
+        section="blue"
         title="Platform overview"
         description={`${monthYear.format(now)} · ${plural(clients.length, "store", "stores")}`}
         actions={

@@ -31,15 +31,17 @@ export const mainNavItems: NavItem[] = [
       { label: "Store sales", to: "/analytics/store-sales" },
     ],
   },
-  // A single link: /settings lists every setting as cards (pages/Settings.tsx), like Merchant Admin.
+  // A single link: /settings is the two-pane settings card (pages/Settings.tsx), like Merchant Admin.
   { key: "settings", label: "Settings", to: "/settings", icon: IconSettings },
 ];
 
-/** Pages behind the Settings cards. */
+/** Sections of the Settings two-pane card (pages/Settings.tsx). */
 export const settingsPages = [
+  { label: "Payment gateway", to: "/settings/payment-gateway" },
+  { label: "Dunning", to: "/settings/billing-rules" },
+  { label: "Health thresholds", to: "/settings/health" },
   { label: "Discounts", to: "/settings/discounts" },
-  { label: "Billing rules", to: "/settings/billing-rules" },
-  { label: "Team", to: "/settings/team" },
+  { label: "Admins", to: "/settings/team" },
   { label: "Audit log", to: "/settings/audit" },
 ];
 

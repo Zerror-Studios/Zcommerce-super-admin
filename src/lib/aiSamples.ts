@@ -34,7 +34,7 @@ export function platformBrief(input: {
       message: `${names(pastGrace)} ${pastGrace.length === 1 ? "is" : "are"} past the grace period and due for suspension.${
         critical.length ? ` ${critical.length} ${critical.length === 1 ? "store has" : "stores have"} critical health.` : ""
       }`,
-      action: { label: "Review stores", href: "/stores?status=unpaid" },
+      action: { label: "Review stores", href: "/stores?tab=unpaid" },
     };
   }
   if (critical.length) {

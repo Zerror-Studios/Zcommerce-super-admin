@@ -1,4 +1,4 @@
-import { addToast, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type Selection } from "@heroui/react";
+import { addToast, type Selection } from "@heroui/react";
 import { toastError } from "../ui";
 import { useMemo, useState } from "react";
 import { subscriptionStatusEnum, type Client, type Subscription } from "../../types";
@@ -14,12 +14,13 @@ import { useEffect } from "react";
 import { PREVIEW_RENEWAL_REMINDER, SEND_RENEWAL_REMINDERS } from "../../graphql/billing";
 import type { ReminderBatch, ReminderPreview } from "../../types/platform-api";
 import { toasts } from "../../copy";
-import { dataTableClassNames, dataTableSelectionProps, tablePanelClassName } from "../common/dataTableStyles";
+import { useUrlSearch } from "../../hooks/use-url-search";
 import { StatusChip } from "../common/StatusChip";
 import { TableToolbar } from "../common/TableToolbar";
 import { IconMessages, IconSend, IconView } from "../ui/icons";
 import {
   Button as UiButton,
+  DataTable,
   EmptyState,
   ErrorState,
   KpiStrip,
@@ -31,10 +32,11 @@ import {
   Select,
   SelectItem,
   SelectionBar,
-  Skeleton,
   StatCard,
+  TablePagination,
   cx,
-  tableRowClasses,
+  useTableUrlState,
+  type DataTableColumn,
   toneTextClasses,
 } from "../ui";
 
@@ -47,13 +49,20 @@ interface StoreRow {
   daysLeft: number;
 }
 
-const columns = [
+const tableColumns: DataTableColumn[] = [
   { key: "storeName", label: "Store" },
   { key: "plan", label: "Plan" },
   { key: "renewalDate", label: "Due date" },
-  { key: "daysLeft", label: "Days left" },
+  { key: "daysLeft", label: "Days left", align: "end" },
   { key: "status", label: "Status" },
-] as const;
+];
+
+const WINDOW_FILTERS: WindowFilter[] = ["all", "30", "14", "7", "3", "overdue"];
+const DEFAULT_WINDOW: WindowFilter = "30";
+
+function isWindowFilter(value: string | undefined): value is WindowFilter {
+  return value != null && (WINDOW_FILTERS as string[]).includes(value);
+}
 
 const EMAIL_SUBJECT =
   "Your Zcom subscription renews in {{days}} days";
@@ -69,8 +78,10 @@ export function AutomationSettingsTab() {
   const { can } = useAuth();
   // Sending needs billing:manage; previewing only billing:read (review C-M5).
   const canSend = can(PLATFORM_PERMISSIONS.BILLING_MANAGE);
-  const [search, setSearch] = useState("");
-  const [windowFilter, setWindowFilter] = useState<WindowFilter>("30");
+  // Search, due window and page live in the URL (docs/design/09-settings-and-scale.md §3.1).
+  const table = useTableUrlState();
+  const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
+  const windowFilter: WindowFilter = isWindowFilter(table.filters.due) ? table.filters.due : DEFAULT_WINDOW;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [previewOpen, setPreviewOpen] = useState(false);
   const [sending, setSending] = useState(false);
@@ -96,7 +107,7 @@ export function AutomationSettingsTab() {
   }, [clients, subscriptionByClientId]);
 
   const storeRows = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = table.search.trim().toLowerCase();
 
     return allStoreRows.filter((row) => {
       const matchesSearch =
@@ -117,7 +128,11 @@ export function AutomationSettingsTab() {
         }
       }
     });
-  }, [allStoreRows, search, windowFilter]);
+  }, [allStoreRows, table.search, windowFilter]);
+
+  const pageCount = Math.max(1, Math.ceil(storeRows.length / table.pageSize));
+  const page = Math.min(table.page, pageCount);
+  const pageRows = storeRows.slice((page - 1) * table.pageSize, page * table.pageSize);
 
   const selectedCount = selected.size;
 
@@ -215,7 +230,7 @@ export function AutomationSettingsTab() {
             : daysLeft <= 7
               ? toneTextClasses.warning
               : "text-fg";
-        return <span className={cx("block text-right num", daysLeft <= 7 && "font-medium", tone)}>{label}</span>;
+        return <span className={cx("num", daysLeft <= 7 && "font-medium", tone)}>{label}</span>;
       }
       case "status":
         return <StatusChip kind="subscription" value={subscription.status} />;
@@ -255,9 +270,24 @@ export function AutomationSettingsTab() {
         />
       </KpiStrip>
 
-      <div className={tablePanelClassName}>
-        {selectedCount > 0 ? (
-          <SelectionBar count={selectedCount} onClear={() => setSelected(new Set())}>
+      <DataTable
+        aria-label="Stores to remind"
+        columns={tableColumns}
+        rows={pageRows}
+        getRowKey={(row) => row.id}
+        renderCell={renderCell}
+        isLoading={loading}
+        selectedKeys={selected}
+        onSelectionChange={handleSelectionChange}
+        stickyFirstColumn
+        scrollClassName="max-h-[70vh]"
+        bulkBar={
+          <SelectionBar
+            count={selectedCount}
+            total={storeRows.length}
+            onSelectAll={() => setSelected(new Set(storeRows.map((row) => row.id)))}
+            onClear={() => setSelected(new Set())}
+          >
             {previewButton}
             {canSend ? (
               <UiButton
@@ -271,7 +301,8 @@ export function AutomationSettingsTab() {
               </UiButton>
             ) : null}
           </SelectionBar>
-        ) : (
+        }
+        toolbar={
           <TableToolbar
             search={search}
             onSearchChange={setSearch}
@@ -284,16 +315,9 @@ export function AutomationSettingsTab() {
                   className="w-44"
                   selectedKeys={new Set([windowFilter])}
                   onSelectionChange={(keys) => {
-                    const value = Array.from(keys)[0];
-                    if (
-                      value === "all" ||
-                      value === "30" ||
-                      value === "14" ||
-                      value === "7" ||
-                      value === "3" ||
-                      value === "overdue"
-                    ) {
-                      setWindowFilter(value);
+                    const value = String(Array.from(keys)[0] ?? "");
+                    if (isWindowFilter(value)) {
+                      table.setFilter("due", value === DEFAULT_WINDOW ? undefined : value);
                       setSelected(new Set());
                     }
                   }}
@@ -310,44 +334,24 @@ export function AutomationSettingsTab() {
               </>
             }
           />
-        )}
-
-        <Table
-          aria-label="Stores to remind"
-          {...dataTableSelectionProps}
-          selectedKeys={selected}
-          onSelectionChange={handleSelectionChange}
-          classNames={{ ...dataTableClassNames, tr: tableRowClasses }}
-        >
-          <TableHeader columns={[...columns]}>
-            {(column) => (
-              <TableColumn key={column.key} align={column.key === "daysLeft" ? "end" : "start"}>
-                {column.label}
-              </TableColumn>
-            )}
-          </TableHeader>
-          <TableBody
-            items={storeRows}
-            isLoading={loading}
-            loadingContent={<Skeleton className="h-10 w-full rounded-lg" />}
-            emptyContent={
-              <EmptyState
-                icon={IconMessages}
-                title="No stores in this window"
-                description="Choose a wider window or search for another store."
-              />
-            }
-          >
-            {(row) => (
-              <TableRow key={row.id}>
-                {(columnKey) => (
-                  <TableCell>{renderCell(row, String(columnKey))}</TableCell>
-                )}
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+        }
+        footer={
+          <TablePagination
+            page={page}
+            pageSize={table.pageSize}
+            total={storeRows.length}
+            onPageChange={table.setPage}
+            onPageSizeChange={table.setPageSize}
+          />
+        }
+        emptyContent={
+          <EmptyState
+            icon={IconMessages}
+            title="No stores in this window"
+            description="Choose a wider window or search for another store."
+          />
+        }
+      />
 
       <Modal
         isOpen={previewOpen}

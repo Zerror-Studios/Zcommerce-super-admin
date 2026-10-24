@@ -46,8 +46,8 @@ function Section({ id, title, children }: { id: string; title: string; children:
 }
 
 /**
- * Store detail (docs/design/04-super-admin.md §3.4): one page, no tabs (owner's request 2026-10-16).
- * Overview, then Billing, then store settings. Activity is left out: there is no per-store activity data yet.
+ * Store detail (docs/design/04-super-admin.md §3.4, header C): one page, no tabs (owner's request 2026-10-16),
+ * laid out as the two-column editor (08 §2.14). Activity is left out: there is no per-store activity data yet.
  */
 export function ClientDetail() {
   const { id } = useParams<{ id: string }>();
@@ -83,7 +83,7 @@ export function ClientDetail() {
   if (!client && loading) {
     return (
       <div>
-        <PageHeader back={{ href: "/stores", label: "Stores" }} title="Loading store…" />
+        <PageHeader type="detail" back={{ href: "/stores", label: "Stores" }} title="Loading store…" />
       </div>
     );
   }
@@ -92,7 +92,7 @@ export function ClientDetail() {
   if (!client && error) {
     return (
       <div>
-        <PageHeader back={{ href: "/stores", label: "Stores" }} title="Store" />
+        <PageHeader type="detail" back={{ href: "/stores", label: "Stores" }} title="Store" />
         <ErrorState title="Couldn't load the store." description={toasts.genericError} onRetry={() => void refetch()} />
       </div>
     );
@@ -101,7 +101,7 @@ export function ClientDetail() {
   if (!client) {
     return (
       <div>
-        <PageHeader back={{ href: "/stores", label: "Stores" }} title="Store not found" />
+        <PageHeader type="detail" back={{ href: "/stores", label: "Stores" }} title="Store not found" />
         <Card>
           <EmptyState
             icon={IconStore}
@@ -122,6 +122,13 @@ export function ClientDetail() {
   const payment = paymentState(subscription);
   const isSuspended = client.status === "suspended";
 
+  // The save is fire-and-forget for the form; a failure still has to be seen (review C-L6).
+  const onSaveGracePeriod = (days: number | undefined) =>
+    updateClient(client.id, { gracePeriodDays: days }).catch((error: unknown) => {
+      const message = mutationFailureCopy(error);
+      if (message) toastError(message);
+    });
+
   const onMenuAction = (key: Key) => {
     if (key === "suspend" || key === "reactivate" || key === "delete") setAction(key);
   };
@@ -129,6 +136,8 @@ export function ClientDetail() {
   return (
     <div>
       <PageHeader
+        type="detail"
+        sticky
         back={{ href: "/stores", label: "Stores" }}
         title={<span className="wrap-anywhere">{client.storeName}</span>}
         badges={
@@ -137,7 +146,24 @@ export function ClientDetail() {
             <Chip tone={payment.tone}>{payment.label}</Chip>
           </>
         }
-        description={<span className="wrap-anywhere">{`${client.ownerName} · ${client.ownerEmail}`}</span>}
+        description={
+          <span className="wrap-anywhere">
+            {`${client.ownerName} · ${client.ownerEmail}`}
+            {client.domain ? (
+              <>
+                {" · "}
+                <a
+                  href={`https://${client.domain}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-brand hover:underline"
+                >
+                  {client.domain}
+                </a>
+              </>
+            ) : null}
+          </span>
+        }
         actions={
           <>
             {canManage ? (
@@ -170,37 +196,46 @@ export function ClientDetail() {
         }
       />
 
-      <div className="space-y-8">
-        <OnboardingCard client={client} />
-        <ClientOverviewTab client={client} subscription={subscription} plan={plan} />
-
-        {canManageBilling ? (
-          <Section id="store-subscription" title="Subscription">
-            <SubscriptionActions client={client} subscription={subscription} plans={plans} />
-          </Section>
-        ) : null}
-
-        <Section id="store-billing" title="Billing">
+      {/* Two-column editor (docs/design/08-fixes-and-screens.md §2.14): the work on the left, the facts and
+          the per-store controls in a sticky rail on the right, danger zone last. One page, no tabs. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="flex min-w-0 flex-col gap-4">
+          <OnboardingCard client={client} />
+          <ClientOverviewTab part="main" client={client} subscription={subscription} plan={plan} />
           <ClientBillingTab
+            part="main"
             client={client}
             subscription={subscription}
             defaultGracePeriodDays={defaultGracePeriodDays}
-            onSaveGracePeriod={(days) =>
-              // The save is fire-and-forget for the form; a failure still has to be seen (review C-L6).
-              updateClient(client.id, { gracePeriodDays: days }).catch((error: unknown) => {
-                const message = mutationFailureCopy(error);
-                if (message) toastError(message);
-              })
-            }
+            onSaveGracePeriod={onSaveGracePeriod}
             canEdit={canManage}
           />
-        </Section>
+          {canManageBilling ? (
+            <Section id="store-subscription" title="Subscription">
+              <SubscriptionActions client={client} subscription={subscription} plans={plans} />
+            </Section>
+          ) : null}
+        </div>
 
-        {canManage ? (
-          <Section id="store-settings" title="Store settings">
-            <ClientDangerZone client={client} onDeleted={() => navigate("/stores")} />
-          </Section>
-        ) : null}
+        <aside
+          aria-label="Store details"
+          className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-32 lg:max-h-[calc(100dvh-9rem)] lg:self-start lg:overflow-y-auto lg:custom-scroll"
+        >
+          <ClientOverviewTab part="rail" client={client} subscription={subscription} plan={plan} />
+          <ClientBillingTab
+            part="rail"
+            client={client}
+            subscription={subscription}
+            defaultGracePeriodDays={defaultGracePeriodDays}
+            onSaveGracePeriod={onSaveGracePeriod}
+            canEdit={canManage}
+          />
+          {canManage ? (
+            <Section id="store-settings" title="Danger zone">
+              <ClientDangerZone client={client} onDeleted={() => navigate("/stores")} />
+            </Section>
+          ) : null}
+        </aside>
       </div>
 
       <StoreActionDialog

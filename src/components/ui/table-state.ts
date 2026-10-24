@@ -32,6 +32,11 @@ export interface TableUrlState {
   /** Sets (or removes, with "" / undefined) one filter. */
   setFilter: (key: string, value?: string) => void;
   clearFilters: () => void;
+  /**
+   * Several params in ONE URL update (two setters in a row would overwrite each other). Keys are bare names;
+   * undefined/"" removes. Goes back to page 1 unless `resetPage` is false.
+   */
+  setParams: (changes: Record<string, string | undefined>, resetPage?: boolean) => void;
 }
 
 const RESERVED = new Set(["page", "size", "sort", "q"]);
@@ -98,9 +103,11 @@ export function useTableUrlState({
     setPage: (page) => update({ page: page > 1 ? String(page) : undefined }, false),
     setPageSize: (pageSize) => update({ size: pageSize === defaultPageSize ? undefined : String(pageSize) }),
     setSort: (sort) => update({ sort: sort ? `${sort.column}:${sort.direction}` : undefined }),
-    setSearch: (search) => update({ q: search.trim() || undefined }),
+    // Kept as typed (spaces included) so a field bound to it can type "red kurta"; blank removes it.
+    setSearch: (search) => update({ q: search.trim() ? search : undefined }),
     setFilter: (key, value) => update({ [key]: value || undefined }),
     clearFilters: () => update(Object.fromEntries(Object.keys(state.filters).map((key) => [key, undefined]))),
+    setParams: (changes, resetPage = true) => update(changes, resetPage),
   };
 }
 

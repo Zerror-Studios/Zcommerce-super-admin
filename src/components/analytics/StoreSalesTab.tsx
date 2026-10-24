@@ -6,6 +6,7 @@ import { useClients } from "../../providers/ClientsProvider";
 import { SALES_DROP_ALERT_PERCENT, storeSalesByPlan, storeSalesRows, storeSalesSummary } from "../../lib/store-sales";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { PageHeader } from "../common/PageHeader";
+import { IconAnalytics } from "../ui/icons";
 import {
   Card,
   EmptyState,
@@ -56,7 +57,12 @@ export function StoreSalesTab() {
 
   return (
     <div>
-      <PageHeader title="Store sales" description="What stores sold to their customers in the last 30 days, compared with the 30 days before." />
+      <PageHeader
+        type="page"
+        icon={<IconAnalytics aria-hidden />}
+        section="violet"
+        title="Store sales"
+        description="What stores sold to their customers in the last 30 days, compared with the 30 days before." />
 
       {/* The figures come from the store list: show its loading and error states, not zeros. */}
       {error ? (

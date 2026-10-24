@@ -1,36 +1,53 @@
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import type { Client } from "../../types";
 import { toasts } from "../../copy";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
+import { isOverdue, isUnpaid } from "../../lib/store-table.util";
+import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import { PageHeader } from "../common/PageHeader";
-import { ClientsTable, type StoreTab } from "./ClientsTable";
-import { IconAdd } from "../ui/icons";
-import { Button as UiButton, ErrorState, cx, toneTextClasses } from "../ui";
+import { ClientsTable } from "./ClientsTable";
+import { IconAdd, IconStore } from "../ui/icons";
+import { Button as UiButton, ErrorState, cx, formatCount, toneTextClasses } from "../ui";
 
 export interface ClientsPageContentProps {
   clients: Client[];
 }
 
-const storeTabs: StoreTab[] = ["all", "live", "trial", "unpaid", "suspended"];
-
-/** Stores page (docs/design/04-super-admin.md §3.3): "Stores" + count, primary "Add store", the shared stores table. */
+/**
+ * Stores page (docs/design/04-super-admin.md §3.3, header A in 09 §2): tinted teal header with the count and a
+ * live line, primary "Add store", then the shared stores table with its state in the URL.
+ */
 export function ClientsPageContent({ clients }: ClientsPageContentProps) {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { loading, error, refetch, totalCount } = useClients();
+  const { loading, error, refetch, totalCount, subscriptions } = useClients();
   const { can } = useAuth();
 
-  // Home's "Needs attention" links here with ?status=… to open a tab.
-  const requested = searchParams.get("status");
-  const initialTab = storeTabs.find((tab) => tab === requested) ?? "all";
+  const summary = useMemo(() => {
+    const byClient = latestSubscriptionByClient(subscriptions);
+    let live = 0;
+    let unpaid = 0;
+    let overdue = 0;
+    clients.forEach((client) => {
+      const sub = byClient.get(client.id);
+      if (client.status === "active") live += 1;
+      if (isUnpaid(sub)) unpaid += 1;
+      if (isOverdue(sub)) overdue += 1;
+    });
+    return `${formatCount(live)} live · ${formatCount(unpaid)} unpaid · ${formatCount(overdue)} overdue`;
+  }, [clients, subscriptions]);
 
   return (
     <div>
       <PageHeader
+        type="list"
+        icon={<IconStore aria-hidden />}
+        section="teal"
         title="Stores"
         count={clients.length}
+        description={loading ? undefined : summary}
         actions={
           can(PLATFORM_PERMISSIONS.TENANTS_MANAGE) ? (
             <UiButton variant="primary" startIcon={<IconAdd aria-hidden />} onPress={() => navigate("/stores/new")}>
@@ -50,7 +67,7 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
       {error ? (
         <ErrorState title="Couldn't load the stores." description={toasts.genericError} onRetry={() => void refetch()} />
       ) : (
-        <ClientsTable key={initialTab} clients={clients} isLoading={loading} allowColumnChoice initialTab={initialTab} />
+        <ClientsTable clients={clients} isLoading={loading} allowColumnChoice syncUrl />
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@apollo/client";
-import { DropdownItem, DropdownTrigger, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, addToast } from "@heroui/react";
+import { DropdownItem, DropdownTrigger, addToast } from "@heroui/react";
 import { useState, type Key } from "react";
 import type { PlatformList, PlatformRole, PlatformUser } from "../../types/platform-api";
 import { platformRoleEnum } from "../../types/platform-api";
@@ -15,11 +15,9 @@ import {
 } from "../../graphql/team";
 import { useAuth } from "../../providers/AuthProvider";
 import { toasts } from "../../copy";
-import { dataTableClassNames } from "../common/dataTableStyles";
 import { IconAdd, IconMore } from "../ui/icons";
 import {
   Button as UiButton,
-  Card,
   Chip,
   CopyableId,
   Dropdown,
@@ -35,12 +33,14 @@ import {
   ModalHeader,
   Select,
   SelectItem,
-  Skeleton,
   StatusChip,
+  DataTable,
+  TablePagination,
   formatDateTime,
   menuItemDangerClasses,
-  tableRowClasses,
   toastError,
+  useTableUrlState,
+  type DataTableColumn,
 } from "../ui";
 
 const ROLE_LABELS: Record<PlatformRole, string> = {
@@ -51,13 +51,13 @@ const ROLE_LABELS: Record<PlatformRole, string> = {
   READ_ONLY: "Read-only",
 };
 
-const columns = [
+const columns: DataTableColumn[] = [
   { key: "name", label: "Member" },
   { key: "role", label: "Role" },
   { key: "status", label: "Status" },
   { key: "mfa", label: "Two-step" },
   { key: "lastLoginAt", label: "Last login" },
-  { key: "actions", label: "" },
+  { key: "actions", label: "Actions", hideLabel: true },
 ];
 
 /** Settings › Team (PRD-005 FR-8.2): platform users, invites with the one-time link, roles, MFA resets. */
@@ -82,6 +82,12 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
   const [nextRole, setNextRole] = useState<PlatformRole>(platformRoleEnum.READ_ONLY);
 
   const users = query.data?.platformUsers.items ?? [];
+  // 50 per page with the page in the URL (docs/design/09-settings-and-scale.md §3.1).
+  const table = useTableUrlState();
+  const filtered = users;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / table.pageSize));
+  const page = Math.min(table.page, pageCount);
+  const pageRows = filtered.slice((page - 1) * table.pageSize, page * table.pageSize);
   const isOwner = me?.role === platformRoleEnum.PLATFORM_OWNER;
   const roleOptions = (Object.keys(ROLE_LABELS) as PlatformRole[]).filter((key) => isOwner || key !== platformRoleEnum.PLATFORM_OWNER);
 
@@ -171,29 +177,25 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
 
   return (
     <>
-      <Card padding="none">
-        {query.loading && !query.data ? (
-          <div className="space-y-3 p-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-10 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : (
-          // removeWrapper: the base slot is the scroll box, so wide rows scroll inside the card on phones.
-          <Table aria-label="Platform team" removeWrapper classNames={{ ...dataTableClassNames, base: "overflow-x-auto bg-surface", tr: tableRowClasses }}>
-            <TableHeader columns={columns}>
-              {(column) => <TableColumn key={column.key} align={column.key === "actions" ? "end" : "start"}>{column.label}</TableColumn>}
-            </TableHeader>
-            <TableBody items={users} emptyContent={<EmptyState title="No team members yet" description="Invite the Zerror team here." action={canManageUsers ? <UiButton variant="primary" size="sm" startIcon={<IconAdd aria-hidden />} onPress={() => onCreateOpenChange(true)}>Invite member</UiButton> : undefined} />}>
-              {(user) => (
-                <TableRow key={user.id}>
-                  {(columnKey) => <TableCell>{renderCell(user, String(columnKey))}</TableCell>}
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </Card>
+      <DataTable
+        aria-label="Platform team"
+        columns={columns}
+        rows={pageRows}
+        getRowKey={(user) => user.id}
+        renderCell={renderCell}
+        isLoading={query.loading && !query.data}
+        stickyFirstColumn
+        footer={
+          <TablePagination
+            page={page}
+            pageSize={table.pageSize}
+            total={filtered.length}
+            onPageChange={table.setPage}
+            onPageSizeChange={table.setPageSize}
+          />
+        }
+        emptyContent={<EmptyState title="No team members yet" description="Invite the Zerror team here." action={canManageUsers ? <UiButton variant="primary" size="sm" startIcon={<IconAdd aria-hidden />} onPress={() => onCreateOpenChange(true)}>Invite member</UiButton> : undefined} />}
+      />
 
       <Modal isOpen={createOpen} onClose={() => { onCreateOpenChange(false); setSetupUrl(null); }} width="sm">
         <ModalContent>
