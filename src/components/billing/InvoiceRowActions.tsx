@@ -6,6 +6,7 @@ import { isUserInputError, mutationFailureCopy } from "../../lib/mutation-errors
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { APPLY_COUPON_TO_INVOICE, RECORD_INVOICE_PAYMENT, VOID_INVOICE } from "../../graphql/billing";
 import { useAuth } from "../../providers/AuthProvider";
+import { toasts } from "../../copy";
 import { IconMore } from "../ui/icons";
 import {
   Button as UiButton,
@@ -118,7 +119,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
                         reference,
                       },
                     }),
-                  "Payment recorded.",
+                  toasts.paymentRecorded,
                 )
               }
             >
@@ -139,7 +140,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
             <UiButton
               variant="primary"
               isLoading={busy}
-              onPress={() => void run(() => applyCoupon({ variables: { invoiceId: row.id, code } }), "Discount applied.")}
+              onPress={() => void run(() => applyCoupon({ variables: { invoiceId: row.id, code } }), toasts.discountApplied)}
             >
               Apply
             </UiButton>
@@ -159,7 +160,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
             <UiButton
               variant="danger"
               isLoading={busy}
-              onPress={() => void run(() => voidInvoice({ variables: { id: row.id, reason } }), "Invoice voided.")}
+              onPress={() => void run(() => voidInvoice({ variables: { id: row.id, reason } }), toasts.invoiceVoided)}
             >
               Void invoice
             </UiButton>

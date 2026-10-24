@@ -1,13 +1,27 @@
-import { addToast, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
+import { addToast } from "@heroui/react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Client, Subscription } from "../../types";
 import { usePayments } from "../../hooks/use-platform-reports";
 import { graceDaysFor, paymentState } from "../../lib/storeStatus";
 import { formatDate, formatDateTime } from "../../lib/utils";
-import { dataTableClassNames } from "../common/dataTableStyles";
-import { Button as UiButton, Card, Chip, CopyableId, EmptyState, ErrorState, Input, Skeleton, StatusChip, Switch, formatMoney } from "../ui";
+import {
+  Button as UiButton,
+  Card,
+  Chip,
+  CopyableId,
+  DataTable,
+  EmptyState,
+  ErrorState,
+  Input,
+  StatusChip,
+  Switch,
+  TablePagination,
+  formatMoney,
+  useTableUrlState,
+  type DataTableColumn,
+} from "../ui";
 import { IconInvoice } from "../ui/icons";
-import { emptyStates } from "../../copy";
+import { emptyStates, toasts } from "../../copy";
 
 export interface ClientBillingTabProps {
   client: Client;
@@ -16,11 +30,13 @@ export interface ClientBillingTabProps {
   onSaveGracePeriod: (days: number | undefined) => void;
   /** False for roles without tenants:manage: the override is shown but not editable. */
   canEdit?: boolean;
+  /** Two-column store page: "rail" = payment status + grace period, "main" = billing history. */
+  part: "main" | "rail";
 }
 
-const txnColumns = [
+const txnColumns: DataTableColumn[] = [
   { key: "date", label: "Date" },
-  { key: "amount", label: "Amount", align: "end" as const },
+  { key: "amount", label: "Amount", align: "end" },
   { key: "status", label: "Status" },
   { key: "transactionId", label: "Transaction ID" },
 ];
@@ -36,10 +52,15 @@ export function ClientBillingTab({
   defaultGracePeriodDays,
   onSaveGracePeriod,
   canEdit = true,
+  part,
 }: ClientBillingTabProps) {
-  // PRD-005 FR-5.2: this store's platform payments (payment_log)
-  const payments = usePayments({ tenantId: client.id });
+  // PRD-005 FR-5.2: this store's platform payments (payment_log), read by the main column only.
+  const payments = usePayments({ tenantId: client.id, skip: part === "rail" });
   const transactions = payments.data;
+  // Billing history pages at 50 (docs/design/09-settings-and-scale.md §3.1); ?bill_page= keeps the page.
+  const history = useTableUrlState({ prefix: "bill" });
+  const historyPage = Math.min(history.page, Math.max(1, Math.ceil(transactions.length / history.pageSize)));
+  const historyRows = transactions.slice((historyPage - 1) * history.pageSize, historyPage * history.pageSize);
   const savedOverride = client.gracePeriodDays;
   const [useOverride, setUseOverride] = useState(savedOverride != null);
   const [daysInput, setDaysInput] = useState(String(savedOverride ?? defaultGracePeriodDays));
@@ -65,7 +86,7 @@ export function ClientBillingTab({
     if (!useOverride) {
       setError(null);
       onSaveGracePeriod(undefined);
-      addToast({ title: `Grace period set to the default (${days(defaultGracePeriodDays)}).` });
+      addToast({ title: toasts.gracePeriodDefault(days(defaultGracePeriodDays)) });
       return;
     }
     const n = Number(daysInput);
@@ -75,7 +96,7 @@ export function ClientBillingTab({
     }
     setError(null);
     onSaveGracePeriod(n);
-    addToast({ title: `Grace period set to ${days(n)} for ${client.storeName}.` });
+    addToast({ title: toasts.gracePeriodSet(days(n), client.storeName) });
   };
 
   const onCancel = () => {
@@ -84,12 +105,11 @@ export function ClientBillingTab({
     setError(null);
   };
 
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Status and the grace-period control side by side (same right column as the store overview), history below. */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <Card title="Payment status" className="h-full" actions={<Chip tone={payment.tone}>{payment.label}</Chip>}>
-          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+  if (part === "rail") {
+    return (
+      <>
+        <Card title="Payment status" actions={<Chip tone={payment.tone}>{payment.label}</Chip>}>
+          <dl className="grid grid-cols-2 gap-4">
             <StatusItem label="Next invoice">
               {subscription ? formatDate(subscription.renewalDate) : <span className="text-fg-subtle">—</span>}
             </StatusItem>
@@ -107,7 +127,6 @@ export function ClientBillingTab({
           </dl>
         </Card>
         <Card
-          className="h-full"
           title="Grace period"
           description={`Extra days before this store is suspended for non-payment. Default: ${days(defaultGracePeriodDays)}.`}
         >
@@ -154,62 +173,57 @@ export function ClientBillingTab({
             </div>
           </div>
         </Card>
-      </div>
+      </>
+    );
+  }
 
-      <Card title="Billing history" padding="none" className="overflow-hidden">
+  return (
+      <section aria-labelledby="billing-history" className="flex flex-col gap-3">
+        <h3 id="billing-history" className="text-subtitle font-semibold text-fg">
+          Billing history
+        </h3>
         {payments.error ? (
-          <ErrorState inline title="Couldn't load the billing history." onRetry={() => void payments.refetch()} />
-        ) : payments.loading ? (
-          <div className="space-y-3 p-4">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <Skeleton key={index} className="h-10 w-full rounded-lg" />
-            ))}
-          </div>
+          <ErrorState
+            inline
+            className="rounded-card border border-line bg-surface"
+            title="Couldn't load the billing history."
+            onRetry={() => void payments.refetch()}
+          />
         ) : (
-        <Table
-          aria-label="Billing history"
-          removeWrapper
-          classNames={{
-            ...dataTableClassNames,
-            base: "rounded-none border-0 border-t border-line overflow-x-auto bg-surface",
-            // No selection column here, so the first column isn't the 48px checkbox column.
-            th: dataTableClassNames.th.replace("first:w-12 ", ""),
-            td: dataTableClassNames.td.replace("first:w-12 ", ""),
-            tr: dataTableClassNames.tr.replace("cursor-pointer ", ""),
-          }}
-        >
-          <TableHeader columns={txnColumns}>
-            {(column) => (
-              <TableColumn key={column.key} align={column.align ?? "start"} className={column.align === "end" ? "text-end" : undefined}>
-                {column.label}
-              </TableColumn>
-            )}
-          </TableHeader>
-          <TableBody
-            items={transactions}
+          <DataTable
+            aria-label="Billing history"
+            columns={txnColumns}
+            rows={historyRows}
+            getRowKey={(txn) => txn.id}
+            isLoading={payments.loading}
+            renderCell={(txn, key) => {
+              switch (key) {
+                case "date":
+                  return <span className="whitespace-nowrap num">{formatDateTime(txn.date)}</span>;
+                case "amount":
+                  return <span className="num">{formatMoney(txn.amount, { currency: txn.currency, paise: true })}</span>;
+                case "status":
+                  return <StatusChip domain="payment" status={txn.status} />;
+                case "transactionId":
+                  return <CopyableId value={txn.transactionId} className="text-label text-fg-muted" />;
+                default:
+                  return null;
+              }
+            }}
+            footer={
+              <TablePagination
+                page={historyPage}
+                pageSize={history.pageSize}
+                total={transactions.length}
+                onPageChange={history.setPage}
+              />
+            }
             emptyContent={
               <EmptyState icon={IconInvoice} title={emptyStates.storeInvoices.title} description={emptyStates.storeInvoices.description} />
             }
-          >
-            {(txn) => (
-              <TableRow key={txn.id}>
-                <TableCell className="whitespace-nowrap">{formatDateTime(txn.date)}</TableCell>
-                <TableCell className="text-end">
-                  <span className="num">{formatMoney(txn.amount, { currency: txn.currency, paise: true })}</span>
-                </TableCell>
-                <TableCell>
-                  <StatusChip domain="payment" status={txn.status} />
-                </TableCell>
-                <TableCell>
-                  <CopyableId value={txn.transactionId} className="text-label text-fg-muted" />
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+          />
         )}
-      </Card>
-    </div>
+      </section>
   );
 }
 

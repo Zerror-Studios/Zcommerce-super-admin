@@ -100,7 +100,44 @@
   --color-chart-compare: var(--zc-chart-compare);
   --color-chart-grid: var(--zc-chart-grid);
 
-  /* The only text sizes in the app (spec 01 §5): 12 / 13 / 14 / 16 / 22 / 26 (login uses 18). */
+  /* Expression (tokens-expression.css). sec-* follow the page's .zc-sec-* class. */
+  --color-sec-fg: var(--zc-sec-fg);
+  --color-sec-soft: var(--zc-sec-soft);
+  --color-sec-tint: var(--zc-sec-tint);
+  --color-sec-line: var(--zc-sec-line);
+  --color-channel-email: var(--zc-channel-email-fg);
+  --color-channel-sms: var(--zc-channel-sms-fg);
+  --color-channel-whatsapp: var(--zc-channel-whatsapp-fg);
+  --color-whatsapp: var(--zc-whatsapp);
+  --color-welcome-line: var(--zc-welcome-border);
+  --color-welcome-tile: var(--zc-welcome-tile);
+  --color-support: var(--zc-support-bg);
+  --color-support-fg: var(--zc-support-fg);
+  --color-support-line: var(--zc-support-border);
+  --color-pane: var(--zc-pane-bg);
+  --color-pane-label: var(--zc-pane-label);
+  --color-pane-item: var(--zc-pane-item);
+  --color-pane-icon: var(--zc-pane-icon);
+  --color-pane-hover: var(--zc-pane-hover);
+  --color-pane-active: var(--zc-pane-active);
+  --color-pane-active-icon: var(--zc-pane-active-icon);
+  --color-ai-send: var(--zc-ai-send);
+  --color-user-bubble: var(--zc-user-bubble);
+  --color-step-done: var(--zc-step-done);
+  --color-step-pending: var(--zc-step-pending);
+  --color-step-failed: var(--zc-step-failed);
+  --color-card-footer: var(--zc-card-footer);
+  --color-google-site: var(--zc-google-site);
+  --color-google-url: var(--zc-google-url);
+  --color-google-title: var(--zc-google-title);
+  --color-google-text: var(--zc-google-text);
+  --color-google-date: var(--zc-google-date);
+  --color-google-bar: var(--zc-google-bar);
+  --color-image-control: var(--zc-image-control);
+  --color-letterbox: var(--zc-letterbox);
+  --font-google: var(--zc-google-font);
+
+  /* The only text sizes in the app (spec 01 §5, plus 08/09): 10 / 12 / 13 / 14 / 15 / 16 / 17 / 18 / 20 / 22 / 26 / 30 / 36. */
   --text-caption: 0.75rem;  --text-caption--line-height: 1rem;      /* 12: meta, helper text, badges */
   --text-label: 0.8125rem;  --text-label--line-height: 1.25rem;     /* 13: sidebar, table header, secondary rows */
   --text-body: 0.875rem;    --text-body--line-height: 1.25rem;      /* 14: default body, cells, inputs, buttons */
@@ -110,6 +147,15 @@
   --text-title--letter-spacing: -0.01em;
   --text-display: 1.625rem; --text-display--line-height: 2.125rem;  /* 26: KPI values */
   --text-display--letter-spacing: -0.02em;
+  /* v1.4 additions (08/09). */
+  --text-micro: 0.625rem;    --text-micro--line-height: 0.875rem;   /* 10: cover tag on images */
+  --text-lead: 0.9375rem;    --text-lead--line-height: 1.4375rem;   /* 15/23: AI suggestion text, Today's brief */
+  --text-heading: 1.125rem;  --text-heading--line-height: 1.625rem; /* 18: H2 in settings/two-pane right pane */
+  --text-hero: 1.875rem;     --text-hero--line-height: 2.375rem;    /* 30/38: Home greeting, stat values on the banner */
+  --text-hero--letter-spacing: -0.02em;
+  --text-article: 1.0625rem; --text-article--line-height: 1.8125rem; /* 17/29: blog body in the editor */
+  --text-article-title: 2.25rem; --text-article-title--line-height: 2.75rem; /* 36: blog title in the editor */
+  --text-google-title: 1.25rem; --text-google-title--line-height: 1.625rem; /* 20/26: Google preview title only */
 
   --radius-xs: 4px;     /* checkbox, kbd */
   --radius-sm: 6px;     /* badges, chips, tooltips */
@@ -117,6 +163,10 @@
   --radius-tile: 12px;  /* cards, tables, popovers, toasts */
   --radius-card: 12px;
   --radius-modal: 16px; /* modals, login card */
+  --radius-pane-item: 9px; /* settings / two-pane rows */
+  --radius-thumb: 10px;     /* image tiles, ask input */
+  --radius-panel: 14px;     /* two-pane card, AI chat card */
+  --radius-banner: 20px;    /* Home welcome banner */
 
   --shadow-card: var(--zc-shadow-card);
   --shadow-sticky: var(--zc-shadow-sm);
@@ -143,6 +193,12 @@
   input::placeholder,
   textarea::placeholder {
     color: var(--zc-fg-placeholder);
+  }
+  /* The shared SearchInput draws its own clear button; hide the browser's. */
+  input[type="search"]::-webkit-search-cancel-button,
+  input[type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
   }
   :focus-visible {
     outline: none;
@@ -190,6 +246,16 @@
   --spacing-sidebar: 248px;
   --spacing-sidebar-collapsed: 64px;
   --spacing-drawer: 280px;
+  --spacing-pane: var(--zc-pane-w);
+  --spacing-support: var(--zc-support-h);
+  --spacing-search: var(--zc-search-w);
+  --spacing-search-lg: var(--zc-search-w-lg);
+  --spacing-image-control: var(--zc-image-control-size);
+  --spacing-image-control-sm: var(--zc-image-control-sm);
+  --spacing-blog-tools: var(--zc-blog-tools-w);
+  --spacing-blog-panel: var(--zc-blog-panel-w);
+  --spacing-media-folders: var(--zc-media-folders-w);
+  --spacing-drawer-image: var(--zc-drawer-image);
 
   /* Modal widths (component-specs §11): max-w-modal-sm / -md / -lg. */
   --container-modal-sm: 480px;
@@ -198,6 +264,8 @@
   --container-content: 1200px;
   --container-content-wide: 1440px;
   --container-content-form: 720px;
+  --container-article: var(--zc-article-w);
+  --container-media-dialog: var(--zc-media-dialog-w);
 }
 
 /* Named durations (spec 01 §7): 80 hover/press, 140 menus/tooltips/tabs, 220 drawers/modals, 320 AI reveal. */

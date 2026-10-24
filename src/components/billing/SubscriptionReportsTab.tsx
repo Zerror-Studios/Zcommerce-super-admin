@@ -1,13 +1,11 @@
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
 import { endOfDay, startOfDay, startOfMonth } from "date-fns";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { PlanName, SubscriptionHealthBucket } from "../../types";
 import { getPlanLabel, PLAN_NAMES } from "../../lib/display-labels.util";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { useClients } from "../../providers/ClientsProvider";
 import { useCollections } from "../../hooks/use-platform-reports";
-import { useDebouncedValue } from "../../hooks/use-debounced-value";
 import { InvoiceRowActions } from "./InvoiceRowActions";
 import { collectionRate } from "../../lib/periods";
 import { downloadCsv, rowsToCsv } from "../../lib/report-csv";
@@ -18,19 +16,25 @@ import {
   DateRangeComparison,
   type DateRangeValue,
 } from "../common/DateRangeComparison";
-import { dataTableClassNames, tablePanelClassName } from "../common/dataTableStyles";
+import { AppliedFilters } from "../common/AppliedFilters";
+import { FilterEmpty } from "../common/FilterEmpty";
 import { PageHeader } from "../common/PageHeader";
 import { TableToolbar } from "../common/TableToolbar";
-import { IconBilling, IconClose, IconDownload } from "../ui/icons";
+import { IconBilling, IconDownload } from "../ui/icons";
+import { useUrlSearch } from "../../hooks/use-url-search";
 import {
   Button as UiButton,
   Chip,
+  DataTable,
+  TablePagination,
+  usePersistentColumns,
+  useTableUrlState,
+  type DataTableColumn,
   EmptyState,
   ErrorState,
   KpiStrip,
   Select,
   SelectItem,
-  Skeleton,
   StatCard,
   StatusChip,
   Tab,
@@ -39,13 +43,11 @@ import {
   formatCount,
   formatMoney,
   formatPercent,
-  tableRowClasses,
   toneTextClasses,
 } from "../ui";
 import type { Tone } from "../ui";
-import { emptyStates, toasts } from "../../copy";
+import { toasts } from "../../copy";
 
-const PAGE_SIZE = 8;
 // Today, when the page loaded; the server judges every row against its own clock.
 const AS_OF = new Date();
 
@@ -92,6 +94,16 @@ const paymentColumns = [
 
 const rightAligned = new Set(["amountDue", "daysOverdue", "amount"]);
 
+const shopTableColumns: DataTableColumn[] = shopColumns.map((c) => ({
+  ...c,
+  align: rightAligned.has(c.key) ? "end" : undefined,
+}));
+
+const paymentTableColumns: DataTableColumn[] = [
+  ...paymentColumns.map((c): DataTableColumn => ({ ...c, align: rightAligned.has(c.key) ? "end" : undefined })),
+  { key: "actions", label: "Actions", hideLabel: true },
+];
+
 /** subscriptionHealth buckets → the one health wording used everywhere (Healthy / At risk / Critical). */
 const healthDisplay: Record<SubscriptionHealthBucket, { label: string; tone: Tone }> = {
   healthy: { label: "Healthy", tone: "success" },
@@ -127,68 +139,43 @@ function isDrill(value: string | null): value is ReportDrillFilter {
   return value != null && value in drillLabels;
 }
 
-function AppliedFilter({ children, onRemove }: { children: ReactNode; onRemove: () => void }) {
-  return (
-    <span className="inline-flex h-7 items-center gap-1 rounded-lg border border-line bg-surface pl-2.5 pr-1 text-label text-fg">
-      {children}
-      <button
-        type="button"
-        aria-label="Remove filter"
-        onClick={onRemove}
-        className="inline-flex size-5 items-center justify-center rounded-sm text-fg-muted transition-colors duration-instant hover:bg-surface-sunken hover:text-fg"
-      >
-        <IconClose aria-hidden className="size-3.5" />
-      </button>
-    </span>
-  );
-}
-
 const muted = <span className="text-fg-subtle">—</span>;
 
 export function SubscriptionReportsTab() {
   const navigate = useNavigate();
   const { subscriptions, plans: planList } = useClients();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [range, setRange] = useState<DateRangeValue>(defaultRange);
-  const [search, setSearch] = useState("");
-  // The rollup runs on the server: wait for typing to stop (review C-M6).
-  const debouncedSearch = useDebouncedValue(search);
-  const [plan, setPlan] = useState<PlanName | "all">("all");
-  const [health, setHealth] = useState<SubscriptionHealthBucket | "all">("all");
-  const [page, setPage] = useState(1);
-  const [visibleShopColumns, setVisibleShopColumns] = useState<string[]>(defaultShopColumns);
+  const [range, setRangeState] = useState<DateRangeValue>(defaultRange);
+  // Tab, drill-down, plan, health, search and page live in the URL (docs/design/09-settings-and-scale.md §3.1),
+  // so the KPI cells can be plain links (?tab=invoices&show=overdue).
+  const table = useTableUrlState();
+  // The rollup runs on the server: the URL (and the query) see the search once typing stops (review C-M6).
+  const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
+  const planParam = table.filters.plan;
+  const plan: PlanName | "all" = planParam && (PLAN_NAMES as readonly string[]).includes(planParam) ? (planParam as PlanName) : "all";
+  const healthParam = table.filters.health;
+  const health: SubscriptionHealthBucket | "all" =
+    healthParam && healthParam in healthDisplay ? (healthParam as SubscriptionHealthBucket) : "all";
+  const setPlan = (value: PlanName | "all") => table.setFilter("plan", value === "all" ? undefined : value);
+  const setHealth = (value: SubscriptionHealthBucket | "all") => table.setFilter("health", value === "all" ? undefined : value);
+  const setRange = (next: DateRangeValue) => {
+    setRangeState(next);
+    table.setPage(1);
+  };
+  const [visibleShopColumns, setVisibleShopColumns] = usePersistentColumns("collections-stores", defaultShopColumns);
 
-  // Drill-down and tab live in the URL so the KPI cells can be plain links (?tab=invoices&show=overdue).
-  const tableView: TableView = searchParams.get("tab") === "invoices" ? "payments" : "shops";
-  const showParam = searchParams.get("show");
+  const tableView: TableView = table.filters.tab === "invoices" ? "payments" : "shops";
+  const showParam = table.filters.show ?? null;
   const drill: ReportDrillFilter = isDrill(showParam) ? showParam : "all";
 
-  const updateParams = (next: { tab?: TableView; show?: ReportDrillFilter }) => {
-    setSearchParams(
-      (prev) => {
-        const params = new URLSearchParams(prev);
-        if (next.tab) {
-          if (next.tab === "payments") params.set("tab", "invoices");
-          else params.delete("tab");
-        }
-        if (next.show) {
-          if (next.show === "all") params.delete("show");
-          else params.set("show", next.show);
-        }
-        return params;
-      },
-      { replace: true },
-    );
-  };
-  const setDrill = (show: ReportDrillFilter) => updateParams({ show });
-  const setTableView = (tab: TableView) => updateParams({ tab });
+  const setDrill = (show: ReportDrillFilter) => table.setFilter("show", show === "all" ? undefined : show);
+  const setTableView = (tab: TableView) => table.setFilter("tab", tab === "payments" ? "invoices" : undefined);
 
   // PRD-005 FR-5.3: the server applies the range, filters and drill.
   const api = useCollections({
     startDate: range.startDate,
     endDate: range.endDate,
     drill,
-    search: debouncedSearch,
+    search: table.search,
     planId: plan === "all" ? null : (planList.find((p) => p.name === plan)?.id ?? null),
     health,
   });
@@ -218,25 +205,18 @@ export function SubscriptionReportsTab() {
 
   const subscriptionByClient = useMemo(() => latestSubscriptionByClient(subscriptions), [subscriptions]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [drill, search, plan, health, tableView, range.endDate, range.startDate]);
-
   const activeRows = tableView === "shops" ? shopRows : paymentRows;
-  const pageCount = Math.max(1, Math.ceil(activeRows.length / PAGE_SIZE));
-  const safePage = Math.min(page, pageCount);
-  const pageItems = activeRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-  const firstRow = activeRows.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
-  const lastRow = Math.min(safePage * PAGE_SIZE, activeRows.length);
+  const pageCount = Math.max(1, Math.ceil(activeRows.length / table.pageSize));
+  const safePage = Math.min(table.page, pageCount);
+  const pageItems = activeRows.slice((safePage - 1) * table.pageSize, safePage * table.pageSize);
 
   const isThisMonth =
     startOfDay(range.startDate).getTime() === startOfMonth(AS_OF).getTime();
-  const hasFilters = plan !== "all" || health !== "all" || drill !== "all" || search.trim() !== "";
+  const hasFilters = plan !== "all" || health !== "all" || drill !== "all" || table.search.trim() !== "";
   const clearFilters = () => {
-    setPlan("all");
-    setHealth("all");
     setSearch("");
-    setDrill("all");
+    // One URL write; the tab stays.
+    table.setParams({ plan: undefined, health: undefined, show: undefined, q: undefined });
   };
 
   const exportCsv = () => {
@@ -268,7 +248,15 @@ export function SubscriptionReportsTab() {
 
   const header = (
     <PageHeader
+      type="list"
+      icon={<IconBilling aria-hidden />}
+      section="green"
       title="Collections"
+      description={
+        kpis
+          ? `${formatMoney(kpis.billed, { whole: true })} billed · ${kpis.rate != null ? `${formatPercent(kpis.rate, 0)} collected` : "nothing collected yet"} · ${formatCount(kpis.overdue.count)} overdue`
+          : "What stores owe and have paid for this period"
+      }
       actions={
         <>
           <DateRangeComparison value={range} onChange={setRange} />
@@ -371,16 +359,7 @@ export function SubscriptionReportsTab() {
   };
 
   const emptyContent = hasFilters ? (
-    <EmptyState
-      icon={IconBilling}
-      title={search.trim() ? emptyStates.noResults(search.trim()).title : "Nothing matches these filters"}
-      description={emptyStates.noResults("").description}
-      action={
-        <UiButton variant="secondary" size="sm" onPress={clearFilters}>
-          {emptyStates.noResults("").action}
-        </UiButton>
-      }
-    />
+    <FilterEmpty things={tableView === "shops" ? "stores" : "invoices"} query={table.search} onClear={clearFilters} />
   ) : tableView === "shops" ? (
     <EmptyState icon={IconBilling} title="No stores yet" description="Stores appear here once they are on a plan." />
   ) : (
@@ -413,7 +392,7 @@ export function SubscriptionReportsTab() {
     </Tabs>
   );
 
-  const shopHeaderColumns = shopColumns.filter((c) => visibleShopColumns.includes(c.key));
+
   const currentDrillOptions = drillOptions[tableView].includes(drill)
     ? drillOptions[tableView]
     : [...drillOptions[tableView], drill];
@@ -468,154 +447,123 @@ export function SubscriptionReportsTab() {
           />
         </KpiStrip>
 
-        <div className={tablePanelClassName}>
-          <TableToolbar
-            tabs={tabs}
-            search={search}
-            onSearchChange={setSearch}
-            searchPlaceholder={tableView === "shops" ? "Search billed stores" : "Search invoices"}
-            columns={tableView === "shops" ? shopColumns : undefined}
-            visibleColumns={tableView === "shops" ? visibleShopColumns : undefined}
-            onVisibleColumnsChange={tableView === "shops" ? setVisibleShopColumns : undefined}
-            filterContent={
-              <>
-                <Select
-                  label="Show"
-                  size="sm"
-                  selectedKeys={new Set([drill])}
-                  onSelectionChange={(keys) => {
-                    const v = String(Array.from(keys)[0] ?? "");
-                    if (isDrill(v)) setDrill(v);
-                  }}
-                  disallowEmptySelection
-                >
-                  {currentDrillOptions.map((option) => (
-                    <SelectItem key={option}>{option === "all" ? (tableView === "shops" ? "All stores" : "All invoices") : drillLabels[option]}</SelectItem>
-                  ))}
-                </Select>
-                <Select
-                  label="Plan"
-                  size="sm"
-                  selectedKeys={new Set([plan])}
-                  onSelectionChange={(keys) => {
-                    const v = Array.from(keys)[0];
-                    if (typeof v === "string") setPlan(v as PlanName | "all");
-                  }}
-                  disallowEmptySelection
-                >
-                  {planOptions.map((p) => (
-                    <SelectItem key={p}>{p === "all" ? "All plans" : getPlanLabel(p)}</SelectItem>
-                  ))}
-                </Select>
-                {tableView === "shops" ? (
-                  <Select
-                    label="Health"
-                    size="sm"
-                    selectedKeys={new Set([health])}
-                    onSelectionChange={(keys) => {
-                      const v = Array.from(keys)[0];
-                      if (typeof v === "string")
-                        setHealth(v as SubscriptionHealthBucket | "all");
-                    }}
-                    disallowEmptySelection
-                  >
-                    <SelectItem key="all">Any health</SelectItem>
-                    <SelectItem key="healthy">Healthy</SelectItem>
-                    <SelectItem key="at_risk">At risk</SelectItem>
-                    <SelectItem key="unhealthy">Critical</SelectItem>
-                  </Select>
-                ) : null}
-              </>
-            }
-          />
-
-          {plan !== "all" || health !== "all" || drill !== "all" ? (
-            <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2">
-              {drill !== "all" ? (
-                <AppliedFilter onRemove={() => setDrill("all")}>Show: {drillLabels[drill]}</AppliedFilter>
-              ) : null}
-              {plan !== "all" ? (
-                <AppliedFilter onRemove={() => setPlan("all")}>Plan: {getPlanLabel(plan)}</AppliedFilter>
-              ) : null}
-              {health !== "all" ? (
-                <AppliedFilter onRemove={() => setHealth("all")}>Health: {healthDisplay[health].label}</AppliedFilter>
-              ) : null}
-              <UiButton variant="link" size="sm" onPress={clearFilters}>
-                Clear all
-              </UiButton>
-            </div>
-          ) : null}
-
-          {loading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : tableView === "shops" ? (
-            <Table aria-label="Stores" classNames={dataTableClassNames}>
-              <TableHeader columns={shopHeaderColumns}>
-                {(column) => (
-                  <TableColumn key={column.key} align={rightAligned.has(column.key) ? "end" : "start"}>
-                    {column.label}
-                  </TableColumn>
-                )}
-              </TableHeader>
-              <TableBody items={pageItems as ShopReportRow[]} emptyContent={emptyContent}>
-                {(row) => (
-                  <TableRow
-                    key={row.clientId}
-                    className="cursor-pointer"
-                    onClick={() => navigate(`/stores/${row.clientId}`)}
-                  >
-                    {(columnKey) => <TableCell>{renderShopCell(row, String(columnKey))}</TableCell>}
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+        {(() => {
+          const toolbar = (
+            <>
+              <TableToolbar
+                tabs={tabs}
+                search={search}
+                onSearchChange={setSearch}
+                searchPlaceholder={tableView === "shops" ? "Search billed stores" : "Search invoices"}
+                columns={tableView === "shops" ? shopColumns.map((c) => ({ key: c.key, label: c.label })) : undefined}
+                visibleColumns={tableView === "shops" ? Array.from(visibleShopColumns) : undefined}
+                onVisibleColumnsChange={tableView === "shops" ? (keys) => setVisibleShopColumns(new Set(keys)) : undefined}
+                filterContent={
+                  <>
+                    <Select
+                      label="Show"
+                      size="sm"
+                      selectedKeys={new Set([drill])}
+                      onSelectionChange={(keys) => {
+                        const v = String(Array.from(keys)[0] ?? "");
+                        if (isDrill(v)) setDrill(v);
+                      }}
+                      disallowEmptySelection
+                    >
+                      {currentDrillOptions.map((option) => (
+                        <SelectItem key={option}>{option === "all" ? (tableView === "shops" ? "All stores" : "All invoices") : drillLabels[option]}</SelectItem>
+                      ))}
+                    </Select>
+                    <Select
+                      label="Plan"
+                      size="sm"
+                      selectedKeys={new Set([plan])}
+                      onSelectionChange={(keys) => {
+                        const v = Array.from(keys)[0];
+                        if (typeof v === "string") setPlan(v as PlanName | "all");
+                      }}
+                      disallowEmptySelection
+                    >
+                      {planOptions.map((p) => (
+                        <SelectItem key={p}>{p === "all" ? "All plans" : getPlanLabel(p)}</SelectItem>
+                      ))}
+                    </Select>
+                    {tableView === "shops" ? (
+                      <Select
+                        label="Health"
+                        size="sm"
+                        selectedKeys={new Set([health])}
+                        onSelectionChange={(keys) => {
+                          const v = Array.from(keys)[0];
+                          if (typeof v === "string")
+                            setHealth(v as SubscriptionHealthBucket | "all");
+                        }}
+                        disallowEmptySelection
+                      >
+                        <SelectItem key="all">Any health</SelectItem>
+                        <SelectItem key="healthy">Healthy</SelectItem>
+                        <SelectItem key="at_risk">At risk</SelectItem>
+                        <SelectItem key="unhealthy">Critical</SelectItem>
+                      </Select>
+                    ) : null}
+                  </>
+                }
+              />
+              <AppliedFilters
+                items={[
+                  ...(drill !== "all" ? [{ key: "show", label: `Show: ${drillLabels[drill]}`, onRemove: () => setDrill("all") }] : []),
+                  ...(plan !== "all" ? [{ key: "plan", label: `Plan: ${getPlanLabel(plan)}`, onRemove: () => setPlan("all") }] : []),
+                  ...(health !== "all"
+                    ? [{ key: "health", label: `Health: ${healthDisplay[health].label}`, onRemove: () => setHealth("all") }]
+                    : []),
+                ]}
+                onClearAll={clearFilters}
+              />
+            </>
+          );
+          const footer = (
+            <TablePagination
+              page={safePage}
+              pageSize={table.pageSize}
+              total={activeRows.length}
+              onPageChange={table.setPage}
+              onPageSizeChange={table.setPageSize}
+            />
+          );
+          return tableView === "shops" ? (
+            <DataTable
+              aria-label="Stores"
+              columns={shopTableColumns}
+              visibleColumns={visibleShopColumns}
+              rows={pageItems as ShopReportRow[]}
+              getRowKey={(row) => row.clientId}
+              renderCell={renderShopCell}
+              isLoading={loading}
+              isReloading={api.reloading}
+              toolbar={toolbar}
+              footer={footer}
+              onRowAction={(row) => navigate(`/stores/${row.clientId}`)}
+              stickyFirstColumn
+              scrollClassName="max-h-[70vh]"
+              emptyContent={emptyContent}
+            />
           ) : (
-            <Table aria-label="Invoices" classNames={{ ...dataTableClassNames, tr: tableRowClasses }}>
-              <TableHeader columns={[...paymentColumns, { key: "actions", label: "" }]}>
-                {(column) => (
-                  <TableColumn key={column.key} align={rightAligned.has(column.key) ? "end" : "start"}>
-                    {column.label}
-                  </TableColumn>
-                )}
-              </TableHeader>
-              <TableBody items={pageItems as PaymentReportRow[]} emptyContent={emptyContent}>
-                {(row) => (
-                  <TableRow key={row.id}>
-                    {(columnKey) => <TableCell>{renderPaymentCell(row, String(columnKey))}</TableCell>}
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-
-          <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
-            <p className="text-label text-fg-muted num">
-              {activeRows.length === 0 ? (tableView === "shops" ? "0 stores" : "0 invoices") : `${firstRow}–${lastRow} of ${formatCount(activeRows.length)}`}
-            </p>
-            <div className="flex items-center gap-2">
-              <UiButton
-                variant="secondary"
-                size="sm"
-                isDisabled={safePage <= 1}
-                onPress={() => setPage(safePage - 1)}
-              >
-                Previous
-              </UiButton>
-              <UiButton
-                variant="secondary"
-                size="sm"
-                isDisabled={safePage >= pageCount}
-                onPress={() => setPage(safePage + 1)}
-              >
-                Next
-              </UiButton>
-            </div>
-          </div>
-        </div>
+            <DataTable
+              aria-label="Invoices"
+              columns={paymentTableColumns}
+              rows={pageItems as PaymentReportRow[]}
+              getRowKey={(row) => row.id}
+              renderCell={renderPaymentCell}
+              isLoading={loading}
+              isReloading={api.reloading}
+              toolbar={toolbar}
+              footer={footer}
+              stickyFirstColumn
+              scrollClassName="max-h-[70vh]"
+              emptyContent={emptyContent}
+            />
+          );
+        })()}
       </div>
     </div>
   );

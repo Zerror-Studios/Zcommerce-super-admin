@@ -1,7 +1,6 @@
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type SortDescriptor } from "@heroui/react";
 import { useMemo, useState, type Key } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { subscriptionStatusEnum, type Client, type ClientStatus, type Subscription } from "../../types";
+import type { Client, ClientStatus, Subscription } from "../../types";
 import { getPlanLabel, PLAN_LABELS, PLAN_NAMES } from "../../lib/display-labels.util";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
@@ -9,13 +8,30 @@ import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import { getStoreHealth } from "../../lib/storeHealth";
 import { paymentState, storeLifecycle } from "../../lib/storeStatus";
-import { dataTableClassNames } from "../common/dataTableStyles";
+import {
+  compareByHealthThenDue,
+  healthBandEnum,
+  isStoreTab,
+  joinParam,
+  matchesFilters,
+  matchesTab,
+  splitParam,
+  storeTabEnum,
+  type HealthBandKey,
+  type StoreFilters,
+  type StoreTab,
+} from "../../lib/store-table.util";
+import { useUrlSearch } from "../../hooks/use-url-search";
+import { AppliedFilters, type AppliedFilterItem } from "../common/AppliedFilters";
+import { FilterEmpty } from "../common/FilterEmpty";
 import { FilterCheckboxGroup, TableToolbar } from "../common/TableToolbar";
 import { RenewalBadge } from "../common/RenewalBadge";
 import { StoreHealthCell } from "../common/StoreHealthCell";
 import {
   Button as UiButton,
+  Checkbox,
   Chip,
+  DataTable,
   Dropdown,
   DropdownItem,
   DropdownMenu,
@@ -23,20 +39,23 @@ import {
   DropdownTrigger,
   EmptyState,
   IconButton,
-  Skeleton,
   Tab,
   Tabs,
+  TablePagination,
   cx,
   formatMoney,
   menuItemDangerClasses,
-  tablePanelClasses,
+  usePersistentColumns,
+  useTableUrlState,
+  type DataTableColumn,
+  type TableSort,
 } from "../ui";
-import { IconLogin, IconMore, IconSearch, IconStore } from "../ui/icons";
+import { IconLogin, IconMore, IconStore } from "../ui/icons";
 import { StoreActionDialog, type StoreAction } from "./storeActions";
 import { logInToStore } from "./storeLogin";
 import { emptyStates } from "../../copy";
 
-export type StoreTab = "all" | "live" | "trial" | "unpaid" | "suspended";
+export type { StoreTab } from "../../lib/store-table.util";
 
 export interface ClientsTableProps {
   clients: Client[];
@@ -45,7 +64,11 @@ export interface ClientsTableProps {
   previewLimit?: number;
   /** Stores page: offer the optional columns (Plan, Renewal) through Columns. */
   allowColumnChoice?: boolean;
-  initialTab?: StoreTab;
+  /**
+   * Stores page: tab, search, filters, sort and page live in the URL (docs/design/09-settings-and-scale.md
+   * §3.1, §3.7). Home's preview keeps them on the page instead.
+   */
+  syncUrl?: boolean;
 }
 
 type ColumnKey =
@@ -59,64 +82,56 @@ type ColumnKey =
   | "renewalDate"
   | "actions";
 
-interface ColumnDef {
-  key: ColumnKey;
-  label: string;
-  align?: "start" | "end";
-  allowsSorting?: boolean;
-}
-
-const PAGE_SIZE = 10;
-
 const monthName = new Intl.DateTimeFormat("en-IN", { month: "long" }).format(new Date());
 
-const allColumns: ColumnDef[] = [
-  { key: "storeName", label: "Store", allowsSorting: true },
-  { key: "status", label: "Status", allowsSorting: true },
-  { key: "payment", label: `${monthName} payment`, allowsSorting: true },
-  { key: "storeHealth", label: "Health", allowsSorting: true },
-  { key: "sales", label: "Store sales · 30d", align: "end", allowsSorting: true },
-  { key: "mrr", label: "Monthly fee", align: "end", allowsSorting: true },
-  { key: "plan", label: "Plan", allowsSorting: true },
-  { key: "renewalDate", label: "Renewal", allowsSorting: true },
+const allColumns: DataTableColumn[] = [
+  { key: "storeName", label: "Store", sortable: true },
+  { key: "status", label: "Status", sortable: true },
+  { key: "payment", label: `${monthName} payment`, sortable: true },
+  { key: "storeHealth", label: "Health", sortable: true },
+  { key: "sales", label: "Store sales · 30d", align: "end", sortable: true },
+  { key: "mrr", label: "Monthly fee", align: "end", sortable: true },
+  { key: "plan", label: "Plan", sortable: true },
+  { key: "renewalDate", label: "Renewal", sortable: true },
 ];
+
+const tableColumns: DataTableColumn[] = [...allColumns, { key: "actions", label: "Actions", hideLabel: true }];
 
 /** Shown by default; Plan and Renewal are optional columns (docs/design/04-super-admin.md §3.3). */
 const defaultColumnKeys: ColumnKey[] = ["storeName", "status", "payment", "storeHealth", "sales", "mrr"];
 
 const statusLabels: Record<ClientStatus, string> = { active: "Live", trial: "Trial", suspended: "Suspended" };
 
-/** Unpaid = something issued and not yet paid (the server's open-invoice rule, as in Collections). */
-function isUnpaid(subscription?: Subscription): boolean {
-  return (
-    subscription != null &&
-    (subscription.status === subscriptionStatusEnum.ACTIVE ||
-      subscription.status === subscriptionStatusEnum.PAST_DUE) &&
-    subscription.amountDue > 0
-  );
-}
+const healthLabels: Record<HealthBandKey, string> = {
+  [healthBandEnum.HEALTHY]: "Healthy",
+  [healthBandEnum.AT_RISK]: "At risk",
+  [healthBandEnum.CRITICAL]: "Critical",
+};
 
-function matchesTab(tab: StoreTab, client: Client, subscription?: Subscription): boolean {
-  switch (tab) {
-    case "live":
-      return client.status === "active";
-    case "trial":
-      return client.status === "trial";
-    case "suspended":
-      return client.status === "suspended";
-    case "unpaid":
-      return isUnpaid(subscription);
-    default:
-      return true;
-  }
-}
+/** Status tabs, then the saved views (§3.7). */
+const tabItems: { key: StoreTab; label: string }[] = [
+  { key: storeTabEnum.ALL, label: "All" },
+  { key: storeTabEnum.LIVE, label: "Live" },
+  { key: storeTabEnum.TRIAL, label: "Trial" },
+  { key: storeTabEnum.UNPAID, label: "Unpaid" },
+  { key: storeTabEnum.SUSPENDED, label: "Suspended" },
+  { key: storeTabEnum.OVERDUE, label: "Overdue" },
+  { key: storeTabEnum.TRIALS_WEEK, label: "Trials ending this week" },
+];
+
+/** The 200-row list is filtered and paged here, 50 per page (§3.7). */
+const PAGE_SIZE = 50;
+
+// "Log in" stays on screen on every row width: the actions column is pinned to the right edge.
+const pinnedActions =
+  "[&_th:last-child]:sticky [&_th:last-child]:right-0 [&_td:last-child]:sticky [&_td:last-child]:right-0 [&_td:last-child]:z-10 [&_td:last-child]:bg-surface";
 
 function initials(name: string): string {
   const words = name.replace(/[^\p{L}\p{N}\s]/gu, "").split(/\s+/).filter(Boolean);
   return (words.length > 1 ? words[0][0] + words[1][0] : (words[0] ?? "").slice(0, 2)).toUpperCase();
 }
 
-function compareClients(a: Client, b: Client, column: ColumnKey, byClientId: Map<string, Subscription>): number {
+function compareClients(a: Client, b: Client, column: string, byClientId: Map<string, Subscription>): number {
   switch (column) {
     case "payment":
     case "renewalDate":
@@ -127,8 +142,6 @@ function compareClients(a: Client, b: Client, column: ColumnKey, byClientId: Map
       return a.revenue - b.revenue;
     case "mrr":
       return a.mrr - b.mrr;
-    case "actions":
-      return 0;
     default: {
       const left = a[column as keyof Client];
       const right = b[column as keyof Client];
@@ -137,17 +150,102 @@ function compareClients(a: Client, b: Client, column: ColumnKey, byClientId: Map
   }
 }
 
+// ─── State: the URL on the Stores page, local on Home ────────────────────────
+
+interface StoresTableState {
+  tab: StoreTab;
+  search: string;
+  filters: StoreFilters;
+  sort?: TableSort;
+  page: number;
+  pageSize: number;
+  setTab: (tab: StoreTab) => void;
+  setSearch: (search: string) => void;
+  setFilters: (patch: Partial<StoreFilters>) => void;
+  setSort: (sort: TableSort) => void;
+  setPage: (page: number) => void;
+  setPageSize: (size: number) => void;
+  clearAll: () => void;
+}
+
+const NO_FILTERS: StoreFilters = { plans: [], statuses: [], health: [], overdue: false };
+
+function useStoresTableState(syncUrl: boolean): StoresTableState {
+  const url = useTableUrlState({ defaultPageSize: PAGE_SIZE });
+  const [local, setLocal] = useState<{
+    tab: StoreTab;
+    search: string;
+    filters: StoreFilters;
+    sort?: TableSort;
+    page: number;
+  }>({ tab: storeTabEnum.ALL, search: "", filters: NO_FILTERS, page: 1 });
+
+  if (!syncUrl) {
+    return {
+      ...local,
+      pageSize: PAGE_SIZE,
+      setTab: (tab) => setLocal((s) => ({ ...s, tab, page: 1 })),
+      setSearch: (search) => setLocal((s) => ({ ...s, search, page: 1 })),
+      setFilters: (patch) => setLocal((s) => ({ ...s, filters: { ...s.filters, ...patch }, page: 1 })),
+      setSort: (sort) => setLocal((s) => ({ ...s, sort, page: 1 })),
+      setPage: (page) => setLocal((s) => ({ ...s, page })),
+      setPageSize: () => undefined,
+      clearAll: () => setLocal({ tab: storeTabEnum.ALL, search: "", filters: NO_FILTERS, page: 1 }),
+    };
+  }
+
+  // Older links (Home › Needs attention, the brief) open a tab with ?status=unpaid.
+  const statusParam = splitParam(url.filters.status);
+  const legacyTab = statusParam.length === 1 && statusParam[0] === "unpaid" ? storeTabEnum.UNPAID : undefined;
+  const tab = isStoreTab(url.filters.tab) ? url.filters.tab : (legacyTab ?? storeTabEnum.ALL);
+  const filters: StoreFilters = {
+    plans: splitParam(url.filters.plan),
+    statuses: legacyTab ? [] : statusParam,
+    health: splitParam(url.filters.health) as HealthBandKey[],
+    overdue: url.filters.overdue === "1",
+  };
+
+  return {
+    tab,
+    search: url.search,
+    filters,
+    sort: url.sort,
+    page: url.page,
+    pageSize: url.pageSize,
+    // One URL write: drops the legacy ?status=unpaid together with setting the tab.
+    setTab: (next) =>
+      url.setParams({
+        tab: next === storeTabEnum.ALL ? undefined : next,
+        ...(legacyTab ? { status: undefined } : {}),
+      }),
+    setSearch: url.setSearch,
+    setFilters: (patch) => {
+      if (patch.plans) url.setFilter("plan", joinParam(patch.plans));
+      if (patch.statuses) url.setFilter("status", joinParam(patch.statuses));
+      if (patch.health) url.setFilter("health", joinParam(patch.health));
+      if (patch.overdue !== undefined) url.setFilter("overdue", patch.overdue ? "1" : undefined);
+    },
+    setSort: url.setSort,
+    setPage: url.setPage,
+    setPageSize: url.setPageSize,
+    clearAll: url.clearFilters,
+  };
+}
+
+// ─── Table ───────────────────────────────────────────────────────────────────
+
 /**
- * The stores table card (docs/design/04-super-admin.md §3.1, §3.3): status tabs, search, Filter and Columns
- * on one row; Store · Status · {Month} payment · Health · Store sales · 30d · Monthly fee; a visible "Log in"
- * and a "···" menu per row. Used by Home (first rows + "View all stores") and the Stores page.
+ * The stores table card (docs/design/04-super-admin.md §3.1, §3.3; 09 §3.7): status tabs and saved views,
+ * search, Filter and Columns on one row; Store · Status · {Month} payment · Health · Store sales · 30d ·
+ * Monthly fee; a visible "Log in" and a "···" menu per row. Default order: health, then billing due date.
+ * Used by Home (first rows + "View all stores") and the Stores page (50 per page, state in the URL).
  */
 export function ClientsTable({
   clients,
   isLoading,
   previewLimit,
   allowColumnChoice = false,
-  initialTab = "all",
+  syncUrl = false,
 }: ClientsTableProps) {
   const navigate = useNavigate();
   const { subscriptions } = useClients();
@@ -155,83 +253,92 @@ export function ClientsTable({
   // Client-side mirror of the backend guard (review C-M5): the server still decides.
   const canManage = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
   const canImpersonate = can(PLATFORM_PERMISSIONS.TENANTS_IMPERSONATE);
-  const [tab, setTab] = useState<StoreTab>(initialTab);
-  const [search, setSearch] = useState("");
-  const [plans, setPlans] = useState<string[]>([]);
-  const [statuses, setStatuses] = useState<string[]>([]);
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(defaultColumnKeys);
-  const [page, setPage] = useState(1);
-  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-    column: "storeName",
-    direction: "ascending",
-  });
+  const state = useStoresTableState(syncUrl);
+  const { tab, filters, sort } = state;
+  const [searchInput, setSearchInput] = useUrlSearch(state.search, state.setSearch);
+  const [savedColumns, setSavedColumns] = usePersistentColumns("stores", defaultColumnKeys);
   const [pending, setPending] = useState<{ client: Client; action: StoreAction } | null>(null);
+  const now = useMemo(() => new Date(), []);
 
+  const visibleColumns = useMemo(
+    () => new Set([...(allowColumnChoice ? savedColumns : defaultColumnKeys), "actions"]),
+    [allowColumnChoice, savedColumns],
+  );
 
   const subscriptionByClientId = useMemo(() => latestSubscriptionByClient(subscriptions), [subscriptions]);
 
   // Search and Filter apply first; the tab counts are taken from that set.
+  const query = state.search.trim().toLowerCase();
   const searched = useMemo(() => {
-    const query = search.trim().toLowerCase();
     return clients.filter((client) => {
       const matchesSearch =
         !query ||
         client.storeName.toLowerCase().includes(query) ||
         client.ownerEmail.toLowerCase().includes(query) ||
         client.ownerName.toLowerCase().includes(query);
-      const matchesPlan = plans.length === 0 || plans.includes(client.plan);
-      const matchesStatus = statuses.length === 0 || statuses.includes(client.status);
-      return matchesSearch && matchesPlan && matchesStatus;
+      return matchesSearch && matchesFilters(filters, client, subscriptionByClientId.get(client.id));
     });
-  }, [clients, plans, search, statuses]);
+    // filters is rebuilt from the URL each render; its parts are the real dependencies.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clients, query, subscriptionByClientId, filters.plans.join(), filters.statuses.join(), filters.health.join(), filters.overdue]);
 
   const tabCounts = useMemo(() => {
-    const counts: Record<StoreTab, number> = { all: 0, live: 0, trial: 0, unpaid: 0, suspended: 0 };
+    const counts = Object.fromEntries(tabItems.map((item) => [item.key, 0])) as Record<StoreTab, number>;
     searched.forEach((client) => {
       const sub = subscriptionByClientId.get(client.id);
-      (Object.keys(counts) as StoreTab[]).forEach((key) => {
-        if (matchesTab(key, client, sub)) counts[key] += 1;
+      tabItems.forEach(({ key }) => {
+        if (matchesTab(key, client, sub, now)) counts[key] += 1;
       });
     });
     return counts;
-  }, [searched, subscriptionByClientId]);
-
-  const filtered = useMemo(
-    () => searched.filter((client) => matchesTab(tab, client, subscriptionByClientId.get(client.id))),
-    [searched, subscriptionByClientId, tab],
-  );
+  }, [now, searched, subscriptionByClientId]);
 
   const sorted = useMemo(() => {
-    const column = (sortDescriptor.column as ColumnKey) ?? "storeName";
-    const items = [...filtered].sort((a, b) => compareClients(a, b, column, subscriptionByClientId));
-    return sortDescriptor.direction === "descending" ? items.reverse() : items;
-  }, [filtered, sortDescriptor, subscriptionByClientId]);
+    const items = searched.filter((client) => matchesTab(tab, client, subscriptionByClientId.get(client.id), now));
+    if (!sort) return items.sort((a, b) => compareByHealthThenDue(a, b, subscriptionByClientId));
+    items.sort((a, b) => compareClients(a, b, sort.column, subscriptionByClientId));
+    return sort.direction === "desc" ? items.reverse() : items;
+  }, [now, searched, sort, subscriptionByClientId, tab]);
 
-  const pageSize = previewLimit ?? PAGE_SIZE;
+  const pageSize = previewLimit ?? state.pageSize;
   const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
-  const safePage = previewLimit ? 1 : Math.min(page, pageCount);
+  const safePage = previewLimit ? 1 : Math.min(state.page, pageCount);
   const pageItems = useMemo(() => {
     const start = (safePage - 1) * pageSize;
     return sorted.slice(start, start + pageSize);
   }, [pageSize, safePage, sorted]);
 
-  const headerColumns = useMemo<ColumnDef[]>(
-    () => [
-      ...allColumns.filter((column) => visibleColumns.includes(column.key)),
-      { key: "actions", label: "Actions", align: "end" },
-    ],
-    [visibleColumns],
-  );
-
-  const hasFilters = search.trim() !== "" || plans.length > 0 || statuses.length > 0;
-  const resetToFirstPage = () => setPage(1);
+  const hasFilters =
+    query !== "" ||
+    filters.plans.length > 0 ||
+    filters.statuses.length > 0 ||
+    filters.health.length > 0 ||
+    filters.overdue;
   const clearFilters = () => {
-    setSearch("");
-    setPlans([]);
-    setStatuses([]);
-    setTab("all");
-    resetToFirstPage();
+    setSearchInput("");
+    state.clearAll();
   };
+
+  const applied: AppliedFilterItem[] = [
+    ...filters.plans.map((plan) => ({
+      key: `plan-${plan}`,
+      label: `Plan: ${getPlanLabel(plan as Client["plan"])}`,
+      onRemove: () => state.setFilters({ plans: filters.plans.filter((p) => p !== plan) }),
+    })),
+    ...filters.statuses.map((status) => ({
+      key: `status-${status}`,
+      label: `Status: ${statusLabels[status as ClientStatus] ?? status}`,
+      onRemove: () => state.setFilters({ statuses: filters.statuses.filter((s) => s !== status) }),
+    })),
+    ...filters.health.map((band) => ({
+      key: `health-${band}`,
+      label: `Health: ${healthLabels[band] ?? band}`,
+      onRemove: () => state.setFilters({ health: filters.health.filter((h) => h !== band) }),
+    })),
+    ...(filters.overdue
+      ? [{ key: "overdue", label: "Payment overdue", onRemove: () => state.setFilters({ overdue: false }) }]
+      : []),
+  ];
 
   const onMenuAction = (client: Client, key: Key) => {
     switch (String(key)) {
@@ -249,10 +356,10 @@ export function ClientsTable({
     }
   };
 
-  const renderCell = (client: Client, key: ColumnKey) => {
+  const renderCell = (client: Client, key: string) => {
     const subscription = subscriptionByClientId.get(client.id);
 
-    switch (key) {
+    switch (key as ColumnKey) {
       case "storeName":
         return (
           <div className="flex min-w-0 items-center gap-3">
@@ -273,11 +380,11 @@ export function ClientsTable({
         return <Chip tone={lifecycle.tone}>{lifecycle.label}</Chip>;
       }
       case "payment": {
-        const state = paymentState(subscription);
+        const payment = paymentState(subscription);
         return (
           <div className="flex flex-col items-start gap-0.5">
-            <Chip tone={state.tone}>{state.label}</Chip>
-            {state.detail ? <span className="text-caption text-fg-muted">{state.detail}</span> : null}
+            <Chip tone={payment.tone}>{payment.label}</Chip>
+            {payment.detail ? <span className="text-caption text-fg-muted">{payment.detail}</span> : null}
           </div>
         );
       }
@@ -346,14 +453,6 @@ export function ClientsTable({
     }
   };
 
-  const tabItems: { key: StoreTab; label: string }[] = [
-    { key: "all", label: "All" },
-    { key: "live", label: "Live" },
-    { key: "trial", label: "Trial" },
-    { key: "unpaid", label: "Unpaid" },
-    { key: "suspended", label: "Suspended" },
-  ];
-
   const emptyContent =
     clients.length === 0 ? (
       <EmptyState
@@ -368,49 +467,29 @@ export function ClientsTable({
           ) : undefined
         }
       />
-    ) : tab === "unpaid" && !hasFilters ? (
+    ) : tab === storeTabEnum.UNPAID && !hasFilters ? (
       <EmptyState icon={IconStore} title={emptyStates.unpaid.title} description={emptyStates.unpaid.description} />
     ) : (
-      <EmptyState
-        icon={IconSearch}
-        title={search.trim() ? emptyStates.noResults(search.trim()).title : "No stores match"}
-        description={emptyStates.noResults("").description}
-        action={
-          <UiButton variant="secondary" onPress={clearFilters}>
-            {emptyStates.noResults("").action}
-          </UiButton>
-        }
-      />
+      <FilterEmpty things="stores" query={state.search} onClear={clearFilters} />
     );
 
-  const firstRow = sorted.length ? (safePage - 1) * pageSize + 1 : 0;
-  const lastRow = Math.min(safePage * pageSize, sorted.length);
-
-  return (
-    <section className={tablePanelClasses}>
+  const toolbar = (
+    <>
       <TableToolbar
-        search={search}
-        onSearchChange={(value) => {
-          setSearch(value);
-          resetToFirstPage();
-        }}
+        search={searchInput}
+        onSearchChange={setSearchInput}
         searchPlaceholder="Search stores or owners"
         columns={
-          allowColumnChoice
-            ? allColumns.map((column) => ({ key: column.key, label: column.label }))
-            : undefined
+          allowColumnChoice ? allColumns.map((column) => ({ key: column.key, label: String(column.label) })) : undefined
         }
-        visibleColumns={allowColumnChoice ? visibleColumns : undefined}
-        onVisibleColumnsChange={allowColumnChoice ? setVisibleColumns : undefined}
+        visibleColumns={allowColumnChoice ? Array.from(savedColumns) : undefined}
+        onVisibleColumnsChange={allowColumnChoice ? (keys) => setSavedColumns(new Set(keys)) : undefined}
         tabs={
           <Tabs
-            aria-label="Store status"
+            aria-label="Store views"
             selectedKey={tab}
-            onSelectionChange={(key) => {
-              setTab(String(key) as StoreTab);
-              resetToFirstPage();
-            }}
-            classNames={{ base: "min-w-0 max-w-full self-stretch", tabList: "h-full border-b-0", tab: "h-13", panel: "hidden" }}
+            onSelectionChange={(key) => state.setTab(String(key) as StoreTab)}
+            classNames={{ base: "min-w-0 max-w-full self-stretch overflow-x-auto", tabList: "h-full border-b-0", tab: "h-13 whitespace-nowrap", panel: "hidden" }}
           >
             {tabItems.map((item) => (
               <Tab
@@ -429,15 +508,9 @@ export function ClientsTable({
           <>
             <FilterCheckboxGroup
               label="Plan"
-              options={PLAN_NAMES.map((planOption) => ({
-                key: planOption,
-                label: PLAN_LABELS[planOption],
-              }))}
-              value={plans}
-              onChange={(value) => {
-                setPlans(value);
-                resetToFirstPage();
-              }}
+              options={PLAN_NAMES.map((planOption) => ({ key: planOption, label: PLAN_LABELS[planOption] }))}
+              value={filters.plans}
+              onChange={(value) => state.setFilters({ plans: value })}
             />
             <FilterCheckboxGroup
               label="Status"
@@ -445,102 +518,70 @@ export function ClientsTable({
                 key: statusOption,
                 label: statusLabels[statusOption],
               }))}
-              value={statuses}
-              onChange={(value) => {
-                setStatuses(value);
-                resetToFirstPage();
-              }}
+              value={filters.statuses}
+              onChange={(value) => state.setFilters({ statuses: value })}
             />
+            <FilterCheckboxGroup
+              label="Health"
+              options={(Object.keys(healthLabels) as HealthBandKey[]).map((band) => ({ key: band, label: healthLabels[band] }))}
+              value={filters.health}
+              onChange={(value) => state.setFilters({ health: value as HealthBandKey[] })}
+            />
+            <div className="space-y-2">
+              <p className="text-label font-medium text-fg-muted">Payment</p>
+              <Checkbox size="sm" isSelected={filters.overdue} onValueChange={(on) => state.setFilters({ overdue: on })}>
+                Payment overdue
+              </Checkbox>
+            </div>
           </>
         }
       />
+      <AppliedFilters items={applied} onClearAll={clearFilters} />
+    </>
+  );
 
-      {isLoading ? (
-        <div className="space-y-2 p-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
-          ))}
+  const footer =
+    !isLoading && sorted.length > 0 ? (
+      previewLimit ? (
+        <div className="flex items-center justify-between gap-3 border-t border-line-subtle px-4 py-3">
+          <p className="text-caption text-fg-muted num">
+            Showing {pageItems.length} of {sorted.length} {sorted.length === 1 ? "store" : "stores"}
+          </p>
+          <Link to="/stores" className="text-label font-medium text-brand hover:underline">
+            View all stores
+          </Link>
         </div>
       ) : (
-        <Table
-          aria-label="Stores"
-          sortDescriptor={sortDescriptor}
-          onSortChange={(descriptor) => {
-            setSortDescriptor(descriptor);
-            resetToFirstPage();
-          }}
-          classNames={{
-            ...dataTableClassNames,
-            // The table shows at most 10 rows per page, so it grows with its rows instead of scrolling inside.
-            wrapper: "p-0 shadow-none rounded-none overflow-x-auto",
-            // No selection column, so the first column isn't the 48px checkbox column.
-            th: dataTableClassNames.th.replace("first:w-12 ", ""),
-            td: dataTableClassNames.td.replace("first:w-12 ", ""),
-          }}
-        >
-          <TableHeader columns={headerColumns}>
-            {(column) => (
-              <TableColumn
-                key={column.key}
-                align={column.align ?? "start"}
-                allowsSorting={column.allowsSorting ?? false}
-                className={cx(column.align === "end" && "text-end")}
-              >
-                {column.key === "actions" ? <span className="sr-only">{column.label}</span> : column.label}
-              </TableColumn>
-            )}
-          </TableHeader>
-          <TableBody items={pageItems} emptyContent={emptyContent}>
-            {(client) => (
-              <TableRow key={client.id} className="cursor-pointer" onClick={() => navigate(`/stores/${client.id}`)}>
-                {(columnKey) => (
-                  <TableCell className={cx(String(columnKey) === "sales" || String(columnKey) === "mrr" ? "text-end" : undefined)}>
-                    {renderCell(client, String(columnKey) as ColumnKey)}
-                  </TableCell>
-                )}
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      )}
+        <TablePagination
+          page={safePage}
+          pageSize={pageSize}
+          total={sorted.length}
+          onPageChange={state.setPage}
+          onPageSizeChange={syncUrl ? state.setPageSize : undefined}
+        />
+      )
+    ) : null;
 
-      {!isLoading && sorted.length > 0 ? (
-        <div className="flex items-center justify-between gap-3 border-t border-line-subtle px-4 py-3">
-          {previewLimit ? (
-            <>
-              <p className="text-caption text-fg-muted num">
-                Showing {lastRow} of {sorted.length} {sorted.length === 1 ? "store" : "stores"}
-              </p>
-              <Link to="/stores" className="text-label font-medium text-brand hover:underline">
-                View all stores
-              </Link>
-            </>
-          ) : (
-            <>
-              <p className="text-caption text-fg-muted num">
-                {firstRow}–{lastRow} of {sorted.length}
-              </p>
-              {pageCount > 1 ? (
-                <div className="flex items-center gap-2">
-                  <UiButton variant="secondary" size="sm" isDisabled={safePage <= 1} onPress={() => setPage(safePage - 1)}>
-                    Previous
-                  </UiButton>
-                  <UiButton
-                    variant="secondary"
-                    size="sm"
-                    isDisabled={safePage >= pageCount}
-                    onPress={() => setPage(safePage + 1)}
-                  >
-                    Next
-                  </UiButton>
-                </div>
-              ) : null}
-            </>
-          )}
-        </div>
-      ) : null}
-
+  return (
+    <>
+      <DataTable
+        aria-label="Stores"
+        columns={tableColumns}
+        visibleColumns={visibleColumns}
+        rows={pageItems}
+        getRowKey={(client) => client.id}
+        renderCell={renderCell}
+        isLoading={isLoading}
+        toolbar={toolbar}
+        footer={footer}
+        sort={sort}
+        onSortChange={state.setSort}
+        onRowAction={(client) => navigate(`/stores/${client.id}`)}
+        stickyFirstColumn
+        scrollClassName={cx(pinnedActions, !previewLimit && "max-h-[70vh]")}
+        emptyContent={emptyContent}
+      />
       <StoreActionDialog client={pending?.client ?? null} action={pending?.action ?? null} onClose={() => setPending(null)} />
-    </section>
+    </>
   );
 }

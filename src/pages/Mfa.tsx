@@ -2,8 +2,10 @@ import { addToast } from "@heroui/react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/common/PageHeader";
+import { toasts } from "../copy";
 import { TotpQrCode } from "../components/auth/TotpQrCode";
 import { Button as UiButton, Card, CopyableId, Input } from "../components/ui";
+import { IconLock } from "../components/ui/icons";
 
 /** "JBSW Y3DP EHPK 3PXP": easier to type into an app than one long run. */
 function groupKey(secret: string): string {
@@ -62,7 +64,7 @@ export function Mfa() {
       const errorCode = errorCodeOf(err);
       if (errorCode === "UNAUTHENTICATED") setStartError("That password didn't match.");
       else if (errorCode === "BAD_USER_INPUT") setStartError("That code didn't match. Try the next one, or a recovery code.");
-      else addToast({ title: "Couldn't start enrolment. Try again.", color: "danger" });
+      else addToast({ title: toasts.mfaStartFailed, color: "danger" });
     } finally {
       setBusy(false);
     }
@@ -103,6 +105,9 @@ export function Mfa() {
   return (
     <div className="mx-auto w-full max-w-[720px]">
       <PageHeader
+        type="page"
+        icon={<IconLock aria-hidden />}
+        section="slate"
         title="Two-step verification"
         description="Required for owners, admins and billing managers before any change to platform data."
       />

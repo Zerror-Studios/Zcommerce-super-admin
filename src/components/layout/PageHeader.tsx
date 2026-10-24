@@ -1,15 +1,31 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 import type { ReactNode } from "react";
 import { BackLink } from "../ui/Primitives";
+import { IconTile, sectionClass, type SectionColor } from "../ui/IconTile";
 import { cx } from "../ui/cx";
 import type { Crumb } from "./types";
 
+/**
+ * The three headers (docs/design/09-settings-and-scale.md §2). Every page uses exactly one:
+ * - "list"   A · top-level list pages: tinted card in the section colour, icon tile, H1 + count, live line, actions.
+ * - "page"   B · dashboards and utilities (Home, Analytics, Settings, Help): icon tile, H1, muted line, one control.
+ * - "detail" C · anything with a parent: "← Parent", H1 + badges, one-line meta, actions; sticky with a hairline.
+ * Without a type, a header with a back link is "detail", one with an icon is "page", and the rest render the
+ * v1.0 plain header until their page is moved over.
+ */
+export type PageHeaderType = "list" | "page" | "detail";
+
 export interface PageHeaderProps {
+  type?: PageHeaderType;
   title?: ReactNode;
   /** Muted count after the title ("Products 248"). Hidden when 0. Never in brackets. */
   count?: ReactNode;
-  /** Optional one-line description: only when it tells the user something. */
+  /** One line under the title: the live summary on A ("12 to ship today · 2 awaiting payment"), meta on C. */
   description?: ReactNode;
+  /** 44px tile on A and B: a stroke icon from ui/icons. */
+  icon?: ReactNode;
+  /** Section colour of the tile and the A tint. */
+  section?: SectionColor;
   /**
    * Route trail. Top-level pages show no breadcrumbs; on a detail/edit page (deeper than Home › Section › Page)
    * the nearest linked parent becomes the back link ("← Products").
@@ -23,7 +39,7 @@ export interface PageHeaderProps {
   actions?: ReactNode;
   /** Extra row under the header (e.g. a date-range control). */
   children?: ReactNode;
-  /** Stick to the top of the scrolling content area (edit pages with Save actions). */
+  /** Stick to the top of the scrolling content area. Detail headers with actions stick by default. */
   sticky?: boolean;
   /** LEGACY: ignored. Every page title is 22/600 (docs/design/01-foundations.md §5). */
   titleClassName?: string;
@@ -40,55 +56,76 @@ function isZero(count: ReactNode): boolean {
   return count === 0 || count === "0";
 }
 
+/** H1 22/30/600 −0.01em, muted count, badges. */
+function Title({ title, count, badges }: Pick<PageHeaderProps, "title" | "count" | "badges">) {
+  if (title == null) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <h1 className="text-title font-semibold text-fg">
+        {title}
+        {count != null && !isZero(count) ? (
+          <span className="ml-2 text-body font-normal text-fg-muted num">{count}</span>
+        ) : null}
+      </h1>
+      {badges}
+    </div>
+  );
+}
+
 /**
- * Page header (docs/design/02-components.md §2): optional back link → H1 22/600 + muted count (+ badges),
- * optional description; actions on the right; 20px above the content.
+ * Page header: one of A/B/C above. 16px between the header and the content; actions wrap under the title on
+ * small screens.
  */
 export function PageHeader({
+  type,
   title,
   count,
   description,
+  icon,
+  section,
   breadcrumbs,
   back,
   badges,
   actions,
   children,
-  sticky = false,
+  sticky,
   className,
 }: PageHeaderProps) {
   const backLink = back ?? backFromCrumbs(breadcrumbs);
+  const kind: PageHeaderType | undefined = type ?? (backLink ? "detail" : icon ? "page" : undefined);
+  const isSticky = sticky ?? (kind === "detail" && actions != null);
+  const showTile = icon != null && kind !== "detail";
+
+  const body = (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-3.5">
+        {showTile ? <IconTile section={section}>{icon}</IconTile> : null}
+        <div className="min-w-0">
+          <Title title={title} count={count} badges={badges} />
+          {description != null ? <div className="mt-0.5 text-body text-fg-muted">{description}</div> : null}
+        </div>
+      </div>
+      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+    </div>
+  );
+
   return (
     <div
       className={cx(
-        "mb-5",
-        sticky && "sticky top-0 z-30 -mx-4 bg-page px-4 py-4 sm:-mx-8 sm:px-8",
+        "mb-4",
+        sectionClass(section),
+        isSticky &&
+          "sticky top-0 z-30 -mx-4 bg-page px-4 py-4 sm:-mx-8 sm:px-8",
+        isSticky && kind === "detail" && "border-b border-line",
         className,
       )}
     >
-      {backLink ? (
+      {backLink && kind === "detail" ? (
         <BackLink to={backLink.href} className="mb-2">
           {backLink.label}
         </BackLink>
       ) : null}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          {title != null ? (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <h1 className="text-title font-semibold text-fg">
-                {title}
-                {count != null && !isZero(count) ? (
-                  <span className="ml-2 text-body font-normal text-fg-muted num">{count}</span>
-                ) : null}
-              </h1>
-              {badges}
-            </div>
-          ) : null}
-          {description != null ? <div className="mt-0.5 text-body text-fg-muted">{description}</div> : null}
-        </div>
-
-        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-      </div>
-
+      {kind === "list" ? <div className="zc-tinted-header rounded-card px-5 py-4">{body}</div> : body}
       {children ? <div className="mt-4">{children}</div> : null}
     </div>
   );

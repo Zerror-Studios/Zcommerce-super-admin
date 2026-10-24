@@ -186,11 +186,11 @@ export const getDarkSearchInputClasses = (className = "") => ({
 
 /**
  * Search field in table toolbars (Store Dashboard table header, Super Admin TableToolbar):
- * 34px, 256px wide from sm up (full width on phones), page-specific placeholder ("Search orders").
- * Pair with tableSearchIconClass.
+ * 34px, 240px wide from sm up (full width on phones), page-specific placeholder ("Search orders").
+ * LEGACY: use <SearchInput placement="toolbar"> instead; kept for call sites not moved yet.
  */
 export const getTableSearchClasses = (className = "") => ({
-  base: "w-full sm:w-64 sm:shrink-0",
+  base: "w-full sm:w-search sm:shrink-0",
   inputWrapper: `
     rounded-lg
     border

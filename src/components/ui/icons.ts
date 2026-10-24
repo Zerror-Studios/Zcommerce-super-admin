@@ -148,7 +148,13 @@ export {
   LuCalendarDays as IconCalendarDays,
   LuLogIn as IconLogin,
   LuLock as IconLock,
+  LuShieldCheck as IconSupport,
+  LuChevronLeft as IconPrevPage,
+  LuChevronRight as IconNextPage,
+  LuGripVertical as IconDragHandle,
+  LuArrowUp as IconSortAsc,
+  LuArrowDown as IconSortDesc,
 } from "react-icons/lu";
 
 /* Filled glyphs where a fill carries the meaning: brand logo, status dot, rating star. */
-export { FaAmazon as IconAmazon, FaCircle as IconDot, FaStar as IconStar } from "react-icons/fa6";
+export { FaAmazon as IconAmazon, FaCircle as IconDot, FaStar as IconStar, FaWhatsapp as IconWhatsApp } from "react-icons/fa6";

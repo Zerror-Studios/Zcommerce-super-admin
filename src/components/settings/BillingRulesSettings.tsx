@@ -22,8 +22,19 @@ function parseDays(value: string): number[] {
     .filter((day) => Number.isInteger(day) && day > 0);
 }
 
-/** Settings › Billing rules (PRD-005 FR-7.1): grace period, health thresholds, reminder schedule. */
-export function BillingRulesSettings() {
+/** The cards of the platform settings form; Settings shows them in separate sections (docs/design/09 §1.7). */
+export type BillingRulesCard = "grace" | "provider" | "health" | "reminders";
+
+const ALL_CARDS: BillingRulesCard[] = ["grace", "provider", "health", "reminders"];
+
+export interface BillingRulesSettingsProps {
+  /** Which cards this section shows. Save still sends the whole settings object; cards not shown keep the server values. */
+  cards?: BillingRulesCard[];
+}
+
+/** Settings › Billing (PRD-005 FR-7.1): grace period, payment provider, health thresholds, reminder schedule. */
+export function BillingRulesSettings({ cards = ALL_CARDS }: BillingRulesSettingsProps) {
+  const show = (card: BillingRulesCard) => cards.includes(card);
   const { settings, loading, updateSettings } = usePlatformSettings();
   const { can } = useAuth();
   // settings:manage is owner-only; others see the rules read-only (review C-M5).
@@ -62,7 +73,8 @@ export function BillingRulesSettings() {
   };
 
   return (
-    <div className="mx-auto flex max-w-content-form flex-col gap-4">
+    <div className="flex max-w-content-form flex-col gap-4">
+      {show("grace") ? (
       <Card title="Grace period" description="Days after a renewal passes unpaid before the store counts as past its grace period. Stores can override it.">
         <Input
           label="Default grace period (days)"
@@ -75,7 +87,9 @@ export function BillingRulesSettings() {
           className="max-w-xs"
         />
       </Card>
+      ) : null}
 
+      {show("provider") ? (
       <Card title="Payment provider" description="How stores pay Zcom. Secrets live in the server environment; this only picks which provider is live.">
         <div className="flex flex-col gap-3">
           <Select
@@ -106,7 +120,9 @@ export function BillingRulesSettings() {
           ) : null}
         </div>
       </Card>
+      ) : null}
 
+      {show("health") ? (
       <Card title="Health thresholds" description="When Collections flags a store as at risk.">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input
@@ -127,7 +143,9 @@ export function BillingRulesSettings() {
           />
         </div>
       </Card>
+      ) : null}
 
+      {show("reminders") ? (
       <Card title="Renewal reminders" description="Days before and after the renewal date, comma-separated. Channels apply to every reminder.">
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -156,6 +174,7 @@ export function BillingRulesSettings() {
           />
         </div>
       </Card>
+      ) : null}
 
       {readOnly ? (
         <p className="text-label text-fg-muted">Only a platform owner can change these rules.</p>

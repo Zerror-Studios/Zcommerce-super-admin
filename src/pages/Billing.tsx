@@ -4,7 +4,8 @@ import { SubscriptionReportsTab } from "../components/billing/SubscriptionReport
 import { PageHeader } from "../components/common/PageHeader";
 import { AutomationSettingsTab } from "../components/settings/AutomationSettingsTab";
 import { TransactionsTab } from "../components/payments/TransactionsTab";
-import { ErrorState } from "../components/ui";
+import { ErrorState, formatCount } from "../components/ui";
+import { IconPayments, IconSend } from "../components/ui/icons";
 import { toasts } from "../copy";
 import { usePayments } from "../hooks/use-platform-reports";
 
@@ -17,6 +18,15 @@ export function Billing() {
   const { section } = useParams<{ section: string }>();
   // PRD-005 FR-5.2: platform payments (payment_log), read only on Transactions.
   const payments = usePayments({ skip: section !== "transactions" });
+
+  // The live line under the title (header A): how the loaded payments stand.
+  const statusCounts = useMemo(() => {
+    const counts = { success: 0, pending: 0, failed: 0 };
+    payments.data.forEach((txn) => {
+      if (txn.status === "success" || txn.status === "pending" || txn.status === "failed") counts[txn.status] += 1;
+    });
+    return counts;
+  }, [payments.data]);
 
   const active = useMemo(() => {
     if (!section || !(sections as readonly string[]).includes(section)) return null;
@@ -33,7 +43,13 @@ export function Billing() {
   if (active === "reminders") {
     return (
       <div>
-        <PageHeader title="Payment reminders" description="Remind stores before their plan renews or when a payment is overdue." />
+        <PageHeader
+          type="list"
+          icon={<IconSend aria-hidden />}
+          section="green"
+          title="Payment reminders"
+          description="Remind stores before their plan renews or when a payment is overdue."
+        />
         <AutomationSettingsTab />
       </div>
     );
@@ -42,9 +58,16 @@ export function Billing() {
   return (
     <div>
       <PageHeader
+        type="list"
+        icon={<IconPayments aria-hidden />}
+        section="green"
         title="Transactions"
         count={payments.loading ? undefined : payments.data.length}
-        description="What stores paid Zcom for their plans"
+        description={
+          payments.loading
+            ? "What stores paid Zcom for their plans"
+            : `${formatCount(statusCounts.success)} paid · ${formatCount(statusCounts.pending)} due · ${formatCount(statusCounts.failed)} failed`
+        }
       />
       {payments.error ? (
         <ErrorState title="Couldn't load transactions." description={toasts.genericError} onRetry={() => void payments.refetch()} />

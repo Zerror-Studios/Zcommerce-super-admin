@@ -28,7 +28,7 @@ import {
   YAxis,
 } from "recharts";
 import { areaGradientStops, chartColors, planColors, recharts } from "../ui/chart-theme";
-import { IconDownload } from "../ui/icons";
+import { IconAnalytics, IconDownload } from "../ui/icons";
 import {
   Button as UiButton,
   Card,
@@ -160,6 +160,9 @@ export function RevenueReportsTab() {
   return (
     <div>
       <PageHeader
+        type="page"
+        icon={<IconAnalytics aria-hidden />}
+        section="violet"
         title="Platform revenue"
         description="What stores pay Zcom for their plans."
         actions={

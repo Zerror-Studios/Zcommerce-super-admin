@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button as UiButton } from "../components/ui";
 import { AuthField, AuthLayout } from "../components/layout/AuthLayout";
 import { PLATFORM_SET_PASSWORD } from "../graphql/auth";
+import { toasts } from "../copy";
 import { client, errorCodeOf } from "../lib/apollo-client";
 
 const MIN_PASSWORD_LENGTH = 12;
@@ -35,7 +36,7 @@ export function SetPassword() {
         variables: { token, password },
         context: { skipAuth: true },
       });
-      addToast({ title: "Password set. Log in to continue.", color: "success" });
+      addToast({ title: toasts.passwordSet, color: "success" });
       navigate("/sign-in", { replace: true });
     } catch (error) {
       const code = errorCodeOf(error);

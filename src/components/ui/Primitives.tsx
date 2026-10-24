@@ -148,13 +148,17 @@ export interface SegmentedControlProps<T extends string> {
   className?: string;
 }
 
-/** Small toggle inside a card (chart metric, "Top pages by"): 28px on a muted track. */
+/**
+ * The one segmented control (docs/design/09-settings-and-scale.md §2): 32px pill group on a muted track, the
+ * same everywhere (All · Mobile · Desktop, 30 · 90 · Year, Visits · Time · Exits). Never mixed with underline
+ * tabs in the same row.
+ */
 export function SegmentedControl<T extends string>({ options, value, onChange, className, ...rest }: SegmentedControlProps<T>) {
   return (
     <div
       role="radiogroup"
       aria-label={rest["aria-label"]}
-      className={cx("inline-flex h-7 items-center gap-0.5 rounded-lg bg-surface-sunken p-0.5", className)}
+      className={cx("inline-flex h-8 items-center gap-0.5 rounded-lg bg-surface-sunken p-0.5", className)}
     >
       {options.map((option) => {
         const selected = option.value === value;
@@ -166,7 +170,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, c
             aria-checked={selected}
             onClick={() => onChange(option.value as T)}
             className={cx(
-              "h-6 rounded-md px-2.5 text-label font-medium transition-colors duration-fast",
+              "h-7 rounded-md px-3 text-label font-medium transition-colors duration-fast",
               selected ? "bg-surface text-fg shadow-sticky" : "text-fg-muted hover:text-fg",
             )}
           >
