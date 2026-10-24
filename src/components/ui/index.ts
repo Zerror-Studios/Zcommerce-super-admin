@@ -112,3 +112,5 @@ export { DEFAULT_PAGE_SIZE, PAGE_SIZES, TablePagination } from "./TablePaginatio
 export type { TablePaginationProps } from "./TablePagination";
 export { usePersistentColumns, useTableUrlState } from "./table-state";
 export type { SortDirection, TableSort, TableUrlOptions, TableUrlState } from "./table-state";
+export { Avatar, CoverTag, ImageControl, ViewToggle, useViewMode } from "./Media";
+export type { AvatarProps, ImageControlProps, ViewMode } from "./Media";
