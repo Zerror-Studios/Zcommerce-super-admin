@@ -65,6 +65,7 @@ import { TONES } from "./tones";
 import { toastError } from "./toast";
 import { AiInsightCard, AiSuggestion, AiThinking, TodaysBrief, WriteWithAiButton } from "./Ai";
 import { AskBar } from "../layout/Assistant";
+import DevUiV14 from "./DevUiV14";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -274,6 +275,8 @@ export default function DevUiPage() {
         <Card className="w-80" padding="none"><ErrorState inline title="Couldn't load products." onRetry={() => undefined} /></Card>
         <div className="flex w-80 flex-col gap-2"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-4 w-1/2" /><Skeleton className="h-24 w-full" /></div>
       </Section>
+
+      <DevUiV14 />
 
       <Section title="AI layer">
         <TodaysBrief
