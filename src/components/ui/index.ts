@@ -101,6 +101,6 @@ export { RankedBars } from "./RankedBars";
 export type { RankedBarItem } from "./RankedBars";
 export { SelectionBar } from "./SelectionBar";
 export type { SelectionBarProps } from "./SelectionBar";
-export { AiFeedback, AiInsightCard, AiSpectrumDefs, AiSuggestion, AiThinking, Sparkle, TodaysBrief, WriteWithAiButton } from "./Ai";
-export type { AiInsightCardProps, AiSuggestionProps, AiThinkingProps, TodaysBriefProps } from "./Ai";
+export { AiAskInput, AiAvatar, AiFeedback, AiInsightCard, AiSpectrumDefs, AiSuggestion, AiThinking, Sparkle, TodaysBrief, WriteWithAiButton } from "./Ai";
+export type { AiAskInputProps, AiInsightCardProps, AiSuggestionProps, AiThinkingProps, BriefLine, TodaysBriefProps } from "./Ai";
 export { isAiEnabled, useAiEnabled } from "./ai-flag";

@@ -299,17 +299,37 @@ export default function DevUiPage() {
           onDismiss={() => undefined}
           source="Based on orders and sessions, 15 Sep – 14 Oct"
         />
-        <div className="flex w-80 flex-col gap-2">
+        <div className="flex w-full max-w-2xl flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="text-label font-medium text-fg">Description</span>
             <WriteWithAiButton onPress={() => undefined} />
           </div>
           <AiSuggestion
+            subtitle="a more premium version of your description"
             text="A breathable kurta set cut from pure linen in a soft sage green."
-            onAccept={() => undefined}
+            onUse={() => undefined}
+            onKeep={() => undefined}
+            onAsk={() => undefined}
+          />
+          <AiSuggestion isLoading onUse={() => undefined} onKeep={() => undefined} onAsk={() => undefined} />
+          <AiSuggestion
+            error="I couldn't reach the AI service. Try again."
             onRetry={() => undefined}
-            onDiscard={() => undefined}
-            chips={[{ label: "Shorter", onPress: () => undefined }, { label: "More premium", onPress: () => undefined }]}
+            onUse={() => undefined}
+            onKeep={() => undefined}
+          />
+          <TodaysBrief
+            lines={[
+              { what: "Pack 12 orders before 4 pm", why: "that's when Delhivery picks up" },
+              { what: "Restock the linen kurta", why: "3 left and it sold 9 this week" },
+              { what: "Plan something for Saturday", why: "your best day, with nothing scheduled" },
+            ]}
+            actions={[
+              { label: "Ship orders", onPress: () => undefined },
+              { label: "Restock", onPress: () => undefined },
+              { label: "Plan a campaign", onPress: () => undefined },
+            ]}
+            onAskAi={() => undefined}
           />
         </div>
         <div className="w-full max-w-[560px]">
