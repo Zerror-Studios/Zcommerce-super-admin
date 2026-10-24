@@ -2,7 +2,9 @@ import { useQuery } from "@apollo/client";
 import { PLATFORM_AUDIT_LOG } from "../../graphql/team";
 import { useUrlSearch } from "../../hooks/use-url-search";
 import { toasts } from "../../copy";
+import { FilterEmpty } from "../common/FilterEmpty";
 import { TableToolbar } from "../common/TableToolbar";
+import { IconLock } from "../ui/icons";
 import {
   CopyableId,
   DataTable,
@@ -53,7 +55,7 @@ export function AuditLogSettings() {
   const total = data?.platformAuditLog.totalCount ?? 0;
 
   if (query.error) {
-    return <ErrorState title="Couldn't load the audit log" description={toasts.genericError} onRetry={() => void query.refetch()} />;
+    return <ErrorState title="Couldn't load the audit log." description={toasts.genericError} onRetry={() => void query.refetch()} />;
   }
 
   return (
@@ -99,7 +101,13 @@ export function AuditLogSettings() {
           isDisabled={query.loading}
         />
       }
-      emptyContent={<EmptyState title="Nothing logged yet" description="Platform changes appear here as they happen." />}
+      emptyContent={
+        action ? (
+          <FilterEmpty things="entries" query={action} onClear={() => setSearch("")} />
+        ) : (
+          <EmptyState icon={IconLock} title="Nothing logged yet" description="Platform changes appear here as they happen." />
+        )
+      }
     />
   );
 }

@@ -76,8 +76,8 @@ export function Home() {
 
       {brief ? (
         <TodaysBrief
-          message={brief.message}
-          action={{ label: brief.action.label, onPress: () => navigate(brief.action.href) }}
+          lines={brief.lines}
+          actions={brief.actions.map((item) => ({ label: item.label, onPress: () => navigate(item.href) }))}
           onDismiss={() => setBriefDismissed(true)}
         />
       ) : null}

@@ -8,6 +8,7 @@ import { formatDate } from "../../lib/utils";
 import { joinParam, splitParam } from "../../lib/store-table.util";
 import { useUrlSearch } from "../../hooks/use-url-search";
 import { AppliedFilters } from "../common/AppliedFilters";
+import { FilterEmpty } from "../common/FilterEmpty";
 import {
   FilterCheckboxGroup,
   TableToolbar,
@@ -37,7 +38,7 @@ import {
 } from "../ui";
 import type { Tone } from "../ui";
 import { IconTag } from "../ui/icons";
-import { emptyStates } from "../../copy";
+import { toasts } from "../../copy";
 
 export interface CouponsTabProps {
   coupons: Coupon[];
@@ -221,7 +222,7 @@ export function CouponsTab({
     onCreateOpenChange(false);
     resetForm();
     addToast({
-      title: `${trimmed} created.`,
+      title: toasts.discountCreated(trimmed),
       description: "The code is ready to use.",
       color: "success",
     });
@@ -280,16 +281,7 @@ export function CouponsTab({
         }
         emptyContent={
           isFiltered ? (
-            <EmptyState
-              icon={IconTag}
-              title={table.search.trim() ? emptyStates.noResults(table.search.trim()).title : "No discounts match these filters"}
-              description={emptyStates.noResults("").description}
-              action={
-                <UiButton variant="secondary" size="sm" onPress={clearFilters}>
-                  {emptyStates.noResults("").action}
-                </UiButton>
-              }
-            />
+            <FilterEmpty things="discounts" query={table.search} onClear={clearFilters} />
           ) : (
             <EmptyState
               icon={IconTag}

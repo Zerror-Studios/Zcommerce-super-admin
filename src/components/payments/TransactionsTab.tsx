@@ -6,9 +6,9 @@ import { useClients } from "../../providers/ClientsProvider";
 import { useUrlSearch } from "../../hooks/use-url-search";
 import { formatDateTime } from "../../lib/utils";
 import { AppliedFilters } from "../common/AppliedFilters";
+import { FilterEmpty } from "../common/FilterEmpty";
 import { FilterCheckboxGroup, TableToolbar } from "../common/TableToolbar";
 import {
-  Button as UiButton,
   CopyableId,
   DataTable,
   EmptyState,
@@ -20,7 +20,6 @@ import {
   type DataTableColumn,
 } from "../ui";
 import { IconPayments } from "../ui/icons";
-import { emptyStates } from "../../copy";
 
 export interface TransactionsTabProps {
   transactions: Transaction[];
@@ -173,16 +172,7 @@ export function TransactionsTab({ transactions, isLoading = false }: Transaction
       }
       emptyContent={
         isFiltered ? (
-          <EmptyState
-            icon={IconPayments}
-            title={table.search.trim() ? emptyStates.noResults(table.search.trim()).title : "No transactions match these filters"}
-            description={emptyStates.noResults("").description}
-            action={
-              <UiButton variant="secondary" size="sm" onPress={clearFilters}>
-                {emptyStates.noResults("").action}
-              </UiButton>
-            }
-          />
+          <FilterEmpty things="transactions" query={table.search} onClear={clearFilters} />
         ) : (
           <EmptyState
             icon={IconPayments}

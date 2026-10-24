@@ -15,6 +15,7 @@ import { PREVIEW_RENEWAL_REMINDER, SEND_RENEWAL_REMINDERS } from "../../graphql/
 import type { ReminderBatch, ReminderPreview } from "../../types/platform-api";
 import { toasts } from "../../copy";
 import { useUrlSearch } from "../../hooks/use-url-search";
+import { FilterEmpty } from "../common/FilterEmpty";
 import { StatusChip } from "../common/StatusChip";
 import { TableToolbar } from "../common/TableToolbar";
 import { IconMessages, IconSend, IconView } from "../ui/icons";
@@ -153,7 +154,7 @@ export function AutomationSettingsTab() {
 
   const handleSend = async () => {
     if (selectedCount === 0) {
-      toastError("Select at least one store.");
+      toastError(toasts.selectStore);
       return;
     }
     // PRD-005 FR-7.3: the server renders, logs and queues the reminders
@@ -345,11 +346,22 @@ export function AutomationSettingsTab() {
           />
         }
         emptyContent={
-          <EmptyState
-            icon={IconMessages}
-            title="No stores in this window"
-            description="Choose a wider window or search for another store."
-          />
+          allStoreRows.length === 0 ? (
+            <EmptyState
+              icon={IconMessages}
+              title="No stores to remind"
+              description="Stores on a plan appear here before their renewal date."
+            />
+          ) : (
+            <FilterEmpty
+              things="stores"
+              query={table.search}
+              onClear={() => {
+                setSearch("");
+                table.setParams({ due: "all", q: undefined });
+              }}
+            />
+          )
         }
       />
 

@@ -2,6 +2,7 @@ import { addToast } from "@heroui/react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/common/PageHeader";
+import { toasts } from "../copy";
 import { TotpQrCode } from "../components/auth/TotpQrCode";
 import { Button as UiButton, Card, CopyableId, Input } from "../components/ui";
 import { IconLock } from "../components/ui/icons";
@@ -63,7 +64,7 @@ export function Mfa() {
       const errorCode = errorCodeOf(err);
       if (errorCode === "UNAUTHENTICATED") setStartError("That password didn't match.");
       else if (errorCode === "BAD_USER_INPUT") setStartError("That code didn't match. Try the next one, or a recovery code.");
-      else addToast({ title: "Couldn't start enrolment. Try again.", color: "danger" });
+      else addToast({ title: toasts.mfaStartFailed, color: "danger" });
     } finally {
       setBusy(false);
     }

@@ -7,6 +7,7 @@ import type { AiAnswer } from "../components/layout";
 import { formatMoney } from "../components/ui/money";
 import type { Client, Subscription } from "../types";
 import { getStoreHealth } from "./storeHealth";
+import { latestSubscriptionByClient } from "./subscription-lookup.util";
 import { paymentState } from "./storeStatus";
 
 function names(list: string[]): string {
@@ -14,36 +15,70 @@ function names(list: string[]): string {
   return `${list.slice(0, 2).join(", ")} and ${list.length - 2} more`;
 }
 
-/** Today's brief on Home: stores past their grace period, then stores with critical health. Null when all is well. */
-export function platformBrief(input: {
-  clients: Client[];
-  subscriptions: Subscription[];
-}): { message: string; action: { label: string; href: string } } | null {
+export interface PlatformBrief {
+  /** At most three "what to do — why" lines, most urgent first (08 §2.1). */
+  lines: { what: string; why: string }[];
+  /** First is the blue action. */
+  actions: { label: string; href: string }[];
+}
+
+function count(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/**
+ * Today's brief on Home, operations-style: stores past their grace period, overdue payments still in grace,
+ * payments due soon, then stores with critical health. Null when all is well. Reads the server's payment badge
+ * and health score only.
+ */
+export function platformBrief(input: { clients: Client[]; subscriptions: Subscription[] }): PlatformBrief | null {
   const { clients, subscriptions } = input;
+  const byClient = latestSubscriptionByClient(subscriptions);
   const pastGrace: string[] = [];
+  const overdue: string[] = [];
+  const due: string[] = [];
   const critical: string[] = [];
   for (const client of clients) {
     if (client.status === "suspended") continue;
-    const sub = subscriptions.find((s) => s.clientId === client.id);
-    const state = paymentState(sub);
+    const state = paymentState(byClient.get(client.id));
     if (state.detail === "Past grace period") pastGrace.push(client.storeName);
+    else if (state.tone === "danger") overdue.push(client.storeName);
+    else if (state.tone === "warning") due.push(client.storeName);
     if (getStoreHealth(client).score < 50) critical.push(client.storeName);
   }
+
+  const lines: PlatformBrief["lines"] = [];
   if (pastGrace.length) {
-    return {
-      message: `${names(pastGrace)} ${pastGrace.length === 1 ? "is" : "are"} past the grace period and due for suspension.${
-        critical.length ? ` ${critical.length} ${critical.length === 1 ? "store has" : "stores have"} critical health.` : ""
-      }`,
-      action: { label: "Review stores", href: "/stores?tab=unpaid" },
-    };
+    lines.push({
+      what: `Decide on ${count(pastGrace.length, "store", "stores")} past the grace period`,
+      why: `${names(pastGrace)} ${pastGrace.length === 1 ? "is" : "are"} due for suspension`,
+    });
+  }
+  if (overdue.length) {
+    lines.push({
+      what: `Chase ${count(overdue.length, "overdue payment", "overdue payments")}`,
+      why: `${names(overdue)} ${overdue.length === 1 ? "is" : "are"} still inside the grace period`,
+    });
+  }
+  if (due.length) {
+    lines.push({
+      what: `Send reminders for ${count(due.length, "payment", "payments")} due soon`,
+      why: names(due),
+    });
   }
   if (critical.length) {
-    return {
-      message: `${names(critical)} ${critical.length === 1 ? "has" : "have"} critical health. Worth a check-in.`,
-      action: { label: "Review stores", href: "/stores" },
-    };
+    lines.push({
+      what: `Check in with ${count(critical.length, "store", "stores")} with critical health`,
+      why: `${names(critical)} scored below 50`,
+    });
   }
-  return null;
+  if (!lines.length) return null;
+
+  const actions: PlatformBrief["actions"] = [];
+  if (pastGrace.length || overdue.length) actions.push({ label: "Review overdue stores", href: "/stores?tab=overdue" });
+  if (due.length) actions.push({ label: "Payment reminders", href: "/billing/reminders" });
+  actions.push({ label: "View stores", href: "/stores" });
+  return { lines: lines.slice(0, 3), actions: actions.slice(0, 3) };
 }
 
 /** One insight for a store's Overview, or null. */

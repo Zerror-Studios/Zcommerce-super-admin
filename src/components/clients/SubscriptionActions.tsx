@@ -14,6 +14,7 @@ import {
   RECORD_SUBSCRIPTION_PAYMENT,
 } from "../../graphql/subscriptions";
 import { useClients } from "../../providers/ClientsProvider";
+import { toasts } from "../../copy";
 import {
   Button as UiButton,
   Card,
@@ -110,7 +111,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
             <UiButton
               variant="secondary"
               isLoading={busy}
-              onPress={() => void act(() => markPastDue({ variables: { tenantId } }), "Marked past due.")}
+              onPress={() => void act(() => markPastDue({ variables: { tenantId } }), toasts.markedPastDue)}
             >
               Mark past due
             </UiButton>
@@ -119,7 +120,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
             <UiButton
               variant="primary"
               isLoading={busy}
-              onPress={() => void act(() => reactivate({ variables: { tenantId } }), "Subscription reactivated.")}
+              onPress={() => void act(() => reactivate({ variables: { tenantId } }), toasts.subscriptionReactivated)}
             >
               Reactivate subscription
             </UiButton>
@@ -180,7 +181,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
               onPress={() =>
                 void act(
                   () => changePlan({ variables: { tenantId, planId, billingCycle: cycle, effective } }),
-                  "Plan changed.",
+                  toasts.planChanged,
                 )
               }
             >
@@ -214,7 +215,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
               variant="primary"
               isLoading={busy}
               onPress={() =>
-                void act(() => extendTrial({ variables: { tenantId, days: Number(days) } }), "Trial extended.")
+                void act(() => extendTrial({ variables: { tenantId, days: Number(days) } }), toasts.trialExtended)
               }
             >
               Extend
@@ -242,7 +243,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
             <UiButton
               variant="danger"
               isLoading={busy}
-              onPress={() => void act(() => cancel({ variables: { tenantId, immediate } }), "Subscription cancelled.")}
+              onPress={() => void act(() => cancel({ variables: { tenantId, immediate } }), toasts.subscriptionCancelled)}
             >
               Cancel subscription
             </UiButton>
@@ -289,7 +290,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
                         reference,
                       },
                     }),
-                  "Payment recorded.",
+                  toasts.paymentRecorded,
                 )
               }
             >

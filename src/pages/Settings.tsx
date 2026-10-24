@@ -43,8 +43,8 @@ import {
 
 /**
  * Settings as one two-pane card (docs/design/09-settings-and-scale.md §1, §1.7). Each section keeps its URL
- * (/settings/:section). The old Billing rules page is split into Payment gateway, Dunning and Health thresholds
- * by moving its cards; /settings/billing-rules is Dunning. Payment reminders moved to Subscriptions
+ * (/settings/:section). The old Billing rules page is split into Payment gateway, Grace period and reminders, and Health thresholds
+ * by moving its cards; /settings/billing-rules is Grace period and reminders. Payment reminders moved to Subscriptions
  * (/settings/automation redirects there, see App.tsx).
  */
 type SettingsSection = "payment-gateway" | "billing-rules" | "health" | "discounts" | "team" | "audit";
@@ -65,8 +65,8 @@ const sections: Record<SettingsSection, SectionMeta> = {
     cards: ["provider"],
   },
   "billing-rules": {
-    title: "Dunning",
-    description: "Grace period and the renewal reminder schedule.",
+    title: "Grace period and reminders",
+    description: "Extra days before a store is suspended, and when renewal reminders go out.",
     icon: IconBilling,
     cards: ["grace", "reminders"],
   },

@@ -15,7 +15,7 @@ import {
 } from "../../graphql/team";
 import { useAuth } from "../../providers/AuthProvider";
 import { toasts } from "../../copy";
-import { IconAdd, IconMore } from "../ui/icons";
+import { IconAdd, IconMore, IconUser } from "../ui/icons";
 import {
   Button as UiButton,
   Chip,
@@ -125,9 +125,9 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
       setRoleTarget(user);
       setNextRole(user.role);
     } else if (key === "mfa") {
-      void run(() => resetMfa({ variables: { id: user.id } }), `Two-step verification reset for ${user.email}.`);
+      void run(() => resetMfa({ variables: { id: user.id } }), toasts.mfaReset(user.email));
     } else if (key === "disable") {
-      void run(() => disable({ variables: { id: user.id } }), `${user.email} disabled.`);
+      void run(() => disable({ variables: { id: user.id } }), toasts.memberDisabled(user.email));
     }
   };
 
@@ -172,7 +172,7 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
   };
 
   if (query.error) {
-    return <ErrorState title="Couldn't load the team" description={toasts.genericError} onRetry={() => void query.refetch()} />;
+    return <ErrorState title="Couldn't load the team." description={toasts.genericError} onRetry={() => void query.refetch()} />;
   }
 
   return (
@@ -194,7 +194,7 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
             onPageSizeChange={table.setPageSize}
           />
         }
-        emptyContent={<EmptyState title="No team members yet" description="Invite the Zerror team here." action={canManageUsers ? <UiButton variant="primary" size="sm" startIcon={<IconAdd aria-hidden />} onPress={() => onCreateOpenChange(true)}>Invite member</UiButton> : undefined} />}
+        emptyContent={<EmptyState icon={IconUser} title="No team members yet" description="Invite the Zerror team here." action={canManageUsers ? <UiButton variant="secondary" size="sm" startIcon={<IconAdd aria-hidden />} onPress={() => onCreateOpenChange(true)}>Invite member</UiButton> : undefined} />}
       />
 
       <Modal isOpen={createOpen} onClose={() => { onCreateOpenChange(false); setSetupUrl(null); }} width="sm">
@@ -240,7 +240,7 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
           </ModalBody>
           <ModalFooter>
             <UiButton variant="ghost" onPress={() => setRoleTarget(null)}>Cancel</UiButton>
-            <UiButton variant="primary" onPress={() => { const target = roleTarget; setRoleTarget(null); if (target) void run(() => updateRole({ variables: { id: target.id, role: nextRole } }), "Role changed."); }}>Change role</UiButton>
+            <UiButton variant="primary" onPress={() => { const target = roleTarget; setRoleTarget(null); if (target) void run(() => updateRole({ variables: { id: target.id, role: nextRole } }), toasts.roleChanged); }}>Change role</UiButton>
           </ModalFooter>
         </ModalContent>
       </Modal>

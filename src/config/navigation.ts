@@ -38,7 +38,7 @@ export const mainNavItems: NavItem[] = [
 /** Sections of the Settings two-pane card (pages/Settings.tsx). */
 export const settingsPages = [
   { label: "Payment gateway", to: "/settings/payment-gateway" },
-  { label: "Dunning", to: "/settings/billing-rules" },
+  { label: "Grace period and reminders", to: "/settings/billing-rules" },
   { label: "Health thresholds", to: "/settings/health" },
   { label: "Discounts", to: "/settings/discounts" },
   { label: "Admins", to: "/settings/team" },

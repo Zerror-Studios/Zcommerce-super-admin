@@ -1,5 +1,5 @@
 import { useMemo, useState, type Key } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { Client, ClientStatus, Subscription } from "../../types";
 import { getPlanLabel, PLAN_LABELS, PLAN_NAMES } from "../../lib/display-labels.util";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
@@ -23,6 +23,7 @@ import {
 } from "../../lib/store-table.util";
 import { useUrlSearch } from "../../hooks/use-url-search";
 import { AppliedFilters, type AppliedFilterItem } from "../common/AppliedFilters";
+import { FilterEmpty } from "../common/FilterEmpty";
 import { FilterCheckboxGroup, TableToolbar } from "../common/TableToolbar";
 import { RenewalBadge } from "../common/RenewalBadge";
 import { StoreHealthCell } from "../common/StoreHealthCell";
@@ -49,7 +50,7 @@ import {
   type DataTableColumn,
   type TableSort,
 } from "../ui";
-import { IconLogin, IconMore, IconSearch, IconStore } from "../ui/icons";
+import { IconLogin, IconMore, IconStore } from "../ui/icons";
 import { StoreActionDialog, type StoreAction } from "./storeActions";
 import { logInToStore } from "./storeLogin";
 import { emptyStates } from "../../copy";
@@ -171,7 +172,6 @@ const NO_FILTERS: StoreFilters = { plans: [], statuses: [], health: [], overdue:
 
 function useStoresTableState(syncUrl: boolean): StoresTableState {
   const url = useTableUrlState({ defaultPageSize: PAGE_SIZE });
-  const [, setParams] = useSearchParams();
   const [local, setLocal] = useState<{
     tab: StoreTab;
     search: string;
@@ -214,17 +214,10 @@ function useStoresTableState(syncUrl: boolean): StoresTableState {
     pageSize: url.pageSize,
     // One URL write: drops the legacy ?status=unpaid together with setting the tab.
     setTab: (next) =>
-      setParams(
-        (previous) => {
-          const params = new URLSearchParams(previous);
-          params.delete("page");
-          if (legacyTab) params.delete("status");
-          if (next === storeTabEnum.ALL) params.delete("tab");
-          else params.set("tab", next);
-          return params;
-        },
-        { replace: true },
-      ),
+      url.setParams({
+        tab: next === storeTabEnum.ALL ? undefined : next,
+        ...(legacyTab ? { status: undefined } : {}),
+      }),
     setSearch: url.setSearch,
     setFilters: (patch) => {
       if (patch.plans) url.setFilter("plan", joinParam(patch.plans));
@@ -477,16 +470,7 @@ export function ClientsTable({
     ) : tab === storeTabEnum.UNPAID && !hasFilters ? (
       <EmptyState icon={IconStore} title={emptyStates.unpaid.title} description={emptyStates.unpaid.description} />
     ) : (
-      <EmptyState
-        icon={IconSearch}
-        title={query ? emptyStates.noResults(state.search.trim()).title : "No stores match"}
-        description={emptyStates.noResults("").description}
-        action={
-          <UiButton variant="secondary" onPress={clearFilters}>
-            {emptyStates.noResults("").action}
-          </UiButton>
-        }
-      />
+      <FilterEmpty things="stores" query={state.search} onClear={clearFilters} />
     );
 
   const toolbar = (

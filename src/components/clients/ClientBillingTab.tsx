@@ -21,7 +21,7 @@ import {
   type DataTableColumn,
 } from "../ui";
 import { IconInvoice } from "../ui/icons";
-import { emptyStates } from "../../copy";
+import { emptyStates, toasts } from "../../copy";
 
 export interface ClientBillingTabProps {
   client: Client;
@@ -86,7 +86,7 @@ export function ClientBillingTab({
     if (!useOverride) {
       setError(null);
       onSaveGracePeriod(undefined);
-      addToast({ title: `Grace period set to the default (${days(defaultGracePeriodDays)}).` });
+      addToast({ title: toasts.gracePeriodDefault(days(defaultGracePeriodDays)) });
       return;
     }
     const n = Number(daysInput);
@@ -96,7 +96,7 @@ export function ClientBillingTab({
     }
     setError(null);
     onSaveGracePeriod(n);
-    addToast({ title: `Grace period set to ${days(n)} for ${client.storeName}.` });
+    addToast({ title: toasts.gracePeriodSet(days(n), client.storeName) });
   };
 
   const onCancel = () => {

@@ -1,6 +1,6 @@
 import { endOfDay, startOfDay, startOfMonth } from "date-fns";
 import { useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import type { PlanName, SubscriptionHealthBucket } from "../../types";
 import { getPlanLabel, PLAN_NAMES } from "../../lib/display-labels.util";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
@@ -17,6 +17,7 @@ import {
   type DateRangeValue,
 } from "../common/DateRangeComparison";
 import { AppliedFilters } from "../common/AppliedFilters";
+import { FilterEmpty } from "../common/FilterEmpty";
 import { PageHeader } from "../common/PageHeader";
 import { TableToolbar } from "../common/TableToolbar";
 import { IconBilling, IconDownload } from "../ui/icons";
@@ -45,7 +46,7 @@ import {
   toneTextClasses,
 } from "../ui";
 import type { Tone } from "../ui";
-import { emptyStates, toasts } from "../../copy";
+import { toasts } from "../../copy";
 
 // Today, when the page loaded; the server judges every row against its own clock.
 const AS_OF = new Date();
@@ -147,7 +148,6 @@ export function SubscriptionReportsTab() {
   // Tab, drill-down, plan, health, search and page live in the URL (docs/design/09-settings-and-scale.md §3.1),
   // so the KPI cells can be plain links (?tab=invoices&show=overdue).
   const table = useTableUrlState();
-  const [, setSearchParams] = useSearchParams();
   // The rollup runs on the server: the URL (and the query) see the search once typing stops (review C-M6).
   const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
   const planParam = table.filters.plan;
@@ -215,15 +215,8 @@ export function SubscriptionReportsTab() {
   const hasFilters = plan !== "all" || health !== "all" || drill !== "all" || table.search.trim() !== "";
   const clearFilters = () => {
     setSearch("");
-    // One URL write (the tab stays): two writes in a row would each start from the same old URL.
-    setSearchParams(
-      (previous) => {
-        const next = new URLSearchParams(previous);
-        ["plan", "health", "show", "q", "page"].forEach((key) => next.delete(key));
-        return next;
-      },
-      { replace: true },
-    );
+    // One URL write; the tab stays.
+    table.setParams({ plan: undefined, health: undefined, show: undefined, q: undefined });
   };
 
   const exportCsv = () => {
@@ -366,16 +359,7 @@ export function SubscriptionReportsTab() {
   };
 
   const emptyContent = hasFilters ? (
-    <EmptyState
-      icon={IconBilling}
-      title={search.trim() ? emptyStates.noResults(search.trim()).title : "Nothing matches these filters"}
-      description={emptyStates.noResults("").description}
-      action={
-        <UiButton variant="secondary" size="sm" onPress={clearFilters}>
-          {emptyStates.noResults("").action}
-        </UiButton>
-      }
-    />
+    <FilterEmpty things={tableView === "shops" ? "stores" : "invoices"} query={table.search} onClear={clearFilters} />
   ) : tableView === "shops" ? (
     <EmptyState icon={IconBilling} title="No stores yet" description="Stores appear here once they are on a plan." />
   ) : (
@@ -555,6 +539,7 @@ export function SubscriptionReportsTab() {
               getRowKey={(row) => row.clientId}
               renderCell={renderShopCell}
               isLoading={loading}
+              isReloading={api.reloading}
               toolbar={toolbar}
               footer={footer}
               onRowAction={(row) => navigate(`/stores/${row.clientId}`)}
@@ -570,6 +555,7 @@ export function SubscriptionReportsTab() {
               getRowKey={(row) => row.id}
               renderCell={renderPaymentCell}
               isLoading={loading}
+              isReloading={api.reloading}
               toolbar={toolbar}
               footer={footer}
               stickyFirstColumn

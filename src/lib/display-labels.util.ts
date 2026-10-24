@@ -60,7 +60,7 @@ export const PAYMENT_GATEWAY_LABELS: Record<PaymentGateway, string> = {
 export const HEALTH_BUCKET_LABELS: Record<SubscriptionHealthBucket, string> = {
   healthy: "Healthy",
   at_risk: "At risk",
-  unhealthy: "Unhealthy",
+  unhealthy: "Critical",
 };
 
 // ─── Lookups ──────────────────────────────────────────────────────────────

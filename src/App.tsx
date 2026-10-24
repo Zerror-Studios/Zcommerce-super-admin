@@ -18,7 +18,8 @@ const NotFound = lazy(() => import("./pages/NotFound").then((m) => ({ default: m
 const SetPassword = lazy(() => import("./pages/SetPassword").then((m) => ({ default: m.SetPassword })));
 const Settings = lazy(() => import("./pages/Settings").then((m) => ({ default: m.Settings })));
 const SignIn = lazy(() => import("./pages/SignIn").then((m) => ({ default: m.SignIn })));
-const DevUiPage = lazy(() => import("./components/ui/DevUiPage"));
+// The component showcase ships in development builds only (docs/design/README.md Phase 10).
+const DevUiPage = import.meta.env.DEV ? lazy(() => import("./components/ui/DevUiPage")) : null;
 
 /** Inside the shell while a page chunk loads: the same spinner as the session restore. */
 function PageLoading() {
@@ -83,7 +84,7 @@ export default function App() {
           <Route path="mfa" element={<Mfa />} />
 
           {/* Hidden component showcase (restyle Phase 2); renders only in development builds. */}
-          <Route path="dev/ui" element={<DevUiPage />} />
+          {DevUiPage ? <Route path="dev/ui" element={<DevUiPage />} /> : null}
 
           {/* Unknown URLs show the 404 inside the app shell (signed-out users go to sign-in first). */}
           <Route path="*" element={<NotFound />} />

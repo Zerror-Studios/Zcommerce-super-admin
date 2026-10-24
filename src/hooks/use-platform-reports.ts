@@ -34,6 +34,8 @@ import type {
 interface HookState<T> {
   data: T;
   loading: boolean;
+  /** A newer answer is loading while the previous one stays on screen (faded rows, 09 §3.2). */
+  reloading?: boolean;
   error: Error | null;
   refetch: () => Promise<unknown>;
 }
@@ -92,6 +94,7 @@ export function useCollections(args: CollectionsArgs): HookState<CollectionsView
   return {
     data,
     loading: query.loading && !raw,
+    reloading: query.loading && !!raw,
     error: query.error ?? null,
     refetch: query.refetch,
   };

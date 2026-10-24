@@ -40,6 +40,12 @@ export const emptyStates = {
     description: "Check the spelling or clear filters.",
     action: "Clear filters",
   }),
+  /** A table emptied by its search or filters (one inline line, 09 §3.2): "No stores match these filters". */
+  filtered: (things: string): EmptyCopy => ({
+    title: `No ${things} match these filters`,
+    description: "",
+    action: "Clear filters",
+  }),
   /** Analytics card with nothing to show (single line). */
   noData: "Not enough data for this period yet.",
 } satisfies Record<string, EmptyCopy | string | ((query: string) => EmptyCopy)>;
@@ -60,6 +66,25 @@ export const toasts = {
   storeProvisioningFailed: (name: string) => `${name} was created but a provisioning step failed. Open the store to retry.`,
   mfaRequired: "Turn on two-step verification before changing platform data.",
   forbidden: "You don't have permission to do that.",
+  // Subscriptions and invoices
+  planChanged: "Plan changed.",
+  trialExtended: "Trial extended.",
+  subscriptionCancelled: "Subscription cancelled.",
+  subscriptionReactivated: "Subscription reactivated.",
+  markedPastDue: "Marked past due.",
+  paymentRecorded: "Payment recorded.",
+  discountApplied: "Discount applied.",
+  invoiceVoided: "Invoice voided.",
+  discountCreated: (code: string) => `${code} created.`,
+  gracePeriodDefault: (days: string) => `Grace period set to the default (${days}).`,
+  gracePeriodSet: (days: string, store: string) => `Grace period set to ${days} for ${store}.`,
+  selectStore: "Select at least one store.",
+  // Team and sign-in
+  roleChanged: "Role changed.",
+  mfaReset: (email: string) => `Two-step verification reset for ${email}.`,
+  memberDisabled: (email: string) => `${email} disabled.`,
+  mfaStartFailed: "Couldn't start enrolment. Try again.",
+  passwordSet: "Password set. Log in to continue.",
 } as const;
 
 // ─── Confirmation dialogs (§8) ───────────────────────────────────────────────
