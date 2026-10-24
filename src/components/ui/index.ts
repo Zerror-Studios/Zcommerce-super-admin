@@ -7,6 +7,8 @@ export { AppToastProvider } from "./AppToastProvider";
 export { toastError } from "./toast";
 export { Badge } from "./Badge";
 export type { BadgeProps } from "./Badge";
+export { IconTile, sectionClass } from "./IconTile";
+export type { IconTileProps, SectionColor } from "./IconTile";
 export { Button } from "./Button";
 export type { ButtonProps, ButtonSize, ButtonVariant } from "./Button";
 export { Card } from "./Card";
