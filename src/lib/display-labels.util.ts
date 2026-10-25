@@ -63,6 +63,28 @@ export const HEALTH_BUCKET_LABELS: Record<SubscriptionHealthBucket, string> = {
   unhealthy: "Unhealthy",
 };
 
+/** App providers as the apps service names them (PRD-010, PRD-011, PRD-012). */
+export const APP_PROVIDER_LABELS: Record<string, string> = {
+  GA4: "Google Analytics 4",
+  NIMBBL: "Nimbbl",
+  RAZORPAY: "Razorpay",
+  CASHFREE: "Cashfree",
+  PAYU: "PayU",
+  SHIPROCKET: "Shiprocket",
+  MSG91: "MSG91",
+  AMAZON: "Amazon",
+  FLIPKART: "Flipkart",
+};
+
+/** `channel_connection.channelType` values. */
+export const CHANNEL_TYPE_LABELS: Record<string, string> = {
+  PAYMENT: "Payment",
+  SHIPPING: "Shipping",
+  MESSAGING: "Messaging",
+  MARKETPLACE: "Marketplace",
+  ANALYTICS: "Analytics",
+};
+
 // ─── Lookups ──────────────────────────────────────────────────────────────
 
 function lookupLabel<T extends string>(
@@ -85,4 +107,14 @@ export function getSubscriptionStatusLabel(status: string): string {
 /** Human-readable gateway name; unknown values (e.g. "—") pass through. */
 export function getPaymentGatewayLabel(gateway: string): string {
   return lookupLabel(PAYMENT_GATEWAY_LABELS, gateway);
+}
+
+/** Human-readable app provider ("GA4" → "Google Analytics 4"); unknown values pass through. */
+export function getAppProviderLabel(provider: string): string {
+  return lookupLabel(APP_PROVIDER_LABELS, provider);
+}
+
+/** Human-readable app category ("ANALYTICS" → "Analytics"); unknown values pass through. */
+export function getChannelTypeLabel(channelType: string): string {
+  return lookupLabel(CHANNEL_TYPE_LABELS, channelType);
 }

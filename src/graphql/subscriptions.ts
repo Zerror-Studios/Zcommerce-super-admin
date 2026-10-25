@@ -25,6 +25,8 @@ export const PLATFORM_SUBSCRIPTION_FIELDS = gql`
     cancelledAt
     cancelAtPeriodEnd
     daysOverdue
+    pendingPlanId
+    pendingBillingCycle
   }
 `;
 
@@ -43,6 +45,24 @@ export const CHANGE_TENANT_PLAN = gql`
       planId: $planId
       billingCycle: $billingCycle
       effective: $effective
+    ) {
+      ...PlatformSubscriptionFields
+    }
+  }
+`;
+
+/** PRD-014 SEC-04: audited activation without a payment (billing:manage). */
+export const ACTIVATE_TENANT_SUBSCRIPTION = gql`
+  ${PLATFORM_SUBSCRIPTION_FIELDS}
+  mutation ActivateTenantSubscription(
+    $tenantId: ID!
+    $override: Boolean!
+    $reason: String!
+  ) {
+    activateTenantSubscription(
+      tenantId: $tenantId
+      override: $override
+      reason: $reason
     ) {
       ...PlatformSubscriptionFields
     }

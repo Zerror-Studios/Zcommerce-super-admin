@@ -53,10 +53,11 @@ export interface Plan {
   priceMonthly: number;
   features: string[];
   clientCount: number;
+  /** `null` = the plan sets no limit (or the backend plan has no such field). */
   limits: {
-    products: number;
-    storageGb: number;
-    bandwidthGb: number;
+    products: number | null;
+    storageGb: number | null;
+    bandwidthGb: number | null;
   };
 }
 
@@ -69,14 +70,21 @@ export interface Client {
   status: ClientStatus;
   mrr: number;
   orders30d: number;
+  /** Net store sales in the last 30 days (PRD-012 FR-8.2). */
   revenue: number;
   growthPercent: number;
+  /** GA4 traffic in the last 30 days; 0 without an analytics app (PRD-012 FR-8.2). */
+  sessions30d: number;
+  pageViews30d: number;
+  /** Paid orders ÷ sessions, percent, computed by the server. */
+  conversionRate30d: number;
   lastActive: string;
   joinedDate: string;
   usage: {
     products: number;
     storageGb: number;
-    bandwidthGb: number;
+    /** `null` = not measured (no bandwidth metering yet). */
+    bandwidthGb: number | null;
   };
   notes: string;
   /** Per-store override; falls back to platform default when unset. */
@@ -108,6 +116,10 @@ export interface Subscription {
   amountDue: number;
   startedAt?: string;
   canceledAt?: string;
+  billingCycle?: "MONTHLY" | "YEARLY";
+  /** PRD-014 D6: a plan change scheduled for `renewalDate`. */
+  pendingPlanId?: string;
+  pendingBillingCycle?: "MONTHLY" | "YEARLY";
   /** Server-computed payment badge; `lib/storeStatus` shows it. */
   paymentState?: { label: string; tone: "success" | "warning" | "danger" | "info" | "neutral"; detail: string | null };
 }

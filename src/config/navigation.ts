@@ -29,6 +29,10 @@ export const mainNavItems: NavItem[] = [
       // What stores pay Zcom, and what stores sell to their own customers.
       { label: "Platform revenue", to: "/analytics/revenue" },
       { label: "Store sales", to: "/analytics/store-sales" },
+      // PRD-012 FR-8.3: traffic and GMV across stores, app health, analytics sync runs.
+      { label: "Performance", to: "/analytics/performance" },
+      { label: "Integration health", to: "/analytics/integrations" },
+      { label: "Sync monitor", to: "/analytics/sync" },
     ],
   },
   // A single link: /settings lists every setting as cards (pages/Settings.tsx), like Merchant Admin.

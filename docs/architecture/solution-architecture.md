@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Living document. Verified against code on **2026-10-13** |
+| **Status** | Living document. Verified against code on **2026-10-13**; route map and hooks updated for PRD-012 on 2026-10-22 |
 | **Parent** | Workspace `../ARCHITECTURE.md` |
 | **Maturity** | **API-only (PRD-005 Phases 0–4, 2026-10-17).** Real sign-in, stores, lifecycle, subscriptions, billing, reports, Team, audit and impersonation from the `platform-admin` subgraph; the mock prototype was removed (Q14). Not yet run in a browser against a live gateway. |
 
@@ -41,8 +41,8 @@ flowchart TB
     APP --> RA["RequireAuth → DashboardLayout (Sidebar + Topbar)"]
     RA --> PG["pages: Home · Clients · ClientDetail · AddClient<br/>Billing/:section · Analytics/:section · Settings/:section"]
     PG --> CMP["components/{clients,billing,dashboard,payments,settings}<br/>+ common kits (buttonStyles, modalStyles, dataTableStyles, inputStyle)"]
-    PG --> HK["hooks/use-platform-reports<br/>revenue, collections, payments, coupons"]
-    PG --> LIB["lib/ pure logic (tested)<br/>api-adapters · api-report-adapters · periods · store-sales · report-csv<br/>storeStatus · storeHealth · platformSettings"]
+    PG --> HK["hooks/use-platform-reports · use-platform-analytics<br/>revenue, collections, payments, coupons · analytics overview, integration health, sync monitor, re-run"]
+    PG --> LIB["lib/ pure logic (tested)<br/>api-adapters · api-report-adapters · periods · store-sales · analytics-health · report-csv<br/>storeStatus · storeHealth · platformSettings"]
     PG --> TY["types/index.ts"]
 ```
 
@@ -54,9 +54,9 @@ flowchart TB
 | `/` | Home | KPI cards (revenue, MRR, stores, orders), revenue chart, plan mix, top clients |
 | `/clients` | Clients | Table with status and health |
 | `/clients/new` | AddClient | Plan (Free/Starter/Pro/Enterprise), status (trial/active/suspended) |
-| `/clients/:id` | ClientDetail | Overview / Billing / Usage tabs, danger zone, "Login as store" |
+| `/clients/:id` | ClientDetail | Overview / Billing / Usage tabs, danger zone, "Login as store"; since PRD-012 an Analytics card (sync health, data through, last sync, "Re-run sync" for manage roles) read from the sync-monitor rollup |
 | `/billing/:section` | Billing | `subscriptions`, `transactions` |
-| `/analytics/:section` | Analytics | `revenue` |
+| `/analytics/:section` | Analytics | `revenue` (Platform revenue, `platformRevenueOverview`), `store-sales` (`platformTenants.usage`, net revenue + sessions, page views and conversion since PRD-012), `performance` (`platformAnalyticsOverview`, 7/30/90 days), `integrations` (`platformIntegrationHealth`, filters + paging), `sync` (`platformSyncMonitor` + `platformRerunAnalyticsSync`). All PRD-012 reads come from master collections the backend jobs write (`tenant_usage_snapshot`, `channel_connection`, `analytics_sync_summary`); the console never fans out to tenant databases |
 | `/settings/:section` | Settings | `discounts` (coupons), `billing-rules` (platform settings), `team` (platform users, API only), `audit` (audit log, API only); `automation` redirects to `/billing/reminders` |
 
 ## 4. Domain model (front-end types)
@@ -189,6 +189,6 @@ flowchart LR
 
 | Gap | Impact | Path |
 |---|---|---|
-| Vercel topology | `/v1/graphql` has no rewrite and a `SameSite=Strict` cookie cannot cross sites, so sessions cannot be kept on Vercel as configured | PRD-005 Q6: serve the console behind the CloudFront edge or add the rewrite (review C-H3) |
+| Vercel topology | Resolved: Q6 decided 2026-10-18 (the console calls `https://api.zerrorstudios.com` directly, same site); the CSP `connect-src` allows that origin since PRD-014 FR-0.7 (2026-10-25) | A UAT build needs its API origin in `vercel.json` too (PRD-007 Q8 hosts) |
 | Vocabulary mismatch with backend plans and statuses | Integration bugs | Settle it in the PRD |
 | No notifications feed | The panel is empty | Feed it from `platformAuditLog` or events (T1) |

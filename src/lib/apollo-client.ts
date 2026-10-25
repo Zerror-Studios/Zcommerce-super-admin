@@ -65,6 +65,11 @@ const FATAL_AUTH_CODES = new Set<string | undefined>(["INVALID_AUTH_TOKEN"]);
 const REVOKED_REASONS = new Set(["REUSE_DETECTED", "LOGGED_OUT", "DEVICE_LIMIT"]);
 
 const TOAST_DEDUPE_WINDOW_MS = 5000;
+/**
+ * `FORBIDDEN` reasons that are a business rule, not a missing permission
+ * (PRD-014 SEC-04); the screen explains them, so no global toast.
+ */
+const BUSINESS_FORBIDDEN_REASONS = new Set(["PAYMENT_REQUIRED"]);
 
 /** Refresh this long before the access token's `exp`. */
 const PROACTIVE_REFRESH_LEAD_MS = 60_000;
@@ -352,7 +357,8 @@ const errorLink = onError(({ graphQLErrors, networkError, operation, forward, re
         });
         requestNavigation("/mfa");
       }
-      if (code === "FORBIDDEN") {
+      const reason = err.extensions?.reason as string | undefined;
+      if (code === "FORBIDDEN" && !BUSINESS_FORBIDDEN_REASONS.has(reason ?? "")) {
         toastOnce(`forbidden:${err.message}`, {
           title: "You don't have permission to do that.",
           color: "danger",

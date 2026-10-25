@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { subscriptionsOf, toClient, toPlan, toSubscription } from "./api-adapters";
+import {
+  scheduledPlanChangeOf,
+  subscriptionsOf,
+  toClient,
+  toPlan,
+  toSubscription,
+  usageBarOf,
+} from "./api-adapters";
 import type { PlatformPlan, PlatformSubscription, PlatformTenant } from "../types/platform-api";
 
 const plan: PlatformPlan = {
@@ -45,6 +52,8 @@ const subscription: PlatformSubscription = {
   cancelledAt: null,
   cancelAtPeriodEnd: false,
   daysOverdue: 7,
+  pendingPlanId: null,
+  pendingBillingCycle: null,
 };
 
 const tenant: PlatformTenant = {
@@ -68,7 +77,7 @@ const tenant: PlatformTenant = {
   healthFactors: ["Account active", "Payments healthy"],
   paymentState: { label: "Overdue · 7 days", tone: "danger", detail: "Past grace period" },
   subscriptionHealth: { bucket: "unhealthy", reason: "Payment overdue by 7 days", daysOverdue: 7, daysUntilRenewal: -7, isOverdueInGrace: false },
-  usage: { date: "2026-10-17", products: 120, orders30d: 40, revenue30d: 95000, growthPercent: 12.5, storageMb: 512, staffCount: 3, lastActiveAt: "2026-10-16T09:30:00.000Z" },
+  usage: { date: "2026-10-17", products: 120, orders30d: 40, revenue30d: 95000, growthPercent: 12.5, storageMb: 512, staffCount: 3, lastActiveAt: "2026-10-16T09:30:00.000Z", pageViews30d: 5200, sessions30d: 2000, conversionRate30d: 2 },
   suspendedAt: null,
   suspendReason: null,
   createdAt: "2026-01-01T00:00:00.000Z",
@@ -95,7 +104,7 @@ describe("api adapters", () => {
       slug: "nahara",
       health: { score: 88, factors: ["Account active", "Payments healthy"] },
     });
-    expect(client.usage).toEqual({ products: 120, storageGb: 0.5, bandwidthGb: 0 });
+    expect(client.usage).toEqual({ products: 120, storageGb: 0.5, bandwidthGb: null });
     expect(client.paymentState?.label).toBe("Overdue · 7 days");
   });
 
@@ -134,8 +143,55 @@ describe("api adapters", () => {
     const mapped = toPlan(plan, [tenant, { ...tenant, id: "t-2" }]);
     expect(mapped.priceMonthly).toBe(4999);
     expect(mapped.clientCount).toBe(2);
-    expect(mapped.limits.products).toBe(5000);
+    expect(mapped.limits).toEqual({ products: 5000, storageGb: null, bandwidthGb: null });
     expect(mapped.features).toContain("Advanced blog");
     expect(mapped.features).toContain("6 hours support");
+  });
+
+  // ─── Usage bars (UX-23) ─────────────────────────────────────────────────
+
+  it("maps a plan without a SKU limit to no limit", () => {
+    const unlimited = toPlan({ ...plan, limits: { ...plan.limits, maxSkus: 0 } });
+    expect(unlimited.limits.products).toBeNull();
+  });
+
+  it("draws a bar only against a positive limit", () => {
+    expect(usageBarOf(120, 5000)).toEqual({ percent: 2, unlimited: false });
+    expect(usageBarOf(6000, 5000)).toEqual({ percent: 100, unlimited: false });
+    expect(usageBarOf(0, 25)).toEqual({ percent: 0, unlimited: false });
+  });
+
+  it("shows no limit instead of 100 % or NaN when the limit is 0 or missing", () => {
+    expect(usageBarOf(0.5, 0)).toEqual({ percent: null, unlimited: true });
+    expect(usageBarOf(0, 0)).toEqual({ percent: null, unlimited: true });
+    expect(usageBarOf(3, null)).toEqual({ percent: null, unlimited: true });
+    expect(usageBarOf(3, -1)).toEqual({ percent: null, unlimited: true });
+    expect(usageBarOf(3, Number.NaN)).toEqual({ percent: null, unlimited: true });
+  });
+
+  it("has no percentage when the usage is not measured", () => {
+    expect(usageBarOf(null, 10)).toEqual({ percent: null, unlimited: false });
+    expect(usageBarOf(Number.NaN, 10)).toEqual({ percent: null, unlimited: false });
+  });
+
+  // ─── Scheduled plan change (PRD-014 D6) ─────────────────────────────────
+
+  it("has no scheduled change without a pending plan or cycle", () => {
+    expect(scheduledPlanChangeOf(toSubscription(subscription), [toPlan(plan)])).toBeNull();
+    expect(scheduledPlanChangeOf(undefined, [])).toBeNull();
+  });
+
+  it("names the pending plan and the renewal date it starts on", () => {
+    const row = toSubscription({ ...subscription, pendingPlanId: "plan-plus", pendingBillingCycle: "MONTHLY" });
+    expect(row.pendingPlanId).toBe("plan-plus");
+    const change = scheduledPlanChangeOf(row, [toPlan(plan)]);
+    expect(change?.plan?.name).toBe("PLUS");
+    expect(change?.billingCycle).toBe("MONTHLY");
+    expect(change?.effectiveAt).toBe("2026-10-10T00:00:00.000Z");
+  });
+
+  it("keeps an unknown pending plan as null rather than guessing", () => {
+    const row = toSubscription({ ...subscription, pendingPlanId: "plan-gone" });
+    expect(scheduledPlanChangeOf(row, [toPlan(plan)])?.plan).toBeNull();
   });
 });

@@ -46,6 +46,8 @@ The **Zerror Studios platform console** for Zcom. The Zerror team uses it to man
 
 **Status: API-only since 2026-10-17 (PRD-005 Phases 0–4; mock mode removed, §8 Q14).**
 - The **one Apollo client** (`src/lib/apollo-client.ts`) talks to the backend `platform-admin` subgraph (`../zcom-backend/services/platform-admin`, port 4014) through the gateway. Sign-in is real: a platform account (ADR-001 principal, roles `PLATFORM_OWNER … READ_ONLY`), optional TOTP, access token **in memory only** (`lib/session-store.ts`), refresh token in an HttpOnly cookie, session restored on load. Stores, plans and subscriptions come from `platformTenants` / `platformPlans` through `ClientsProvider` and `lib/api-adapters.ts`. Since Phase 2 the store lifecycle is real too: Add store provisions a tenant (`createStore`, one-time owner password dialog), the store page suspends / reactivates / deletes (reason, slug confirmation), edits notes and the grace override, and runs the subscription actions; `/settings/billing-rules` edits the platform settings on the server (`SettingsProvider`, `usePlatformSettings`; `loadPlatformSettings()` reads the server copy), including the **platform payment provider** (PRD-006: Manual / Razorpay / Nimbbl; secrets stay in the backend env). The health score and payment badge come from the server (`client.health`, `subscription.paymentState`; the libs prefer them). Since Phase 3 the money is the server's too: Home KPIs, Platform revenue, Collections, Transactions, Discounts and Reminders read `platformRevenueOverview`, `platformCollections`, `platformPayments`, `platformCoupons` and the reminder operations through `src/hooks/use-platform-reports.ts` (`isApi ? api : lib` inside each screen). Notifications are still mock. Since Phase 4 "Log in to store" is real too (`impersonateTenant` via `components/clients/storeLogin.ts`, one click, no dialog; FR-10.3), and `/settings/team` and `/settings/audit` read `platformUsers` and `platformAuditLog` (`src/graphql/team.ts`).
+- **PRD-012 (2026-10-22):** Analytics gained Performance, Integration health and Sync monitor on the platform-admin analytics rollups (`src/hooks/use-platform-analytics.ts`), Store sales shows the server's net revenue and traffic fields, and the store page has an Analytics card with "Re-run sync" (§4 "Platform analytics").
+- **PRD-014 Wave 0 (2026-10-25, pointer `docs/prd/PRD-014-production-readiness-remediation.md`):** the CSP allows the API host; Change plan only schedules for the end of the period (no proration yet, D6; a trial may still change now) and the Subscription card shows the scheduled change; "Activate without payment" is an audited override with a required reason (`activateTenantSubscription`); `FORBIDDEN` + `PAYMENT_REQUIRED` is a business rule the screen explains (the Apollo link skips its permission toast for it); record payment can't be double-submitted; the store page has no synthetic chart and plan usage shows "No limit" instead of dividing by 0.
 - There is no mock data and no fake sign-in any more; every screen needs the gateway (`npm run dev` proxies `/v1/graphql` to `API_GATEWAY_URL`) and a platform user. Notifications have no feed yet (empty state).
 - Operations live in `src/graphql/<domain>.ts`; shapes in `src/types/platform-api.ts` (hand-written until codegen lands). Confirm a root field exists in the backend schema before using it (root `CLAUDE.md` §5).
 
@@ -68,7 +70,8 @@ src/main.tsx            StrictMode > BrowserRouter > AppProviders > App
 src/App.tsx             route table (<Routes>), inline GuestOnly wrapper for /sign-in, legacy /clients → /stores redirects
 src/config/navigation.ts  sidebar and command-palette entries (one list for both)
 src/config/data-source.ts  the gateway URL (VITE_GATEWAY_URL)
-src/graphql/            GraphQL operations per domain: auth, tenants, plans, subscriptions (PRD-005)
+src/graphql/            GraphQL operations per domain: auth, tenants, plans, subscriptions, billing, reports, settings, team (PRD-005), analytics (PRD-012)
+src/hooks/              use-platform-reports (money rollups), use-platform-analytics (PRD-012: overview, integration health, sync monitor, re-run), use-debounced-value
 src/copy.ts             repeated user-facing strings: empty states, toasts, confirmations
 src/providers/          AppProviders (HeroUIProvider > ToastProvider > ApolloProvider > AuthProvider > SettingsProvider > ClientsProvider), AuthProvider, SettingsProvider, ClientsProvider
 src/pages/              Home, Clients, ClientDetail, AddClient, Billing, Analytics, Settings, SignIn, SetPassword, Mfa, NotFound
@@ -82,10 +85,12 @@ src/components/
   common/               PageHeader, ConfirmModal, StatusChip (kind → shared domain), RenewalBadge, StoreHealthCell, TableToolbar,
                         NoDataPlaceholder, DateRangeComparison, + style kits: modalStyles.ts, dataTableStyles.ts
   clients/ billing/ dashboard/ payments/ settings/ analytics/   domain components
+  analytics/            StoreSalesTab, PerformanceTab, IntegrationHealthTab, SyncMonitorTab, AnalyticsHealthChip, RerunSyncButton (PRD-012)
+  clients/ClientAnalyticsCard.tsx  the store page's Analytics card (sync health, data through, re-run)
 src/lib/                apollo-client.ts (the one API client), session-store.ts (token in memory), auth-channel.ts (cross-tab),
                         api-adapters.ts (API rows → Client/Subscription/Plan), api-report-adapters.ts (rollups → types/reports), display-labels.util.ts (enum → label),
                         subscription-lookup.util.ts (latestSubscriptionByClient),
-                        periods.ts (picker periods), store-sales.ts, report-csv.ts, storeStatus.ts (server payment badge),
+                        periods.ts (picker periods), store-sales.ts, analytics-health.ts (health → chip, N-day ranges, deltas; PRD-012), report-csv.ts, storeStatus.ts (server payment badge),
                         storeHealth.ts (server score → band), aiSamples.ts (AI sample copy),
                         pure domain logic (subscriptionHealth, subscriptionReports, revenueReports, storeHealth, platformSettings,
                         tableSelection, utils) + *.test.ts
@@ -100,7 +105,7 @@ docs/design/            the approved design spec (README, foundations, component
 - Routes live in `src/App.tsx`, using `<Routes>`/`<Route>`. **Don't switch to `createBrowserRouter`** without an ADR. (The admin frontend uses the data router, but this app deliberately doesn't today.)
 - Authenticated pages sit inside `<RequireAuth>` → `DashboardLayout`; both it and `GuestOnly` show `SessionLoading` while the session is restored. Public: `/sign-in` (`GuestOnly`) and `/set-password?token=` (invite and reset links, PRD-005 FR-1.5). `/mfa` (authenticated) enrols TOTP; sign-in sends manage roles there until they have.
 - **Stores.** Visible text says "store/stores" and the routes are `/stores`, `/stores/new`, `/stores/:id`. The old `/clients…` URLs redirect. Code identifiers (`Client`, `ClientsProvider`, `pages/Clients.tsx`) are unchanged.
-- **Section pages:** `/billing/:section` (`subscriptions`, `transactions`, `reminders`), `/analytics/:section` (`revenue`, `store-sales`) and `/settings/:section` (`discounts`, `billing-rules`, `team`, `audit`) validate `:section` against a local `sections` const and redirect on bad values. The bare paths redirect to their default section; `/settings` itself is a card grid. To add a tab, extend that const and `src/config/navigation.ts` together.
+- **Section pages:** `/billing/:section` (`subscriptions`, `transactions`, `reminders`), `/analytics/:section` (`revenue`, `store-sales`, and since PRD-012 `performance`, `integrations`, `sync`; all gated on `platform:reports:read`) and `/settings/:section` (`discounts`, `billing-rules`, `team`, `audit`) validate `:section` against a local `sections` const and redirect on bad values. The bare paths redirect to their default section; `/settings` itself is a card grid. To add a tab, extend that const and `src/config/navigation.ts` together.
 - `/dev/ui` is the kit showcase. `*` renders `NotFound`. `vercel.json` rewrites all paths to `index.html`, so the app is a SPA on Vercel.
 
 ## 4. Data and state
@@ -111,6 +116,7 @@ docs/design/            the approved design spec (README, foundations, component
   - Money metrics (Monthly billing, Earned this month/year, Projected, Outstanding, collection rate) come only from the server rollups `platformRevenueOverview` and `platformCollections` through `src/hooks/use-platform-reports.ts`. Home, Billing › Collections and Analytics › Platform revenue read the same hooks so they always agree; never add money maths in the browser (root `CLAUDE.md` §4).
   - Store lifecycle and payment badges come only from `src/lib/storeStatus.ts` (`storeLifecycle`, `paymentState` shows the server's `subscription.paymentState`, `graceDaysFor`); the health score is the server's `client.health` through `lib/storeHealth.ts`, bands from the kit's `getHealthBand` (Healthy / At risk / Critical).
   - Collections reports take an inclusive `rangeStart`/`rangeEnd` (preferred) or a `month`; `lib/subscriptionReports.ts` resolves both to UTC bounds and judges each period from its own rows (PRD-002 SA-3), with the previous calendar month as the comparison for a whole month.
+  - **Platform analytics (PRD-012 FR-8.3)** come only from `src/hooks/use-platform-analytics.ts`: `platformAnalyticsOverview(range)` (Performance; the console picks 7/30/90 days with `lib/analytics-health.lastDaysRange` and only computes the period-over-period change for the KPI arrows), `platformIntegrationHealth` (filters and paging are server-side), `platformSyncMonitor` (the store page filters its rows by `tenantId` from the same rollup) and the mutation `platformRerunAnalyticsSync` (`platform:tenants:manage`; the row then carries `rerunRequestedAt` and shows "Re-run pending" until the scheduler picks it up). Every figure is read from master collections the backend jobs write; the console never fans out to tenant databases. `TenantUsage.revenue30d` is **net** revenue and `sessions30d`, `pageViews30d`, `conversionRate30d` are server fields: Store sales shows them as sent (no client-side conversion maths). Analytics health values (`OK | ERROR | QUOTA_PAUSED | BACKFILLING | NOT_CONNECTED`, or null without an analytics app) render only through `components/analytics/AnalyticsHealthChip` (`lib/analytics-health.analyticsHealthChip`).
 - **Pure logic belongs in `src/lib/*.ts`**, typed, with no React, and with a `*.test.ts` beside it. Pages and components call these helpers. Keep this split: it is what makes the reports testable.
 - **No mock data.** Screens read the API through `useClients()`, `usePlatformSettings()` and the hooks in `src/hooks/use-platform-reports.ts`; never add fixture data to `src/lib`. Report row shapes live in `src/types/reports.ts`; the only client-side report logic left is `lib/store-sales.ts` (usage snapshot → store sales) and `lib/report-csv.ts`.
 - **State.**
@@ -150,11 +156,11 @@ docs/design/            the approved design spec (README, foundations, component
 | Build | `npm run build` | `tsc -b && vite build`, so it **typechecks** (strict); a production build fails unless `VITE_GATEWAY_URL` is an absolute `https://` URL (`vite.config.ts`; the deployed bundle has no proxy, so the `/v1/graphql` fallback would call the static host) |
 | Lint | `npm run lint` | oxlint (`react/rules-of-hooks` error, `only-export-components` warn) |
 | Hex check | `npm run lint:hex` | flags hard-coded colours |
-| Test | `npm test` / `npm run test:watch` | vitest, node environment, `src/**/*.test.ts` (lib logic only, 59 tests) |
+| Test | `npm test` / `npm run test:watch` | vitest, node environment, `src/**/*.test.ts` (lib logic only, 52 tests as of 2026-10-25) |
 | Contract check | `npm run validate:ops` | validates every `src/graphql` operation against `../zcom-backend/services/platform-admin/src/graphql/schemas/index.ts` (`PLATFORM_SCHEMA` overrides the path) and checks its depth against the gateway's GraphQL Armor limit of 10 (fragments flattened) |
 | Preview | `npm run preview` | |
 
-Deployment is on Vercel (`vercel.json` SPA rewrite). Never trigger a deploy unless asked.
+Deployment is on Vercel (`vercel.json`: SPA rewrite and security headers). The CSP `connect-src` must list the origin of `VITE_GATEWAY_URL` (`https://api.zerrorstudios.com`; `src/lib/vercel-csp.test.ts` checks it); a build against another API host (UAT) needs its origin added. Never trigger a deploy unless asked.
 
 ## 7. Implementing a change
 
@@ -166,11 +172,11 @@ Deployment is on Vercel (`vercel.json` SPA rewrite). Never trigger a deploy unle
 
 ## 8. Known issues (don't fix unless asked)
 
-- The console is API-only (PRD-005 Phases 0–4; mock mode removed 2026-10-17, Q14) but has not run against a live gateway in a browser yet. The store owner's first password is shown once in the console (no admin set-password flow yet, PRD-005 Q13). Notifications have no feed (empty panel). The 2026-10-17 review findings are fixed except **Q6**: on Vercel `/v1/graphql` needs a rewrite to the gateway or the console must sit behind the CloudFront edge, or sessions cannot be kept (`../zcom-backend/docs/reviews/2026-10-17-platform-admin-integration-review.md` C-H3).
+- The console is API-only (PRD-005 Phases 0–4; mock mode removed 2026-10-17, Q14) but has not run against a live gateway in a browser yet. The store owner's first password is shown once in the console (no admin set-password flow yet, PRD-005 Q13). Notifications have no feed (empty panel). The 2026-10-17 review findings are fixed. **Q6** was decided 2026-10-18 (the console calls the API host directly, same site, so the `SameSite=Strict` cookie works); the CSP that still blocked that host (FE-01) was fixed by PRD-014 on 2026-10-25. Plan changes are period-end only (except trials) until proration exists (PRD-014 D6).
 - `RevenueReportsTab` is used by Analytics but lives in `components/billing/`; `TopClientsTable` is a legacy name that renders the stores table.
 - `lib/periods.ts` (`monthPeriod`, `yearPeriod`) uses local calendar fields for the pickers; the server resolves the picked days to UTC bounds (PRD-002 SA-5).
 - oxlint reports pre-existing `set-state-in-effect` and `only-export-components` warnings (no errors).
-- **Audit 2026-10-14:** see `docs/audits/2026-10-14-super-admin-audit.md`. SA-1 to SA-7 were fixed by PRD-002 WS-G. Still open: Vercel password/SSO protection (owner; the code only adds `noindex`), confirming the SA-7 tier mapping and the PENDING→ACTIVE convention, and 4 npm audit findings in the lockfile. The platform billing provider still needs an ADR.
+- **Audit 2026-10-14:** see `docs/audits/2026-10-14-super-admin-audit.md`. SA-1 to SA-7 were fixed by PRD-002 WS-G. Still open: Vercel password/SSO protection (owner; the code only adds `noindex`), confirming the SA-7 tier mapping and the PENDING→ACTIVE convention, and the npm audit findings left after `npm audit fix` on 2026-10-25 (vitest 3's `tinypool` critical and `@vitest/mocker` moderate, dev-only; they need vitest 5, a major). The platform billing provider still needs an ADR.
 
 ## 9. Before you finish a change
 

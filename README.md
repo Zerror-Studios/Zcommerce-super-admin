@@ -41,12 +41,13 @@ The backend needs the `platform-admin` service running (see `../zcom-backend/REA
 - `src/components/ui/`: the shared UI kit (see `docs/design/02-components.md`); `src/components/layout/`: shell, sidebar, command palette.
 - `src/components/common/`: older table and modal kits still in use.
 - `src/lib/`: pure, tested domain logic and the API layer (`apollo-client.ts`, `session-store.ts`, `auth-channel.ts`, `api-adapters.ts`).
-- `src/graphql/`: GraphQL operations per domain (`auth`, `tenants`, `plans`, `subscriptions`); `src/types/platform-api.ts` holds the API shapes.
+- `src/graphql/`: GraphQL operations per domain (`auth`, `tenants`, `plans`, `subscriptions`, `billing`, `reports`, `settings`, `team`, `analytics`); `src/types/platform-api.ts` holds the API shapes.
+- `src/hooks/`: `use-platform-reports.ts` (money rollups) and `use-platform-analytics.ts` (PRD-012: Analytics › Performance, Integration health, Sync monitor, and the store page's Analytics card).
 - `src/types/`: entity types.
 
 ## Deployment
 
-Deployed on Vercel. `vercel.json` adds the SPA rewrite. Only deploy when someone explicitly asks you to.
+Deployed on Vercel. `vercel.json` adds the SPA rewrite and the security headers; its CSP `connect-src` allows `https://api.zerrorstudios.com`, the origin of the production `VITE_GATEWAY_URL` (PRD-014 FR-0.7). A build that points at another API host (UAT) needs that origin added there too. Only deploy when someone explicitly asks you to.
 
 ## Contributing
 

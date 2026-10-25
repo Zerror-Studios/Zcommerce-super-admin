@@ -68,6 +68,9 @@ export const PLATFORM_TENANT_FIELDS = gql`
       storageMb
       staffCount
       lastActiveAt
+      pageViews30d
+      sessions30d
+      conversionRate30d
     }
     suspendedAt
     suspendReason

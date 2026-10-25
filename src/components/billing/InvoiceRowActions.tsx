@@ -1,6 +1,6 @@
 import { useMutation } from "@apollo/client";
 import { addToast } from "@heroui/react";
-import { useState, type Key } from "react";
+import { useRef, useState, type Key } from "react";
 import type { PaymentReportRow } from "../../types/reports";
 import { isUserInputError, mutationFailureCopy } from "../../lib/mutation-errors";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
@@ -39,6 +39,9 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Blocks a second submit before the `busy` re-render lands; the server
+  // also returns the same payment for a repeated record (PRD-014 FR-0.10).
+  const inFlight = useRef(false);
   const [amount, setAmount] = useState(String(row.amount));
   const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
   const [reference, setReference] = useState("");
@@ -53,6 +56,8 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
   if (!open || !can(PLATFORM_PERMISSIONS.BILLING_MANAGE)) return null;
 
   const run = async (work: () => Promise<unknown>, done: string) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -65,6 +70,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
       if (message && isUserInputError(err)) setError(message);
       else if (message) toastError(message);
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   };
@@ -107,6 +113,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
             <UiButton
               variant="primary"
               isLoading={busy}
+              isDisabled={busy}
               onPress={() =>
                 void run(
                   () =>

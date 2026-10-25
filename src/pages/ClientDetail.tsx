@@ -1,5 +1,6 @@
 import { useMemo, useState, type Key, type ReactNode } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { ClientAnalyticsCard } from "../components/clients/ClientAnalyticsCard";
 import { ClientBillingTab } from "../components/clients/ClientBillingTab";
 import { ClientDangerZone } from "../components/clients/ClientDangerZone";
 import { ClientOverviewTab } from "../components/clients/ClientOverviewTab";
@@ -159,6 +160,11 @@ export function ClientDetail() {
       <div className="space-y-8">
         <OnboardingCard client={client} />
         <ClientOverviewTab client={client} subscription={subscription} plan={plan} />
+
+        {/* PRD-012 FR-8.3: analytics health and data-through from the master sync summary. */}
+        <Section id="store-analytics" title="Analytics">
+          <ClientAnalyticsCard client={client} />
+        </Section>
 
         {canManageBilling ? (
           <Section id="store-subscription" title="Subscription">

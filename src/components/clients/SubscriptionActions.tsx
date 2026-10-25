@@ -1,11 +1,15 @@
 import { useMutation } from "@apollo/client";
 import { addToast } from "@heroui/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Client, Plan, Subscription } from "../../types";
 import type { PlanChangeEffective, PlatformBillingCycle } from "../../types/platform-api";
+import { scheduledPlanChangeOf } from "../../lib/api-adapters";
 import { PLAN_LABELS } from "../../lib/display-labels.util";
-import { isUserInputError, mutationFailureCopy } from "../../lib/mutation-errors";
+import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
+import { formatDate } from "../../lib/utils";
+import { MUTATION_REASON_COPY, isUserInputError, mutationFailureCopy } from "../../lib/mutation-errors";
 import {
+  ACTIVATE_TENANT_SUBSCRIPTION,
   CANCEL_TENANT_SUBSCRIPTION,
   CHANGE_TENANT_PLAN,
   EXTEND_TRIAL,
@@ -13,6 +17,7 @@ import {
   REACTIVATE_TENANT_SUBSCRIPTION,
   RECORD_SUBSCRIPTION_PAYMENT,
 } from "../../graphql/subscriptions";
+import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import {
   Button as UiButton,
@@ -26,6 +31,7 @@ import {
   Select,
   SelectItem,
   Switch,
+  Textarea,
   toastError,
 } from "../ui";
 
@@ -35,17 +41,29 @@ export interface SubscriptionActionsProps {
   plans: Plan[];
 }
 
-type Dialog = "plan" | "trial" | "cancel" | "payment" | null;
+type Dialog = "plan" | "trial" | "cancel" | "payment" | "activate" | null;
+
+// ─── Constants ────────────────────────────────────────────────────────────
+
+const CYCLE_LABELS = { MONTHLY: "monthly", YEARLY: "yearly" } as const;
 
 /** Store detail › Subscription (PRD-005 FR-4.3): the console's subscription actions. */
 export function SubscriptionActions({ client, subscription, plans }: SubscriptionActionsProps) {
   const { refetch } = useClients();
+  const { can } = useAuth();
+  const canManageBilling = can(PLATFORM_PERMISSIONS.BILLING_MANAGE);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [busy, setBusy] = useState(false);
+  // Blocks a second submit before the `busy` re-render lands (a double
+  // click would otherwise send the mutation twice).
+  const inFlight = useRef(false);
 
   const [planId, setPlanId] = useState("");
   const [cycle, setCycle] = useState<PlatformBillingCycle>("MONTHLY");
+  // PRD-014 D6: no proration yet, so outside a trial a change waits for the
+  // end of the period (the backend refuses NOW with PRORATION_NOT_AVAILABLE).
   const [effective, setEffective] = useState<PlanChangeEffective>("PERIOD_END");
+  const [activationReason, setActivationReason] = useState("");
   const [days, setDays] = useState("7");
   const [immediate, setImmediate] = useState(false);
   const [amount, setAmount] = useState(String(client.mrr || ""));
@@ -59,11 +77,16 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
   const [reactivate] = useMutation(REACTIVATE_TENANT_SUBSCRIPTION);
   const [markPastDue] = useMutation(MARK_SUBSCRIPTION_PAST_DUE);
   const [recordPayment] = useMutation(RECORD_SUBSCRIPTION_PAYMENT);
+  const [activate] = useMutation(ACTIVATE_TENANT_SUBSCRIPTION);
 
   const status = subscription?.status;
   const tenantId = client.id;
+  const isTrial = status === "TRIAL";
+  const scheduled = scheduledPlanChangeOf(subscription, plans);
 
   const act = async (work: () => Promise<unknown>, done: string) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setFieldError(null);
     try {
@@ -79,6 +102,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
       if (message && isUserInputError(error)) setFieldError(message);
       else if (message) toastError(message);
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   };
@@ -86,12 +110,25 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
   const openPlanDialog = () => {
     const current = plans.find((plan) => plan.name === (subscription?.plan ?? client.plan));
     setPlanId(current?.id ?? plans[0]?.id ?? "");
+    setCycle(subscription?.billingCycle ?? "MONTHLY");
+    setEffective("PERIOD_END");
+    setFieldError(null);
     setDialog("plan");
   };
 
   return (
     <>
       <Card title="Subscription actions" description="Every change is recorded in the audit log and the subscription history.">
+        {scheduled ? (
+          <p className="mb-3 text-body text-fg-muted">
+            Scheduled change: moves to{" "}
+            <span className="font-medium text-fg">
+              {scheduled.plan ? PLAN_LABELS[scheduled.plan.name] : "another plan"}
+              {scheduled.billingCycle ? `, billed ${CYCLE_LABELS[scheduled.billingCycle]}` : ""}
+            </span>{" "}
+            on {formatDate(scheduled.effectiveAt)}, the next renewal.
+          </p>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <UiButton variant="secondary" onPress={openPlanDialog} isDisabled={!subscription || status === "CANCELLED"}>
             Change plan
@@ -104,6 +141,18 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
           {status === "ACTIVE" || status === "TRIAL" || status === "PAST_DUE" ? (
             <UiButton variant="secondary" onPress={() => setDialog("payment")}>
               Record payment
+            </UiButton>
+          ) : null}
+          {canManageBilling && (status === "TRIAL" || status === "PAST_DUE") ? (
+            <UiButton
+              variant="secondary"
+              onPress={() => {
+                setActivationReason("");
+                setFieldError(null);
+                setDialog("activate");
+              }}
+            >
+              Activate without payment
             </UiButton>
           ) : null}
           {status === "ACTIVE" ? (
@@ -165,9 +214,22 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
                 <SelectItem key="MONTHLY">Monthly</SelectItem>
                 <SelectItem key="YEARLY">Yearly</SelectItem>
               </Select>
-              <Switch isSelected={effective === "NOW"} onValueChange={(on) => setEffective(on ? "NOW" : "PERIOD_END")}>
-                Apply now (starts a new period today)
-              </Switch>
+              <div className="flex flex-col gap-1">
+                <Switch
+                  isSelected={isTrial && effective === "NOW"}
+                  isDisabled={!isTrial}
+                  onValueChange={(on) => setEffective(on ? "NOW" : "PERIOD_END")}
+                >
+                  Apply now
+                </Switch>
+                <p className="text-caption text-fg-muted">
+                  {isTrial
+                    ? "A trial changes plan straight away, with or without this switch."
+                    : `${MUTATION_REASON_COPY.PRORATION_NOT_AVAILABLE} The new plan starts at the next renewal${
+                        subscription?.renewalDate ? ` (${formatDate(subscription.renewalDate)})` : ""
+                      }.`}
+                </p>
+              </div>
             </div>
           </ModalBody>
           <ModalFooter>
@@ -179,12 +241,15 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
               isLoading={busy}
               onPress={() =>
                 void act(
-                  () => changePlan({ variables: { tenantId, planId, billingCycle: cycle, effective } }),
-                  "Plan changed.",
+                  () =>
+                    changePlan({
+                      variables: { tenantId, planId, billingCycle: cycle, effective: isTrial ? effective : "PERIOD_END" },
+                    }),
+                  isTrial ? "Plan changed." : "Plan change scheduled for the end of the period.",
                 )
               }
             >
-              Change plan
+              {isTrial ? "Change plan" : "Schedule change"}
             </UiButton>
           </ModalFooter>
         </ModalContent>
@@ -250,6 +315,47 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
         </ModalContent>
       </Modal>
 
+      {/* Activate without payment (PRD-014 SEC-04) */}
+      <Modal isOpen={dialog === "activate"} onClose={() => setDialog(null)} width="sm">
+        <ModalContent>
+          <ModalHeader>Activate {client.storeName} without a payment?</ModalHeader>
+          <ModalBody>
+            <p className="text-body text-fg-muted">
+              The subscription becomes active today and a new period starts, with an invoice issued for it, although
+              no payment has been recorded. Use this only for an agreed exception. Your name and the reason go to the
+              audit log.
+            </p>
+            <Textarea
+              label="Reason"
+              isRequired
+              className="mt-3"
+              value={activationReason}
+              onValueChange={setActivationReason}
+              isInvalid={!!fieldError}
+              errorMessage={fieldError ?? undefined}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <UiButton variant="ghost" onPress={() => setDialog(null)}>
+              Cancel
+            </UiButton>
+            <UiButton
+              variant="danger"
+              isLoading={busy}
+              isDisabled={busy || !activationReason.trim()}
+              onPress={() =>
+                void act(
+                  () => activate({ variables: { tenantId, override: true, reason: activationReason.trim() } }),
+                  "Subscription activated without a payment.",
+                )
+              }
+            >
+              Activate without payment
+            </UiButton>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
       {/* Record payment */}
       <Modal isOpen={dialog === "payment"} onClose={() => setDialog(null)} width="sm">
         <ModalContent>
@@ -278,6 +384,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
             <UiButton
               variant="primary"
               isLoading={busy}
+              isDisabled={busy}
               onPress={() =>
                 void act(
                   () =>

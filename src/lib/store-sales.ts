@@ -1,8 +1,10 @@
 /**
  * Store sales (what stores sell to their own customers), from the usage
- * snapshot each tenant carries (`revenue30d`, `orders30d`, `growthPercent`,
- * PRD-005 FR-6.2). Every figure covers the last 30 days and compares with the
- * 30 days before. growthPercent −100 means "no previous sales".
+ * snapshot each tenant carries (`revenue30d` as net revenue, `orders30d`,
+ * `growthPercent`, and since PRD-012 FR-8.2 `sessions30d`, `pageViews30d`
+ * and the server's `conversionRate30d`). Every figure covers the last 30 days
+ * and compares with the 30 days before. growthPercent −100 means "no previous
+ * sales". Traffic and conversion are shown as the server sent them.
  */
 
 import type { Client } from "../types";
@@ -13,12 +15,18 @@ export interface StoreSalesRow {
   ownerEmail: string;
   plan: Client["plan"];
   status: Client["status"];
+  /** Net sales in the last 30 days. */
   sales: number;
   orders: number;
   /** Average order value; null without orders. */
   averageOrder: number | null;
   /** Change vs the previous 30 days; null when there were no sales then. */
   changePercent: number | null;
+  /** GA4 sessions in the last 30 days; 0 without analytics. */
+  sessions: number;
+  pageViews: number;
+  /** Server conversion rate (percent); null without sessions. */
+  conversionRate: number | null;
 }
 
 /** Sales in the previous 30 days, worked back from the current sales and the change. */
@@ -38,6 +46,9 @@ export function storeSalesRows(clients: Client[]): StoreSalesRow[] {
       orders: client.orders30d,
       averageOrder: client.orders30d > 0 ? client.revenue / client.orders30d : null,
       changePercent: client.growthPercent <= -100 ? null : client.growthPercent,
+      sessions: client.sessions30d,
+      pageViews: client.pageViews30d,
+      conversionRate: client.sessions30d > 0 ? client.conversionRate30d : null,
     }))
     .sort((a, b) => b.sales - a.sales);
 }
@@ -50,6 +61,8 @@ export interface StoreSalesSummary {
   changePercent: number | null;
   /** Stores with at least one order in the last 30 days. */
   sellingStores: number;
+  /** Stores whose analytics reported at least one session (PRD-012 FR-8.3). */
+  storesWithTraffic: number;
   totalStores: number;
 }
 
@@ -63,6 +76,7 @@ export function storeSalesSummary(clients: Client[]): StoreSalesSummary {
     averageOrder: orders > 0 ? sales / orders : null,
     changePercent: previous > 0 ? ((sales - previous) / previous) * 100 : null,
     sellingStores: clients.filter((client) => client.orders30d > 0).length,
+    storesWithTraffic: clients.filter((client) => client.sessions30d > 0).length,
     totalStores: clients.length,
   };
 }

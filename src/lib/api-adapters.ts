@@ -43,6 +43,16 @@ function featureList(plan: PlatformPlan): string[] {
   return features;
 }
 
+/**
+ * A plan limit, or `null` when the plan sets none. The backend usage job
+ * treats a limit that is not positive as "no limit" too (UX-23).
+ */
+function limitOf(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : null;
+}
+
 function capitalise(value: string): string {
   const lower = value.toLowerCase();
   return lower.charAt(0).toUpperCase() + lower.slice(1);
@@ -65,6 +75,9 @@ export function toSubscription(
     amountDue: row.amountDue,
     startedAt: row.startedAt ?? undefined,
     canceledAt: row.cancelledAt ?? undefined,
+    billingCycle: row.billingCycle,
+    pendingPlanId: row.pendingPlanId ?? undefined,
+    pendingBillingCycle: row.pendingBillingCycle ?? undefined,
     paymentState: tenant?.paymentState ?? undefined,
   };
 }
@@ -83,13 +96,16 @@ export function toClient(tenant: PlatformTenant): Client {
     orders30d: usage?.orders30d ?? 0,
     revenue: usage?.revenue30d ?? 0,
     growthPercent: usage?.growthPercent ?? 0,
+    sessions30d: usage?.sessions30d ?? 0,
+    pageViews30d: usage?.pageViews30d ?? 0,
+    conversionRate30d: usage?.conversionRate30d ?? 0,
     lastActive:
       usage?.lastActiveAt ?? tenant.updatedAt ?? tenant.createdAt ?? new Date(0).toISOString(),
     joinedDate: tenant.createdAt ?? new Date(0).toISOString(),
     usage: {
       products: usage?.products ?? 0,
       storageGb: usage ? Math.round((usage.storageMb / MB_PER_GB) * 100) / 100 : 0,
-      bandwidthGb: 0,
+      bandwidthGb: null,
     },
     notes: tenant.notes ?? "",
     gracePeriodDays: tenant.gracePeriodDaysOverride ?? undefined,
@@ -119,12 +135,66 @@ export function toPlan(plan: PlatformPlan, tenants: PlatformTenant[] = []): Plan
       (tenant) => (tenant.subscription?.plan?.id ?? tenant.plan?.id) === plan.id,
     ).length,
     limits: {
-      products: plan.limits.maxSkus,
+      products: limitOf(plan.limits.maxSkus),
       // Storage and bandwidth limits are not on the backend plan yet.
-      storageGb: 0,
-      bandwidthGb: 0,
+      storageGb: null,
+      bandwidthGb: null,
     },
   };
+}
+
+// ─── Scheduled plan change ────────────────────────────────────────────────
+
+export interface ScheduledPlanChange {
+  plan: Plan | null;
+  billingCycle: "MONTHLY" | "YEARLY" | null;
+  /** The renewal date the change takes effect on. */
+  effectiveAt: string;
+}
+
+/**
+ * The plan change waiting for the next renewal (PRD-014 D6), or `null`.
+ * A cycle-only change keeps the current plan id in `pendingPlanId`.
+ */
+export function scheduledPlanChangeOf(
+  subscription: Subscription | undefined,
+  plans: Plan[],
+): ScheduledPlanChange | null {
+  if (!subscription?.pendingPlanId && !subscription?.pendingBillingCycle) {
+    return null;
+  }
+  return {
+    plan: plans.find((plan) => plan.id === subscription.pendingPlanId) ?? null,
+    billingCycle: subscription.pendingBillingCycle ?? null,
+    effectiveAt: subscription.renewalDate,
+  };
+}
+
+// ─── Usage bars ───────────────────────────────────────────────────────────
+
+export interface UsageBar {
+  /** 0–100, or `null` when no bar can be drawn. */
+  percent: number | null;
+  /** True when the plan sets no limit for the metric. */
+  unlimited: boolean;
+}
+
+/**
+ * One plan-usage bar (UX-23). Without a positive limit there is no bar
+ * ("No limit"), and without a measured value there is no percentage
+ * either, so the card never shows a 100 % red bar or `NaN%`.
+ */
+export function usageBarOf(
+  used: number | null | undefined,
+  limit: number | null | undefined,
+): UsageBar {
+  const cap = limitOf(limit);
+  if (cap === null) return { percent: null, unlimited: true };
+  if (typeof used !== "number" || !Number.isFinite(used)) {
+    return { percent: null, unlimited: false };
+  }
+  const percent = Math.round((Math.max(0, used) / cap) * 100);
+  return { percent: Math.min(100, percent), unlimited: false };
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────

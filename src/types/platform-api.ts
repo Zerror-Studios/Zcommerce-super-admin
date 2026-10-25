@@ -113,6 +113,9 @@ export interface PlatformSubscription {
   cancelledAt: string | null;
   cancelAtPeriodEnd: boolean;
   daysOverdue: number;
+  /** PRD-014 D6: plan scheduled for `renewalDate`, if any. */
+  pendingPlanId: string | null;
+  pendingBillingCycle: PlatformBillingCycle | null;
 }
 
 // ─── Tenants ──────────────────────────────────────────────────────────────
@@ -147,11 +150,16 @@ export interface TenantUsage {
   date: string;
   products: number;
   orders30d: number;
+  /** Net revenue (PRD-012 FR-8.2). */
   revenue30d: number;
   growthPercent: number;
   storageMb: number;
   staffCount: number;
   lastActiveAt: string | null;
+  pageViews30d: number;
+  sessions30d: number;
+  /** Paid orders ÷ GA4 sessions, as a percent. */
+  conversionRate30d: number;
 }
 
 export interface PlatformTenant {
@@ -380,6 +388,135 @@ export interface PlatformRevenueOverview {
     overdueStores: number;
     collectionRate: number | null;
   };
+}
+
+// ─── Platform analytics (PRD-012 FR-8.3) ──────────────────────────────────
+
+/** Health of a store's analytics sync; `null` when no analytics app is installed. */
+export type AnalyticsHealth =
+  | "OK"
+  | "ERROR"
+  | "QUOTA_PAUSED"
+  | "BACKFILLING"
+  | "NOT_CONNECTED";
+
+export type IntegrationStatus = "ACTIVE" | "INACTIVE" | "ERROR";
+
+export interface StorePerformanceRow {
+  tenantId: string;
+  slug: string;
+  name: string;
+  sessions30d: number;
+  orders30d: number;
+  /** Net revenue in the last 30 days. */
+  revenue30d: number;
+  growthPercent: number;
+  /** Percent. */
+  conversionRate30d: number;
+  pageViews30d: number;
+  analyticsHealth: AnalyticsHealth | string;
+}
+
+export interface PlatformAnalyticsTrendPoint {
+  /** YYYY-MM-DD. */
+  date: string;
+  sessions: number;
+  orders: number;
+  gmv: number;
+}
+
+export interface PlatformAnalyticsOverview {
+  kpis: {
+    sessions: number;
+    orders: number;
+    gmv: number;
+    /** Percent. */
+    conversionRate: number;
+    storesWithTraffic: number;
+    storesTotal: number;
+  };
+  previous: {
+    sessions: number;
+    orders: number;
+    gmv: number;
+    conversionRate: number;
+  };
+  topStoresByGmv: StorePerformanceRow[];
+  topStoresByGrowth: StorePerformanceRow[];
+  trend: PlatformAnalyticsTrendPoint[];
+}
+
+export interface IntegrationHealthFilter {
+  provider?: string | null;
+  channelType?: string | null;
+  status?: string | null;
+  search?: string | null;
+}
+
+export interface IntegrationHealthRow {
+  tenantId: string;
+  slug: string;
+  name: string;
+  connectionId: string;
+  provider: string;
+  channelType: string;
+  status: IntegrationStatus | string;
+  lastTestedAt: string | null;
+  lastSyncAt: string | null;
+  lastError: string | null;
+  analyticsHealth: AnalyticsHealth | string | null;
+  dataThrough: string | null;
+}
+
+export interface PlatformIntegrationHealth {
+  rows: IntegrationHealthRow[];
+  totalCount: number;
+  counts: { status: string; count: number }[];
+  byProvider: { provider: string; count: number; errors: number }[];
+}
+
+export interface SyncMonitorSummary {
+  installations: number;
+  healthy: number;
+  error: number;
+  quotaPaused: number;
+  backfilling: number;
+  runs24hCompleted: number;
+  runs24hFailed: number;
+  quotaTokensToday: number;
+  durationMsP95: number;
+}
+
+export interface SyncMonitorRow {
+  tenantId: string;
+  slug: string;
+  name: string;
+  connectionId: string;
+  provider: string;
+  propertyId: string;
+  health: AnalyticsHealth | string;
+  lastSuccessAt: string | null;
+  lastRunAt: string | null;
+  lastError: string | null;
+  consecutiveFailures: number;
+  quotaTokensToday: number;
+  quotaPausedUntil: string | null;
+  backfillDone: number;
+  backfillTotal: number;
+  sessions7d: number;
+  sessions30d: number;
+  dataThrough: string | null;
+  runs24hCompleted: number;
+  runs24hFailed: number;
+  /** Set once an operator asked for a re-run; cleared when the scheduler picks it up. */
+  rerunRequestedAt: string | null;
+}
+
+export interface PlatformSyncMonitor {
+  summary: SyncMonitorSummary;
+  failing: SyncMonitorRow[];
+  backfills: SyncMonitorRow[];
+  installations: SyncMonitorRow[];
 }
 
 export interface ApiPeriodSnapshot {
