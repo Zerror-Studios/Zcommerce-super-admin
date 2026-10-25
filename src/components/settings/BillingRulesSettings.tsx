@@ -6,6 +6,7 @@ import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { useAuth } from "../../providers/AuthProvider";
 import { usePlatformSettings } from "../../providers/SettingsProvider";
 import { toasts } from "../../copy";
+import { PlatformJobsCard } from "./PlatformJobsCard";
 import { Button as UiButton, Card, Chip, Input, Select, SelectItem, Switch, Textarea, toastError } from "../ui";
 
 /** ADR-002 amendment: the provider is a setting; Razorpay is next, Nimbbl stays available. */
@@ -84,7 +85,14 @@ export function BillingRulesSettings() {
             onSelectionChange={(keys) => {
               const value = Array.from(keys)[0];
               if (typeof value === "string") {
-                setDraft({ ...draft, billing: { provider: value as PlatformPaymentProvider, configured: draft.billing?.configured ?? false } });
+                setDraft({
+                  ...draft,
+                  billing: {
+                    provider: value as PlatformPaymentProvider,
+                    configured: draft.billing?.configured ?? false,
+                    checkoutAvailable: draft.billing?.checkoutAvailable ?? false,
+                  },
+                });
               }
             }}
             disallowEmptySelection
@@ -103,6 +111,18 @@ export function BillingRulesSettings() {
                 ? "Webhook secret configured"
                 : "Webhook secret not set on the server; webhooks will be rejected"}
             </Chip>
+          ) : null}
+          {/* PRD-014 FR-2.4: the server says whether the saved provider has an online checkout here. */}
+          {draft.billing && draft.billing.provider !== "MANUAL" ? (
+            settings.billing?.provider === draft.billing.provider ? (
+              <Chip tone={settings.billing.checkoutAvailable ? "success" : "warning"}>
+                {settings.billing.checkoutAvailable
+                  ? "Online checkout available: stores can pay their invoices online"
+                  : "No online checkout for this provider here: stores can't pay online, so record their payments in the console"}
+              </Chip>
+            ) : (
+              <Chip tone="neutral">Save to check whether stores can pay this provider online</Chip>
+            )
           ) : null}
         </div>
       </Card>
@@ -166,6 +186,9 @@ export function BillingRulesSettings() {
           </UiButton>
         </div>
       )}
+
+      {/* PRD-014 PLT-13: the nightly jobs on demand (settings:manage). */}
+      {readOnly ? null : <PlatformJobsCard />}
     </div>
   );
 }

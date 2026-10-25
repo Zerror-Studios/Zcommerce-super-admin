@@ -17,6 +17,7 @@ import { CommandPalette } from "./CommandPalette";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { Sidebar } from "./Sidebar";
 import { AiSpectrumDefs } from "../ui/Ai";
+import { cx, toneTextClasses } from "../ui";
 import type { CommandGroup, NotificationEntry } from "./types";
 
 const COLLAPSE_KEY = "zcommerce-sidebar-collapsed";
@@ -47,7 +48,7 @@ const NOTIFICATION_TABS = [
 export function DashboardLayout() {
   const location = useLocation();
   const { signOut, can } = useAuth();
-  const { clients, subscriptions } = useClients();
+  const { clients, subscriptions, incomplete, pageGuardReached, loadRemaining, totalCount } = useClients();
   const canAddStore = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
 
   const [collapsed, setCollapsed] = useState(() => readStoredFlag(COLLAPSE_KEY));
@@ -184,6 +185,15 @@ export function DashboardLayout() {
           </button>,
         )}
       >
+        {/* Every screen built on the store list is partial when paging stopped early (W2V-C-01); the Stores page says so itself. */}
+        {incomplete && !pathMatches(location.pathname, "/stores", true) ? (
+          <p role="status" className={cx("mb-3 text-label", toneTextClasses.warning)}>
+            Store data is incomplete: {clients.length} of {totalCount} stores loaded, so totals here may be low.{" "}
+            <button type="button" className="underline" onClick={loadRemaining}>
+              {pageGuardReached ? "Load the next 5,000" : "Retry"}
+            </button>
+          </p>
+        ) : null}
         <Outlet />
       </AppShell>
 

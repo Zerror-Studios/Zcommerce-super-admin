@@ -125,15 +125,17 @@ export function subscriptionsOf(tenants: PlatformTenant[]): Subscription[] {
     .map((tenant) => toSubscription(tenant.subscription!, tenant));
 }
 
-export function toPlan(plan: PlatformPlan, tenants: PlatformTenant[] = []): Plan {
+/**
+ * A plan row. The store count comes from the server (`tenantCount`, PRD-014
+ * close-out), so it is right even before every tenant page has loaded.
+ */
+export function toPlan(plan: PlatformPlan): Plan {
   return {
     id: plan.id,
     name: plan.name,
     priceMonthly: plan.price.monthly,
     features: featureList(plan),
-    clientCount: tenants.filter(
-      (tenant) => (tenant.subscription?.plan?.id ?? tenant.plan?.id) === plan.id,
-    ).length,
+    clientCount: plan.tenantCount ?? 0,
     limits: {
       products: limitOf(plan.limits.maxSkus),
       // Storage and bandwidth limits are not on the backend plan yet.
@@ -203,7 +205,11 @@ export function toPlatformSettings(api: PlatformSettingsApi): PlatformSettings {
   return {
     health: { ...api.health },
     gracePeriodDays: api.gracePeriodDays,
-    billing: { provider: api.billing.provider, configured: api.billing.configured === true },
+    billing: {
+      provider: api.billing.provider,
+      configured: api.billing.configured === true,
+      checkoutAvailable: api.billing.checkoutAvailable === true,
+    },
     reminders: {
       daysBeforeDue: [...api.reminders.daysBeforeDue],
       daysAfterDue: [...api.reminders.daysAfterDue],

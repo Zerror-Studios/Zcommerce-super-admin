@@ -26,6 +26,7 @@ import type {
   PlatformCollections,
   PlatformCoupon,
   PlatformCouponInput,
+  PlatformCouponUpdateInput,
   PlatformPayment,
   PlatformRevenueOverview,
 } from "../types/platform-api";
@@ -80,6 +81,19 @@ export function toCouponInput(coupon: Coupon): PlatformCouponInput {
     expiresAt: coupon.expiresAt,
     active: coupon.active,
   };
+}
+
+/** Only the changed fields, for `updatePlatformCoupon` (PRD-014 PLT-13). */
+export function toCouponUpdateInput(patch: Partial<Coupon>): PlatformCouponUpdateInput {
+  const input: PlatformCouponUpdateInput = {};
+  if (patch.code !== undefined) input.code = patch.code;
+  if (patch.discountType !== undefined) input.discountType = patch.discountType === "percent" ? "PERCENT" : "FIXED";
+  if (patch.discountValue !== undefined) input.discountValue = patch.discountValue;
+  if (patch.appliesTo !== undefined) input.appliesTo = patch.appliesTo === "All" ? "ALL" : patch.appliesTo;
+  if (patch.maxRedemptions !== undefined) input.maxRedemptions = patch.maxRedemptions;
+  if (patch.expiresAt !== undefined) input.expiresAt = patch.expiresAt;
+  if (patch.active !== undefined) input.active = patch.active;
+  return input;
 }
 
 // ─── Revenue ──────────────────────────────────────────────────────────────

@@ -140,12 +140,16 @@ describe("api adapters", () => {
   });
 
   it("maps plans with a readable feature list and store count", () => {
-    const mapped = toPlan(plan, [tenant, { ...tenant, id: "t-2" }]);
+    const mapped = toPlan({ ...plan, tenantCount: 2 });
     expect(mapped.priceMonthly).toBe(4999);
     expect(mapped.clientCount).toBe(2);
     expect(mapped.limits).toEqual({ products: 5000, storageGb: null, bandwidthGb: null });
     expect(mapped.features).toContain("Advanced blog");
     expect(mapped.features).toContain("6 hours support");
+  });
+
+  it("counts no stores when the plan read didn't ask for tenantCount", () => {
+    expect(toPlan(plan).clientCount).toBe(0);
   });
 
   // ─── Usage bars (UX-23) ─────────────────────────────────────────────────

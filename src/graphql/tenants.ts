@@ -96,6 +96,31 @@ export const PLATFORM_TENANTS = gql`
   }
 `;
 
+/** One store by id: deep links to a store not (yet) in the list (PRD-014 FE-09). */
+export const PLATFORM_TENANT = gql`
+  ${PLATFORM_TENANT_FIELDS}
+  query PlatformTenant($id: ID!) {
+    platformTenant(id: $id) {
+      ...PlatformTenantFields
+    }
+  }
+`;
+
+/** Daily usage snapshots for one store, newest first (PRD-014 PLT-13). */
+export const PLATFORM_USAGE = gql`
+  query PlatformUsage($tenantId: ID!, $months: Int) {
+    platformUsage(tenantId: $tenantId, months: $months) {
+      date
+      products
+      orders30d
+      revenue30d
+      storageMb
+      staffCount
+      sessions30d
+    }
+  }
+`;
+
 // ─── Lifecycle (Phase 2) ──────────────────────────────────────────────────
 
 export const CREATE_TENANT = gql`
@@ -106,6 +131,7 @@ export const CREATE_TENANT = gql`
         ...PlatformTenantFields
       }
       ownerTemporaryPassword
+      ownerInviteSent
     }
   }
 `;
@@ -118,6 +144,7 @@ export const RETRY_TENANT_PROVISIONING = gql`
         ...PlatformTenantFields
       }
       ownerTemporaryPassword
+      ownerInviteSent
     }
   }
 `;
@@ -155,6 +182,13 @@ export const REACTIVATE_TENANT = gql`
     reactivateTenant(id: $id) {
       ...PlatformTenantFields
     }
+  }
+`;
+
+/** Emails the owner a fresh set-password link (PRD-014 PLT-07; tenants:manage). */
+export const RESEND_OWNER_INVITE = gql`
+  mutation ResendOwnerInvite($tenantId: ID!) {
+    resendOwnerInvite(tenantId: $tenantId)
   }
 `;
 

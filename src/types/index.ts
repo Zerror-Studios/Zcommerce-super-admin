@@ -189,7 +189,8 @@ export interface PlatformSettings {
   };
   gracePeriodDays: number;
   /** ADR-002 amendment: the platform payment provider is a setting (Razorpay next). */
-  billing?: { provider: PlatformPaymentProvider; configured: boolean };
+  /** `checkoutAvailable` (PRD-014 FR-2.4): stores can pay the saved provider online here. */
+  billing?: { provider: PlatformPaymentProvider; configured: boolean; checkoutAvailable: boolean };
   reminders: {
     daysBeforeDue: number[];
     daysAfterDue: number[];

@@ -15,6 +15,7 @@ const Clients = lazy(() => import("./pages/Clients").then((m) => ({ default: m.C
 const Home = lazy(() => import("./pages/Home").then((m) => ({ default: m.Home })));
 const Mfa = lazy(() => import("./pages/Mfa").then((m) => ({ default: m.Mfa })));
 const NotFound = lazy(() => import("./pages/NotFound").then((m) => ({ default: m.NotFound })));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword").then((m) => ({ default: m.ForgotPassword })));
 const SetPassword = lazy(() => import("./pages/SetPassword").then((m) => ({ default: m.SetPassword })));
 const Settings = lazy(() => import("./pages/Settings").then((m) => ({ default: m.Settings })));
 const SignIn = lazy(() => import("./pages/SignIn").then((m) => ({ default: m.SignIn })));
@@ -51,6 +52,15 @@ export default function App() {
         element={
           <GuestOnly>
             <SignIn />
+          </GuestOnly>
+        }
+      />
+      {/* PRD-014 FR-1.10: request a reset link by email; the link opens /set-password. */}
+      <Route
+        path="/forgot-password"
+        element={
+          <GuestOnly>
+            <ForgotPassword />
           </GuestOnly>
         }
       />

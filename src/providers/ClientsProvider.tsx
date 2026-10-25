@@ -5,6 +5,10 @@
  * maps them with `lib/api-adapters`, and runs the lifecycle mutations
  * (create, update, notes, suspend, reactivate, delete) against the
  * platform-admin API.
+ *
+ * The backend caps a page at 100 stores (`MAX_PAGE_LIMIT`), so the list is
+ * read page by page with `offset` until `totalCount` is reached (PRD-014
+ * FE-09); every page lands in one cached list (`lib/offset-paging.util`).
  */
 
 import { useApolloClient, useQuery } from "@apollo/client";
@@ -12,7 +16,10 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
+  useState,
   type ReactNode,
 } from "react";
 import { PLATFORM_PLANS } from "../graphql/plans";
@@ -27,9 +34,16 @@ import {
   UPDATE_TENANT_NOTES,
 } from "../graphql/tenants";
 import { subscriptionsOf, toClient, toPlan } from "../lib/api-adapters";
+import {
+  isPageGuardReached,
+  MAX_AUTO_PAGES,
+  nextOffset,
+  SERVER_PAGE_LIMIT,
+} from "../lib/offset-paging.util";
 import type { Client, ClientStatus, Plan, Subscription } from "../types";
 import type {
   CreateTenantInput,
+  CreateTenantResult,
   PlatformList,
   PlatformPlan,
   PlatformTenant,
@@ -41,23 +55,33 @@ import { useAuth } from "./AuthProvider";
 
 export interface CreateStoreResult {
   client: Client;
-  /** Shown once: the store owner's first password. */
+  /** Legacy servers only: the owner's first password, shown once. */
   ownerTemporaryPassword: string | null;
+  /** True when the owner was emailed a set-password link (PRD-014 PLT-07). */
+  ownerInviteSent: boolean;
 }
 
 interface ClientsContextValue {
   clients: Client[];
   subscriptions: Subscription[];
   plans: Plan[];
-  /** True while the tenant list is loading. */
+  /** True while the first page of the tenant list is loading. */
   loading: boolean;
+  /** True while later pages are still being read (FE-09). */
+  loadingMore: boolean;
   /** The API error, when the list could not be read. */
   error: Error | null;
-  /** Stores on the server; more than `clients.length` means the page cap was hit (review C-L9). */
+  /** Stores on the server; more than `clients.length` while `loadingMore` (or after a page failed). */
   totalCount: number;
+  /** Paging stopped before `totalCount`: every screen built on `clients` is partial (W2V-C-01). */
+  incomplete: boolean;
+  /** Paging stopped at the page guard (5,000 stores), not on a failed page (W2V2-06). */
+  pageGuardReached: boolean;
+  /** Reads the missing pages again, from where paging stopped; past the guard, the next 5,000. */
+  loadRemaining: () => void;
   refetch: () => Promise<unknown>;
   getClient: (id: string) => Client | undefined;
-  /** Provisions a new tenant and returns the owner's one-time password. */
+  /** Provisions a new tenant; says whether the owner was emailed an invite. */
   createStore: (input: CreateTenantInput) => Promise<CreateStoreResult>;
   retryProvisioning: (id: string) => Promise<CreateStoreResult>;
   updateClient: (id: string, patch: Partial<Client>) => Promise<void>;
@@ -69,8 +93,8 @@ interface ClientsContextValue {
 
 const ClientsContext = createContext<ClientsContextValue | null>(null);
 
-/** All tenants in one page; the platform has tens of stores, not thousands. */
-const TENANT_PAGE_LIMIT = 200;
+/** One page of tenants: the backend's cap (FE-09). */
+const TENANT_PAGE_LIMIT = SERVER_PAGE_LIMIT;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -105,16 +129,46 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
     skip: !isAuthenticated,
   });
 
-  const tenants = useMemo(
-    () => tenantsQuery.data?.platformTenants.items ?? [],
-    [tenantsQuery.data],
+  const tenantPage = tenantsQuery.data?.platformTenants;
+  const tenants = useMemo(() => tenantPage?.items ?? [], [tenantPage]);
+
+  // Read the next page until the list is complete. `lastPageSize` stops a
+  // loop when a page comes back empty (a store deleted meanwhile) or fails;
+  // `refetch` starts over from the first page.
+  const { fetchMore, loading: tenantsLoading } = tenantsQuery;
+  const [lastPageSize, setLastPageSize] = useState<number | null>(null);
+  // W2V2-06: the page guard grows by MAX_AUTO_PAGES each time the user asks
+  // for more, so "Load more" past 5,000 stores actually reads on.
+  const [pageBudget, setPageBudget] = useState(MAX_AUTO_PAGES);
+  const fetchingOffset = useRef<number | null>(null);
+  const pendingOffset = nextOffset(
+    tenantPage,
+    TENANT_PAGE_LIMIT,
+    lastPageSize,
+    pageBudget,
   );
+  const pageGuardReached = isPageGuardReached(
+    tenantPage,
+    TENANT_PAGE_LIMIT,
+    pageBudget,
+  );
+  useEffect(() => {
+    if (pendingOffset === null || tenantsLoading) return;
+    if (fetchingOffset.current === pendingOffset) return;
+    fetchingOffset.current = pendingOffset;
+    fetchMore({ variables: { offset: pendingOffset } })
+      .then((result) => setLastPageSize(result.data.platformTenants.items.length))
+      .catch(() => setLastPageSize(0))
+      .finally(() => {
+        fetchingOffset.current = null;
+      });
+  }, [fetchMore, pendingOffset, tenantsLoading]);
 
   const clients = useMemo(() => tenants.map(toClient), [tenants]);
   const subscriptions = useMemo(() => subscriptionsOf(tenants), [tenants]);
   const plans = useMemo(
-    () => (plansQuery.data?.platformPlans ?? []).map((plan) => toPlan(plan, tenants)),
-    [plansQuery.data, tenants],
+    () => (plansQuery.data?.platformPlans ?? []).map(toPlan),
+    [plansQuery.data],
   );
 
   const getClient = useCallback(
@@ -122,19 +176,38 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
     [clients],
   );
 
-  const refetch = tenantsQuery.refetch;
+  const { refetch: refetchTenants } = tenantsQuery;
+  const { refetch: refetchPlans } = plansQuery;
+  const refetch = useCallback(async () => {
+    setLastPageSize(null);
+    setPageBudget(MAX_AUTO_PAGES);
+    // Plan store counts are server-side now, so they refresh with the list.
+    void refetchPlans().catch(() => undefined);
+    return await refetchTenants();
+  }, [refetchTenants, refetchPlans]);
   const totalCount = tenantsQuery.data?.platformTenants.totalCount ?? clients.length;
+  const incomplete =
+    !tenantsQuery.error && pendingOffset === null && !tenantsLoading && totalCount > clients.length;
+  // Clearing the failed page's marker lets `nextOffset` resume at the
+  // first missing row; at the page guard the budget grows too (W2V2-06).
+  const loadRemaining = useCallback(() => {
+    setLastPageSize(null);
+    if (pageGuardReached) {
+      setPageBudget((budget) => budget + MAX_AUTO_PAGES);
+    }
+  }, [pageGuardReached]);
 
   const createStore = useCallback(
     async (input: CreateTenantInput): Promise<CreateStoreResult> => {
       const { data } = await apollo.mutate<{
-        createTenant: { tenant: PlatformTenant; ownerTemporaryPassword: string | null };
+        createTenant: CreateTenantResult;
       }>({ mutation: CREATE_TENANT, variables: { input } });
       if (!data) throw new Error("No response");
       await refetch();
       return {
         client: toClient(data.createTenant.tenant),
         ownerTemporaryPassword: data.createTenant.ownerTemporaryPassword,
+        ownerInviteSent: data.createTenant.ownerInviteSent === true,
       };
     },
     [apollo, refetch],
@@ -143,13 +216,14 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
   const retryProvisioning = useCallback(
     async (id: string): Promise<CreateStoreResult> => {
       const { data } = await apollo.mutate<{
-        retryTenantProvisioning: { tenant: PlatformTenant; ownerTemporaryPassword: string | null };
+        retryTenantProvisioning: CreateTenantResult;
       }>({ mutation: RETRY_TENANT_PROVISIONING, variables: { id } });
       if (!data) throw new Error("No response");
       await refetch();
       return {
         client: toClient(data.retryTenantProvisioning.tenant),
         ownerTemporaryPassword: data.retryTenantProvisioning.ownerTemporaryPassword,
+        ownerInviteSent: data.retryTenantProvisioning.ownerInviteSent === true,
       };
     },
     [apollo, refetch],
@@ -204,8 +278,12 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
       subscriptions,
       plans,
       loading: tenantsQuery.loading && !tenantsQuery.data,
+      loadingMore: pendingOffset !== null,
       error: tenantsQuery.error ?? null,
       totalCount,
+      incomplete,
+      pageGuardReached,
+      loadRemaining,
       refetch,
       getClient,
       createStore,
@@ -220,6 +298,10 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
       createStore,
       deleteClient,
       getClient,
+      incomplete,
+      loadRemaining,
+      pageGuardReached,
+      pendingOffset,
       plans,
       refetch,
       retryProvisioning,

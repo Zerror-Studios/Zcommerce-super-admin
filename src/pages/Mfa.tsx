@@ -12,7 +12,7 @@ function groupKey(secret: string): string {
 import { PLATFORM_CONFIRM_MFA, PLATFORM_ENROL_MFA } from "../graphql/auth";
 import { client, errorCodeOf } from "../lib/apollo-client";
 import { broadcastToken } from "../lib/auth-channel";
-import { setAccessToken } from "../lib/session-store";
+import { getCsrfToken, setAccessToken } from "../lib/session-store";
 import { useAuth } from "../providers/AuthProvider";
 import type { PlatformMfaConfirmation, PlatformMfaEnrolment } from "../types/platform-api";
 
@@ -85,7 +85,8 @@ export function Mfa() {
       // The old token says mfaEnabled:false; swap in the one the server issued
       // and hand it to the other tabs too (review C-L4).
       setAccessToken(result.accessToken);
-      broadcastToken(result.accessToken);
+      // Same session, so the CSRF token is unchanged (PRD-014 FR-1.11).
+      broadcastToken(result.accessToken, getCsrfToken());
       setRecoveryCodes(result.recoveryCodes);
       await refreshUser();
       setStep("done");

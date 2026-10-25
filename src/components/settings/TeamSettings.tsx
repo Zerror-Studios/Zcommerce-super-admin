@@ -1,10 +1,11 @@
 import { useMutation, useQuery } from "@apollo/client";
 import { DropdownItem, DropdownTrigger, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, addToast } from "@heroui/react";
-import { useState, type Key } from "react";
+import { useEffect, useState, type Key } from "react";
 import type { PlatformList, PlatformRole, PlatformUser } from "../../types/platform-api";
 import { platformRoleEnum } from "../../types/platform-api";
 import { errorCodeOf } from "../../lib/apollo-client";
 import { mutationFailureCopy } from "../../lib/mutation-errors";
+import { nextOffset, SERVER_PAGE_LIMIT } from "../../lib/offset-paging.util";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import {
   PLATFORM_DISABLE_USER,
@@ -15,8 +16,9 @@ import {
 } from "../../graphql/team";
 import { useAuth } from "../../providers/AuthProvider";
 import { toasts } from "../../copy";
+import { ConfirmModal } from "../common/ConfirmModal";
 import { dataTableClassNames } from "../common/dataTableStyles";
-import { IconAdd, IconMore } from "../ui/icons";
+import { IconAdd, IconLock, IconMore } from "../ui/icons";
 import {
   Button as UiButton,
   Card,
@@ -64,10 +66,23 @@ const columns = [
 export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: boolean; onCreateOpenChange: (open: boolean) => void }) {
   const { user: me, can } = useAuth();
   const canManageUsers = can(PLATFORM_PERMISSIONS.USERS_MANAGE);
+  // PRD-014 UX-27: `platformUsers` needs users:manage; other roles get an
+  // explanation instead of a FORBIDDEN error. Pages of 100 (FE-09).
   const query = useQuery<{ platformUsers: PlatformList<PlatformUser> }>(PLATFORM_USERS, {
-    variables: { limit: 200, offset: 0 },
+    variables: { limit: SERVER_PAGE_LIMIT, offset: 0 },
     fetchPolicy: "cache-and-network",
+    skip: !canManageUsers,
   });
+  const usersPage = query.data?.platformUsers;
+  const { fetchMore, loading: usersLoading } = query;
+  const [lastPageSize, setLastPageSize] = useState<number | null>(null);
+  useEffect(() => {
+    const offset = nextOffset(usersPage, SERVER_PAGE_LIMIT, lastPageSize);
+    if (offset === null || usersLoading) return;
+    void fetchMore({ variables: { offset } })
+      .then((result) => setLastPageSize(result.data.platformUsers.items.length))
+      .catch(() => setLastPageSize(0));
+  }, [fetchMore, lastPageSize, usersLoading, usersPage]);
   const [invite, { loading: inviting }] = useMutation<{ platformInviteUser: { user: PlatformUser; setupUrl: string } }>(PLATFORM_INVITE_USER);
   const [updateRole] = useMutation(PLATFORM_UPDATE_USER_ROLE);
   const [disable] = useMutation(PLATFORM_DISABLE_USER);
@@ -80,6 +95,8 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
   const [setupUrl, setSetupUrl] = useState<string | null>(null);
   const [roleTarget, setRoleTarget] = useState<PlatformUser | null>(null);
   const [nextRole, setNextRole] = useState<PlatformRole>(platformRoleEnum.READ_ONLY);
+  // PRD-014 UX-39: resetting two-step and disabling ask first.
+  const [confirmTarget, setConfirmTarget] = useState<{ user: PlatformUser; action: "mfa" | "disable" } | null>(null);
 
   const users = query.data?.platformUsers.items ?? [];
   const isOwner = me?.role === platformRoleEnum.PLATFORM_OWNER;
@@ -118,9 +135,17 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
     if (key === "role") {
       setRoleTarget(user);
       setNextRole(user.role);
-    } else if (key === "mfa") {
+    } else if (key === "mfa" || key === "disable") {
+      setConfirmTarget({ user, action: key });
+    }
+  };
+
+  const confirmAction = () => {
+    if (!confirmTarget) return;
+    const { user, action } = confirmTarget;
+    if (action === "mfa") {
       void run(() => resetMfa({ variables: { id: user.id } }), `Two-step verification reset for ${user.email}.`);
-    } else if (key === "disable") {
+    } else {
       void run(() => disable({ variables: { id: user.id } }), `${user.email} disabled.`);
     }
   };
@@ -164,6 +189,18 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
         return null;
     }
   };
+
+  if (!canManageUsers) {
+    return (
+      <Card>
+        <EmptyState
+          icon={IconLock}
+          title="Only the platform owner manages the team"
+          description="Ask the owner to invite someone, change a role or reset two-step verification."
+        />
+      </Card>
+    );
+  }
 
   if (query.error) {
     return <ErrorState title="Couldn't load the team" description={toasts.genericError} onRetry={() => void query.refetch()} />;
@@ -223,6 +260,24 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      <ConfirmModal
+        isOpen={confirmTarget != null}
+        onClose={() => setConfirmTarget(null)}
+        onConfirm={confirmAction}
+        title={
+          confirmTarget?.action === "disable"
+            ? `Disable ${confirmTarget.user.email}?`
+            : `Reset two-step verification for ${confirmTarget?.user.email ?? ""}?`
+        }
+        description={
+          confirmTarget?.action === "disable"
+            ? "They are signed out everywhere and can't log in again. Store sessions they opened with Log in end too."
+            : "Their authenticator and recovery codes stop working. They set up two-step verification again at their next login."
+        }
+        confirmLabel={confirmTarget?.action === "disable" ? "Disable" : "Reset two-step"}
+        confirmColor={confirmTarget?.action === "disable" ? "danger" : "warning"}
+      />
 
       <Modal isOpen={roleTarget != null} onClose={() => setRoleTarget(null)} width="sm">
         <ModalContent>

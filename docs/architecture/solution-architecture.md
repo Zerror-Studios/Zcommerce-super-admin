@@ -50,7 +50,9 @@ flowchart TB
 
 | Route | Page | Sections / notes |
 |---|---|---|
-| `/sign-in` | SignIn | Behind `GuestOnly`. Fake auth accepts any credentials |
+| `/sign-in` | SignIn | Behind `GuestOnly`. `platformLogin` with the TOTP step; "Forgot password?" links to `/forgot-password` |
+| `/forgot-password` | ForgotPassword | Behind `GuestOnly` (PRD-014 FR-1.10). `platformRequestPasswordReset`; the same confirmation whether or not the email has an account |
+| `/set-password?token=` | SetPassword | Public. Invite and reset links → `platformSetPassword` (8+ characters, PRD-014) |
 | `/` | Home | KPI cards (revenue, MRR, stores, orders), revenue chart, plan mix, top clients |
 | `/clients` | Clients | Table with status and health |
 | `/clients/new` | AddClient | Plan (Free/Starter/Pro/Enterprise), status (trial/active/suspended) |
@@ -126,6 +128,10 @@ This logic lives in `lib/subscriptionHealth.ts`, which has tests in `subscriptio
 ## 6. Integration architecture (PRD-005)
 
 **Current (Phase 1, 2026-10-17).** The backend has the platform principal (ADR-001, Accepted) and the `platform-admin` subgraph. This repo talks to it through `src/lib/apollo-client.ts` (auth link, silent refresh on `TOKEN_EXPIRED` with a single-flight, cross-tab lock, proactive refresh, error codes), with the access token in memory (`lib/session-store.ts`) and the refresh token in the `__Host-zc_platform_rt` cookie. `AuthProvider` restores the session on load (`platformRefreshToken` → `platformMe`), runs the TOTP step on `MFA_REQUIRED`, and sends manage roles to `/mfa` to enrol. `ClientsProvider` maps `platformTenants` / `platformPlans` onto the console's `Client`, `Subscription` and `Plan` types (`lib/api-adapters.ts`) so every screen reads them unchanged. ADR-5 is answered: Apollo cache for server data, React context for session and UI state only. **Phase 2 (same day):** `ClientsProvider` also runs the lifecycle mutations (create with provisioning, update, notes, suspend with a reason, reactivate, soft delete with the slug), `SettingsProvider` holds the server settings, and the store page gained the provisioning card, subscription actions and editable notes; health and payment badges are server-computed (ADR-2 answered with daily usage snapshots in the master DB).
+
+**PRD-014 Wave 1 (2026-10-25).** Platform mutations need the session's CSRF token (D8): `platformLogin` and `platformRefreshToken` return `csrfToken`, which `lib/session-store.ts` keeps in memory beside the access token (shared across tabs with it), and the Apollo auth link sends it as `x-zcom-csrf` on every mutation. A `FORBIDDEN` / `CSRF_REQUIRED` answer triggers one refresh and one retry; `ORIGIN_NOT_ALLOWED` is reported as its own toast. Staff reset their password by email (`/forgot-password` → `platformRequestPasswordReset` → `/set-password`). Provisioning emails the owner a set-password invite (`CreateTenantResult.ownerInviteSent`; the temporary password is null) and the store page can resend it (`resendOwnerInvite`). "Log in to store" opens an impersonation session of at most 1 hour.
+
+**PRD-014 Wave 2 (2026-10-25, console side of FR-2.3, PLT-13, FE-16).** The Apollo HTTP link has a deadline (`createTimeoutFetch`, `VITE_HTTP_TIMEOUT_MS`, default 30 s) and `AuthProvider` signs out on a `platformMe` failure only when the server returns an auth code; a network failure keeps the session (or shows "Can't reach the server" with Retry during restore). The lists the backend caps (tenants and users at 100, payments at 200) are read with `offset` into one cached list (`lib/offset-paging.util.ts` field policies): stores load page after page until `totalCount`, payments and the store's billing history have "Load more", and the store page falls back to `platformTenant(id)` for a store not yet loaded. New operations (all existing backend fields, no contract change): `platformTenant`, `platformUsage`, `updatePlatformCoupon`, `deactivatePlatformCoupon`, `runPlatformJob`, `runUsageSnapshotJob`, `platformLogoutAll` (54 operations, validated). Team and Audit log skip their queries for roles without `users:manage` / `audit:read`.
 
 **Target (Phases 2–4).** The sequence below is the full design from the PRD; the identity decision (ADR-1 here) is ADR-001 in the backend and is done.
 

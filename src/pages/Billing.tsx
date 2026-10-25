@@ -43,13 +43,22 @@ export function Billing() {
     <div>
       <PageHeader
         title="Transactions"
-        count={payments.loading ? undefined : payments.data.length}
+        count={payments.loading ? undefined : payments.totalCount}
         description="What stores paid Zcommerce for their plans"
       />
       {payments.error ? (
         <ErrorState title="Couldn't load transactions." description={toasts.genericError} onRetry={() => void payments.refetch()} />
       ) : (
-        <TransactionsTab transactions={payments.data} isLoading={payments.loading} />
+        <TransactionsTab
+          transactions={payments.data}
+          isLoading={payments.loading}
+          paging={{
+            total: payments.totalCount,
+            hasMore: payments.hasMore,
+            loading: payments.loadingMore,
+            onLoadMore: payments.loadMore,
+          }}
+        />
       )}
     </div>
   );

@@ -98,10 +98,11 @@ export const PLATFORM_COUPON_FIELDS = gql`
 
 export const PLATFORM_COUPONS = gql`
   ${PLATFORM_COUPON_FIELDS}
-  query PlatformCoupons {
-    platformCoupons {
+  query PlatformCoupons($limit: Int, $offset: Int) {
+    platformCoupons(limit: $limit, offset: $offset) {
       ...PlatformCouponFields
     }
+    platformCouponCount
   }
 `;
 
@@ -141,3 +142,39 @@ export const SEND_RENEWAL_REMINDERS = gql`
   }
 `;
 
+
+// ─── Coupon edits (PRD-014 PLT-13) ────────────────────────────────────────
+
+export const UPDATE_PLATFORM_COUPON = gql`
+  ${PLATFORM_COUPON_FIELDS}
+  mutation UpdatePlatformCoupon($id: ID!, $input: PlatformCouponUpdateInput!) {
+    updatePlatformCoupon(id: $id, input: $input) {
+      ...PlatformCouponFields
+    }
+  }
+`;
+
+export const DEACTIVATE_PLATFORM_COUPON = gql`
+  ${PLATFORM_COUPON_FIELDS}
+  mutation DeactivatePlatformCoupon($id: ID!) {
+    deactivatePlatformCoupon(id: $id) {
+      ...PlatformCouponFields
+    }
+  }
+`;
+
+// ─── Jobs (PRD-014 PLT-13) ────────────────────────────────────────────────
+
+/** Runs the daily billing cycle or the reminder pass now (settings:manage). */
+export const RUN_PLATFORM_JOB = gql`
+  mutation RunPlatformJob($job: PlatformBillingJob!) {
+    runPlatformJob(job: $job)
+  }
+`;
+
+/** Runs today's usage snapshot now (settings:manage). */
+export const RUN_USAGE_SNAPSHOT_JOB = gql`
+  mutation RunUsageSnapshotJob {
+    runUsageSnapshotJob
+  }
+`;

@@ -41,7 +41,7 @@ export interface SubscriptionActionsProps {
   plans: Plan[];
 }
 
-type Dialog = "plan" | "trial" | "cancel" | "payment" | "activate" | null;
+type Dialog = "plan" | "trial" | "cancel" | "payment" | "activate" | "pastDue" | null;
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
@@ -156,11 +156,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
             </UiButton>
           ) : null}
           {status === "ACTIVE" ? (
-            <UiButton
-              variant="secondary"
-              isLoading={busy}
-              onPress={() => void act(() => markPastDue({ variables: { tenantId } }), "Marked past due.")}
-            >
+            <UiButton variant="secondary" onPress={() => setDialog("pastDue")}>
               Mark past due
             </UiButton>
           ) : null}
@@ -310,6 +306,32 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
               onPress={() => void act(() => cancel({ variables: { tenantId, immediate } }), "Subscription cancelled.")}
             >
               Cancel subscription
+            </UiButton>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Mark past due (PRD-014 UX-39: asks first) */}
+      <Modal isOpen={dialog === "pastDue"} onClose={() => setDialog(null)} width="sm">
+        <ModalContent>
+          <ModalHeader>Mark {client.storeName} as past due?</ModalHeader>
+          <ModalBody>
+            <p className="text-body text-fg-muted">
+              The subscription moves to past due, recorded in its history as a failed payment. It becomes active
+              again when a payment is recorded.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <UiButton variant="ghost" onPress={() => setDialog(null)}>
+              Cancel
+            </UiButton>
+            <UiButton
+              variant="danger"
+              isLoading={busy}
+              isDisabled={busy}
+              onPress={() => void act(() => markPastDue({ variables: { tenantId } }), "Marked past due.")}
+            >
+              Mark past due
             </UiButton>
           </ModalFooter>
         </ModalContent>

@@ -19,7 +19,7 @@ npm ci
 npm run dev
 ```
 
-Copy `.env.example` to `.env`. Names: `VITE_GATEWAY_URL` (local dev: `/v1/graphql`, served by the Vite dev proxy; **production: `https://api.zerrorstudios.com/v1/graphql`**, ADR-003 / PRD-007: the console on `platform.zerrorstudios.com` calls the API host directly, same-site, so the `SameSite=Strict` platform cookie is sent; `vercel.json` has no API rewrite), `API_GATEWAY_URL` (the backend gateway the Vite dev proxy forwards to), `VITE_REFRESH_TIMEOUT_MS`.
+Copy `.env.example` to `.env`. Names: `VITE_GATEWAY_URL` (local dev: `/v1/graphql`, served by the Vite dev proxy; **production: `https://api.zerrorstudios.com/v1/graphql`**, ADR-003 / PRD-007: the console on `platform.zerrorstudios.com` calls the API host directly, same-site, so the `SameSite=Strict` platform cookie is sent; `vercel.json` has no API rewrite), `API_GATEWAY_URL` (the backend gateway the Vite dev proxy forwards to), `VITE_REFRESH_TIMEOUT_MS`, `VITE_HTTP_TIMEOUT_MS` (deadline for every API request, default 30000, PRD-014 FE-23), `VITE_STORE_ADMIN_URL_TEMPLATE` (store admin address with `{slug}` for the "Log in to store" link when the API sends no `adminUrl`, PRD-014 UX-26).
 
 The backend needs the `platform-admin` service running (see `../zcom-backend/README.md`) and at least one platform user: `npm run platform:bootstrap-owner -- --email you@zerror.in` in the backend prints a one-time set-password link that opens `/set-password` here.
 
@@ -31,7 +31,9 @@ The backend needs the `platform-admin` service running (see `../zcom-backend/REA
 | Build (typechecks) | `npm run build`; production mode needs `VITE_GATEWAY_URL` as an absolute `https://` URL, so a local build against the dev proxy uses `npx vite build --mode development` |
 | Lint | `npm run lint` (oxlint); `npm run lint:hex` flags hard-coded colours |
 | Contract check | `npm run validate:ops` validates every GraphQL operation against the backend `platform-admin` schema |
-| Tests | `npm test` / `npm run test:watch` (vitest; covers the `src/lib` adapters and helpers) |
+| Kit sync check | `npm run check:synced` fails when a `SYNCED FILE` in `src/components/ui` differs from `../zcom-frontend` (PRD-014 FE-16; skipped when the dashboard isn't checked out) |
+| Tests | `npm test` / `npm run test:watch` (vitest; covers the `src/lib` adapters and helpers). `npm run build` runs them first (`prebuild`, PRD-014 FR-1.6), so a failing test stops the Vercel build |
+| Contract check (variables) | `npm run validate:contracts` checks documents and `variables` shapes against the composed supergraph (backend `scripts/validate-clients`; needs `../zcom-backend` built) |
 | Preview | `npm run preview` |
 
 ## Structure

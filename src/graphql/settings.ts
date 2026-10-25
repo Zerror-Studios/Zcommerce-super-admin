@@ -15,6 +15,7 @@ export const PLATFORM_SETTINGS_FIELDS = gql`
     billing {
       provider
       configured
+      checkoutAvailable
     }
     reminders {
       daysBeforeDue

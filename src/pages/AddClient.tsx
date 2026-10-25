@@ -236,6 +236,7 @@ export function AddClient() {
           isOpen
           storeName={created.client.storeName}
           ownerEmail={created.client.ownerEmail}
+          ownerInviteSent={created.ownerInviteSent}
           temporaryPassword={created.ownerTemporaryPassword}
           onClose={() => navigate(`/stores/${created.client.id}`)}
         />

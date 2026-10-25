@@ -51,6 +51,8 @@ export interface PlatformUser {
 
 export interface PlatformAuthPayload {
   accessToken: string;
+  /** Sent as `x-zcom-csrf` on every mutation (PRD-014 FR-1.11). */
+  csrfToken: string;
   expiresIn: number;
   user: PlatformUser;
   mfaRequired: boolean;
@@ -94,6 +96,8 @@ export interface PlatformPlan {
   };
   isActive: boolean;
   createdAt: string | null;
+  /** Stores on this plan, counted on the server; only `platformPlans` asks for it. */
+  tenantCount?: number;
 }
 
 // ─── Subscriptions ────────────────────────────────────────────────────────
@@ -195,6 +199,16 @@ export interface PlatformList<T> {
   totalCount: number;
 }
 
+/**
+ * `createTenant` / `retryTenantProvisioning`. Since PRD-014 (PLT-07) the
+ * owner gets a set-password email and `ownerTemporaryPassword` is null.
+ */
+export interface CreateTenantResult {
+  tenant: PlatformTenant;
+  ownerTemporaryPassword: string | null;
+  ownerInviteSent: boolean;
+}
+
 // ─── Inputs (Phase 2) ─────────────────────────────────────────────────────
 
 export interface CreateTenantInput {
@@ -230,7 +244,12 @@ export interface UpdateTenantInput {
 export interface PlatformSettingsApi {
   health: { expiringWithinDays: number; inactiveAfterDays: number };
   gracePeriodDays: number;
-  billing: { provider: "MANUAL" | "NIMBBL" | "RAZORPAY" | "STRIPE"; configured?: boolean };
+  /** `configured` and `checkoutAvailable` are always sent by the server; optional because this type is also the update input. */
+  billing: {
+    provider: "MANUAL" | "NIMBBL" | "RAZORPAY" | "STRIPE";
+    configured?: boolean;
+    checkoutAvailable?: boolean;
+  };
   reminders: {
     daysBeforeDue: number[];
     daysAfterDue: number[];
@@ -250,8 +269,10 @@ export interface PlatformInvoice {
   tenantName: string;
   subscriptionId: string;
   number: string;
-  planName: PlanName;
-  billingCycle: PlatformBillingCycle;
+  /** Schema `String!` (FE-23): a plan name, not guaranteed to be a known enum value. */
+  planName: string;
+  /** Schema `String!` (FE-23). */
+  billingCycle: string;
   periodStart: string;
   periodEnd: string;
   amount: number;
@@ -275,10 +296,12 @@ export interface PlatformPayment {
   tenantName: string;
   amount: number;
   currency: string;
+  /** Schema `String!`; the platform only writes these four (FE-23). */
   provider: "NIMBBL" | "RAZORPAY" | "STRIPE" | "MANUAL";
   type: string;
   status: PlatformPaymentStatus;
-  planName: PlanName | null;
+  /** Schema `String` (FE-23). */
+  planName: string | null;
   transactionId: string | null;
   periodStart: string | null;
   periodEnd: string | null;
@@ -307,6 +330,9 @@ export interface PlatformCouponInput {
   expiresAt: string;
   active?: boolean;
 }
+
+/** `updatePlatformCoupon` input: every field optional (PRD-014 PLT-13). */
+export type PlatformCouponUpdateInput = Partial<PlatformCouponInput>;
 
 export interface ReminderPreview {
   tenantId: string;

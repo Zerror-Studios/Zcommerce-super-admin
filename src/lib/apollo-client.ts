@@ -11,7 +11,12 @@
  *   review C-M4), single-flight, serialised across tabs, with one retry of
  *   the failed operation;
  * - proactive refresh shortly before `exp`;
- * - structured handling of the gateway error codes, never message text.
+ * - the session's CSRF token as `x-zcom-csrf` on every mutation, and one
+ *   refresh + retry when the server answers `FORBIDDEN` / `CSRF_REQUIRED`
+ *   (PRD-014 FR-1.11, D8);
+ * - structured handling of the gateway error codes, never message text;
+ * - an HTTP deadline on every request (`HTTP_TIMEOUT_MS`, PRD-014 FE-23)
+ *   and offset paging for the lists the backend caps at 100 (FE-09).
  */
 
 import {
@@ -26,10 +31,13 @@ import {
   type Operation,
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
+import { getMainDefinition } from "@apollo/client/utilities";
 import { onError } from "@apollo/client/link/error";
 import { addToast } from "@heroui/react";
 import { GATEWAY_URL } from "../config/data-source";
+import { createTimeoutFetch } from "./fetch-timeout.util";
 import { requestNavigation } from "./navigation-events";
+import { offsetListPolicy, offsetPagingPolicy } from "./offset-paging.util";
 import {
   broadcastLogout,
   broadcastToken,
@@ -41,8 +49,10 @@ import {
 import {
   clearSession,
   getAccessToken,
+  getCsrfToken,
   isTokenExpired,
   setAccessToken,
+  setCsrfToken,
   tokenExpiresAt,
 } from "./session-store";
 
@@ -56,7 +66,16 @@ const AUTH_OPERATIONS = new Set([
   "PlatformRefreshToken",
   "PlatformLogout",
   "PlatformSetPassword",
+  "PlatformRequestPasswordReset",
 ]);
+
+/** Header the platform API checks on every mutation (PRD-014 §5.2). */
+export const CSRF_HEADER = "x-zcom-csrf";
+
+/** `FORBIDDEN` reason for a mutation without a valid CSRF token. */
+const CSRF_REQUIRED_REASON = "CSRF_REQUIRED";
+/** `FORBIDDEN` reason for a request from an origin the API doesn't allow. */
+const ORIGIN_NOT_ALLOWED_REASON = "ORIGIN_NOT_ALLOWED";
 
 /** Codes that end the session: the token itself is wrong. */
 const FATAL_AUTH_CODES = new Set<string | undefined>(["INVALID_AUTH_TOKEN"]);
@@ -70,6 +89,14 @@ const TOAST_DEDUPE_WINDOW_MS = 5000;
  * (PRD-014 SEC-04); the screen explains them, so no global toast.
  */
 const BUSINESS_FORBIDDEN_REASONS = new Set(["PAYMENT_REQUIRED"]);
+/**
+ * `FORBIDDEN` reasons about the request, not the role: the link handles
+ * them itself (retry or its own toast), never "You don't have permission".
+ */
+const REQUEST_FORBIDDEN_REASONS = new Set([
+  CSRF_REQUIRED_REASON,
+  ORIGIN_NOT_ALLOWED_REASON,
+]);
 
 /** Refresh this long before the access token's `exp`. */
 const PROACTIVE_REFRESH_LEAD_MS = 60_000;
@@ -103,7 +130,7 @@ export type RefreshFailure =
   | "SERVER";
 
 export type RefreshResult =
-  | { ok: true; token: string }
+  | { ok: true; token: string; csrfToken: string | null }
   | { ok: false; reason: RefreshFailure; detail?: string };
 
 export function isRefreshFailure(
@@ -133,13 +160,20 @@ async function requestRefresh(): Promise<RefreshResult> {
       signal: controller.signal,
       body: JSON.stringify({
         operationName: "PlatformRefreshToken",
-        query: `mutation PlatformRefreshToken { platformRefreshToken { accessToken } }`,
+        query: `mutation PlatformRefreshToken { platformRefreshToken { accessToken csrfToken } }`,
       }),
     });
     if (response.status >= 500) return { ok: false, reason: "SERVER" };
     const result = await response.json().catch(() => null);
     const accessToken = result?.data?.platformRefreshToken?.accessToken;
-    if (accessToken) return { ok: true, token: accessToken };
+    const csrfToken = result?.data?.platformRefreshToken?.csrfToken;
+    if (accessToken) {
+      return {
+        ok: true,
+        token: accessToken,
+        csrfToken: typeof csrfToken === "string" ? csrfToken : null,
+      };
+    }
     if (result?.errors?.length) {
       const error = result.errors[0];
       return {
@@ -172,11 +206,17 @@ export async function refreshAccessToken(): Promise<RefreshResult> {
     const current = getAccessToken();
     const shared =
       takeRecentSharedToken(staleToken) ||
-      (current && current !== staleToken && !isTokenExpired(current) ? current : null);
-    const result: RefreshResult = shared ? { ok: true, token: shared } : await requestRefresh();
+      (current && current !== staleToken && !isTokenExpired(current)
+        ? { token: current, csrfToken: getCsrfToken() }
+        : null);
+    const result: RefreshResult = shared
+      ? { ok: true, token: shared.token, csrfToken: shared.csrfToken }
+      : await requestRefresh();
     if (result.ok) {
+      // A shared token without its CSRF token keeps the one we hold.
+      setCsrfToken(result.csrfToken ?? undefined);
       setAccessToken(result.token);
-      if (!shared) broadcastToken(result.token);
+      if (!shared) broadcastToken(result.token, result.csrfToken);
     }
     return result;
   }).finally(() => {
@@ -200,6 +240,21 @@ function toastOnce(key: string, toast: Parameters<typeof addToast>[0]): void {
   if (shownAt !== undefined && now - shownAt < TOAST_DEDUPE_WINDOW_MS) return;
   recentToasts.set(key, now);
   addToast(toast);
+}
+
+function isCsrfRejection(error: { extensions?: Record<string, unknown> }): boolean {
+  return (
+    error.extensions?.code === "FORBIDDEN" &&
+    error.extensions?.reason === CSRF_REQUIRED_REASON
+  );
+}
+
+function toastCsrfFailure(): void {
+  toastOnce("csrf", {
+    title: "Your session couldn't be verified.",
+    description: "Reload the page and try again.",
+    color: "warning",
+  });
 }
 
 const reportedRefreshes = new WeakSet<Promise<RefreshResult>>();
@@ -243,7 +298,12 @@ function refreshAndRetry(
       retriedAfterRefresh: true,
       headers: { ...oldHeaders, authorization: `Bearer ${result.token}` },
     });
-    return forward(operation);
+    // The retried result bypasses `onError`, so a second CSRF refusal is
+    // reported here; the call site gets `null` copy for FORBIDDEN.
+    return forward(operation).map((retried) => {
+      if (retried.errors?.some(isCsrfRejection)) toastCsrfFailure();
+      return retried;
+    });
   });
 }
 
@@ -312,14 +372,28 @@ export function rescheduleKeepAlive(): void {
 
 // ─── Links ────────────────────────────────────────────────────────────────
 
-const httpLink = createHttpLink({ uri: GATEWAY_URL, credentials: "include" });
+const httpLink = createHttpLink({
+  uri: GATEWAY_URL,
+  credentials: "include",
+  fetch: createTimeoutFetch(),
+});
 
-const authLink = setContext((_, { headers, skipAuth }) => {
+/** True when the request is a GraphQL mutation (the CSRF token goes only there). */
+export function isMutationRequest(query: Parameters<typeof getMainDefinition>[0]): boolean {
+  const definition = getMainDefinition(query);
+  return definition.kind === "OperationDefinition" && definition.operation === "mutation";
+}
+
+const authLink = setContext((request, { headers, skipAuth }) => {
   const token = skipAuth ? null : getAccessToken();
+  const csrfToken = getCsrfToken();
+  // Sent even with `skipAuth`: the exempt auth mutations ignore it.
+  const sendCsrf = !!csrfToken && isMutationRequest(request.query);
   return {
     headers: {
       ...headers,
       ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(sendCsrf ? { [CSRF_HEADER]: csrfToken } : {}),
       "x-api-version": "v1",
     },
   };
@@ -331,13 +405,20 @@ const errorLink = onError(({ graphQLErrors, networkError, operation, forward, re
   if (graphQLErrors) {
     for (const err of graphQLErrors) {
       const code = err.extensions?.code as string | undefined;
+      const reason = err.extensions?.reason as string | undefined;
       const currentToken = getAccessToken();
       // TOKEN_EXPIRED, or UNAUTHENTICATED while we hold a token: the token
       // may be locally unexpired yet revoked or stale on the server, so try
       // one refresh (review C-M4). `reportRefreshFailure` ends the session
       // when the refresh itself says NO_SESSION or REVOKED.
+      // FORBIDDEN / CSRF_REQUIRED: the in-memory CSRF token is missing or
+      // stale (a reload before the backend sent one, a rotated session); a
+      // refresh returns the session's current one (PRD-014 FR-1.11).
+      const csrfRejected = isCsrfRejection(err);
       const shouldRefresh =
-        code === "TOKEN_EXPIRED" || (code === "UNAUTHENTICATED" && !!currentToken);
+        code === "TOKEN_EXPIRED" ||
+        (code === "UNAUTHENTICATED" && !!currentToken) ||
+        (csrfRejected && !!currentToken);
       const alreadyRetried = operation.getContext().retriedAfterRefresh === true;
 
       if (!isAuthOperation && shouldRefresh && !alreadyRetried) {
@@ -357,8 +438,20 @@ const errorLink = onError(({ graphQLErrors, networkError, operation, forward, re
         });
         requestNavigation("/mfa");
       }
-      const reason = err.extensions?.reason as string | undefined;
-      if (code === "FORBIDDEN" && !BUSINESS_FORBIDDEN_REASONS.has(reason ?? "")) {
+      if (csrfRejected) {
+        toastCsrfFailure();
+      } else if (code === "FORBIDDEN" && reason === ORIGIN_NOT_ALLOWED_REASON) {
+        toastOnce("origin", {
+          title: "The API refused this console's address.",
+          description: "Open the console from its usual address and try again.",
+          color: "danger",
+        });
+      }
+      if (
+        code === "FORBIDDEN" &&
+        !BUSINESS_FORBIDDEN_REASONS.has(reason ?? "") &&
+        !REQUEST_FORBIDDEN_REASONS.has(reason ?? "")
+      ) {
         toastOnce(`forbidden:${err.message}`, {
           title: "You don't have permission to do that.",
           color: "danger",
@@ -390,15 +483,23 @@ const cache = new InMemoryCache({
   typePolicies: {
     Query: {
       fields: {
-        platformTenants: { keyArgs: ["filter", "sort"] },
+        // Read page by page with `offset` (FE-09); each page lands at its offset.
+        platformTenants: offsetPagingPolicy(["filter", "sort"]),
+        platformPayments: offsetPagingPolicy(["filter"]),
+        platformUsers: offsetPagingPolicy([]),
+        // A plain array; the total is `platformCouponCount` (PRD-014 close-out).
+        platformCoupons: offsetListPolicy([]),
         platformSubscriptions: { keyArgs: ["filter", "sort"] },
       },
     },
   },
 });
 
+/** Everything before the HTTP transport; exported for the link tests. */
+export const apiLink = errorLink.concat(authLink);
+
 export const client: ApolloClient<NormalizedCacheObject> = new ApolloClient({
-  link: errorLink.concat(authLink).concat(httpLink),
+  link: apiLink.concat(httpLink),
   cache,
   connectToDevTools: import.meta.env.DEV,
 });

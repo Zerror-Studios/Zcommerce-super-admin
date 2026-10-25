@@ -1,14 +1,20 @@
+import { useMutation, useQuery } from "@apollo/client";
+import { addToast } from "@heroui/react";
 import { useMemo, useState, type Key, type ReactNode } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { ClientAnalyticsCard } from "../components/clients/ClientAnalyticsCard";
 import { ClientBillingTab } from "../components/clients/ClientBillingTab";
 import { ClientDangerZone } from "../components/clients/ClientDangerZone";
 import { ClientOverviewTab } from "../components/clients/ClientOverviewTab";
+import { ClientUsageHistory } from "../components/clients/ClientUsageHistory";
 import { OnboardingCard } from "../components/clients/OnboardingCard";
 import { SubscriptionActions } from "../components/clients/SubscriptionActions";
 import { StoreActionDialog, type StoreAction } from "../components/clients/storeActions";
 import { logInToStore } from "../components/clients/storeLogin";
+import { ConfirmModal } from "../components/common/ConfirmModal";
 import { PageHeader } from "../components/common/PageHeader";
+import { PLATFORM_TENANT, RESEND_OWNER_INVITE } from "../graphql/tenants";
+import { subscriptionsOf, toClient } from "../lib/api-adapters";
 import { findLatestSubscription } from "../lib/subscription-lookup.util";
 import { mutationFailureCopy } from "../lib/mutation-errors";
 import { PLATFORM_PERMISSIONS } from "../lib/permissions";
@@ -16,6 +22,7 @@ import { loadPlatformSettings } from "../lib/platformSettings";
 import { paymentState, storeLifecycle } from "../lib/storeStatus";
 import { useAuth } from "../providers/AuthProvider";
 import { useClients } from "../providers/ClientsProvider";
+import type { PlatformTenant } from "../types/platform-api";
 import { IconLogin, IconMore, IconStore } from "../components/ui/icons";
 import {
   Button as UiButton,
@@ -54,12 +61,25 @@ export function ClientDetail() {
   const { getClient, updateClient, plans, subscriptions, loading } = useClients();
   const { can } = useAuth();
   const [action, setAction] = useState<StoreAction | null>(null);
+  const [confirmInvite, setConfirmInvite] = useState(false);
+  const [resendOwnerInvite] = useMutation<{ resendOwnerInvite: boolean }>(RESEND_OWNER_INVITE);
   // Client-side mirror of the backend guard (review C-M5): the server still decides.
   const canManage = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
   const canImpersonate = can(PLATFORM_PERMISSIONS.TENANTS_IMPERSONATE);
   const canManageBilling = can(PLATFORM_PERMISSIONS.BILLING_MANAGE);
 
-  const client = id ? getClient(id) : undefined;
+  const listedClient = id ? getClient(id) : undefined;
+  // PRD-014 FE-09: a store that isn't in the loaded list (a deep link while
+  // later pages load) is read on its own; NOT_FOUND means it doesn't exist.
+  const single = useQuery<{ platformTenant: PlatformTenant }>(PLATFORM_TENANT, {
+    variables: { id },
+    skip: !id || !!listedClient || loading,
+  });
+  const fetchedTenant = listedClient ? undefined : single.data?.platformTenant;
+  const client = useMemo(
+    () => listedClient ?? (fetchedTenant ? toClient(fetchedTenant) : undefined),
+    [fetchedTenant, listedClient],
+  );
   const defaultGracePeriodDays = loadPlatformSettings().gracePeriodDays;
 
   const plan = useMemo(
@@ -67,17 +87,18 @@ export function ClientDetail() {
     [client, plans],
   );
 
-  const subscription = useMemo(
-    () => (client ? findLatestSubscription(subscriptions, client.id) : undefined),
-    [client, subscriptions],
-  );
+  const subscription = useMemo(() => {
+    if (!client) return undefined;
+    const source = fetchedTenant ? subscriptionsOf([fetchedTenant]) : subscriptions;
+    return findLatestSubscription(source, client.id);
+  }, [client, fetchedTenant, subscriptions]);
 
   if (!id) {
     return <Navigate to="/stores" replace />;
   }
 
   // Deep links land here before `platformTenants` has answered: wait, don't say "not found".
-  if (!client && loading) {
+  if (!client && (loading || single.loading)) {
     return (
       <div>
         <PageHeader back={{ href: "/stores", label: "Stores" }} title="Loading store…" />
@@ -111,6 +132,18 @@ export function ClientDetail() {
 
   const onMenuAction = (key: Key) => {
     if (key === "suspend" || key === "reactivate" || key === "delete") setAction(key);
+    else if (key === "resend-invite") setConfirmInvite(true);
+  };
+
+  // PRD-014 PLT-07: a fresh set-password email for the owner (tenants:manage).
+  const sendOwnerInvite = async () => {
+    try {
+      await resendOwnerInvite({ variables: { tenantId: client.id } });
+      addToast({ title: `Invite sent to ${client.ownerEmail}.` });
+    } catch (error) {
+      const message = mutationFailureCopy(error);
+      if (message) toastError(message);
+    }
   };
 
   return (
@@ -140,6 +173,9 @@ export function ClientDetail() {
                     {isSuspended ? "Reactivate store" : "Suspend store"}
                   </DropdownItem>
                 </DropdownSection>
+                <DropdownSection showDivider aria-label="Owner">
+                  <DropdownItem key="resend-invite">Resend owner invite</DropdownItem>
+                </DropdownSection>
                 <DropdownSection aria-label="Danger">
                   <DropdownItem key="delete" className={menuItemDangerClasses}>
                     Delete store
@@ -164,6 +200,11 @@ export function ClientDetail() {
         {/* PRD-012 FR-8.3: analytics health and data-through from the master sync summary. */}
         <Section id="store-analytics" title="Analytics">
           <ClientAnalyticsCard client={client} />
+        </Section>
+
+        {/* PRD-014 PLT-13: the daily usage snapshots, one row per month. */}
+        <Section id="store-usage-history" title="Usage history">
+          <ClientUsageHistory tenantId={client.id} />
         </Section>
 
         {canManageBilling ? (
@@ -194,6 +235,16 @@ export function ClientDetail() {
           </Section>
         ) : null}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmInvite}
+        onClose={() => setConfirmInvite(false)}
+        onConfirm={() => void sendOwnerInvite()}
+        title="Resend the owner invite?"
+        description={`We'll email ${client.ownerEmail} a new link to set the password for ${client.storeName}.`}
+        confirmLabel="Send invite"
+        confirmColor="primary"
+      />
 
       <StoreActionDialog
         client={client}

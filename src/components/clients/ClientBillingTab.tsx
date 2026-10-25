@@ -5,6 +5,7 @@ import { usePayments } from "../../hooks/use-platform-reports";
 import { graceDaysFor, paymentState } from "../../lib/storeStatus";
 import { formatDate, formatDateTime } from "../../lib/utils";
 import { dataTableClassNames } from "../common/dataTableStyles";
+import { LoadMoreFooter } from "../common/LoadMoreFooter";
 import { Button as UiButton, Card, Chip, CopyableId, EmptyState, ErrorState, Input, Skeleton, StatusChip, Switch, formatMoney } from "../ui";
 import { IconInvoice } from "../ui/icons";
 import { emptyStates } from "../../copy";
@@ -208,6 +209,14 @@ export function ClientBillingTab({
           </TableBody>
         </Table>
         )}
+        <LoadMoreFooter
+          shown={transactions.length}
+          total={payments.totalCount}
+          hasMore={payments.hasMore && !payments.error}
+          loading={payments.loadingMore}
+          onLoadMore={payments.loadMore}
+          noun="payments"
+        />
       </Card>
     </div>
   );

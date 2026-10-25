@@ -19,7 +19,7 @@ const storeTabs: StoreTab[] = ["all", "live", "trial", "unpaid", "suspended"];
 export function ClientsPageContent({ clients }: ClientsPageContentProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { loading, error, refetch, totalCount } = useClients();
+  const { loading, loadingMore, incomplete, pageGuardReached, loadRemaining, error, refetch, totalCount } = useClients();
   const { can } = useAuth();
 
   // Home's "Needs attention" links here with ?status=… to open a tab.
@@ -40,10 +40,21 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
         }
       />
 
-      {/* The list reads one page of 200; say so when the platform has outgrown it (review C-L9). */}
-      {!error && totalCount > clients.length ? (
+      {/* Pages of 100 load one after another (FE-09); say so while they do, or if one failed. */}
+      {!error && loadingMore ? (
+        <p role="status" className="mb-3 text-label text-fg-muted">
+          Loading stores… {clients.length} of {totalCount}.
+        </p>
+      ) : null}
+      {incomplete ? (
         <p role="status" className={cx("mb-3 text-label", toneTextClasses.warning)}>
-          Showing the first {clients.length} of {totalCount} stores. Search covers only the stores shown.
+          {/* W2V2-06: at the 5,000-row guard the button reads on instead of retrying nothing. */}
+          {pageGuardReached
+            ? `Showing the first ${clients.length} of ${totalCount} stores; the console reads them 5,000 at a time.`
+            : `Showing ${clients.length} of ${totalCount} stores; the rest couldn't be loaded.`}{" "}
+          <button type="button" className="underline" onClick={loadRemaining}>
+            {pageGuardReached ? "Load the next 5,000" : "Retry"}
+          </button>
         </p>
       ) : null}
 

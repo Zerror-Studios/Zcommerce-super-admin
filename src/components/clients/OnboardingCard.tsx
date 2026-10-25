@@ -75,6 +75,7 @@ export function OnboardingCard({ client }: OnboardingCardProps) {
           isOpen
           storeName={result.client.storeName}
           ownerEmail={result.client.ownerEmail}
+          ownerInviteSent={result.ownerInviteSent}
           temporaryPassword={result.ownerTemporaryPassword}
           onClose={() => setResult(null)}
         />

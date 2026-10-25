@@ -27,10 +27,13 @@ import {
 } from "../ui";
 import { IconPayments } from "../ui/icons";
 import { emptyStates } from "../../copy";
+import { LoadMoreFooter, type LoadMoreFooterProps } from "../common/LoadMoreFooter";
 
 export interface TransactionsTabProps {
   transactions: Transaction[];
   isLoading?: boolean;
+  /** Server paging (FE-09): search and filters cover the loaded rows. */
+  paging?: Omit<LoadMoreFooterProps, "shown" | "noun">;
 }
 
 const columnOptions = [
@@ -51,7 +54,7 @@ const statusOptions: { key: TransactionStatus; label: string }[] = [
   { key: "refunded", label: "Refunded" },
 ];
 
-export function TransactionsTab({ transactions, isLoading = false }: TransactionsTabProps) {
+export function TransactionsTab({ transactions, isLoading = false, paging }: TransactionsTabProps) {
   const { clients } = useClients();
   const [search, setSearch] = useState("");
   const [statuses, setStatuses] = useState<string[]>([]);
@@ -193,6 +196,7 @@ export function TransactionsTab({ transactions, isLoading = false }: Transaction
           )}
         </TableBody>
       </Table>
+      {paging ? <LoadMoreFooter {...paging} shown={transactions.length} noun="payments" /> : null}
     </div>
   );
 }

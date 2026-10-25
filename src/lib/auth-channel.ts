@@ -8,6 +8,9 @@
  *   BroadcastChannel.
  * - Without Web Locks a BroadcastChannel claim makes other tabs wait.
  * Both degrade to single-tab behaviour where the APIs are unavailable.
+ *
+ * A shared token travels with its session's CSRF token (PRD-014 FR-1.11),
+ * so a tab that adopts it can still send mutations.
  */
 
 import { isUsableToken } from "./session-store";
@@ -15,8 +18,8 @@ import { isUsableToken } from "./session-store";
 export type SessionEndReason = "EXPIRED" | "REVOKED" | "SIGNED_OUT";
 
 export type AuthMessage =
-  | { type: "token"; token: string }
-  | { type: "login"; token: string }
+  | { type: "token"; token: string; csrfToken?: string | null }
+  | { type: "login"; token: string; csrfToken?: string | null }
   | { type: "logout"; reason: SessionEndReason }
   | { type: "refresh-start" }
   | { type: "refresh-end" };
@@ -35,7 +38,13 @@ const FALLBACK_JITTER_MS = 150;
 const channel: BroadcastChannel | null =
   typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(CHANNEL_NAME) : null;
 
-let lastSharedToken: { token: string; receivedAt: number } | null = null;
+/** An access token another tab obtained, with its CSRF token. */
+export interface SharedToken {
+  token: string;
+  csrfToken: string | null;
+}
+
+let lastSharedToken: (SharedToken & { receivedAt: number }) | null = null;
 let foreignRefreshStartedAt = 0;
 
 channel?.addEventListener("message", (event: MessageEvent<AuthMessage>) => {
@@ -44,7 +53,11 @@ channel?.addEventListener("message", (event: MessageEvent<AuthMessage>) => {
     // Only a well-formed, unexpired JWT is reused; anything else on the
     // channel is ignored (review C-L1).
     if (!isUsableToken(message.token)) return;
-    lastSharedToken = { token: message.token, receivedAt: Date.now() };
+    lastSharedToken = {
+      token: message.token,
+      csrfToken: typeof message.csrfToken === "string" ? message.csrfToken : null,
+      receivedAt: Date.now(),
+    };
   } else if (message?.type === "refresh-start") {
     foreignRefreshStartedAt = Date.now();
   } else if (message?.type === "refresh-end") {
@@ -54,12 +67,12 @@ channel?.addEventListener("message", (event: MessageEvent<AuthMessage>) => {
 
 // ─── Broadcast ────────────────────────────────────────────────────────────
 
-export function broadcastToken(token: string): void {
-  channel?.postMessage({ type: "token", token } satisfies AuthMessage);
+export function broadcastToken(token: string, csrfToken: string | null = null): void {
+  channel?.postMessage({ type: "token", token, csrfToken } satisfies AuthMessage);
 }
 
-export function broadcastLogin(token: string): void {
-  channel?.postMessage({ type: "login", token } satisfies AuthMessage);
+export function broadcastLogin(token: string, csrfToken: string | null = null): void {
+  channel?.postMessage({ type: "login", token, csrfToken } satisfies AuthMessage);
 }
 
 export function broadcastLogout(reason: SessionEndReason): void {
@@ -75,10 +88,11 @@ export function onAuthMessage(handler: (message: AuthMessage) => void): () => vo
 }
 
 /** A token another tab refreshed moments ago that differs from `staleToken`. */
-export function takeRecentSharedToken(staleToken?: string | null): string | null {
+export function takeRecentSharedToken(staleToken?: string | null): SharedToken | null {
   if (!lastSharedToken) return null;
   const fresh = Date.now() - lastSharedToken.receivedAt < SHARED_TOKEN_MAX_AGE_MS;
-  return fresh && lastSharedToken.token !== staleToken ? lastSharedToken.token : null;
+  if (!fresh || lastSharedToken.token === staleToken) return null;
+  return { token: lastSharedToken.token, csrfToken: lastSharedToken.csrfToken };
 }
 
 // ─── Lock ─────────────────────────────────────────────────────────────────

@@ -43,6 +43,8 @@ export const PLATFORM_PLANS = gql`
   query PlatformPlans($includeInactive: Boolean) {
     platformPlans(includeInactive: $includeInactive) {
       ...PlatformPlanFields
+      # Counted on the server, only here (not in the shared fragment).
+      tenantCount
     }
   }
 `;
