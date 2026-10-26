@@ -4,10 +4,13 @@ import { useMemo, useState, type Key, type ReactNode } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { ClientAnalyticsCard } from "../components/clients/ClientAnalyticsCard";
 import { ClientBillingTab } from "../components/clients/ClientBillingTab";
-import { ClientDangerZone } from "../components/clients/ClientDangerZone";
 import { ClientOverviewTab } from "../components/clients/ClientOverviewTab";
+import { ClientPlatformBilling } from "../components/clients/ClientPlatformBilling";
 import { ClientUsageHistory } from "../components/clients/ClientUsageHistory";
 import { OnboardingCard } from "../components/clients/OnboardingCard";
+import { StoreDetailsCard } from "../components/clients/StoreDetailsCard";
+import { StoreGoLiveCard } from "../components/clients/StoreGoLiveCard";
+import { StoreLifecycleCard } from "../components/clients/StoreLifecycleCard";
 import { SubscriptionActions } from "../components/clients/SubscriptionActions";
 import { StoreActionDialog, type StoreAction } from "../components/clients/storeActions";
 import { logInToStore } from "../components/clients/storeLogin";
@@ -53,13 +56,15 @@ function Section({ id, title, children }: { id: string; title: string; children:
 
 /**
  * Store detail (docs/design/04-super-admin.md §3.4): one page, no tabs (owner's request 2026-10-16).
- * Overview, then Billing, then store settings. Activity is left out: there is no per-store activity data yet.
+ * Overview, then Billing, then Store details (PRD-017 FR-4.5), Go live and Lifecycle (PRD-018 §6: its
+ * "tabs" are sections here, keeping the one-page layout). Activity is left out: there is no per-store
+ * activity data yet.
  */
 export function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getClient, updateClient, plans, subscriptions, loading } = useClients();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const [action, setAction] = useState<StoreAction | null>(null);
   const [confirmInvite, setConfirmInvite] = useState(false);
   const [resendOwnerInvite] = useMutation<{ resendOwnerInvite: boolean }>(RESEND_OWNER_INVITE);
@@ -128,11 +133,21 @@ export function ClientDetail() {
 
   const lifecycle = storeLifecycle(client);
   const payment = paymentState(subscription);
-  const isSuspended = client.status === "suspended";
+  const isDeleted = client.tenantStatus === "DELETED";
+  const isSuspended = !isDeleted && client.status === "suspended";
+  // Q10 / PRD-018 FR-2.1: only the platform owner deletes a store.
+  const isOwner = user?.role === "PLATFORM_OWNER";
 
   const onMenuAction = (key: Key) => {
-    if (key === "suspend" || key === "reactivate" || key === "delete") setAction(key);
-    else if (key === "resend-invite") setConfirmInvite(true);
+    if (
+      key === "suspend" ||
+      key === "reactivate" ||
+      key === "delete" ||
+      key === "restore" ||
+      key === "category"
+    ) {
+      setAction(key);
+    } else if (key === "resend-invite") setConfirmInvite(true);
   };
 
   // PRD-014 PLT-07: a fresh set-password email for the owner (tenants:manage).
@@ -168,23 +183,34 @@ export function ClientDetail() {
                 </IconButton>
               </DropdownTrigger>
               <DropdownMenu aria-label={`Actions for ${client.storeName}`} onAction={onMenuAction}>
-                <DropdownSection showDivider aria-label="Store">
-                  <DropdownItem key={isSuspended ? "reactivate" : "suspend"}>
-                    {isSuspended ? "Reactivate store" : "Suspend store"}
-                  </DropdownItem>
-                </DropdownSection>
-                <DropdownSection showDivider aria-label="Owner">
-                  <DropdownItem key="resend-invite">Resend owner invite</DropdownItem>
-                </DropdownSection>
-                <DropdownSection aria-label="Danger">
-                  <DropdownItem key="delete" className={menuItemDangerClasses}>
-                    Delete store
-                  </DropdownItem>
-                </DropdownSection>
+                {isDeleted ? (
+                  <DropdownSection aria-label="Store">
+                    <DropdownItem key="restore">Restore store</DropdownItem>
+                  </DropdownSection>
+                ) : (
+                  <>
+                    <DropdownSection showDivider aria-label="Store">
+                      <DropdownItem key={isSuspended ? "reactivate" : "suspend"}>
+                        {isSuspended ? "Reactivate store" : "Suspend store"}
+                      </DropdownItem>
+                      {isSuspended ? <DropdownItem key="category">Change suspension category</DropdownItem> : null}
+                    </DropdownSection>
+                    <DropdownSection showDivider={isOwner} aria-label="Owner">
+                      <DropdownItem key="resend-invite">Resend owner invite</DropdownItem>
+                    </DropdownSection>
+                    {isOwner ? (
+                      <DropdownSection aria-label="Danger">
+                        <DropdownItem key="delete" className={menuItemDangerClasses}>
+                          Delete store
+                        </DropdownItem>
+                      </DropdownSection>
+                    ) : null}
+                  </>
+                )}
               </DropdownMenu>
             </Dropdown>
             ) : null}
-            {canImpersonate ? (
+            {canImpersonate && !isDeleted ? (
               <UiButton variant="primary" startIcon={<IconLogin aria-hidden />} onPress={() => void logInToStore(client)}>
                 Log in
               </UiButton>
@@ -214,6 +240,10 @@ export function ClientDetail() {
         ) : null}
 
         <Section id="store-billing" title="Billing">
+          {/* PRD-016 FR-26, PRD-017 FR-4.2: billing state, invoices, credits. */}
+          <div className="mb-4">
+            <ClientPlatformBilling client={client} subscription={subscription} />
+          </div>
           <ClientBillingTab
             client={client}
             subscription={subscription}
@@ -229,9 +259,22 @@ export function ClientDetail() {
           />
         </Section>
 
+        {/* PRD-017 FR-4.5: name, contacts, GSTIN, timezone, currency; the domain via Go live. */}
+        <Section id="store-details" title="Store details">
+          <StoreDetailsCard client={client} goLiveAnchor="store-go-live" />
+        </Section>
+
+        {/* PRD-018 FR-4: domain verification and the go-live checklist. */}
+        {!isDeleted ? (
+          <Section id="store-go-live" title="Go live">
+            <StoreGoLiveCard client={client} />
+          </Section>
+        ) : null}
+
+        {/* PRD-018 FR-1, FR-2: suspension with a category, money in flight, delete, restore. */}
         {canManage ? (
-          <Section id="store-settings" title="Store settings">
-            <ClientDangerZone client={client} onDeleted={() => navigate("/stores")} />
+          <Section id="store-lifecycle" title="Lifecycle">
+            <StoreLifecycleCard client={client} onDeleted={() => navigate("/stores")} />
           </Section>
         ) : null}
       </div>

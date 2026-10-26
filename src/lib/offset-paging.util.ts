@@ -19,6 +19,9 @@ export const COUPONS_PAGE_LIMIT = 100;
 /** The backend's page cap for `platformPayments`. */
 export const PAYMENTS_PAGE_LIMIT = 200;
 
+/** One page of `platformInvoices` (the backend's 100 cap, PRD-017 FR-4.3). */
+export const INVOICES_PAGE_LIMIT = 100;
+
 /**
  * Stop reading a list after this many pages (a guard, not a product limit).
  * A screen can raise its own budget by this step when the user asks for

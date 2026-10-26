@@ -12,6 +12,8 @@
 
 import { toasts } from "../copy";
 import { errorCodeOf, errorReasonOf } from "./apollo-client";
+import { PLAN_REASON_COPY } from "./plan-catalog.util";
+import { BILLING_REASON_COPY } from "./platform-billing.util";
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
@@ -47,4 +49,16 @@ export function mutationFailureCopy(error: unknown): string | null {
 /** True for the validation errors a form should show inline instead of toasting. */
 export function isUserInputError(error: unknown): boolean {
   return errorCodeOf(error) === "BAD_USER_INPUT";
+}
+
+/**
+ * Like `mutationFailureCopy`, with the PRD-016 / PRD-017 reason copy first
+ * (store billing, plan change, review queue, plan catalog). Use it on
+ * those screens; `PAYMENT_REQUIRED` there means "pay, or override".
+ */
+export function billingFailureCopy(error: unknown): string | null {
+  const reason = errorReasonOf(error);
+  if (reason && BILLING_REASON_COPY[reason]) return BILLING_REASON_COPY[reason];
+  if (reason && PLAN_REASON_COPY[reason]) return PLAN_REASON_COPY[reason];
+  return mutationFailureCopy(error);
 }

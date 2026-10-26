@@ -2,16 +2,16 @@ import { useMutation } from "@apollo/client";
 import { addToast } from "@heroui/react";
 import { useRef, useState } from "react";
 import type { Client, Plan, Subscription } from "../../types";
-import type { PlanChangeEffective, PlatformBillingCycle } from "../../types/platform-api";
 import { scheduledPlanChangeOf } from "../../lib/api-adapters";
 import { PLAN_LABELS } from "../../lib/display-labels.util";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { formatDate } from "../../lib/utils";
-import { MUTATION_REASON_COPY, isUserInputError, mutationFailureCopy } from "../../lib/mutation-errors";
+import { billingFailureCopy, isUserInputError, mutationFailureCopy } from "../../lib/mutation-errors";
+import { reactivationNeedsOverride, reactivationVariables } from "../../lib/platform-billing.util";
+import { errorReasonOf } from "../../lib/apollo-client";
 import {
   ACTIVATE_TENANT_SUBSCRIPTION,
   CANCEL_TENANT_SUBSCRIPTION,
-  CHANGE_TENANT_PLAN,
   EXTEND_TRIAL,
   MARK_SUBSCRIPTION_PAST_DUE,
   REACTIVATE_TENANT_SUBSCRIPTION,
@@ -19,6 +19,7 @@ import {
 } from "../../graphql/subscriptions";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
+import { ChangePlanDialog } from "./ChangePlanDialog";
 import {
   Button as UiButton,
   Card,
@@ -28,8 +29,6 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
-  Select,
-  SelectItem,
   Switch,
   Textarea,
   toastError,
@@ -41,7 +40,7 @@ export interface SubscriptionActionsProps {
   plans: Plan[];
 }
 
-type Dialog = "plan" | "trial" | "cancel" | "payment" | "activate" | "pastDue" | null;
+type Dialog = "plan" | "trial" | "cancel" | "payment" | "activate" | "pastDue" | "reactivate" | null;
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
@@ -58,12 +57,10 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
   // click would otherwise send the mutation twice).
   const inFlight = useRef(false);
 
-  const [planId, setPlanId] = useState("");
-  const [cycle, setCycle] = useState<PlatformBillingCycle>("MONTHLY");
-  // PRD-014 D6: no proration yet, so outside a trial a change waits for the
-  // end of the period (the backend refuses NOW with PRORATION_NOT_AVAILABLE).
-  const [effective, setEffective] = useState<PlanChangeEffective>("PERIOD_END");
   const [activationReason, setActivationReason] = useState("");
+  // PRD-016 FR-18: reactivation always sends override + reason.
+  const [reactivateOverride, setReactivateOverride] = useState(false);
+  const [reactivateReason, setReactivateReason] = useState("");
   const [days, setDays] = useState("7");
   const [immediate, setImmediate] = useState(false);
   const [amount, setAmount] = useState(String(client.mrr || ""));
@@ -71,7 +68,6 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
   const [reference, setReference] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
 
-  const [changePlan] = useMutation(CHANGE_TENANT_PLAN);
   const [extendTrial] = useMutation(EXTEND_TRIAL);
   const [cancel] = useMutation(CANCEL_TENANT_SUBSCRIPTION);
   const [reactivate] = useMutation(REACTIVATE_TENANT_SUBSCRIPTION);
@@ -81,10 +77,13 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
 
   const status = subscription?.status;
   const tenantId = client.id;
-  const isTrial = status === "TRIAL";
   const scheduled = scheduledPlanChangeOf(subscription, plans);
 
-  const act = async (work: () => Promise<unknown>, done: string) => {
+  const act = async (
+    work: () => Promise<unknown>,
+    done: string,
+    failureCopy: (error: unknown) => string | null = mutationFailureCopy,
+  ) => {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
@@ -98,8 +97,9 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
       addToast({ title: done });
       setDialog(null);
     } catch (error) {
-      const message = mutationFailureCopy(error);
-      if (message && isUserInputError(error)) setFieldError(message);
+      const message = failureCopy(error);
+      // A business-rule refusal (PAYMENT_REQUIRED, NOTE_REQUIRED) belongs in the dialog too.
+      if (message && (isUserInputError(error) || errorReasonOf(error))) setFieldError(message);
       else if (message) toastError(message);
     } finally {
       inFlight.current = false;
@@ -107,13 +107,25 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
     }
   };
 
-  const openPlanDialog = () => {
-    const current = plans.find((plan) => plan.name === (subscription?.plan ?? client.plan));
-    setPlanId(current?.id ?? plans[0]?.id ?? "");
-    setCycle(subscription?.billingCycle ?? "MONTHLY");
-    setEffective("PERIOD_END");
+  const openReactivate = () => {
+    setReactivateOverride(reactivationNeedsOverride(status));
+    setReactivateReason("");
     setFieldError(null);
-    setDialog("plan");
+    setDialog("reactivate");
+  };
+
+  const runReactivate = () => {
+    const result = reactivationVariables(reactivateOverride, reactivateReason);
+    if (!result.variables) {
+      setFieldError(result.error);
+      return;
+    }
+    const variables = { tenantId, ...result.variables };
+    void act(
+      () => reactivate({ variables }),
+      reactivateOverride ? "Subscription reactivated with an override." : "Subscription reactivated.",
+      billingFailureCopy,
+    );
   };
 
   return (
@@ -130,7 +142,11 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
           </p>
         ) : null}
         <div className="flex flex-wrap gap-2">
-          <UiButton variant="secondary" onPress={openPlanDialog} isDisabled={!subscription || status === "CANCELLED"}>
+          <UiButton
+            variant="secondary"
+            onPress={() => setDialog("plan")}
+            isDisabled={!subscription || status === "CANCELLED"}
+          >
             Change plan
           </UiButton>
           {status === "TRIAL" ? (
@@ -161,11 +177,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
             </UiButton>
           ) : null}
           {status === "CANCELLED" || status === "SUSPENDED" || subscription?.canceledAt ? (
-            <UiButton
-              variant="primary"
-              isLoading={busy}
-              onPress={() => void act(() => reactivate({ variables: { tenantId } }), "Subscription reactivated.")}
-            >
+            <UiButton variant="primary" onPress={openReactivate}>
               Reactivate subscription
             </UiButton>
           ) : null}
@@ -177,75 +189,53 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
         </div>
       </Card>
 
-      {/* Change plan */}
-      <Modal isOpen={dialog === "plan"} onClose={() => setDialog(null)} width="sm">
+      {/* Change plan: PRD-016 preview, eligible plans only (PRD-017 FR-4.2) */}
+      <ChangePlanDialog
+        isOpen={dialog === "plan"}
+        onClose={() => setDialog(null)}
+        client={client}
+        subscription={subscription}
+        onChanged={refetch}
+      />
+
+      {/* Reactivate (PRD-016 FR-18): a payment, or an audited override with a reason */}
+      <Modal isOpen={dialog === "reactivate"} onClose={() => setDialog(null)} width="sm">
         <ModalContent>
-          <ModalHeader>Change plan</ModalHeader>
+          <ModalHeader>Reactivate {client.storeName}'s subscription?</ModalHeader>
           <ModalBody>
-            <div className="flex flex-col gap-4">
-              <Select
-                label="Plan"
-                selectedKeys={planId ? new Set([planId]) : new Set()}
-                onSelectionChange={(keys) => {
-                  const value = Array.from(keys)[0];
-                  if (typeof value === "string") setPlanId(value);
-                }}
-                disallowEmptySelection
-                isInvalid={!!fieldError}
-                errorMessage={fieldError ?? undefined}
-              >
-                {plans.map((plan) => (
-                  <SelectItem key={plan.id}>{PLAN_LABELS[plan.name]}</SelectItem>
-                ))}
-              </Select>
-              <Select
-                label="Billing cycle"
-                selectedKeys={new Set([cycle])}
-                onSelectionChange={(keys) => {
-                  const value = Array.from(keys)[0];
-                  if (value === "MONTHLY" || value === "YEARLY") setCycle(value);
-                }}
-                disallowEmptySelection
-              >
-                <SelectItem key="MONTHLY">Monthly</SelectItem>
-                <SelectItem key="YEARLY">Yearly</SelectItem>
-              </Select>
-              <div className="flex flex-col gap-1">
-                <Switch
-                  isSelected={isTrial && effective === "NOW"}
-                  isDisabled={!isTrial}
-                  onValueChange={(on) => setEffective(on ? "NOW" : "PERIOD_END")}
-                >
-                  Apply now
-                </Switch>
-                <p className="text-caption text-fg-muted">
-                  {isTrial
-                    ? "A trial changes plan straight away, with or without this switch."
-                    : `${MUTATION_REASON_COPY.PRORATION_NOT_AVAILABLE} The new plan starts at the next renewal${
-                        subscription?.renewalDate ? ` (${formatDate(subscription.renewalDate)})` : ""
-                      }.`}
-                </p>
-              </div>
-            </div>
+            <p className="text-body text-fg-muted">
+              Without an override this only undoes a scheduled cancellation while the current period is paid and no
+              invoice is open. Anything else needs a payment first, or an override.
+            </p>
+            <Switch isSelected={reactivateOverride} onValueChange={setReactivateOverride} className="mt-3">
+              Override: reactivate without a payment
+            </Switch>
+            <Textarea
+              label="Reason"
+              isRequired={reactivateOverride}
+              description={
+                reactivateOverride
+                  ? "Required for an override. Your name and the reason go to the audit log."
+                  : "Optional."
+              }
+              className="mt-3"
+              value={reactivateReason}
+              onValueChange={setReactivateReason}
+              isInvalid={!!fieldError}
+              errorMessage={fieldError ?? undefined}
+            />
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={() => setDialog(null)}>
+            <UiButton variant="ghost" onPress={() => setDialog(null)} isDisabled={busy}>
               Cancel
             </UiButton>
             <UiButton
-              variant="primary"
+              variant={reactivateOverride ? "danger" : "primary"}
               isLoading={busy}
-              onPress={() =>
-                void act(
-                  () =>
-                    changePlan({
-                      variables: { tenantId, planId, billingCycle: cycle, effective: isTrial ? effective : "PERIOD_END" },
-                    }),
-                  isTrial ? "Plan changed." : "Plan change scheduled for the end of the period.",
-                )
-              }
+              isDisabled={busy || (reactivateOverride && !reactivateReason.trim())}
+              onPress={runReactivate}
             >
-              {isTrial ? "Change plan" : "Schedule change"}
+              {reactivateOverride ? "Reactivate with override" : "Reactivate"}
             </UiButton>
           </ModalFooter>
         </ModalContent>

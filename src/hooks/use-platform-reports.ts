@@ -7,7 +7,11 @@
 
 import { useQuery } from "@apollo/client";
 import { useCallback, useMemo, useState } from "react";
-import { PLATFORM_COUPONS, PLATFORM_PAYMENTS } from "../graphql/billing";
+import {
+  PLATFORM_COUPONS,
+  PLATFORM_INVOICES,
+  PLATFORM_PAYMENTS,
+} from "../graphql/billing";
 import { PLATFORM_COLLECTIONS, PLATFORM_REVENUE_OVERVIEW } from "../graphql/reports";
 import {
   EMPTY_REVENUE,
@@ -21,6 +25,7 @@ import {
 } from "../lib/api-report-adapters";
 import {
   COUPONS_PAGE_LIMIT,
+  INVOICES_PAGE_LIMIT,
   nextOffset,
   PAYMENTS_PAGE_LIMIT,
 } from "../lib/offset-paging.util";
@@ -29,6 +34,8 @@ import type { Coupon, Transaction } from "../types";
 import type {
   PlatformCollections,
   PlatformCoupon,
+  PlatformInvoice,
+  PlatformInvoiceFilter,
   PlatformList,
   PlatformPayment,
   PlatformRevenueOverview,
@@ -205,6 +212,104 @@ export function useCoupons(): CouponsState {
     error: query.error ?? null,
     refetch,
     totalCount,
+    hasMore: offset !== null,
+    loadingMore,
+    loadMore,
+  };
+}
+
+// ─── Raw lists (PRD-016 FR-19, PRD-017 FR-4.3) ────────────────────────────
+
+export interface PagedListState<T> extends HookState<T[]> {
+  totalCount: number;
+  hasMore: boolean;
+  loadingMore: boolean;
+  loadMore: () => Promise<void>;
+}
+
+/** Platform invoices with a server filter, 100 a page (PRD-017 FR-4.3). */
+export function useInvoices(
+  filter: PlatformInvoiceFilter | null,
+  options: { skip?: boolean } = {},
+): PagedListState<PlatformInvoice> {
+  const { isAuthenticated } = useAuth();
+  const query = useQuery<{ platformInvoices: PlatformList<PlatformInvoice> }>(
+    PLATFORM_INVOICES,
+    {
+      variables: { filter, limit: INVOICES_PAGE_LIMIT, offset: 0 },
+      skip: !isAuthenticated || options.skip === true,
+      fetchPolicy: "cache-and-network",
+    },
+  );
+  const page = query.data?.platformInvoices;
+  const data = useMemo(() => page?.items ?? [], [page]);
+  const [lastPageSize, setLastPageSize] = useState<number | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const offset = nextOffset(page, INVOICES_PAGE_LIMIT, lastPageSize);
+  const { fetchMore, refetch: refetchInvoices } = query;
+  const loadMore = useCallback(async () => {
+    if (offset === null) return;
+    setLoadingMore(true);
+    try {
+      const result = await fetchMore({ variables: { offset } });
+      setLastPageSize(result.data.platformInvoices.items.length);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [fetchMore, offset]);
+  const refetch = useCallback(async () => {
+    setLastPageSize(null);
+    return await refetchInvoices();
+  }, [refetchInvoices]);
+  return {
+    data,
+    loading: query.loading && !query.data,
+    error: query.error ?? null,
+    refetch,
+    totalCount: page?.totalCount ?? data.length,
+    hasMore: offset !== null,
+    loadingMore,
+    loadMore,
+  };
+}
+
+/** The review queue: flagged, unresolved payments (PRD-016 FR-19). */
+export function useFlaggedPayments(): PagedListState<PlatformPayment> {
+  const { isAuthenticated } = useAuth();
+  const query = useQuery<{ platformPayments: PlatformList<PlatformPayment> }>(
+    PLATFORM_PAYMENTS,
+    {
+      variables: { filter: { flagged: true }, limit: PAYMENTS_PAGE_LIMIT, offset: 0 },
+      skip: !isAuthenticated,
+      fetchPolicy: "cache-and-network",
+    },
+  );
+  const page = query.data?.platformPayments;
+  const data = useMemo(() => page?.items ?? [], [page]);
+  const [lastPageSize, setLastPageSize] = useState<number | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const offset = nextOffset(page, PAYMENTS_PAGE_LIMIT, lastPageSize);
+  const { fetchMore, refetch: refetchPayments } = query;
+  const loadMore = useCallback(async () => {
+    if (offset === null) return;
+    setLoadingMore(true);
+    try {
+      const result = await fetchMore({ variables: { offset } });
+      setLastPageSize(result.data.platformPayments.items.length);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [fetchMore, offset]);
+  const refetch = useCallback(async () => {
+    setLastPageSize(null);
+    return await refetchPayments();
+  }, [refetchPayments]);
+  return {
+    data,
+    loading: query.loading && !query.data,
+    error: query.error ?? null,
+    refetch,
+    totalCount: page?.totalCount ?? data.length,
     hasMore: offset !== null,
     loadingMore,
     loadMore,

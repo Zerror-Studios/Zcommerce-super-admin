@@ -1,6 +1,8 @@
 // PRD-002 SA-7: plan, subscription-status and gateway values mirror the
 // backend enums (plan.model.ts, subscription.model.ts, billing.model.ts).
 // Human-readable strings live in lib/display-labels.util.ts.
+import type { TenantDomainStatus, TenantSuspendCategory } from "./platform-api";
+
 export const planNameEnum = {
   STARTER: "STARTER",
   PREMIUM: "PREMIUM",
@@ -59,6 +61,13 @@ export interface Plan {
     storageGb: number | null;
     bandwidthGb: number | null;
   };
+  // ── PRD-017 FR-1.1 ──
+  priceYearly?: number;
+  version?: number;
+  status?: "DRAFT" | "ACTIVE" | "LEGACY" | "ARCHIVED";
+  displayName?: string;
+  /** Set for a custom plan that belongs to one store. */
+  tenantId?: string | null;
 }
 
 export interface Client {
@@ -102,6 +111,22 @@ export interface Client {
   health?: { score: number; factors: string[] };
   /** Server-computed payment badge; `lib/storeStatus` prefers it when present. */
   paymentState?: { label: string; tone: "success" | "warning" | "danger" | "info" | "neutral"; detail: string | null };
+  // ── Store details (PRD-017 FR-4.5) ──
+  billingContactEmail?: string;
+  gstin?: string;
+  timezone?: string;
+  currency?: string;
+  // ── Data lifecycle (PRD-018) ──
+  /** The server's tenant status; `status` above folds DELETED into the list's states. */
+  tenantStatus?: "ACTIVE" | "SUSPENDED" | "DELETED";
+  suspendCategory?: TenantSuspendCategory;
+  suspendReason?: string;
+  suspendedAt?: string;
+  /** When a DELETED store may be purged (restore before it). */
+  purgeAfter?: string;
+  domainStatus?: TenantDomainStatus;
+  pendingDomain?: string;
+  liveAt?: string;
 }
 
 export interface Subscription {
@@ -120,6 +145,18 @@ export interface Subscription {
   /** PRD-014 D6: a plan change scheduled for `renewalDate`. */
   pendingPlanId?: string;
   pendingBillingCycle?: "MONTHLY" | "YEARLY";
+  // ── PRD-016 (server fields) ──
+  /** The plan version's id and number (PRD-017 FR-4.2). */
+  planId?: string;
+  planVersion?: number;
+  planDisplayName?: string;
+  /** Unspent platform credit (FR-5). */
+  creditBalance?: number;
+  /** FR-15: ORDERS_PAUSED = the store takes no new shopper orders. */
+  billingState?: "OK" | "ORDERS_PAUSED";
+  /** FR-16 dunning dates; absent while dunning is off. */
+  ordersPauseAt?: string;
+  suspendsAt?: string;
   /** Server-computed payment badge; `lib/storeStatus` shows it. */
   paymentState?: { label: string; tone: "success" | "warning" | "danger" | "info" | "neutral"; detail: string | null };
 }
@@ -143,6 +180,8 @@ export interface Coupon {
   discountType: "percent" | "fixed";
   discountValue: number;
   appliesTo: PlanName | "All";
+  /** PRD-017 FR-4.4: plan versions by id; wins over `appliesTo` when not empty. */
+  appliesToPlanIds: string[];
   redemptions: number;
   maxRedemptions: number;
   expiresAt: string;
@@ -190,7 +229,14 @@ export interface PlatformSettings {
   gracePeriodDays: number;
   /** ADR-002 amendment: the platform payment provider is a setting (Razorpay next). */
   /** `checkoutAvailable` (PRD-014 FR-2.4): stores can pay the saved provider online here. */
-  billing?: { provider: PlatformPaymentProvider; configured: boolean; checkoutAvailable: boolean };
+  billing?: {
+    provider: PlatformPaymentProvider;
+    configured: boolean;
+    checkoutAvailable: boolean;
+    /** PRD-017 FR-3.2: shown on the store's Billing page. */
+    bankTransferInstructions?: string;
+    supportContact?: string;
+  };
   reminders: {
     daysBeforeDue: number[];
     daysAfterDue: number[];
@@ -201,4 +247,13 @@ export interface PlatformSettings {
     template?: string;
   };
   yearKind?: "CALENDAR" | "FINANCIAL";
+  /** PRD-016 FR-16: read here, saved on its own (never by the full save). */
+  dunning?: {
+    enabled: boolean;
+    pauseOrdersAfterDays: number;
+    suspendAfterDays: number;
+    trialSuspendAfterDays: number;
+  };
+  /** PRD-016 FR-14: read here, saved on its own. */
+  entitlementsMode?: "OFF" | "LOG" | "ENFORCE";
 }

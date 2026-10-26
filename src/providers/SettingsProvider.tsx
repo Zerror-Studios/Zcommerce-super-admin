@@ -20,7 +20,7 @@ import { PLATFORM_SETTINGS, UPDATE_PLATFORM_SETTINGS } from "../graphql/settings
 import { toPlatformSettings, toPlatformSettingsInput } from "../lib/api-adapters";
 import { DEFAULT_PLATFORM_SETTINGS, setServerPlatformSettings } from "../lib/platformSettings";
 import type { PlatformSettings } from "../types";
-import type { PlatformSettingsApi } from "../types/platform-api";
+import type { PlatformSettingsApi, PlatformSettingsPatch } from "../types/platform-api";
 import { useAuth } from "./AuthProvider";
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -29,6 +29,11 @@ interface SettingsContextValue {
   settings: PlatformSettings;
   loading: boolean;
   updateSettings: (next: PlatformSettings) => Promise<void>;
+  /**
+   * Saves only the fields in `patch` (the server merges them): dunning and
+   * the entitlement mode, each behind its own confirmation (PRD-016).
+   */
+  updateSettingsPatch: (patch: PlatformSettingsPatch) => Promise<void>;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -67,13 +72,25 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [apollo, query],
   );
 
+  const updateSettingsPatch = useCallback(
+    async (patch: PlatformSettingsPatch) => {
+      await apollo.mutate({
+        mutation: UPDATE_PLATFORM_SETTINGS,
+        variables: { input: patch },
+      });
+      await query.refetch();
+    },
+    [apollo, query],
+  );
+
   const value = useMemo<SettingsContextValue>(
     () => ({
       settings,
       loading: query.loading && !query.data,
       updateSettings,
+      updateSettingsPatch,
     }),
-    [query.data, query.loading, settings, updateSettings],
+    [query.data, query.loading, settings, updateSettings, updateSettingsPatch],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

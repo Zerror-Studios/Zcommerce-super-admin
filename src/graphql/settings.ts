@@ -16,6 +16,8 @@ export const PLATFORM_SETTINGS_FIELDS = gql`
       provider
       configured
       checkoutAvailable
+      bankTransferInstructions
+      supportContact
     }
     reminders {
       daysBeforeDue
@@ -28,6 +30,13 @@ export const PLATFORM_SETTINGS_FIELDS = gql`
       template
     }
     yearKind
+    dunning {
+      enabled
+      pauseOrdersAfterDays
+      suspendAfterDays
+      trialSuspendAfterDays
+    }
+    entitlementsMode
   }
 `;
 

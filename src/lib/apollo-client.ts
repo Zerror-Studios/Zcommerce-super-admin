@@ -86,9 +86,13 @@ const REVOKED_REASONS = new Set(["REUSE_DETECTED", "LOGGED_OUT", "DEVICE_LIMIT"]
 const TOAST_DEDUPE_WINDOW_MS = 5000;
 /**
  * `FORBIDDEN` reasons that are a business rule, not a missing permission
- * (PRD-014 SEC-04); the screen explains them, so no global toast.
+ * (PRD-014 SEC-04, PRD-018); the screen explains them, so no global toast.
  */
-const BUSINESS_FORBIDDEN_REASONS = new Set(["PAYMENT_REQUIRED"]);
+const BUSINESS_FORBIDDEN_REASONS = new Set([
+  "PAYMENT_REQUIRED",
+  // PRD-018 FR-2.1: a forced delete; the delete dialog explains it
+  "OWNER_ONLY",
+]);
 /**
  * `FORBIDDEN` reasons about the request, not the role: the link handles
  * them itself (retry or its own toast), never "You don't have permission".
@@ -486,12 +490,18 @@ const cache = new InMemoryCache({
         // Read page by page with `offset` (FE-09); each page lands at its offset.
         platformTenants: offsetPagingPolicy(["filter", "sort"]),
         platformPayments: offsetPagingPolicy(["filter"]),
+        // PRD-017 FR-4.3: invoices page past the 100 cap the same way.
+        platformInvoices: offsetPagingPolicy(["filter"]),
         platformUsers: offsetPagingPolicy([]),
         // A plain array; the total is `platformCouponCount` (PRD-014 close-out).
         platformCoupons: offsetListPolicy([]),
         platformSubscriptions: { keyArgs: ["filter", "sort"] },
+        // PRD-018 FR-2.5: purged-store tombstones, paged the same way.
+        platformPurgedTenants: offsetPagingPolicy([]),
       },
     },
+    // A tombstone has no `id`; one per purged tenant.
+    TenantPurgeRecord: { keyFields: ["tenantId"] },
   },
 });
 

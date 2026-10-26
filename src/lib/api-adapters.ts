@@ -78,6 +78,13 @@ export function toSubscription(
     billingCycle: row.billingCycle,
     pendingPlanId: row.pendingPlanId ?? undefined,
     pendingBillingCycle: row.pendingBillingCycle ?? undefined,
+    planId: row.plan?.id ?? undefined,
+    planVersion: row.plan?.version ?? undefined,
+    planDisplayName: row.plan?.displayName ?? undefined,
+    creditBalance: row.creditBalance ?? undefined,
+    billingState: row.billingState ?? undefined,
+    ordersPauseAt: row.ordersPauseAt ?? undefined,
+    suspendsAt: row.suspendsAt ?? undefined,
     paymentState: tenant?.paymentState ?? undefined,
   };
 }
@@ -115,6 +122,18 @@ export function toClient(tenant: PlatformTenant): Client {
     onboarding: tenant.onboarding,
     health: { score: tenant.healthScore, factors: tenant.healthFactors },
     paymentState: tenant.paymentState,
+    billingContactEmail: tenant.billing.contactEmail ?? undefined,
+    gstin: tenant.billing.gstin ?? undefined,
+    timezone: tenant.timezone ?? undefined,
+    currency: tenant.currency ?? undefined,
+    tenantStatus: tenant.status,
+    suspendCategory: tenant.suspendCategory ?? undefined,
+    suspendReason: tenant.suspendReason ?? undefined,
+    suspendedAt: tenant.suspendedAt ?? undefined,
+    purgeAfter: tenant.purgeAfter ?? undefined,
+    domainStatus: tenant.domainStatus,
+    pendingDomain: tenant.pendingDomain ?? undefined,
+    liveAt: tenant.liveAt ?? undefined,
   };
 }
 
@@ -142,6 +161,11 @@ export function toPlan(plan: PlatformPlan): Plan {
       storageGb: null,
       bandwidthGb: null,
     },
+    priceYearly: plan.price.yearly,
+    version: plan.version,
+    status: plan.status,
+    displayName: plan.displayName,
+    tenantId: plan.tenantId,
   };
 }
 
@@ -209,6 +233,8 @@ export function toPlatformSettings(api: PlatformSettingsApi): PlatformSettings {
       provider: api.billing.provider,
       configured: api.billing.configured === true,
       checkoutAvailable: api.billing.checkoutAvailable === true,
+      bankTransferInstructions: api.billing.bankTransferInstructions ?? "",
+      supportContact: api.billing.supportContact ?? "",
     },
     reminders: {
       daysBeforeDue: [...api.reminders.daysBeforeDue],
@@ -219,14 +245,26 @@ export function toPlatformSettings(api: PlatformSettingsApi): PlatformSettings {
       template: api.reminders.template,
     },
     yearKind: api.yearKind,
+    dunning: api.dunning ? { ...api.dunning } : undefined,
+    entitlementsMode: api.entitlementsMode,
   };
 }
 
+/**
+ * The full settings save. Dunning and the entitlement mode are left out on
+ * purpose: they are saved on their own, behind a confirmation (PRD-016
+ * FR-14, FR-16), so a Billing rules save never changes them.
+ */
 export function toPlatformSettingsInput(settings: PlatformSettings): PlatformSettingsApi {
   return {
     health: { ...settings.health },
     gracePeriodDays: settings.gracePeriodDays,
-    billing: { provider: settings.billing?.provider ?? "MANUAL" },
+    billing: {
+      provider: settings.billing?.provider ?? "MANUAL",
+      // PRD-017 FR-3.2: an empty text clears the setting on the server.
+      bankTransferInstructions: settings.billing?.bankTransferInstructions?.trim() ?? "",
+      supportContact: settings.billing?.supportContact?.trim() ?? "",
+    },
     reminders: {
       daysBeforeDue: [...settings.reminders.daysBeforeDue],
       daysAfterDue: [...settings.reminders.daysAfterDue],

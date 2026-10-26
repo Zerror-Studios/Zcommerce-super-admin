@@ -3,8 +3,8 @@
  *
  * Reads `platformTenants` and `platformPlans` through the Apollo client,
  * maps them with `lib/api-adapters`, and runs the lifecycle mutations
- * (create, update, notes, suspend, reactivate, delete) against the
- * platform-admin API.
+ * (create, update, notes, suspend with a category, reactivate, delete with
+ * the owner's force, restore; PRD-018) against the platform-admin API.
  *
  * The backend caps a page at 100 stores (`MAX_PAGE_LIMIT`), so the list is
  * read page by page with `offset` until `totalCount` is reached (PRD-014
@@ -28,6 +28,7 @@ import {
   DELETE_TENANT,
   PLATFORM_TENANTS,
   REACTIVATE_TENANT,
+  RESTORE_TENANT,
   RETRY_TENANT_PROVISIONING,
   SUSPEND_TENANT,
   UPDATE_TENANT,
@@ -47,6 +48,7 @@ import type {
   PlatformList,
   PlatformPlan,
   PlatformTenant,
+  TenantSuspendCategory,
   UpdateTenantInput,
 } from "../types/platform-api";
 import { useAuth } from "./AuthProvider";
@@ -85,10 +87,32 @@ interface ClientsContextValue {
   createStore: (input: CreateTenantInput) => Promise<CreateStoreResult>;
   retryProvisioning: (id: string) => Promise<CreateStoreResult>;
   updateClient: (id: string, patch: Partial<Client>) => Promise<void>;
+  /** The store details form (PRD-017 FR-4.5): only the changed fields. */
+  updateStoreDetails: (id: string, input: UpdateTenantInput) => Promise<void>;
   updateNotes: (id: string, notes: string) => Promise<void>;
-  setClientStatus: (id: string, status: ClientStatus, reason?: string) => Promise<void>;
-  /** Needs the slug typed to confirm (PRD-005 FR-3.4). */
-  deleteClient: (id: string, confirmSlug?: string) => Promise<void>;
+  /**
+   * Suspend (with a reason and a PRD-018 category) or reactivate.
+   * Reactivation always sends `override` and `reason` (PRD-016 FR-18: a
+   * BILLING suspension needs a payment or an audited override).
+   */
+  setClientStatus: (
+    id: string,
+    status: ClientStatus,
+    reason?: string,
+    reactivation?: { override: boolean; reason: string | null },
+    category?: TenantSuspendCategory,
+  ) => Promise<void>;
+  /**
+   * Needs the slug typed to confirm (PRD-005 FR-3.4); `force` with a
+   * reason deletes despite money in flight (PRD-018 FR-2.1, owner only).
+   */
+  deleteClient: (
+    id: string,
+    confirmSlug?: string,
+    force?: { forceReason: string },
+  ) => Promise<void>;
+  /** A deleted store back to SUSPENDED inside its grace period (PRD-018 FR-2.3). */
+  restoreClient: (id: string) => Promise<void>;
 }
 
 const ClientsContext = createContext<ClientsContextValue | null>(null);
@@ -102,7 +126,7 @@ const TENANT_PAGE_LIMIT = SERVER_PAGE_LIMIT;
 function toUpdateInput(patch: Partial<Client>): UpdateTenantInput {
   const input: UpdateTenantInput = {};
   if (patch.storeName !== undefined) input.name = patch.storeName;
-  if (patch.domain !== undefined) input.domain = patch.domain || null;
+  // PRD-018 FR-4.4: the domain changes only through domain verification
   if (patch.ownerName !== undefined) input.ownerName = patch.ownerName;
   if (patch.ownerEmail !== undefined) input.ownerEmail = patch.ownerEmail;
   if (patch.ownerPhone !== undefined) input.ownerPhone = patch.ownerPhone || null;
@@ -244,20 +268,46 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
     [apollo],
   );
 
+  const updateStoreDetails = useCallback(
+    async (id: string, input: UpdateTenantInput) => {
+      if (Object.keys(input).length === 0) return;
+      // Returns the tenant fragment; Apollo updates the list by id
+      await apollo.mutate({ mutation: UPDATE_TENANT, variables: { id, input } });
+    },
+    [apollo],
+  );
+
   const updateNotes = useCallback(
     async (id: string, notes: string) => updateClient(id, { notes }),
     [updateClient],
   );
 
   const setClientStatus = useCallback(
-    async (id: string, status: ClientStatus, reason?: string) => {
+    async (
+      id: string,
+      status: ClientStatus,
+      reason?: string,
+      reactivation?: { override: boolean; reason: string | null },
+      category?: TenantSuspendCategory,
+    ) => {
       if (status === "suspended") {
         await apollo.mutate({
           mutation: SUSPEND_TENANT,
-          variables: { id, reason: reason?.trim() || "Suspended from the console" },
+          variables: {
+            id,
+            reason: reason?.trim() || "Suspended from the console",
+            category: category ?? null,
+          },
         });
       } else {
-        await apollo.mutate({ mutation: REACTIVATE_TENANT, variables: { id } });
+        await apollo.mutate({
+          mutation: REACTIVATE_TENANT,
+          variables: {
+            id,
+            override: reactivation?.override ?? false,
+            reason: reactivation?.reason ?? null,
+          },
+        });
       }
       // Suspend and reactivate return the full tenant fragment (review C-M7).
     },
@@ -265,8 +315,25 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
   );
 
   const deleteClient = useCallback(
-    async (id: string, confirmSlug?: string) => {
-      await apollo.mutate({ mutation: DELETE_TENANT, variables: { id, confirmSlug: confirmSlug ?? "" } });
+    async (id: string, confirmSlug?: string, force?: { forceReason: string }) => {
+      await apollo.mutate({
+        mutation: DELETE_TENANT,
+        variables: {
+          id,
+          confirmSlug: confirmSlug ?? "",
+          force: force ? true : null,
+          forceReason: force?.forceReason ?? null,
+        },
+      });
+      await refetch();
+    },
+    [apollo, refetch],
+  );
+
+  const restoreClient = useCallback(
+    async (id: string) => {
+      await apollo.mutate({ mutation: RESTORE_TENANT, variables: { id } });
+      // A restored store rejoins the list (the list leaves DELETED out)
       await refetch();
     },
     [apollo, refetch],
@@ -289,14 +356,17 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
       createStore,
       retryProvisioning,
       updateClient,
+      updateStoreDetails,
       updateNotes,
       setClientStatus,
       deleteClient,
+      restoreClient,
     }),
     [
       clients,
       createStore,
       deleteClient,
+      restoreClient,
       getClient,
       incomplete,
       loadRemaining,
@@ -312,6 +382,7 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
       tenantsQuery.loading,
       totalCount,
       updateClient,
+      updateStoreDetails,
       updateNotes,
     ],
   );

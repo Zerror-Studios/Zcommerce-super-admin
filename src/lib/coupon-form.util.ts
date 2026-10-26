@@ -8,6 +8,8 @@
  */
 
 import type { Coupon, PlanName } from "../types";
+import type { PlatformPlan } from "../types/platform-api";
+import { planVersionLabel } from "./plan-catalog.util";
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
@@ -26,6 +28,7 @@ export type CouponField =
   | "discountType"
   | "discountValue"
   | "appliesTo"
+  | "appliesToPlanIds"
   | "maxRedemptions"
   | "expiresAt";
 
@@ -38,6 +41,8 @@ export interface CouponDraft {
   discountType: "percent" | "fixed";
   discountValue: string;
   appliesTo: PlanName | "All";
+  /** PRD-017 FR-4.4: plan versions by id; empty = the tier above applies. */
+  appliesToPlanIds: string[];
   maxRedemptions: string;
   expiresAt: string;
   active: boolean;
@@ -51,6 +56,7 @@ const COUPON_FIELDS: readonly CouponField[] = [
   "discountType",
   "discountValue",
   "appliesTo",
+  "appliesToPlanIds",
   "maxRedemptions",
   "expiresAt",
 ];
@@ -71,6 +77,7 @@ export function emptyCouponDraft(now: Date = new Date()): CouponDraft {
     discountType: "percent",
     discountValue: "10",
     appliesTo: "All",
+    appliesToPlanIds: [],
     maxRedemptions: "100",
     expiresAt: defaultCouponExpiry(now),
     active: true,
@@ -83,6 +90,7 @@ export function couponToDraft(coupon: Coupon): CouponDraft {
     discountType: coupon.discountType,
     discountValue: String(coupon.discountValue),
     appliesTo: coupon.appliesTo,
+    appliesToPlanIds: [...(coupon.appliesToPlanIds ?? [])],
     maxRedemptions: String(coupon.maxRedemptions),
     expiresAt: coupon.expiresAt.slice(0, 10),
     active: coupon.active,
@@ -120,12 +128,64 @@ export function validateCouponDraft(
       discountType: draft.discountType,
       discountValue: value,
       appliesTo: draft.appliesTo,
+      // Always sent, so an emptied list goes back to the tier rule
+      appliesToPlanIds: [...new Set(draft.appliesToPlanIds)],
       maxRedemptions: max,
       expiresAt: draft.expiresAt,
       active: draft.active,
     },
     errors: null,
   };
+}
+
+// ─── Plan scope (PRD-017 FR-4.4) ──────────────────────────────────────────
+
+/**
+ * Plans a coupon can be limited to: every version (ACTIVE, LEGACY and
+ * archived) and every store's custom plan, global plans first, then by
+ * tier name and version, newest version first.
+ */
+export function couponPlanOptions(
+  plans: readonly PlatformPlan[],
+): Array<{ id: string; label: string }> {
+  return [...plans]
+    .sort((a, b) => {
+      const scope = Number(!!a.tenantId) - Number(!!b.tenantId);
+      if (scope !== 0) return scope;
+      const name = a.name.localeCompare(b.name);
+      if (name !== 0) return name;
+      return (b.version ?? 1) - (a.version ?? 1);
+    })
+    .map((plan) => ({
+      id: plan.id,
+      label:
+        `${planVersionLabel(plan)}` +
+        `${plan.tenantId ? " (custom)" : ""}` +
+        `${plan.status && plan.status !== "ACTIVE" ? ` · ${plan.status.toLowerCase()}` : ""}`,
+    }));
+}
+
+/**
+ * The "Applies to" text: the picked plan versions when the coupon lists
+ * any (they win on the server), else the tier rule.
+ */
+export function couponScopeLabel(
+  coupon: Pick<Coupon, "appliesTo" | "appliesToPlanIds">,
+  plans: readonly PlatformPlan[],
+  tierLabel: (tier: PlanName) => string,
+): string {
+  const ids = coupon.appliesToPlanIds ?? [];
+  if (ids.length === 0) {
+    return coupon.appliesTo === "All" ? "All plans" : tierLabel(coupon.appliesTo);
+  }
+  const byId = new Map(plans.map((plan) => [plan.id, plan]));
+  const labels = ids.map((id) => {
+    const plan = byId.get(id);
+    return plan ? planVersionLabel(plan) : "Unknown plan";
+  });
+  return labels.length <= 2
+    ? labels.join(", ")
+    : `${labels.slice(0, 2).join(", ")} +${labels.length - 2}`;
 }
 
 // ─── Server errors ────────────────────────────────────────────────────────

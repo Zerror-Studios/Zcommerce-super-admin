@@ -53,3 +53,16 @@ export const dataTableSelectionProps = {
   color: "primary" as const,
   checkboxesProps: dataTableCheckboxesProps,
 };
+
+/**
+ * A table inside a card, with no selection column and no fixed height
+ * (store billing, Settings › Plans; PRD-016 / PRD-017).
+ */
+export const compactTableClassNames = {
+  ...dataTableClassNames,
+  base: "rounded-none border-0 border-t border-line overflow-x-auto bg-surface",
+  wrapper: "p-0 shadow-none rounded-none",
+  th: dataTableClassNames.th.replace("first:w-12 ", ""),
+  td: dataTableClassNames.td.replace("first:w-12 ", ""),
+  tr: dataTableClassNames.tr.replace("cursor-pointer ", ""),
+} as const;

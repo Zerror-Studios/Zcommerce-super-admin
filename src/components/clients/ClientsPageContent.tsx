@@ -6,6 +6,7 @@ import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import { PageHeader } from "../common/PageHeader";
 import { ClientsTable, type StoreTab } from "./ClientsTable";
+import { RemovedStoresPanel } from "./RemovedStoresPanel";
 import { IconAdd } from "../ui/icons";
 import { Button as UiButton, ErrorState, cx, toneTextClasses } from "../ui";
 
@@ -63,6 +64,11 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
       ) : (
         <ClientsTable key={initialTab} clients={clients} isLoading={loading} allowColumnChoice initialTab={initialTab} />
       )}
+
+      {/* PRD-018 FR-2.3, FR-2.5: deleted (restorable) and purged stores. */}
+      <div className="mt-8">
+        <RemovedStoresPanel />
+      </div>
     </div>
   );
 }

@@ -1,9 +1,14 @@
+import { useQuery } from "@apollo/client";
 import { addToast, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow, type Selection } from "@heroui/react";
 import { toastError } from "../ui";
-import { useMemo, useState, type Key, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type Key, type ReactNode } from "react";
 import type { Coupon, PlanName } from "../../types";
+import { PLATFORM_PLANS } from "../../graphql/plans";
+import type { PlatformPlan } from "../../types/platform-api";
 import {
   couponErrorsFromServer,
+  couponPlanOptions,
+  couponScopeLabel,
   couponToDraft,
   emptyCouponDraft,
   validateCouponDraft,
@@ -120,6 +125,17 @@ export function CouponsTab({
     columns.map((column) => column.key),
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // PRD-017 FR-4.4: every plan version and custom plan, for the picker and
+  // the "Applies to" column of coupons limited by plan id.
+  const plansQuery = useQuery<{ platformPlans: PlatformPlan[] }>(PLATFORM_PLANS, {
+    variables: { includeInactive: true },
+  });
+  const allPlans = useMemo(() => plansQuery.data?.platformPlans ?? [], [plansQuery.data]);
+  const planOptionsById = useMemo(() => couponPlanOptions(allPlans), [allPlans]);
+  const scopeOf = useCallback(
+    (coupon: Coupon) => couponScopeLabel(coupon, allPlans, getPlanLabel),
+    [allPlans],
+  );
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -127,13 +143,13 @@ export function CouponsTab({
       const matchesSearch =
         !query ||
         coupon.code.toLowerCase().includes(query) ||
-        getPlanLabel(coupon.appliesTo).toLowerCase().includes(query);
+        scopeOf(coupon).toLowerCase().includes(query);
       const statusKey = couponStatus(coupon);
       const matchesStatus =
         statusFilter.length === 0 || statusFilter.includes(statusKey);
       return matchesSearch && matchesStatus;
     });
-  }, [coupons, search, statusFilter]);
+  }, [coupons, search, statusFilter, scopeOf]);
 
   const dataColumns = columns.filter(
     (column) =>
@@ -156,7 +172,7 @@ export function CouponsTab({
           ? `${coupon.discountValue}%`
           : formatMoney(coupon.discountValue);
       case "appliesTo":
-        return coupon.appliesTo === "All" ? "All plans" : getPlanLabel(coupon.appliesTo);
+        return scopeOf(coupon);
       case "redemptions":
         return (
           <span className="block text-right num">
@@ -432,6 +448,29 @@ export function CouponsTab({
                 >
                   {planOptions.map((option) => (
                     <SelectItem key={option}>{option === "All" ? "All plans" : getPlanLabel(option)}</SelectItem>
+                  ))}
+                </Select>
+                {/* PRD-017 FR-4.4: specific versions or custom plans win over the tier. */}
+                <Select
+                  label="Limit to specific plans"
+                  placeholder="Any version of the tier above"
+                  selectionMode="multiple"
+                  selectedKeys={new Set(draft.appliesToPlanIds)}
+                  onSelectionChange={(keys) => {
+                    const ids = keys === "all" ? planOptionsById.map((option) => option.id) : Array.from(keys).map(String);
+                    setField("appliesToPlanIds", ids);
+                  }}
+                  isLoading={plansQuery.loading && !plansQuery.data}
+                  isInvalid={!!formErrors.appliesToPlanIds}
+                  errorMessage={formErrors.appliesToPlanIds}
+                  description={
+                    plansQuery.error && !plansQuery.data
+                      ? "Couldn't load the plans; the tier above applies."
+                      : "Optional. When you pick plans, the code applies only to them, including custom plans and older versions."
+                  }
+                >
+                  {planOptionsById.map((option) => (
+                    <SelectItem key={option.id}>{option.label}</SelectItem>
                   ))}
                 </Select>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -29,6 +29,40 @@ export type PlatformBillingCycle = "MONTHLY" | "YEARLY";
 
 export type PlanChangeEffective = "NOW" | "PERIOD_END";
 
+/** PRD-017 FR-1.1: a plan version's lifecycle; only ACTIVE is sellable. */
+export const platformPlanStatusEnum = {
+  DRAFT: "DRAFT",
+  ACTIVE: "ACTIVE",
+  LEGACY: "LEGACY",
+  ARCHIVED: "ARCHIVED",
+} as const;
+
+export type PlatformPlanStatus =
+  (typeof platformPlanStatusEnum)[keyof typeof platformPlanStatusEnum];
+
+/** PRD-016 FR-15: ORDERS_PAUSED = the store takes no new shopper orders. */
+export type PlatformBillingState = "OK" | "ORDERS_PAUSED";
+
+/** PRD-016 FR-14: how plan limits act. */
+export const entitlementsModeEnum = {
+  OFF: "OFF",
+  LOG: "LOG",
+  ENFORCE: "ENFORCE",
+} as const;
+
+export type EntitlementsMode =
+  (typeof entitlementsModeEnum)[keyof typeof entitlementsModeEnum];
+
+/** PRD-016 FR-19: how staff end a flagged payment. */
+export const flaggedPaymentActionEnum = {
+  APPLY: "APPLY",
+  REFUNDED_OUTSIDE: "REFUNDED_OUTSIDE",
+  DISMISS: "DISMISS",
+} as const;
+
+export type FlaggedPaymentAction =
+  (typeof flaggedPaymentActionEnum)[keyof typeof flaggedPaymentActionEnum];
+
 export type TenantOnboardingStatus = "PROVISIONING" | "READY" | "FAILED";
 
 /** `PlatformTenantRegion` enum keys; the API maps them to AWS region ids. */
@@ -98,6 +132,75 @@ export interface PlatformPlan {
   createdAt: string | null;
   /** Stores on this plan, counted on the server; only `platformPlans` asks for it. */
   tenantCount?: number;
+  // ── PRD-017 FR-1.1 (optional so older cached rows still type-check) ──
+  version?: number;
+  status?: PlatformPlanStatus;
+  isPublic?: boolean;
+  displayName?: string;
+  description?: string | null;
+  sortOrder?: number;
+  supersedesPlanId?: string | null;
+  supersededByPlanId?: string | null;
+  /** Non-cancelled subscriptions on the plan (FR-1.7). */
+  subscriberCount?: number;
+  /** Subscriptions with this plan pending (FR-1.7). */
+  pendingCount?: number;
+  /** The version chain, oldest first; only `platformPlan(id)`. */
+  versions?: PlatformPlan[];
+}
+
+export type PlatformPlanLimits = PlatformPlan["limits"];
+
+export type PlatformPlanFeatures = PlatformPlan["features"];
+
+/** `createPlan` input (PRD-017 §5.1); 0 in a limit = unlimited (PRD-016 D12). */
+export interface PlatformPlanInput {
+  tenantId?: string | null;
+  name: PlanName;
+  displayName: string;
+  description?: string | null;
+  status: "DRAFT" | "ACTIVE";
+  isPublic?: boolean;
+  sortOrder?: number;
+  price: { monthly: number; yearly: number };
+  limits: PlatformPlanLimits;
+  features: PlatformPlanFeatures;
+}
+
+/** `updatePlan` input: every field optional. */
+export type PlatformPlanUpdateInput = Partial<
+  Omit<PlatformPlanInput, "tenantId" | "name">
+>;
+
+export interface PlatformPlanUpdateResult {
+  plan: PlatformPlan;
+  versioned: boolean;
+  previousPlan: PlatformPlan | null;
+}
+
+export interface PlanMigrationResult {
+  scheduled: number;
+  alreadyScheduled: number;
+  deferredForNotice: number;
+}
+
+/** PRD-016 FR-6: what `changeTenantPlan` would do. */
+export interface PlatformPlanChangePreview {
+  effective: PlanChangeEffective;
+  effectiveAt: string;
+  credit: number;
+  charge: number;
+  amountDueNow: number;
+  nextInvoiceAmount: number;
+  currency: string;
+  /** Limit keys the store is already over on the new plan. */
+  overLimits: string[];
+  /**
+   * Platform credit the change issues (a forced NOW downgrade: credit −
+   * charge; monthly → yearly: the unused part); 0 = none. Optional for
+   * servers from before the field.
+   */
+  creditIssued?: number;
 }
 
 // ─── Subscriptions ────────────────────────────────────────────────────────
@@ -120,6 +223,12 @@ export interface PlatformSubscription {
   /** PRD-014 D6: plan scheduled for `renewalDate`, if any. */
   pendingPlanId: string | null;
   pendingBillingCycle: PlatformBillingCycle | null;
+  // ── PRD-016 FR-5, FR-15, FR-16 (optional for older cached rows) ──
+  creditBalance?: number;
+  billingState?: PlatformBillingState;
+  /** Null while dunning is off. */
+  ordersPauseAt?: string | null;
+  suspendsAt?: string | null;
 }
 
 // ─── Tenants ──────────────────────────────────────────────────────────────
@@ -190,8 +299,77 @@ export interface PlatformTenant {
   usage: TenantUsage | null;
   suspendedAt: string | null;
   suspendReason: string | null;
+  /** PRD-018 FR-1.1; null while the store isn't suspended. */
+  suspendCategory?: TenantSuspendCategory | null;
+  /** PRD-018 FR-2.3: when a DELETED store may be purged. */
+  purgeAfter?: string | null;
+  /** PRD-018 FR-4.1. */
+  domainStatus?: TenantDomainStatus;
+  /** PRD-018 FR-4.2: a domain being verified (never resolves). */
+  pendingDomain?: string | null;
+  liveAt?: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+}
+
+// ─── Tenant data lifecycle (PRD-018 §5.1) ─────────────────────────────────
+
+export type TenantSuspendCategory =
+  | "BILLING"
+  | "POLICY"
+  | "OWNER_REQUEST"
+  | "MAINTENANCE";
+
+export type TenantDomainStatus =
+  | "NONE"
+  | "PENDING"
+  | "VERIFIED"
+  | "LIVE"
+  | "FAILED";
+
+export type GoLiveCheckState = "PASS" | "FAIL" | "UNKNOWN" | "WAIVED";
+
+/** FR-1.2: what a suspension or delete would leave open; `partial` = a count timed out. */
+export interface TenantMoneyInFlight {
+  pendingPayments: number;
+  paidUnfulfilledOrders: number;
+  refundsInProgress: number;
+  needsRefundOrders: number;
+  needsAttentionOrders: number;
+  openReturns: number;
+  activeHolds: number;
+  activeMarketplaceListings: number;
+  openPlatformInvoices: number;
+  partial: boolean;
+}
+
+/** FR-4.2: publish `recordName` TXT = `recordValue`, then check. */
+export interface TenantDomainVerification {
+  domain: string;
+  recordName: string;
+  recordValue: string;
+  status: TenantDomainStatus;
+  lastError: string | null;
+}
+
+/** FR-4.3: one go-live check. */
+export interface GoLiveCheck {
+  key: string;
+  label: string;
+  required: boolean;
+  state: GoLiveCheckState;
+  detail: string | null;
+}
+
+/** FR-2.5: the tombstone of a purged store. */
+export interface TenantPurgeRecord {
+  tenantId: string;
+  slug: string;
+  domain: string | null;
+  name: string;
+  deletedAt: string;
+  purgedAt: string;
+  reason: string | null;
 }
 
 export interface PlatformList<T> {
@@ -249,6 +427,9 @@ export interface PlatformSettingsApi {
     provider: "MANUAL" | "NIMBBL" | "RAZORPAY" | "STRIPE";
     configured?: boolean;
     checkoutAvailable?: boolean;
+    /** PRD-017 FR-3.2: shown on the store's Billing page; null or "" clears it. */
+    bankTransferInstructions?: string | null;
+    supportContact?: string | null;
   };
   reminders: {
     daysBeforeDue: number[];
@@ -257,6 +438,51 @@ export interface PlatformSettingsApi {
     template: string;
   };
   yearKind: "CALENDAR" | "FINANCIAL";
+  /** PRD-016 FR-16; `enabled` stays false until its gate (D6/D7). Read-only in the full update. */
+  dunning?: PlatformDunningSettings;
+  /** PRD-016 FR-14. */
+  entitlementsMode?: EntitlementsMode;
+}
+
+export interface PlatformDunningSettings {
+  enabled: boolean;
+  pauseOrdersAfterDays: number;
+  suspendAfterDays: number;
+  trialSuspendAfterDays: number;
+}
+
+/**
+ * A partial `updatePlatformSettings` input: the server merges what is sent
+ * (dunning and the entitlement mode are saved on their own, audited).
+ */
+export interface PlatformSettingsPatch {
+  dunning?: Partial<PlatformDunningSettings>;
+  entitlementsMode?: EntitlementsMode;
+  /** Why this change; kept on the audit row only (max 500). */
+  note?: string;
+}
+
+// ─── Stale store payments (PRD-018 FR-1.8) ───────────────────────────────
+
+/** A store payment still PENDING 48 h after it was opened; no shopper field. */
+export interface StalePendingPayment {
+  tenantId: string;
+  tenantName: string;
+  tenantSlug: string;
+  tenantStatus: string;
+  paymentId: string;
+  orderId: string | null;
+  provider: string | null;
+  amount: number;
+  currency: string | null;
+  createdAt: string;
+  lastEnquiryAt: string | null;
+}
+
+export interface StalePendingPaymentList {
+  items: StalePendingPayment[];
+  /** A store DB couldn't be read; its rows are missing. */
+  partial: boolean;
 }
 
 // ─── Billing (Phase 3) ────────────────────────────────────────────────────
@@ -286,6 +512,22 @@ export interface PlatformInvoice {
   paidAt: string | null;
   couponCode: string | null;
   voidReason: string | null;
+  // ── PRD-016 §5.4, FR-5, FR-20, FR-27 ──
+  billingReason: "PERIOD" | "PRORATION";
+  amountPaid: number;
+  creditApplied: number;
+  /** Still owed; 0 unless ISSUED or OVERDUE. */
+  amountDue: number;
+  /** The new period of a stopped store (FR-27). */
+  restart: boolean;
+}
+
+export interface PlatformInvoiceFilter {
+  tenantId?: string | null;
+  status?: PlatformInvoiceStatus[] | null;
+  search?: string | null;
+  dueFrom?: string | null;
+  dueTo?: string | null;
 }
 
 export type PlatformPaymentStatus = "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED";
@@ -306,6 +548,31 @@ export interface PlatformPayment {
   periodStart: string | null;
   periodEnd: string | null;
   createdAt: string | null;
+  // ── PRD-016 FR-19 (optional for older cached rows) ──
+  /** AMOUNT_MISMATCH, SUBSCRIPTION_NOT_PAYABLE, INVOICE_NOT_OPEN, or a provider failure. */
+  failureReason?: string | null;
+  invoiceId?: string | null;
+  expectedAmount?: number | null;
+  flagged?: boolean;
+  /** APPLIED | REFUNDED_OUTSIDE | DISMISSED. */
+  resolution?: string | null;
+  resolutionNote?: string | null;
+  resolvedAt?: string | null;
+}
+
+/** PRD-016 FR-5: credit Zerror owes a store; spent by its next invoices. */
+export interface PlatformCredit {
+  id: string;
+  tenantId: string;
+  number: string;
+  amount: number;
+  remaining: number;
+  /** PRORATION | OVERPAYMENT | MANUAL. */
+  reason: string;
+  note: string | null;
+  sourceInvoiceId: string | null;
+  createdBy: string;
+  createdAt: string;
 }
 
 export interface PlatformCoupon {
@@ -314,6 +581,8 @@ export interface PlatformCoupon {
   discountType: "PERCENT" | "FIXED";
   discountValue: number;
   appliesTo: string;
+  /** PRD-016 FR-22: plan versions by id; wins over `appliesTo` when set. */
+  appliesToPlanIds?: string[];
   maxRedemptions: number;
   redemptions: number;
   expiresAt: string;
@@ -326,6 +595,8 @@ export interface PlatformCouponInput {
   discountType: "PERCENT" | "FIXED";
   discountValue: number;
   appliesTo: string;
+  /** PRD-016 FR-22 / PRD-017 FR-4.4: `[]` clears the list (the tier applies). */
+  appliesToPlanIds?: string[];
   maxRedemptions: number;
   expiresAt: string;
   active?: boolean;

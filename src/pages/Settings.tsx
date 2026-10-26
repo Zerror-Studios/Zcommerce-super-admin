@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { CouponsTab } from "../components/billing/CouponsTab";
 import { LoadMoreFooter } from "../components/common/LoadMoreFooter";
 import { BillingRulesSettings } from "../components/settings/BillingRulesSettings";
+import { PlansSettings } from "../components/settings/PlansSettings";
 import { TeamSettings } from "../components/settings/TeamSettings";
 import { AuditLogSettings } from "../components/settings/AuditLogSettings";
 import { PageHeader } from "../components/common/PageHeader";
@@ -23,7 +24,7 @@ import { ConfirmModal } from "../components/common/ConfirmModal";
 import { mutationFailureCopy } from "../lib/mutation-errors";
 import { toasts } from "../copy";
 import type { Coupon } from "../types";
-import { IconAdd, IconBilling, IconExpand, IconKeyboard, IconLock, IconLogout, IconPercent, IconUser } from "../components/ui/icons";
+import { IconAdd, IconBilling, IconExpand, IconKeyboard, IconLock, IconLogout, IconPercent, IconPlans, IconUser } from "../components/ui/icons";
 import { Button as UiButton } from "../components/ui";
 
 /** Settings › Discounts. Payment reminders moved to Subscriptions (/settings/automation redirects there). */
@@ -32,9 +33,15 @@ const sections = {
     title: "Discounts",
     description: undefined,
   },
+  // PRD-017 FR-4.1
+  plans: {
+    title: "Plans",
+    description: "What stores can buy: every version of every plan, and the stores on it.",
+  },
   "billing-rules": {
     title: "Billing rules",
-    description: "Grace period, health thresholds and the renewal reminder schedule.",
+    description:
+      "Grace period, payment provider, plan limits, overdue payments, health thresholds and the renewal reminder schedule.",
   },
   team: {
     title: "Team",
@@ -62,6 +69,7 @@ const settingsGroups: { title: string; items: SettingsRow[] }[] = [
   {
     title: "Subscriptions",
     items: [
+      { title: "Plans", desc: "Create, version, archive and migrate plans.", icon: IconPlans, link: "/settings/plans" },
       { title: "Discounts", desc: "Discount codes stores can apply to their plan.", icon: IconPercent, link: "/settings/discounts" },
       { title: "Billing rules", desc: "Grace period, health thresholds and reminder schedule.", icon: IconBilling, link: "/settings/billing-rules" },
     ],
@@ -166,6 +174,7 @@ export function Settings() {
   const coupons = apiCoupons.data;
   const canManageCoupons = can(PLATFORM_PERMISSIONS.COUPONS_MANAGE);
   const canManageUsers = can(PLATFORM_PERMISSIONS.USERS_MANAGE);
+  const canManagePlans = can(PLATFORM_PERMISSIONS.PLANS_MANAGE);
   // PRD-014 UX-24: resolve only after the server answers, so the form can
   // stay open with the error (a duplicate code is a CONFLICT on `code`).
   const onCreate = async (coupon: CouponWrite) => {
@@ -210,6 +219,10 @@ export function Settings() {
             >
               Create discount
             </UiButton>
+          ) : active === "plans" && canManagePlans ? (
+            <UiButton variant="primary" startIcon={<IconAdd aria-hidden />} onPress={() => setCreateOpen(true)}>
+              Create plan
+            </UiButton>
           ) : active === "team" && canManageUsers ? (
             <UiButton variant="primary" startIcon={<IconAdd aria-hidden />} onPress={() => setCreateOpen(true)}>
               Invite member
@@ -253,6 +266,7 @@ export function Settings() {
         />
       ) : null}
 
+      {active === "plans" ? <PlansSettings createOpen={createOpen} onCreateOpenChange={setCreateOpen} /> : null}
       {active === "billing-rules" ? <BillingRulesSettings /> : null}
 
       {active === "team" ? <TeamSettings createOpen={createOpen} onCreateOpenChange={setCreateOpen} /> : null}

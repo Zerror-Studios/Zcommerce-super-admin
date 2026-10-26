@@ -16,7 +16,12 @@ export const mainNavItems: NavItem[] = [
     icon: IconBilling,
     children: [
       { label: "Collections", to: "/billing/subscriptions" },
+      { label: "Invoices", to: "/billing/invoices" },
       { label: "Transactions", to: "/billing/transactions" },
+      // PRD-016 FR-19: payments that need a person (amount mismatch, paid while stopped).
+      { label: "Flagged payments", to: "/billing/flagged" },
+      // PRD-018 FR-1.8: store payments pending > 48 h in suspended stores.
+      { label: "Stuck store payments", to: "/billing/stuck" },
       { label: "Payment reminders", to: "/billing/reminders" },
     ],
   },
@@ -41,6 +46,7 @@ export const mainNavItems: NavItem[] = [
 
 /** Pages behind the Settings cards. */
 export const settingsPages = [
+  { label: "Plans", to: "/settings/plans" },
   { label: "Discounts", to: "/settings/discounts" },
   { label: "Billing rules", to: "/settings/billing-rules" },
   { label: "Team", to: "/settings/team" },

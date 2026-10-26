@@ -25,15 +25,21 @@ import {
   toastError,
 } from "../ui";
 
+/** What the actions need; Collections rows and invoice rows both fit (PRD-017 FR-4.3). */
+export type InvoiceActionRow = Pick<PaymentReportRow, "id" | "amount" | "status" | "transactionId">;
+
 export interface InvoiceRowActionsProps {
-  row: PaymentReportRow;
+  row: InvoiceActionRow;
   /** Re-reads the collections after a change. */
   onChanged: () => Promise<unknown>;
 }
 
 type Dialog = "payment" | "void" | "coupon" | null;
 
-/** Collections › Invoices row menu (PRD-005 FR-5.2): record a payment, apply a discount, void. Open invoices only. */
+/**
+ * Invoice row menu (PRD-005 FR-5.2; also Billing › Invoices and the store's invoices, PRD-017 FR-4.3):
+ * record a payment, apply a discount, void. Open invoices only; each asks first and re-reads after.
+ */
 export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
   const { can } = useAuth();
   const [dialog, setDialog] = useState<Dialog>(null);

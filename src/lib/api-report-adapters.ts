@@ -64,6 +64,7 @@ export function toCoupon(coupon: PlatformCoupon): Coupon {
     discountType: coupon.discountType === "PERCENT" ? "percent" : "fixed",
     discountValue: coupon.discountValue,
     appliesTo: coupon.appliesTo === "ALL" ? "All" : (coupon.appliesTo as PlanName),
+    appliesToPlanIds: coupon.appliesToPlanIds ?? [],
     redemptions: coupon.redemptions,
     maxRedemptions: coupon.maxRedemptions,
     expiresAt: coupon.expiresAt.slice(0, 10),
@@ -77,6 +78,7 @@ export function toCouponInput(coupon: Coupon): PlatformCouponInput {
     discountType: coupon.discountType === "percent" ? "PERCENT" : "FIXED",
     discountValue: coupon.discountValue,
     appliesTo: coupon.appliesTo === "All" ? "ALL" : coupon.appliesTo,
+    appliesToPlanIds: coupon.appliesToPlanIds,
     maxRedemptions: coupon.maxRedemptions,
     expiresAt: coupon.expiresAt,
     active: coupon.active,
@@ -90,6 +92,7 @@ export function toCouponUpdateInput(patch: Partial<Coupon>): PlatformCouponUpdat
   if (patch.discountType !== undefined) input.discountType = patch.discountType === "percent" ? "PERCENT" : "FIXED";
   if (patch.discountValue !== undefined) input.discountValue = patch.discountValue;
   if (patch.appliesTo !== undefined) input.appliesTo = patch.appliesTo === "All" ? "ALL" : patch.appliesTo;
+  if (patch.appliesToPlanIds !== undefined) input.appliesToPlanIds = patch.appliesToPlanIds;
   if (patch.maxRedemptions !== undefined) input.maxRedemptions = patch.maxRedemptions;
   if (patch.expiresAt !== undefined) input.expiresAt = patch.expiresAt;
   if (patch.active !== undefined) input.active = patch.active;

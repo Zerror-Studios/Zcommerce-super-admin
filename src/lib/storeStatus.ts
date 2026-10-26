@@ -16,6 +16,8 @@ export interface StatusBadge {
 
 /** Store lifecycle. The data has active / trial / suspended; Building and Cancelled don't exist yet. */
 export function storeLifecycle(client: Client): StatusBadge {
+  // PRD-018 FR-2.3: a deleted store (in its grace period) is only reachable by link.
+  if (client.tenantStatus === "DELETED") return { label: "Deleted", tone: "neutral" };
   switch (client.status) {
     case "active":
       return { label: "Live", tone: "success" };

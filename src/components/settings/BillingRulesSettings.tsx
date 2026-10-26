@@ -6,6 +6,8 @@ import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { useAuth } from "../../providers/AuthProvider";
 import { usePlatformSettings } from "../../providers/SettingsProvider";
 import { toasts } from "../../copy";
+import { DunningSettingsCard } from "./DunningSettingsCard";
+import { EntitlementsModeCard } from "./EntitlementsModeCard";
 import { PlatformJobsCard } from "./PlatformJobsCard";
 import { Button as UiButton, Card, Chip, Input, Select, SelectItem, Switch, Textarea, toastError } from "../ui";
 
@@ -88,6 +90,7 @@ export function BillingRulesSettings() {
                 setDraft({
                   ...draft,
                   billing: {
+                    ...draft.billing,
                     provider: value as PlatformPaymentProvider,
                     configured: draft.billing?.configured ?? false,
                     checkoutAvailable: draft.billing?.checkoutAvailable ?? false,
@@ -124,6 +127,28 @@ export function BillingRulesSettings() {
               <Chip tone="neutral">Save to check whether stores can pay this provider online</Chip>
             )
           ) : null}
+          {/* PRD-017 FR-3.2: shown on the store's Billing page (dashboard). */}
+          <Textarea
+            label="Bank transfer instructions"
+            description="Shown to stores when they can't pay online, or as another way to pay. Account name, number, IFSC, UPI ID."
+            value={draft.billing?.bankTransferInstructions ?? ""}
+            onValueChange={(value) => {
+              if (draft.billing) setDraft({ ...draft, billing: { ...draft.billing, bankTransferInstructions: value } });
+            }}
+            maxLength={2000}
+            isDisabled={disabled}
+          />
+          <Input
+            label="Billing support contact"
+            description="An email or phone stores can reach about invoices. Shown on their Billing page."
+            value={draft.billing?.supportContact ?? ""}
+            onValueChange={(value) => {
+              if (draft.billing) setDraft({ ...draft, billing: { ...draft.billing, supportContact: value } });
+            }}
+            maxLength={200}
+            isDisabled={disabled}
+            className="max-w-md"
+          />
         </div>
       </Card>
 
@@ -186,6 +211,10 @@ export function BillingRulesSettings() {
           </UiButton>
         </div>
       )}
+
+      {/* PRD-016 FR-14, FR-16: saved on their own, each behind a confirmation. */}
+      <EntitlementsModeCard readOnly={readOnly} />
+      <DunningSettingsCard readOnly={readOnly} />
 
       {/* PRD-014 PLT-13: the nightly jobs on demand (settings:manage). */}
       {readOnly ? null : <PlatformJobsCard />}

@@ -83,7 +83,9 @@ export const confirms = {
   }),
   deleteStore: (name: string): ConfirmCopy => ({
     title: `Delete ${name}?`,
-    description: "All store data will be permanently deleted. This can't be undone.",
+    // PRD-018 FR-2.3: data is kept for the grace period, then purged.
+    description:
+      "The store goes offline at once. Its data is kept for the grace period (30 days by default), when you can still restore it, then purged for good.",
     confirmLabel: "Delete store",
   }),
 } as const;
