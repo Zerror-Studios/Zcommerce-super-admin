@@ -25,6 +25,12 @@ export const PLATFORM_SUBSCRIPTION_FIELDS = gql`
     cancelledAt
     cancelAtPeriodEnd
     daysOverdue
+    pendingPlanId
+    pendingBillingCycle
+    creditBalance
+    billingState
+    ordersPauseAt
+    suspendsAt
   }
 `;
 
@@ -37,12 +43,34 @@ export const CHANGE_TENANT_PLAN = gql`
     $planId: ID!
     $billingCycle: PlatformBillingCycle
     $effective: PlanChangeEffective!
+    $override: Boolean
+    $reason: String
   ) {
     changeTenantPlan(
       tenantId: $tenantId
       planId: $planId
       billingCycle: $billingCycle
       effective: $effective
+      override: $override
+      reason: $reason
+    ) {
+      ...PlatformSubscriptionFields
+    }
+  }
+`;
+
+/** PRD-014 SEC-04: audited activation without a payment (billing:manage). */
+export const ACTIVATE_TENANT_SUBSCRIPTION = gql`
+  ${PLATFORM_SUBSCRIPTION_FIELDS}
+  mutation ActivateTenantSubscription(
+    $tenantId: ID!
+    $override: Boolean!
+    $reason: String!
+  ) {
+    activateTenantSubscription(
+      tenantId: $tenantId
+      override: $override
+      reason: $reason
     ) {
       ...PlatformSubscriptionFields
     }
@@ -58,10 +86,23 @@ export const CANCEL_TENANT_SUBSCRIPTION = gql`
   }
 `;
 
+/**
+ * PRD-016 FR-18: without `override` only an undo inside a paid period with
+ * nothing open; otherwise `override: true` and a reason (audited). The
+ * console always sends both.
+ */
 export const REACTIVATE_TENANT_SUBSCRIPTION = gql`
   ${PLATFORM_SUBSCRIPTION_FIELDS}
-  mutation ReactivateTenantSubscription($tenantId: ID!) {
-    reactivateTenantSubscription(tenantId: $tenantId) {
+  mutation ReactivateTenantSubscription(
+    $tenantId: ID!
+    $override: Boolean!
+    $reason: String
+  ) {
+    reactivateTenantSubscription(
+      tenantId: $tenantId
+      override: $override
+      reason: $reason
+    ) {
       ...PlatformSubscriptionFields
     }
   }
@@ -100,6 +141,37 @@ export const RECORD_SUBSCRIPTION_PAYMENT = gql`
       reference: $reference
     ) {
       ...PlatformSubscriptionFields
+    }
+  }
+`;
+
+// ─── Proration preview (PRD-016 FR-6) ─────────────────────────────────────
+
+/** What `changeTenantPlan` would do; nothing is written (billing:read). */
+export const PREVIEW_TENANT_PLAN_CHANGE = gql`
+  query PreviewTenantPlanChange(
+    $tenantId: ID!
+    $planId: ID!
+    $billingCycle: PlatformBillingCycle
+    $effective: PlanChangeEffective!
+    $override: Boolean
+  ) {
+    previewTenantPlanChange(
+      tenantId: $tenantId
+      planId: $planId
+      billingCycle: $billingCycle
+      effective: $effective
+      override: $override
+    ) {
+      effective
+      effectiveAt
+      credit
+      charge
+      amountDueNow
+      nextInvoiceAmount
+      currency
+      overLimits
+      creditIssued
     }
   }
 `;

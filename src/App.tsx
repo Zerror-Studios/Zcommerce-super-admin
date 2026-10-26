@@ -8,6 +8,7 @@ import { useAuth } from "./providers/AuthProvider";
 // Review C-L11: each page is its own chunk, so the sign-in screen doesn't
 // ship recharts and the store pages. The pages use named exports.
 const Analytics = lazy(() => import("./pages/Analytics").then((m) => ({ default: m.Analytics })));
+const Ai = lazy(() => import("./pages/Ai").then((m) => ({ default: m.Ai })));
 const AddClient = lazy(() => import("./pages/AddClient").then((m) => ({ default: m.AddClient })));
 const Billing = lazy(() => import("./pages/Billing").then((m) => ({ default: m.Billing })));
 const ClientDetail = lazy(() => import("./pages/ClientDetail").then((m) => ({ default: m.ClientDetail })));
@@ -15,6 +16,7 @@ const Clients = lazy(() => import("./pages/Clients").then((m) => ({ default: m.C
 const Home = lazy(() => import("./pages/Home").then((m) => ({ default: m.Home })));
 const Mfa = lazy(() => import("./pages/Mfa").then((m) => ({ default: m.Mfa })));
 const NotFound = lazy(() => import("./pages/NotFound").then((m) => ({ default: m.NotFound })));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword").then((m) => ({ default: m.ForgotPassword })));
 const SetPassword = lazy(() => import("./pages/SetPassword").then((m) => ({ default: m.SetPassword })));
 const Settings = lazy(() => import("./pages/Settings").then((m) => ({ default: m.Settings })));
 const SignIn = lazy(() => import("./pages/SignIn").then((m) => ({ default: m.SignIn })));
@@ -55,6 +57,15 @@ export default function App() {
           </GuestOnly>
         }
       />
+      {/* PRD-014 FR-1.10: request a reset link by email; the link opens /set-password. */}
+      <Route
+        path="/forgot-password"
+        element={
+          <GuestOnly>
+            <ForgotPassword />
+          </GuestOnly>
+        }
+      />
       {/* Invite and reset links (PRD-005 FR-1.5): the token is the credential, so no session is needed. */}
       <Route path="/set-password" element={<SetPassword />} />
 
@@ -74,6 +85,10 @@ export default function App() {
 
           <Route path="analytics" element={<Navigate to="/analytics/revenue" replace />} />
           <Route path="analytics/:section" element={<Analytics />} />
+
+          {/* PRD-021 FR-6: ZCOM AI usage, top-ups, data health, benchmarks and settings. */}
+          <Route path="ai" element={<Navigate to="/ai/overview" replace />} />
+          <Route path="ai/:section" element={<Ai />} />
 
           <Route path="settings" element={<Settings />} />
           {/* Payment reminders moved from Settings to Subscriptions. */}

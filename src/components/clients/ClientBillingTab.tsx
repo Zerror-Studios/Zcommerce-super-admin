@@ -4,6 +4,7 @@ import type { Client, Subscription } from "../../types";
 import { usePayments } from "../../hooks/use-platform-reports";
 import { graceDaysFor, paymentState } from "../../lib/storeStatus";
 import { formatDate, formatDateTime } from "../../lib/utils";
+import { LoadMoreFooter } from "../common/LoadMoreFooter";
 import {
   Button as UiButton,
   Card,
@@ -221,6 +222,16 @@ export function ClientBillingTab({
             emptyContent={
               <EmptyState icon={IconInvoice} title={emptyStates.storeInvoices.title} description={emptyStates.storeInvoices.description} />
             }
+          />
+        )}
+        {payments.error ? null : (
+          <LoadMoreFooter
+            shown={transactions.length}
+            total={payments.totalCount}
+            hasMore={payments.hasMore}
+            loading={payments.loadingMore}
+            onLoadMore={payments.loadMore}
+            noun="payments"
           />
         )}
       </section>

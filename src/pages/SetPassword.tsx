@@ -1,30 +1,40 @@
 import { addToast } from "@heroui/react";
-import { useState, type FormEvent } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button as UiButton } from "../components/ui";
 import { AuthField, AuthLayout } from "../components/layout/AuthLayout";
 import { PLATFORM_SET_PASSWORD } from "../graphql/auth";
 import { toasts } from "../copy";
-import { client, errorCodeOf } from "../lib/apollo-client";
+import { client, errorCodeOf, errorReasonOf } from "../lib/apollo-client";
+import { passwordErrorReasonEnum, passwordPolicyError } from "../lib/password-policy";
 
-const MIN_PASSWORD_LENGTH = 12;
-
-/** Invite or reset link → choose a password (PRD-005 FR-1.5). Public: the token is the credential. */
+/**
+ * Invite or reset link → choose a password (PRD-005 FR-1.5; reset links
+ * from PRD-014 FR-1.10). Public: the token is the credential. One policy,
+ * 8+ characters (`lib/password-policy`); a reset ends every other session.
+ */
 export function SetPassword() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") ?? "";
+  // Read once: the token is then dropped from the URL (W1V-C-04).
+  const [token] = useState(() => searchParams.get("token") ?? "");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ password?: string; confirm?: string; form?: string }>({});
 
+  // W1V-C-04: keep the one-time token out of the address bar and history.
+  useEffect(() => {
+    if (!window.location.search) return;
+    const { pathname, hash } = window.location;
+    window.history.replaceState(window.history.state, "", `${pathname}${hash}`);
+  }, []);
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     const nextErrors: typeof errors = {};
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      nextErrors.password = `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
-    }
+    const policyError = passwordPolicyError(password);
+    if (policyError) nextErrors.password = policyError;
     if (confirm !== password) nextErrors.confirm = "The passwords don't match.";
     setErrors(nextErrors);
     if (nextErrors.password || nextErrors.confirm) return;
@@ -40,12 +50,17 @@ export function SetPassword() {
       navigate("/sign-in", { replace: true });
     } catch (error) {
       const code = errorCodeOf(error);
-      setErrors({
-        form:
-          code === "BAD_USER_INPUT"
-            ? "This link is invalid or has expired. Ask a platform owner for a new invite."
-            : "Can't reach the platform right now. Try again in a moment.",
-      });
+      if (errorReasonOf(error) === passwordErrorReasonEnum.WEAK_PASSWORD) {
+        // The server's policy wins if it is stricter than the form's.
+        setErrors({ password: (error as Error).message });
+      } else {
+        setErrors({
+          form:
+            code === "BAD_USER_INPUT"
+              ? "This link is invalid or has expired. Request a new reset link, or ask a platform owner for a new invite."
+              : "Can't reach the platform right now. Try again in a moment.",
+        });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -100,6 +115,12 @@ export function SetPassword() {
         >
           Save password
         </UiButton>
+        <Link
+          to="/forgot-password"
+          className="text-center text-caption text-auth-muted underline-offset-2 hover:underline"
+        >
+          Link expired? Request a new one
+        </Link>
       </form>
     </AuthLayout>
   );

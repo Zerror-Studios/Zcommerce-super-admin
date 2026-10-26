@@ -1,6 +1,6 @@
 import { addToast } from "@heroui/react";
 import { useEffect, useState, type FormEvent } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth, type SignInFailure } from "../providers/AuthProvider";
 import { IconHide, IconView } from "../components/ui/icons";
 import { Button as UiButton } from "../components/ui";
@@ -161,6 +161,15 @@ export function SignIn() {
           aria-required
           error={errors.password}
           autoComplete="current-password"
+          labelAction={
+            // PRD-014 FR-1.10: staff reset their own password by email.
+            <Link
+              to="/forgot-password"
+              className="text-caption text-auth-muted underline-offset-2 hover:underline"
+            >
+              Forgot password?
+            </Link>
+          }
           endContent={
             <button
               type="button"

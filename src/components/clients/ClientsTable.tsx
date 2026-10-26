@@ -250,10 +250,12 @@ export function ClientsTable({
 }: ClientsTableProps) {
   const navigate = useNavigate();
   const { subscriptions } = useClients();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   // Client-side mirror of the backend guard (review C-M5): the server still decides.
   const canManage = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
   const canImpersonate = can(PLATFORM_PERMISSIONS.TENANTS_IMPERSONATE);
+  // Q10 / PRD-018 FR-2.1: only the platform owner deletes a store.
+  const canDelete = canManage && user?.role === "PLATFORM_OWNER";
   const state = useStoresTableState(syncUrl);
   const { tab, filters, sort } = state;
   const [searchInput, setSearchInput] = useUrlSearch(state.search, state.setSearch);
@@ -428,7 +430,7 @@ export function ClientsTable({
                 </IconButton>
               </DropdownTrigger>
               <DropdownMenu aria-label={`Actions for ${client.storeName}`} onAction={(actionKey) => onMenuAction(client, actionKey)}>
-                <DropdownSection showDivider={canManage} aria-label="Store">
+                <DropdownSection showDivider={canDelete} aria-label="Store">
                   <DropdownItem key="view">View details</DropdownItem>
                   {canImpersonate ? <DropdownItem key="login">Log in</DropdownItem> : null}
                   {canManage ? (
@@ -437,7 +439,7 @@ export function ClientsTable({
                     </DropdownItem>
                   ) : null}
                 </DropdownSection>
-                {canManage ? (
+                {canDelete ? (
                   <DropdownSection aria-label="Danger">
                     <DropdownItem key="delete" className={menuItemDangerClasses}>
                       Delete store

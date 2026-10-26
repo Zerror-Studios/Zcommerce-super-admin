@@ -25,6 +25,10 @@ export const PLATFORM_PERMISSIONS = {
   USERS_MANAGE: "platform:users:manage",
   NOTES_WRITE: "platform:notes:write",
   AUDIT_READ: "platform:audit:read",
+  /** PRD-021 FR-6: AI usage, cost, benchmarks and data health */
+  AI_READ: "platform:ai:read",
+  /** PRD-021 FR-6.4: AI plan limits, top-ups, pause, ai_config */
+  AI_MANAGE: "platform:ai:manage",
 } as const;
 
 export type PlatformPermission =
@@ -55,6 +59,7 @@ export const PLATFORM_ROLE_PERMISSIONS: Record<
     PLATFORM_PERMISSIONS.PLANS_READ,
     PLATFORM_PERMISSIONS.COUPONS_MANAGE,
     PLATFORM_PERMISSIONS.REPORTS_READ,
+    PLATFORM_PERMISSIONS.AI_READ,
   ],
   SUPPORT_AGENT: [
     PLATFORM_PERMISSIONS.TENANTS_READ,

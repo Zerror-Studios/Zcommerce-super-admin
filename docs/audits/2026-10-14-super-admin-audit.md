@@ -5,7 +5,7 @@
 | **Scope** | Platform console (Vite 8, React 19, TS strict; mock data, fake sign-in; Vercel) |
 | **Method** | Read-only code audit plus the machine-checked GraphQL contract. **[C]** confirmed in code, **[I]** inferred |
 | **Cross-repo summary** | `../zcom-backend/docs/audits/2026-10-14-platform-audit.md` (top 15, remediation plan) |
-| **Status** | **Remediated by PRD-002 WS-G (2026-10-14)**, pending re-audit. Open: owner actions (Vercel protection, confirm the SA-7 tier mapping) and 4 npm audit findings |
+| **Status** | **Remediated by PRD-002 WS-G (2026-10-14)**, pending re-audit. Open: owner actions (Vercel protection, confirm the SA-7 tier mapping) and npm audit findings (2026-10-25: `npm audit fix` applied; the vitest-chain ones need vitest 5) |
 
 ## Findings
 

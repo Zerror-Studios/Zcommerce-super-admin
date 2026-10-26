@@ -1,7 +1,23 @@
+import { useQuery } from "@apollo/client";
 import { addToast, type Selection } from "@heroui/react";
 import { toastError } from "../ui";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type Key, type ReactNode } from "react";
 import type { Coupon, PlanName } from "../../types";
+import { PLATFORM_PLANS } from "../../graphql/plans";
+import type { PlatformPlan } from "../../types/platform-api";
+import {
+  couponErrorsFromServer,
+  couponPlanOptions,
+  couponScopeLabel,
+  couponToDraft,
+  emptyCouponDraft,
+  validateCouponDraft,
+  type CouponDraft,
+  type CouponFormErrors,
+  type CouponWrite,
+} from "../../lib/coupon-form.util";
+import { mutationFailureCopy } from "../../lib/mutation-errors";
+import { ConfirmModal } from "../common/ConfirmModal";
 import { getPlanLabel, PLAN_NAMES } from "../../lib/display-labels.util";
 import { selectionToIdSet } from "../../lib/tableSelection";
 import { formatDate } from "../../lib/utils";
@@ -17,7 +33,12 @@ import {
   Button as UiButton,
   Chip,
   CopyableId,
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
   EmptyState,
+  IconButton,
   Input,
   Modal,
   ModalBody,
@@ -30,6 +51,7 @@ import {
   Switch,
   formatCount,
   formatMoney,
+  menuItemDangerClasses,
   DataTable,
   TablePagination,
   usePersistentColumns,
@@ -37,17 +59,22 @@ import {
   type DataTableColumn,
 } from "../ui";
 import type { Tone } from "../ui";
-import { IconTag } from "../ui/icons";
-import { toasts } from "../../copy";
+import { IconMore, IconTag } from "../ui/icons";
 
 export interface CouponsTabProps {
   coupons: Coupon[];
-  /** Resolves true when the server created the code; the dialog stays open otherwise. */
-  onCreate: (coupon: Coupon) => Promise<boolean>;
+  /** Resolves once the server has saved the code; rejects with the API error (UX-24). */
+  onCreate: (coupon: CouponWrite) => Promise<void>;
+  /** Saves changed fields (PLT-13); rejects with the API error. */
+  onUpdate?: (id: string, patch: Partial<Coupon>) => Promise<void>;
+  /** Stops a code from being applied (PLT-13); rejects with the API error. */
+  onDeactivate?: (id: string) => Promise<void>;
   createOpen: boolean;
   onCreateOpenChange: (open: boolean) => void;
-  /** Hides the empty-state "Create discount" for roles without coupons:manage. */
+  /** Hides "Create discount" and the row actions for roles without coupons:manage. */
   canCreate?: boolean;
+  /** Under the table, e.g. "Load more" while the API has more pages. */
+  footer?: ReactNode;
 }
 
 const columns = [
@@ -57,6 +84,7 @@ const columns = [
   { key: "redemptions", label: "Used" },
   { key: "expiresAt", label: "Expires" },
   { key: "active", label: "Status" },
+  { key: "actions", label: "" },
 ] as const;
 
 const tableColumns: DataTableColumn[] = columns.map((column) => ({
@@ -80,11 +108,6 @@ const statusDisplay: Record<CouponStatus, { label: string; tone: Tone }> = {
   expired: { label: "Expired", tone: "neutral" },
 };
 
-/** Default "Expires on": 31 December of the current year. */
-function defaultExpiry(): string {
-  return `${new Date().getFullYear()}-12-31`;
-}
-
 /**
  * Display status (docs/design/04-super-admin.md §3.8): a code past its expiry date shows "Expired" even if it
  * is still flagged active. Derived at render time; the stored coupon is not changed.
@@ -100,17 +123,19 @@ function couponStatus(coupon: Coupon, now: Date = new Date()): CouponStatus {
 export function CouponsTab({
   coupons,
   onCreate,
+  onUpdate,
+  onDeactivate,
   createOpen,
   onCreateOpenChange,
   canCreate = true,
+  footer,
 }: CouponsTabProps) {
-  const [code, setCode] = useState("");
-  const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
-  const [discountValue, setDiscountValue] = useState("10");
-  const [appliesTo, setAppliesTo] = useState<PlanName | "All">("All");
-  const [maxRedemptions, setMaxRedemptions] = useState("100");
-  const [expiresAt, setExpiresAt] = useState(defaultExpiry);
-  const [active, setActive] = useState(true);
+  const [draft, setDraft] = useState<CouponDraft>(() => emptyCouponDraft());
+  const [formErrors, setFormErrors] = useState<CouponFormErrors>({});
+  const [saving, setSaving] = useState(false);
+  // The coupon being edited; null while creating (PLT-13).
+  const [editing, setEditing] = useState<Coupon | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<Coupon | null>(null);
   // Search, status filter and page live in the URL; Columns is remembered (docs/design/09 §3.1).
   const table = useTableUrlState();
   const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
@@ -121,7 +146,17 @@ export function CouponsTab({
     columns.map((column) => column.key),
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [creating, setCreating] = useState(false);
+  // PRD-017 FR-4.4: every plan version and custom plan, for the picker and
+  // the "Applies to" column of coupons limited by plan id.
+  const plansQuery = useQuery<{ platformPlans: PlatformPlan[] }>(PLATFORM_PLANS, {
+    variables: { includeInactive: true },
+  });
+  const allPlans = useMemo(() => plansQuery.data?.platformPlans ?? [], [plansQuery.data]);
+  const planOptionsById = useMemo(() => couponPlanOptions(allPlans), [allPlans]);
+  const scopeOf = useCallback(
+    (coupon: Coupon) => couponScopeLabel(coupon, allPlans, getPlanLabel),
+    [allPlans],
+  );
 
   const filtered = useMemo(() => {
     const query = table.search.trim().toLowerCase();
@@ -130,14 +165,20 @@ export function CouponsTab({
       const matchesSearch =
         !query ||
         coupon.code.toLowerCase().includes(query) ||
-        getPlanLabel(coupon.appliesTo).toLowerCase().includes(query);
+        scopeOf(coupon).toLowerCase().includes(query);
       const couponState = couponStatus(coupon);
       const matchesStatus =
         wanted.length === 0 || wanted.includes(couponState);
       return matchesSearch && matchesStatus;
     });
-  }, [coupons, table.search, statusKey]);
+  }, [coupons, table.search, statusKey, scopeOf]);
 
+  // Row actions only for roles with coupons:manage and a save handler.
+  const shownColumns = useMemo(() => {
+    const shown = new Set(visibleColumns);
+    if (!(canCreate && onUpdate)) shown.delete("actions");
+    return shown;
+  }, [visibleColumns, canCreate, onUpdate]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / table.pageSize));
   const page = Math.min(table.page, pageCount);
   const pageRows = filtered.slice((page - 1) * table.pageSize, page * table.pageSize);
@@ -160,7 +201,7 @@ export function CouponsTab({
           ? `${coupon.discountValue}%`
           : formatMoney(coupon.discountValue);
       case "appliesTo":
-        return coupon.appliesTo === "All" ? "All plans" : getPlanLabel(coupon.appliesTo);
+        return scopeOf(coupon);
       case "redemptions":
         return (
           <span className="block text-right num">
@@ -173,59 +214,116 @@ export function CouponsTab({
         const status = statusDisplay[couponStatus(coupon)];
         return <Chip tone={status.tone}>{status.label}</Chip>;
       }
+      case "actions":
+        return (
+          <div className="flex justify-end">
+            <Dropdown placement="bottom-end">
+              <DropdownTrigger>
+                <IconButton aria-label={`Actions for ${coupon.code}`} showTooltip={false} size="sm">
+                  <IconMore aria-hidden className="size-4" />
+                </IconButton>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Discount actions"
+                onAction={(key) => onRowAction(coupon, key)}
+                disabledKeys={coupon.active ? ["activate"] : ["deactivate"]}
+              >
+                <DropdownItem key="edit">Edit</DropdownItem>
+                <DropdownItem key="activate">Activate</DropdownItem>
+                <DropdownItem key="deactivate" className={menuItemDangerClasses}>Deactivate</DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          </div>
+        );
       default:
         return <span className="text-fg-subtle">—</span>;
     }
   };
 
-  const resetForm = () => {
-    setCode("");
-    setDiscountType("percent");
-    setDiscountValue("10");
-    setAppliesTo("All");
-    setMaxRedemptions("100");
-    setExpiresAt(defaultExpiry());
-    setActive(true);
+  const setField = <K extends keyof CouponDraft>(key: K, value: CouponDraft[K]) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+    setFormErrors((current) => ({ ...current, [key]: undefined, form: undefined }));
   };
 
-  const handleCreate = async () => {
-    const trimmed = code.trim().toUpperCase();
-    const value = Number(discountValue);
-    const max = Number(maxRedemptions);
-    if (!trimmed) {
-      toastError("Enter a code.");
-      return;
-    }
-    if (Number.isNaN(value) || value <= 0) {
-      toastError("Enter a discount above 0.");
-      return;
-    }
-    if (Number.isNaN(max) || max <= 0) {
-      toastError("Enter a usage limit above 0.");
-      return;
-    }
-
-    setCreating(true);
-    const created = await onCreate({
-      id: `cpn-${Date.now()}`,
-      code: trimmed,
-      discountType,
-      discountValue: value,
-      appliesTo,
-      redemptions: 0,
-      maxRedemptions: max,
-      expiresAt,
-      active,
-    });
-    setCreating(false);
-    if (!created) return;
+  const closeForm = () => {
+    if (saving) return;
     onCreateOpenChange(false);
-    resetForm();
-    addToast({
-      title: toasts.discountCreated(trimmed),
-      description: "The code is ready to use.",
-      color: "success",
-    });
+    setEditing(null);
+    setDraft(emptyCouponDraft());
+    setFormErrors({});
+  };
+
+  const openEdit = (coupon: Coupon) => {
+    setEditing(coupon);
+    setDraft(couponToDraft(coupon));
+    setFormErrors({});
+    onCreateOpenChange(true);
+  };
+
+  /** A failed save keeps the modal and what was typed (UX-24). */
+  const showSaveError = (error: unknown) => {
+    const fieldErrors = couponErrorsFromServer(error);
+    if (fieldErrors) {
+      setFormErrors(fieldErrors);
+      return;
+    }
+    const message = mutationFailureCopy(error);
+    if (message) toastError(message);
+  };
+
+  const handleSave = async () => {
+    const result = validateCouponDraft(draft);
+    if (!result.coupon) {
+      setFormErrors(result.errors);
+      return;
+    }
+    const coupon = result.coupon;
+    setSaving(true);
+    try {
+      if (editing && onUpdate) {
+        await onUpdate(editing.id, coupon);
+        addToast({ title: `${coupon.code} saved.`, color: "success" });
+      } else {
+        await onCreate(coupon);
+        addToast({
+          title: `${coupon.code} created.`,
+          description: "The code is ready to use.",
+          color: "success",
+        });
+      }
+      onCreateOpenChange(false);
+      setEditing(null);
+      setDraft(emptyCouponDraft());
+      setFormErrors({});
+    } catch (error) {
+      showSaveError(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onRowAction = (coupon: Coupon, key: Key) => {
+    if (key === "edit") openEdit(coupon);
+    else if (key === "deactivate") setDeactivateTarget(coupon);
+    else if (key === "activate" && onUpdate) {
+      onUpdate(coupon.id, { active: true })
+        .then(() => addToast({ title: `${coupon.code} is active again.` }))
+        .catch((error) => {
+          const message = mutationFailureCopy(error);
+          if (message) toastError(message);
+        });
+    }
+  };
+
+  const confirmDeactivate = () => {
+    const target = deactivateTarget;
+    if (!target || !onDeactivate) return;
+    onDeactivate(target.id)
+      .then(() => addToast({ title: `${target.code} deactivated.`, description: "It can't be applied to new invoices." }))
+      .catch((error) => {
+        const message = mutationFailureCopy(error);
+        if (message) toastError(message);
+      });
   };
 
   return (
@@ -233,7 +331,7 @@ export function CouponsTab({
       <DataTable
         aria-label="Discounts"
         columns={tableColumns}
-        visibleColumns={visibleColumns}
+        visibleColumns={shownColumns}
         rows={pageRows}
         getRowKey={(coupon) => coupon.id}
         renderCell={renderCell}
@@ -271,13 +369,16 @@ export function CouponsTab({
           </>
         }
         footer={
-          <TablePagination
-            page={page}
-            pageSize={table.pageSize}
-            total={filtered.length}
-            onPageChange={table.setPage}
-            onPageSizeChange={table.setPageSize}
-          />
+          <>
+            <TablePagination
+              page={page}
+              pageSize={table.pageSize}
+              total={filtered.length}
+              onPageChange={table.setPage}
+              onPageSizeChange={table.setPageSize}
+            />
+            {footer}
+          </>
         }
         emptyContent={
           isFiltered ? (
@@ -301,31 +402,35 @@ export function CouponsTab({
 
       <Modal
         isOpen={createOpen}
-        onClose={() => {
-          onCreateOpenChange(false);
-          resetForm();
-        }}
+        onClose={closeForm}
         width="md"
       >
         <ModalContent>
-          {(close) => (
+          {() => (
             <>
-              <ModalHeader>Create discount</ModalHeader>
+              <ModalHeader>{editing ? `Edit ${editing.code}` : "Create discount"}</ModalHeader>
               <ModalBody className="gap-4">
+                {formErrors.form ? (
+                  <p role="alert" className="text-label text-tone-danger-text">
+                    {formErrors.form}
+                  </p>
+                ) : null}
                 <Input
                   label="Code"
                   placeholder="SAVE20"
-                  value={code}
-                  onValueChange={setCode}
+                  value={draft.code}
+                  onValueChange={(value) => setField("code", value)}
+                  isInvalid={!!formErrors.code}
+                  errorMessage={formErrors.code}
                   classNames={{ input: "font-mono" }}
                 />
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Select
                     label="Discount type"
-                    selectedKeys={new Set([discountType])}
+                    selectedKeys={new Set([draft.discountType])}
                     onSelectionChange={(keys) => {
                       const value = Array.from(keys)[0];
-                      if (value === "percent" || value === "fixed") setDiscountType(value);
+                      if (value === "percent" || value === "fixed") setField("discountType", value);
                     }}
                     disallowEmptySelection
                   >
@@ -336,16 +441,18 @@ export function CouponsTab({
                     label="Discount value"
                     placeholder="0"
                     type="number"
-                    value={discountValue}
-                    onValueChange={setDiscountValue}
+                    value={draft.discountValue}
+                    onValueChange={(value) => setField("discountValue", value)}
+                    isInvalid={!!formErrors.discountValue}
+                    errorMessage={formErrors.discountValue}
                   />
                 </div>
                 <Select
                   label="Applies to"
-                  selectedKeys={new Set([appliesTo])}
+                  selectedKeys={new Set([draft.appliesTo])}
                   onSelectionChange={(keys) => {
                     const value = Array.from(keys)[0];
-                    if (typeof value === "string") setAppliesTo(value as PlanName | "All");
+                    if (typeof value === "string") setField("appliesTo", value as PlanName | "All");
                   }}
                   disallowEmptySelection
                 >
@@ -353,37 +460,74 @@ export function CouponsTab({
                     <SelectItem key={option}>{option === "All" ? "All plans" : getPlanLabel(option)}</SelectItem>
                   ))}
                 </Select>
+                {/* PRD-017 FR-4.4: specific versions or custom plans win over the tier. */}
+                <Select
+                  label="Limit to specific plans"
+                  placeholder="Any version of the tier above"
+                  selectionMode="multiple"
+                  selectedKeys={new Set(draft.appliesToPlanIds)}
+                  onSelectionChange={(keys) => {
+                    const ids = keys === "all" ? planOptionsById.map((option) => option.id) : Array.from(keys).map(String);
+                    setField("appliesToPlanIds", ids);
+                  }}
+                  isLoading={plansQuery.loading && !plansQuery.data}
+                  isInvalid={!!formErrors.appliesToPlanIds}
+                  errorMessage={formErrors.appliesToPlanIds}
+                  description={
+                    plansQuery.error && !plansQuery.data
+                      ? "Couldn't load the plans; the tier above applies."
+                      : "Optional. When you pick plans, the code applies only to them, including custom plans and older versions."
+                  }
+                >
+                  {planOptionsById.map((option) => (
+                    <SelectItem key={option.id}>{option.label}</SelectItem>
+                  ))}
+                </Select>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Input
                     label="Usage limit"
                     placeholder="100"
                     type="number"
-                    value={maxRedemptions}
-                    onValueChange={setMaxRedemptions}
+                    value={draft.maxRedemptions}
+                    onValueChange={(value) => setField("maxRedemptions", value)}
+                    isInvalid={!!formErrors.maxRedemptions}
+                    errorMessage={formErrors.maxRedemptions}
                   />
                   <Input
                     label="Expires on"
                     type="date"
-                    value={expiresAt}
-                    onValueChange={setExpiresAt}
+                    value={draft.expiresAt}
+                    onValueChange={(value) => setField("expiresAt", value)}
+                    isInvalid={!!formErrors.expiresAt}
+                    errorMessage={formErrors.expiresAt}
                   />
                 </div>
-                <Switch isSelected={active} onValueChange={setActive}>
-                  Active right away
+                <Switch isSelected={draft.active} onValueChange={(value) => setField("active", value)}>
+                  {editing ? "Active" : "Active right away"}
                 </Switch>
               </ModalBody>
               <ModalFooter>
-                <UiButton variant="ghost" onPress={close}>
+                <UiButton variant="ghost" onPress={closeForm} isDisabled={saving}>
                   Cancel
                 </UiButton>
-                <UiButton variant="primary" isLoading={creating} onPress={() => void handleCreate()}>
-                  Create discount
+                <UiButton variant="primary" isLoading={saving} onPress={() => void handleSave()}>
+                  {editing ? "Save changes" : "Create discount"}
                 </UiButton>
               </ModalFooter>
             </>
           )}
         </ModalContent>
       </Modal>
+
+      <ConfirmModal
+        isOpen={deactivateTarget != null}
+        onClose={() => setDeactivateTarget(null)}
+        onConfirm={confirmDeactivate}
+        title={`Deactivate ${deactivateTarget?.code ?? ""}?`}
+        description="The code can no longer be applied. Invoices that already use it are not changed."
+        confirmLabel="Deactivate"
+        confirmColor="danger"
+      />
     </>
   );
 }

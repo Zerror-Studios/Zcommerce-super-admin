@@ -13,7 +13,7 @@ The requirements, the provider contract and the open questions live in the backe
 
 ## Scope in this repo
 
-Settings › Billing rules › **Payment provider** (`components/settings/BillingRulesSettings.tsx`): a select over Manual, Razorpay and Nimbbl, saved through `updatePlatformSettings(input.billing.provider)`, and a chip from `platformSettings.billing.configured` saying whether the server has that provider's webhook secret. Types: `PlatformSettings.billing`, `PlatformSettingsApi.billing`, `PlatformPaymentProvider` in `types/index.ts`; adapters in `lib/api-adapters.ts`; fragment in `graphql/settings.ts`. Only `settings:manage` can change it (owner).
+Settings › Billing rules › **Payment provider** (`components/settings/BillingRulesSettings.tsx`): a select over Manual, Razorpay and Nimbbl, saved through `updatePlatformSettings(input.billing.provider)`, and a chip from `platformSettings.billing.configured` saying whether the server has that provider's webhook secret, plus (PRD-014 FR-2.4, 2026-10-26) a chip from `platformSettings.billing.checkoutAvailable` that warns when stores can't pay the saved provider online. Types: `PlatformSettings.billing`, `PlatformSettingsApi.billing`, `PlatformPaymentProvider` in `types/index.ts`; adapters in `lib/api-adapters.ts`; fragment in `graphql/settings.ts`. Only `settings:manage` can change it (owner).
 
 ## Implementation log
 

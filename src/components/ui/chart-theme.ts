@@ -62,10 +62,17 @@ export const chartColors = {
 
 /** Fixed plan colors in both products (owner decision 2026-10-13: categorical palette instead of blue shades). */
 export const planColors: Record<string, string> = {
+  // FE-16: both key sets, so the file is identical in both products. The
+  // backend plan codes (Super Admin) and the display names map to the same
+  // colors.
   get STARTER() { return theme().categorical[3]; },
   get PREMIUM() { return theme().categorical[1]; },
   get PLUS() { return theme().categorical[0]; },
   get ENTERPRISE() { return theme().categorical[2]; },
+  get Free() { return theme().categorical[3]; },
+  get Starter() { return theme().categorical[1]; },
+  get Pro() { return theme().categorical[0]; },
+  get Enterprise() { return theme().categorical[2]; },
 };
 
 export function planColor(plan: string): string {

@@ -1,11 +1,14 @@
 import { useQuery } from "@apollo/client";
 import { PLATFORM_AUDIT_LOG } from "../../graphql/team";
 import { useUrlSearch } from "../../hooks/use-url-search";
+import { auditFilterOf, auditSearchErrorCopy } from "../../lib/audit-filter.util";
+import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
+import { useAuth } from "../../providers/AuthProvider";
 import { toasts } from "../../copy";
-import { FilterEmpty } from "../common/FilterEmpty";
 import { TableToolbar } from "../common/TableToolbar";
 import { IconLock } from "../ui/icons";
 import {
+  Card,
   CopyableId,
   DataTable,
   EmptyState,
@@ -42,19 +45,37 @@ const columns: DataTableColumn[] = [
  * the action filter and the page live in the URL.
  */
 export function AuditLogSettings() {
+  const { can } = useAuth();
+  // PRD-014 UX-27: `platformAuditLog` needs audit:read (not billing or support roles).
+  const canReadAudit = can(PLATFORM_PERMISSIONS.AUDIT_READ);
   const table = useTableUrlState();
   // useUrlSearch writes ?q= once typing stops: one query per pause, not per keystroke (review C-M6).
   const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
-  const action = table.search.trim();
+  // Prefix match on the action name (PRD-014 close-out): "coupon." finds every coupon change.
+  const prefix = table.search.trim();
   const query = useQuery<{ platformAuditLog: { items: AuditEntry[]; totalCount: number } }>(PLATFORM_AUDIT_LOG, {
-    variables: { filter: action ? { action } : {}, limit: table.pageSize, offset: table.offset },
+    variables: { filter: auditFilterOf(prefix), limit: table.pageSize, offset: table.offset },
     fetchPolicy: "cache-and-network",
+    skip: !canReadAudit,
   });
   const data = query.data ?? query.previousData;
   const rows = data?.platformAuditLog.items ?? [];
   const total = data?.platformAuditLog.totalCount ?? 0;
 
-  if (query.error) {
+  if (!canReadAudit) {
+    return (
+      <Card>
+        <EmptyState
+          icon={IconLock}
+          title="Your role can't see the audit log"
+          description="The owner, admins and read-only members can. Ask the owner if you need it."
+        />
+      </Card>
+    );
+  }
+
+  const searchError = query.error ? auditSearchErrorCopy(query.error) : null;
+  if (query.error && !searchError) {
     return <ErrorState title="Couldn't load the audit log." description={toasts.genericError} onRetry={() => void query.refetch()} />;
   }
 
@@ -62,13 +83,18 @@ export function AuditLogSettings() {
     <DataTable
       aria-label="Audit log"
       columns={columns}
-      rows={rows}
+      rows={searchError ? [] : rows}
       getRowKey={(row) => row.id}
       isLoading={query.loading && !data}
       isReloading={query.loading && !!data}
       stickyFirstColumn
       toolbar={
-        <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Filter by action, e.g. tenant.suspend" />
+        <>
+          <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Action starts with, e.g. tenant. or coupon.create" />
+          {searchError ? (
+            <p role="alert" className="px-4 py-2 text-caption text-danger">{searchError}</p>
+          ) : null}
+        </>
       }
       renderCell={(row, key) => {
         switch (key) {
@@ -102,8 +128,8 @@ export function AuditLogSettings() {
         />
       }
       emptyContent={
-        action ? (
-          <FilterEmpty things="entries" query={action} onClear={() => setSearch("")} />
+        prefix ? (
+          <EmptyState icon={IconLock} title="No matching actions" description="No action name starts with that text. The search is case-sensitive." />
         ) : (
           <EmptyState icon={IconLock} title="Nothing logged yet" description="Platform changes appear here as they happen." />
         )

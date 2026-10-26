@@ -6,6 +6,9 @@ import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { useAuth } from "../../providers/AuthProvider";
 import { usePlatformSettings } from "../../providers/SettingsProvider";
 import { toasts } from "../../copy";
+import { DunningSettingsCard } from "./DunningSettingsCard";
+import { EntitlementsModeCard } from "./EntitlementsModeCard";
+import { PlatformJobsCard } from "./PlatformJobsCard";
 import { Button as UiButton, Card, Chip, Input, Select, SelectItem, Switch, Textarea, toastError } from "../ui";
 
 /** ADR-002 amendment: the provider is a setting; Razorpay is next, Nimbbl stays available. */
@@ -23,9 +26,9 @@ function parseDays(value: string): number[] {
 }
 
 /** The cards of the platform settings form; Settings shows them in separate sections (docs/design/09 §1.7). */
-export type BillingRulesCard = "grace" | "provider" | "health" | "reminders";
+export type BillingRulesCard = "grace" | "provider" | "health" | "reminders" | "entitlements" | "dunning" | "jobs";
 
-const ALL_CARDS: BillingRulesCard[] = ["grace", "provider", "health", "reminders"];
+const ALL_CARDS: BillingRulesCard[] = ["grace", "provider", "health", "reminders", "entitlements", "dunning", "jobs"];
 
 export interface BillingRulesSettingsProps {
   /** Which cards this section shows. Save still sends the whole settings object; cards not shown keep the server values. */
@@ -98,7 +101,15 @@ export function BillingRulesSettings({ cards = ALL_CARDS }: BillingRulesSettings
             onSelectionChange={(keys) => {
               const value = Array.from(keys)[0];
               if (typeof value === "string") {
-                setDraft({ ...draft, billing: { provider: value as PlatformPaymentProvider, configured: draft.billing?.configured ?? false } });
+                setDraft({
+                  ...draft,
+                  billing: {
+                    ...draft.billing,
+                    provider: value as PlatformPaymentProvider,
+                    configured: draft.billing?.configured ?? false,
+                    checkoutAvailable: draft.billing?.checkoutAvailable ?? false,
+                  },
+                });
               }
             }}
             disallowEmptySelection
@@ -118,6 +129,40 @@ export function BillingRulesSettings({ cards = ALL_CARDS }: BillingRulesSettings
                 : "Webhook secret not set on the server; webhooks will be rejected"}
             </Chip>
           ) : null}
+          {/* PRD-014 FR-2.4: the server says whether the saved provider has an online checkout here. */}
+          {draft.billing && draft.billing.provider !== "MANUAL" ? (
+            settings.billing?.provider === draft.billing.provider ? (
+              <Chip tone={settings.billing.checkoutAvailable ? "success" : "warning"}>
+                {settings.billing.checkoutAvailable
+                  ? "Online checkout available: stores can pay their invoices online"
+                  : "No online checkout for this provider here: stores can't pay online, so record their payments in the console"}
+              </Chip>
+            ) : (
+              <Chip tone="neutral">Save to check whether stores can pay this provider online</Chip>
+            )
+          ) : null}
+          {/* PRD-017 FR-3.2: shown on the store's Billing page (dashboard). */}
+          <Textarea
+            label="Bank transfer instructions"
+            description="Shown to stores when they can't pay online, or as another way to pay. Account name, number, IFSC, UPI ID."
+            value={draft.billing?.bankTransferInstructions ?? ""}
+            onValueChange={(value) => {
+              if (draft.billing) setDraft({ ...draft, billing: { ...draft.billing, bankTransferInstructions: value } });
+            }}
+            maxLength={2000}
+            isDisabled={disabled}
+          />
+          <Input
+            label="Billing support contact"
+            description="An email or phone stores can reach about invoices. Shown on their Billing page."
+            value={draft.billing?.supportContact ?? ""}
+            onValueChange={(value) => {
+              if (draft.billing) setDraft({ ...draft, billing: { ...draft.billing, supportContact: value } });
+            }}
+            maxLength={200}
+            isDisabled={disabled}
+            className="max-w-md"
+          />
         </div>
       </Card>
       ) : null}
@@ -185,6 +230,13 @@ export function BillingRulesSettings({ cards = ALL_CARDS }: BillingRulesSettings
           </UiButton>
         </div>
       )}
+
+      {/* PRD-016 FR-14, FR-16: saved on their own, each behind a confirmation. */}
+      {show("entitlements") ? <EntitlementsModeCard readOnly={readOnly} /> : null}
+      {show("dunning") ? <DunningSettingsCard readOnly={readOnly} /> : null}
+
+      {/* PRD-014 PLT-13: the nightly jobs on demand (settings:manage). */}
+      {readOnly || !show("jobs") ? null : <PlatformJobsCard />}
     </div>
   );
 }

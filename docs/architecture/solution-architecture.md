@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Living document. Verified against code on **2026-10-13** |
+| **Status** | Living document. Verified against code on **2026-10-13**; route map and hooks updated for PRD-012 on 2026-10-22 |
 | **Parent** | Workspace `../ARCHITECTURE.md` |
 | **Maturity** | **API-only (PRD-005 Phases 0–4, 2026-10-17).** Real sign-in, stores, lifecycle, subscriptions, billing, reports, Team, audit and impersonation from the `platform-admin` subgraph; the mock prototype was removed (Q14). Not yet run in a browser against a live gateway. |
 
@@ -41,8 +41,8 @@ flowchart TB
     APP --> RA["RequireAuth → DashboardLayout (Sidebar + Topbar)"]
     RA --> PG["pages: Home · Clients · ClientDetail · AddClient<br/>Billing/:section · Analytics/:section · Settings/:section"]
     PG --> CMP["components/{clients,billing,dashboard,payments,settings}<br/>+ common kits (buttonStyles, modalStyles, dataTableStyles, inputStyle)"]
-    PG --> HK["hooks/use-platform-reports<br/>revenue, collections, payments, coupons"]
-    PG --> LIB["lib/ pure logic (tested)<br/>api-adapters · api-report-adapters · periods · store-sales · report-csv<br/>storeStatus · storeHealth · platformSettings"]
+    PG --> HK["hooks/use-platform-reports · use-platform-analytics<br/>revenue, collections, payments, coupons · analytics overview, integration health, sync monitor, re-run"]
+    PG --> LIB["lib/ pure logic (tested)<br/>api-adapters · api-report-adapters · periods · store-sales · analytics-health · report-csv<br/>storeStatus · storeHealth · platformSettings"]
     PG --> TY["types/index.ts"]
 ```
 
@@ -50,14 +50,18 @@ flowchart TB
 
 | Route | Page | Sections / notes |
 |---|---|---|
-| `/sign-in` | SignIn | Behind `GuestOnly`. Fake auth accepts any credentials |
+| `/sign-in` | SignIn | Behind `GuestOnly`. `platformLogin` with the TOTP step; "Forgot password?" links to `/forgot-password` |
+| `/forgot-password` | ForgotPassword | Behind `GuestOnly` (PRD-014 FR-1.10). `platformRequestPasswordReset`; the same confirmation whether or not the email has an account |
+| `/set-password?token=` | SetPassword | Public. Invite and reset links → `platformSetPassword` (8+ characters, PRD-014) |
 | `/` | Home | KPI cards (revenue, MRR, stores, orders), revenue chart, plan mix, top clients |
 | `/clients` | Clients | Table with status and health |
 | `/clients/new` | AddClient | Plan (Free/Starter/Pro/Enterprise), status (trial/active/suspended) |
-| `/clients/:id` | ClientDetail | Overview / Billing / Usage tabs, danger zone, "Login as store" |
-| `/billing/:section` | Billing | `subscriptions`, `transactions` |
-| `/analytics/:section` | Analytics | `revenue` |
-| `/settings/:section` | Settings | `discounts` (coupons), `billing-rules` (platform settings), `team` (platform users, API only), `audit` (audit log, API only); `automation` redirects to `/billing/reminders` |
+| `/clients/:id` | ClientDetail | Overview / Billing / Usage sections, "Login as store"; since PRD-012 an Analytics card (sync health, data through, last sync, "Re-run sync" for manage roles) read from the sync-monitor rollup; since 2026-10-26 Store details (PRD-017 FR-4.5), Go live and Lifecycle (PRD-018) sections |
+| `/stores` (PRD-018) | Clients | under the table, "Deleted and purged stores": `platformTenants(filter: {status: [DELETED]})` (each opens the store page, restorable inside the grace period) and `platformPurgedTenants` (tombstones) |
+| `/billing/:section` | Billing | `subscriptions`, `invoices` (PRD-017 FR-4.3: `platformInvoices`, server filters, 100 a page, detail dialog, existing row actions), `transactions`, `flagged` (PRD-016 FR-19: `platformPayments(filter: {flagged: true})`, `resolveFlaggedPlatformPayment` with a note), `stuck` (PRD-018 FR-1.8: `platformStalePendingPayments`, store payments in suspended stores still pending after 48 h; ids and amounts only), `reminders` |
+| `/analytics/:section` | Analytics | `revenue` (Platform revenue, `platformRevenueOverview`), `store-sales` (`platformTenants.usage`, net revenue + sessions, page views and conversion since PRD-012), `performance` (`platformAnalyticsOverview`, 7/30/90 days), `integrations` (`platformIntegrationHealth`, filters + paging), `sync` (`platformSyncMonitor` + `platformRerunAnalyticsSync`). All PRD-012 reads come from master collections the backend jobs write (`tenant_usage_snapshot`, `channel_connection`, `analytics_sync_summary`); the console never fans out to tenant databases |
+| `/ai/:section` (PRD-021) | Ai | `overview` (`aiPlatformTotals`: spend vs cap and budget, `alertsCrossed` banner, resting note, model mix), `usage` (`aiUsageByTenant`, search, 25 a page; `aiUsageCsv` download), `top-ups` (`aiTopUpRequests(status: OPEN)`, `grantAiTopUp`, `dismissAiTopUpRequest`), `data-health` (`aiDataHealth(needsAttention: true)`), `benchmarks` (`aiBenchmarks(period)`), `settings` (`aiConfig` / `updateAiConfig`, changed fields only). Reads `platform:ai:read` (nav hidden without it), changes `platform:ai:manage`. The store page has an AI section too (`aiTenantSetting`, `setTenantAiPaused`, `setTenantAiOverride`, grant, `aiTopQuestions` on request, audited) |
+| `/settings/:section` | Settings | `plans` (PRD-017 FR-4.1: every plan version, counts, create / edit with the versioning notice, archive with a replacement, migrate stores), `discounts` (coupons), `billing-rules` (platform settings; since PRD-016/017 also bank-transfer text, support contact, the plan-limit mode and the overdue-payment timings with the gated switch), `team` (platform users, API only), `audit` (audit log, API only); `automation` redirects to `/billing/reminders` |
 
 ## 4. Domain model (front-end types)
 
@@ -127,6 +131,14 @@ This logic lives in `lib/subscriptionHealth.ts`, which has tests in `subscriptio
 
 **Current (Phase 1, 2026-10-17).** The backend has the platform principal (ADR-001, Accepted) and the `platform-admin` subgraph. This repo talks to it through `src/lib/apollo-client.ts` (auth link, silent refresh on `TOKEN_EXPIRED` with a single-flight, cross-tab lock, proactive refresh, error codes), with the access token in memory (`lib/session-store.ts`) and the refresh token in the `__Host-zc_platform_rt` cookie. `AuthProvider` restores the session on load (`platformRefreshToken` → `platformMe`), runs the TOTP step on `MFA_REQUIRED`, and sends manage roles to `/mfa` to enrol. `ClientsProvider` maps `platformTenants` / `platformPlans` onto the console's `Client`, `Subscription` and `Plan` types (`lib/api-adapters.ts`) so every screen reads them unchanged. ADR-5 is answered: Apollo cache for server data, React context for session and UI state only. **Phase 2 (same day):** `ClientsProvider` also runs the lifecycle mutations (create with provisioning, update, notes, suspend with a reason, reactivate, soft delete with the slug), `SettingsProvider` holds the server settings, and the store page gained the provisioning card, subscription actions and editable notes; health and payment badges are server-computed (ADR-2 answered with daily usage snapshots in the master DB).
 
+**PRD-014 Wave 1 (2026-10-25).** Platform mutations need the session's CSRF token (D8): `platformLogin` and `platformRefreshToken` return `csrfToken`, which `lib/session-store.ts` keeps in memory beside the access token (shared across tabs with it), and the Apollo auth link sends it as `x-zcom-csrf` on every mutation. A `FORBIDDEN` / `CSRF_REQUIRED` answer triggers one refresh and one retry; `ORIGIN_NOT_ALLOWED` is reported as its own toast. Staff reset their password by email (`/forgot-password` → `platformRequestPasswordReset` → `/set-password`). Provisioning emails the owner a set-password invite (`CreateTenantResult.ownerInviteSent`; the temporary password is null) and the store page can resend it (`resendOwnerInvite`). "Log in to store" opens an impersonation session of at most 1 hour.
+
+**PRD-014 Wave 2 (2026-10-25, console side of FR-2.3, PLT-13, FE-16).** The Apollo HTTP link has a deadline (`createTimeoutFetch`, `VITE_HTTP_TIMEOUT_MS`, default 30 s) and `AuthProvider` signs out on a `platformMe` failure only when the server returns an auth code; a network failure keeps the session (or shows "Can't reach the server" with Retry during restore). The lists the backend caps (tenants and users at 100, payments at 200) are read with `offset` into one cached list (`lib/offset-paging.util.ts` field policies): stores load page after page until `totalCount`, payments and the store's billing history have "Load more", and the store page falls back to `platformTenant(id)` for a store not yet loaded. New operations (all existing backend fields, no contract change): `platformTenant`, `platformUsage`, `updatePlatformCoupon`, `deactivatePlatformCoupon`, `runPlatformJob`, `runUsageSnapshotJob`, `platformLogoutAll` (54 operations, validated). Team and Audit log skip their queries for roles without `users:manage` / `audit:read`.
+
+**PRD-016 / PRD-017 console (2026-10-26, FR-26 and FR-4.1–4.3; against the built backend, `validate:clients` 65/65; deploy the backend first).** Store detail › Billing reads the subscription's `billingState`, `ordersPauseAt`, `suspendsAt`, `creditBalance` and plan version, the store's `platformInvoices` (`billingReason`, `restart`, `amountPaid`, `creditApplied`, `amountDue`; "Partially paid" is derived from `amountPaid > 0` on an open invoice) and `platformCredits`, with **Issue credit** (`issuePlatformCredit`), **Record refund** (`recordPlatformRefund`) and **Create custom plan** (`createPlan` with `tenantId`). **Change plan** lists `platformPlans(tenantId)` filtered to ACTIVE plans plus the current version, shows `previewTenantPlanChange` before confirming, allows `NOW` outside a trial, and turns the preview's `DOWNGRADE_AT_PERIOD_END` into an override with a required reason (`changeTenantPlan(override, reason)`). **Reactivation** always sends `override` + `reason` (`reactivateTenantSubscription`, `reactivateTenant`; the backend refuses a bare call). Billing › Flagged payments is the review queue; Settings › Plans the catalog (`createPlan`, `updatePlan`, `archivePlan`, `migratePlanSubscribers`, `platformPlan`); Settings › Billing rules saves dunning and `entitlementsMode` on their own (`updatePlatformSettings` with a partial input) and never sends `dunning.enabled: true` (gated, PRD-016 D6/D7). Pure rules in `lib/plan-catalog.util.ts` and `lib/platform-billing.util.ts` (tested).
+
+**PRD-018 data lifecycle and PRD-017 FR-4.4/4.5 console (2026-10-26, working tree; `validate:clients` 75/75; deploy the backend first, because `updateTenant.domain` now answers `USE_DOMAIN_VERIFICATION`).** The store page is still one page (owner, 2026-10-16), so PRD-018 §6's "tabs" are sections. **Lifecycle** (`StoreLifecycleCard`): state and suspension category chips, `tenantMoneyInFlight` (`MoneyInFlightPanel`, "partial" warning), suspend with a category (default POLICY) and reason, change the category of a suspended store, reactivate, delete (platform owner only; `MONEY_IN_FLIGHT` lists the blockers from `extensions.counts`, and "Delete anyway" needs `force` + `forceReason`; `CONFLICT` `TENANT_CHANGED`, the conditional delete losing a race, gets plain "nothing was deleted, reload" copy, review CP2-07), restore with the purge countdown, and the store's payments pending over 48 h. **Go live** (`StoreGoLiveCard`): domain status, `startDomainVerification` (TXT `recordName` / `recordValue`, copyable), `checkDomainVerification` (last error, `DOMAIN_TAKEN`), `tenantGoLiveChecklist` (pass / fail / unknown / waived), `markTenantLive` with the waivable checks (`payment_app`, `legal_pages`) and a reason. **Store details** (`StoreDetailsCard`): `updateTenant` with only the changed fields; the domain is read-only and links to Go live. Coupons pick plan versions by id (`appliesToPlanIds`). Change plan previews a forced downgrade (`override: true`, `creditIssued`); Migrate stores shows the dry run (`previewPlanMigration`); the plan-limit mode change sends an optional audit `note`. Rules: `lib/tenant-lifecycle.util.ts`, `lib/coupon-form.util.ts`. FR-3 (exports, data requests) is gated on the legal review and has no console UI.
+
 **Target (Phases 2–4).** The sequence below is the full design from the PRD; the identity decision (ADR-1 here) is ADR-001 in the backend and is done.
 
 ```mermaid
@@ -189,6 +201,6 @@ flowchart LR
 
 | Gap | Impact | Path |
 |---|---|---|
-| Vercel topology | `/v1/graphql` has no rewrite and a `SameSite=Strict` cookie cannot cross sites, so sessions cannot be kept on Vercel as configured | PRD-005 Q6: serve the console behind the CloudFront edge or add the rewrite (review C-H3) |
+| Vercel topology | Resolved: Q6 decided 2026-10-18 (the console calls `https://api.zerrorstudios.com` directly, same site); the CSP `connect-src` allows that origin since PRD-014 FR-0.7 (2026-10-25) | A UAT build needs its API origin in `vercel.json` too (PRD-007 Q8 hosts) |
 | Vocabulary mismatch with backend plans and statuses | Integration bugs | Settle it in the PRD |
 | No notifications feed | The panel is empty | Feed it from `platformAuditLog` or events (T1) |

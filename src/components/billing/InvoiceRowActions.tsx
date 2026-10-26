@@ -1,6 +1,6 @@
 import { useMutation } from "@apollo/client";
 import { addToast } from "@heroui/react";
-import { useState, type Key } from "react";
+import { useRef, useState, type Key } from "react";
 import type { PaymentReportRow } from "../../types/reports";
 import { isUserInputError, mutationFailureCopy } from "../../lib/mutation-errors";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
@@ -26,20 +26,29 @@ import {
   toastError,
 } from "../ui";
 
+/** What the actions need; Collections rows and invoice rows both fit (PRD-017 FR-4.3). */
+export type InvoiceActionRow = Pick<PaymentReportRow, "id" | "amount" | "status" | "transactionId">;
+
 export interface InvoiceRowActionsProps {
-  row: PaymentReportRow;
+  row: InvoiceActionRow;
   /** Re-reads the collections after a change. */
   onChanged: () => Promise<unknown>;
 }
 
 type Dialog = "payment" | "void" | "coupon" | null;
 
-/** Collections › Invoices row menu (PRD-005 FR-5.2): record a payment, apply a discount, void. Open invoices only. */
+/**
+ * Invoice row menu (PRD-005 FR-5.2; also Billing › Invoices and the store's invoices, PRD-017 FR-4.3):
+ * record a payment, apply a discount, void. Open invoices only; each asks first and re-reads after.
+ */
 export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
   const { can } = useAuth();
   const [dialog, setDialog] = useState<Dialog>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Blocks a second submit before the `busy` re-render lands; the server
+  // also returns the same payment for a repeated record (PRD-014 FR-0.10).
+  const inFlight = useRef(false);
   const [amount, setAmount] = useState(String(row.amount));
   const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
   const [reference, setReference] = useState("");
@@ -54,6 +63,8 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
   if (!open || !can(PLATFORM_PERMISSIONS.BILLING_MANAGE)) return null;
 
   const run = async (work: () => Promise<unknown>, done: string) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -66,6 +77,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
       if (message && isUserInputError(err)) setError(message);
       else if (message) toastError(message);
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   };
@@ -108,6 +120,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
             <UiButton
               variant="primary"
               isLoading={busy}
+              isDisabled={busy}
               onPress={() =>
                 void run(
                   () =>

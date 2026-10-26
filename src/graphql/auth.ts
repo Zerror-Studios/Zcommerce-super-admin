@@ -23,6 +23,7 @@ export const PLATFORM_LOGIN = gql`
   mutation PlatformLogin($email: String!, $password: String!, $totp: String) {
     platformLogin(email: $email, password: $password, totp: $totp) {
       accessToken
+      csrfToken
       expiresIn
       mfaRequired
       user {
@@ -35,6 +36,13 @@ export const PLATFORM_LOGIN = gql`
 export const PLATFORM_LOGOUT = gql`
   mutation PlatformLogout {
     platformLogout
+  }
+`;
+
+/** Ends every session of the signed-in user, this one included (PRD-014 PLT-13). */
+export const PLATFORM_LOGOUT_ALL = gql`
+  mutation PlatformLogoutAll {
+    platformLogoutAll
   }
 `;
 
@@ -62,6 +70,13 @@ export const PLATFORM_CONFIRM_MFA = gql`
       recoveryCodes
       accessToken
     }
+  }
+`;
+
+/** Always `true`, whether or not the email has an account (PRD-014 §5.2). */
+export const PLATFORM_REQUEST_PASSWORD_RESET = gql`
+  mutation PlatformRequestPasswordReset($email: String!) {
+    platformRequestPasswordReset(email: $email)
   }
 `;
 

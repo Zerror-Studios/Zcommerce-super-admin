@@ -1,4 +1,5 @@
 import type { Client, Plan } from "../../types";
+import { usageBarOf } from "../../lib/api-adapters";
 import { getPlanLabel } from "../../lib/display-labels.util";
 import { formatNumber } from "../../lib/utils";
 import { Card, cx } from "../ui";
@@ -12,9 +13,8 @@ export interface ClientUsageTabProps {
 interface UsageMetric {
   key: string;
   label: string;
-  used: number;
-  /** 0 when the plan sets no limit (storage is not on the backend plan yet). */
-  limit: number;
+  used: number | null;
+  limit: number | null;
   unit: string;
 }
 
@@ -26,11 +26,14 @@ function barClass(percent: number): string {
 }
 
 export function ClientUsageTab({ client, plan, className }: ClientUsageTabProps) {
-  // No plan match (e.g. a custom plan): show usage without a limit, never made-up limits.
-  const limits = plan?.limits ?? { products: 0, storageGb: 0, bandwidthGb: 0 };
+  // No plan → no limits to compare against; never invent defaults (UX-23).
+  const limits = plan?.limits ?? {
+    products: null,
+    storageGb: null,
+    bandwidthGb: null,
+  };
 
-  // Bandwidth is not measured yet (the adapter always sends 0), so it is left out.
-  const metrics: UsageMetric[] = [
+  const allMetrics: UsageMetric[] = [
     {
       key: "products",
       label: "Products",
@@ -46,36 +49,40 @@ export function ClientUsageTab({ client, plan, className }: ClientUsageTabProps)
       unit: "GB",
     },
   ];
+  // A metric with neither a measured value nor a limit (bandwidth today)
+  // has nothing to show.
+  const metrics = allMetrics.filter(
+    (metric) => metric.used !== null || metric.limit !== null,
+  );
 
   return (
     <Card title="Plan usage" description={`Against the ${getPlanLabel(client.plan)} plan limits`} className={className}>
       <div className="flex flex-col gap-4">
         {metrics.map((metric) => {
-          const hasLimit = metric.limit > 0;
-          const percent = hasLimit ? Math.min(100, Math.round((metric.used / metric.limit) * 100)) : 0;
+          const bar = usageBarOf(metric.used, metric.limit);
           const unitSuffix = metric.unit ? ` ${metric.unit}` : "";
           return (
             <div key={metric.key} className="flex flex-col gap-1.5">
               <div className="flex items-baseline justify-between gap-3 text-body">
                 <span className="font-medium text-fg">{metric.label}</span>
                 <span className="text-fg-muted num">
-                  {formatNumber(metric.used)}
-                  {unitSuffix}
-                  {hasLimit ? ` / ${formatNumber(metric.limit)}${unitSuffix}` : " · no limit set"}
+                  {metric.used === null ? "—" : `${formatNumber(metric.used)}${unitSuffix}`}
+                  {" / "}
+                  {bar.unlimited ? "No limit" : `${formatNumber(metric.limit ?? 0)}${unitSuffix}`}
                 </span>
               </div>
-              {hasLimit ? (
-              <div
-                role="progressbar"
-                aria-label={`${metric.label} usage`}
-                aria-valuenow={percent}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                className="h-1 w-full overflow-hidden rounded-full bg-surface-sunken"
-              >
-                <div className={cx("h-full rounded-full", barClass(percent))} style={{ width: `${percent}%` }} />
-              </div>
-              ) : null}
+              {bar.percent === null ? null : (
+                <div
+                  role="progressbar"
+                  aria-label={`${metric.label} usage`}
+                  aria-valuenow={bar.percent}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  className="h-1 w-full overflow-hidden rounded-full bg-surface-sunken"
+                >
+                  <div className={cx("h-full rounded-full", barClass(bar.percent))} style={{ width: `${bar.percent}%` }} />
+                </div>
+              )}
             </div>
           );
         })}

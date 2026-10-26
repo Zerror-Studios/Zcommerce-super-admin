@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { allNavItems, mainNavItems } from "../../config/navigation";
+import { allNavItems, mainNavItems, visibleNavItems } from "../../config/navigation";
 import { ASSISTANT_SUGGESTIONS, sampleAssistantAnswer } from "../../lib/aiSamples";
 import { client as apollo } from "../../lib/apollo-client";
 import { toPickerDay } from "../../lib/api-report-adapters";
@@ -17,6 +17,7 @@ import { CommandPalette } from "./CommandPalette";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { Sidebar } from "./Sidebar";
 import { AiSpectrumDefs } from "../ui/Ai";
+import { cx, toneTextClasses } from "../ui";
 import type { CommandGroup, NotificationEntry } from "./types";
 
 const COLLAPSE_KEY = "zcommerce-sidebar-collapsed";
@@ -47,7 +48,7 @@ const NOTIFICATION_TABS = [
 export function DashboardLayout() {
   const location = useLocation();
   const { signOut, can } = useAuth();
-  const { clients, subscriptions } = useClients();
+  const { clients, subscriptions, incomplete, pageGuardReached, loadRemaining, totalCount } = useClients();
   const canAddStore = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
 
   const [collapsed, setCollapsed] = useState(() => readStoredFlag(COLLAPSE_KEY));
@@ -105,15 +106,18 @@ export function DashboardLayout() {
   };
 
   const items = useMemo(
-    () => mainNavItems.map((item) => (item.key === "stores" ? { ...item, count: clients.length } : item)),
-    [clients.length],
+    () =>
+      visibleNavItems(mainNavItems, can).map((item) =>
+        item.key === "stores" ? { ...item, count: clients.length } : item,
+      ),
+    [can, clients.length],
   );
 
   const commandGroups = useMemo<CommandGroup[]>(
     () => [
       {
         title: "Pages",
-        items: allNavItems.flatMap((item) =>
+        items: visibleNavItems(allNavItems, can).flatMap((item) =>
           item.children?.length
             ? item.children.map((child) => ({ id: `page-${child.to}`, label: child.label, hint: item.label, keywords: item.label, icon: item.icon, href: child.to }))
             : [{ id: `page-${item.key}`, label: item.label, icon: item.icon, href: item.to }],
@@ -134,7 +138,7 @@ export function DashboardLayout() {
         ? [{ title: "Actions", items: [{ id: "add-store", label: "Add store", icon: IconAdd, href: "/stores/new" }] }]
         : []),
     ],
-    [canAddStore, clients],
+    [can, canAddStore, clients],
   );
 
   const unreadCount = notifications.filter((item) => item.unread).length;
@@ -184,6 +188,15 @@ export function DashboardLayout() {
           </button>,
         )}
       >
+        {/* Every screen built on the store list is partial when paging stopped early (W2V-C-01); the Stores page says so itself. */}
+        {incomplete && !pathMatches(location.pathname, "/stores", true) ? (
+          <p role="status" className={cx("mb-3 text-label", toneTextClasses.warning)}>
+            Store data is incomplete: {clients.length} of {totalCount} stores loaded, so totals here may be low.{" "}
+            <button type="button" className="underline" onClick={loadRemaining}>
+              {pageGuardReached ? "Load the next 5,000" : "Retry"}
+            </button>
+          </p>
+        ) : null}
         <Outlet />
       </AppShell>
 

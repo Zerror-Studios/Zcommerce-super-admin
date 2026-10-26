@@ -8,6 +8,8 @@ describe("store status", () => {
   it("maps lifecycle", () => {
     expect(storeLifecycle(client("active")).label).toBe("Live");
     expect(storeLifecycle(client("suspended")).tone).toBe("danger");
+    // PRD-018: a deleted store in its grace period
+    expect(storeLifecycle({ ...client("suspended"), tenantStatus: "DELETED" }).label).toBe("Deleted");
   });
   it("shows the server's payment badge and 'No plan' without a subscription", () => {
     const sub = { paymentState: { label: "Overdue · 3 days", tone: "danger", detail: "Suspends on 19 Oct" } } as Subscription;

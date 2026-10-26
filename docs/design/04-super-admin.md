@@ -108,7 +108,7 @@ Grace, suspension and deletion days come from **Settings › Billing rules** (do
 
 - Back link "← Stores". Title = store name + Status badge + Payment badge. Sub-line: owner name · email · domain (link). Right: ghost "Send reminder", ghost "···" (Change plan, Suspend, Delete), **primary "Log in"**.
 - Underline tabs: **Overview · Billing · Activity · Settings**.
-- **Overview:** KPI strip (Store sales · 30d, Orders · 30d, Health, Paid to date) → "Performance" chart (sales line + orders dashed, 12 months) → Insight card (AI) if any → Health breakdown (factors) → **Plan usage** (Products 8 / 25, Storage, Bandwidth: thin neutral bars, warning colour over 80%, critical over 95%).
+- **Overview:** KPI strip (Store sales · 30d, Orders · 30d, Health, Paid to date) → Insight card (AI) if any → Health breakdown (factors) → **Plan usage** (Products 8 / 25, Storage, Bandwidth: thin neutral bars, warning colour over 80%, critical over 95%). A metric without a limit reads "No limit" with no bar, an unmeasured value reads "—", and a metric with neither is hidden. No "Performance" chart until the API has a per-store monthly series (PRD-014 FR-0.9: the old one was synthetic).
   Side column: **Profile** (Owner, Email, Phone, Domain, Live since, Contract start, Lock-in ends, Monthly fee) · **Notes** (internal, editable).
 - **Billing:** payment status card (next invoice, due date, grace period, "Suspends on …" when overdue) → Invoices table (Invoice · Period · Amount · Status · Paid on · Method) → Payments table → **Grace period** setting: "Extra days before this store is suspended for non-payment. Default: {n} days." with a number input and Save.
 - **Activity:** timeline (payments, reminders sent, plan changes, support logins with team member name, suspensions).

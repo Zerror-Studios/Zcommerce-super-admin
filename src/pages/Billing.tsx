@@ -1,16 +1,22 @@
 import { useMemo } from "react";
 import { Navigate, useParams } from "react-router-dom";
+import { InvoicesTab } from "../components/billing/InvoicesTab";
 import { SubscriptionReportsTab } from "../components/billing/SubscriptionReportsTab";
+import { FlaggedPaymentsTab } from "../components/payments/FlaggedPaymentsTab";
+import { StalePendingPayments } from "../components/payments/StalePendingPayments";
 import { PageHeader } from "../components/common/PageHeader";
 import { AutomationSettingsTab } from "../components/settings/AutomationSettingsTab";
 import { TransactionsTab } from "../components/payments/TransactionsTab";
-import { ErrorState, formatCount } from "../components/ui";
+import { Card, ErrorState, formatCount } from "../components/ui";
 import { IconPayments, IconSend } from "../components/ui/icons";
 import { toasts } from "../copy";
 import { usePayments } from "../hooks/use-platform-reports";
 
-/** Subscriptions › Collections (route "subscriptions", unchanged), Transactions and Payment reminders. */
-const sections = ["subscriptions", "transactions", "reminders"] as const;
+/**
+ * Subscriptions › Collections (route "subscriptions", unchanged), Invoices (PRD-017 FR-4.3), Transactions,
+ * Flagged payments (PRD-016 FR-19), Stuck store payments (PRD-018 FR-1.8) and Payment reminders.
+ */
+const sections = ["subscriptions", "invoices", "transactions", "flagged", "stuck", "reminders"] as const;
 
 type BillingSection = (typeof sections)[number];
 
@@ -55,6 +61,41 @@ export function Billing() {
     );
   }
 
+  if (active === "invoices") {
+    return (
+      <div>
+        <PageHeader title="Invoices" description="Every invoice Zcommerce issued to a store, newest first." />
+        <InvoicesTab />
+      </div>
+    );
+  }
+
+  if (active === "flagged") {
+    return (
+      <div>
+        <PageHeader
+          title="Flagged payments"
+          description="Payments that couldn't settle an invoice on their own. Apply, mark refunded or dismiss each one, with a note."
+        />
+        <FlaggedPaymentsTab />
+      </div>
+    );
+  }
+
+  if (active === "stuck") {
+    return (
+      <div>
+        <PageHeader
+          title="Stuck store payments"
+          description="Shopper payments in suspended stores still pending 48 hours after they were opened. The enquiry job keeps checking them; follow up with the provider if one stays here."
+        />
+        <Card padding="none">
+          <StalePendingPayments />
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader
@@ -62,7 +103,7 @@ export function Billing() {
         icon={<IconPayments aria-hidden />}
         section="green"
         title="Transactions"
-        count={payments.loading ? undefined : payments.data.length}
+        count={payments.loading ? undefined : payments.totalCount}
         description={
           payments.loading
             ? "What stores paid Zcom for their plans"
@@ -72,7 +113,16 @@ export function Billing() {
       {payments.error ? (
         <ErrorState title="Couldn't load transactions." description={toasts.genericError} onRetry={() => void payments.refetch()} />
       ) : (
-        <TransactionsTab transactions={payments.data} isLoading={payments.loading} />
+        <TransactionsTab
+          transactions={payments.data}
+          isLoading={payments.loading}
+          paging={{
+            total: payments.totalCount,
+            hasMore: payments.hasMore,
+            loading: payments.loadingMore,
+            onLoadMore: payments.loadMore,
+          }}
+        />
       )}
     </div>
   );

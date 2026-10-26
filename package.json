@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "vitest run",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
@@ -12,7 +13,9 @@
     "test:watch": "vitest",
     "lint:hex": "node scripts/check-hex.mjs",
     "lint:px": "node scripts/check-px.mjs --max 40",
-    "validate:ops": "node scripts/validate-ops.mjs"
+    "validate:ops": "node scripts/validate-ops.mjs",
+    "check:synced": "node scripts/check-synced-kit.mjs",
+    "validate:contracts": "node ../zcom-backend/scripts/validate-clients/validate-clients.mjs src --client zcom-super-admin"
   },
   "dependencies": {
     "@apollo/client": "^3.14.1",

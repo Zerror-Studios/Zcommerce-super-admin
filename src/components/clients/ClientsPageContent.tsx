@@ -9,6 +9,7 @@ import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import { PageHeader } from "../common/PageHeader";
 import { ClientsTable } from "./ClientsTable";
+import { RemovedStoresPanel } from "./RemovedStoresPanel";
 import { IconAdd, IconStore } from "../ui/icons";
 import { Button as UiButton, ErrorState, cx, formatCount, toneTextClasses } from "../ui";
 
@@ -22,7 +23,8 @@ export interface ClientsPageContentProps {
  */
 export function ClientsPageContent({ clients }: ClientsPageContentProps) {
   const navigate = useNavigate();
-  const { loading, error, refetch, totalCount, subscriptions } = useClients();
+  const { loading, loadingMore, incomplete, pageGuardReached, loadRemaining, error, refetch, totalCount, subscriptions } =
+    useClients();
   const { can } = useAuth();
 
   const summary = useMemo(() => {
@@ -57,10 +59,21 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
         }
       />
 
-      {/* The list reads one page of 200; say so when the platform has outgrown it (review C-L9). */}
-      {!error && totalCount > clients.length ? (
+      {/* Pages of 100 load one after another (FE-09); say so while they do, or if one failed. */}
+      {!error && loadingMore ? (
+        <p role="status" className="mb-3 text-label text-fg-muted">
+          Loading stores… {clients.length} of {totalCount}.
+        </p>
+      ) : null}
+      {incomplete ? (
         <p role="status" className={cx("mb-3 text-label", toneTextClasses.warning)}>
-          Showing the first {clients.length} of {totalCount} stores. Search covers only the stores shown.
+          {/* W2V2-06: at the 5,000-row guard the button reads on instead of retrying nothing. */}
+          {pageGuardReached
+            ? `Showing the first ${clients.length} of ${totalCount} stores; the console reads them 5,000 at a time.`
+            : `Showing ${clients.length} of ${totalCount} stores; the rest couldn't be loaded.`}{" "}
+          <button type="button" className="underline" onClick={loadRemaining}>
+            {pageGuardReached ? "Load the next 5,000" : "Retry"}
+          </button>
         </p>
       ) : null}
 
@@ -69,6 +82,11 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
       ) : (
         <ClientsTable clients={clients} isLoading={loading} allowColumnChoice syncUrl />
       )}
+
+      {/* PRD-018 FR-2.3, FR-2.5: deleted (restorable) and purged stores. */}
+      <div className="mt-8">
+        <RemovedStoresPanel />
+      </div>
     </div>
   );
 }

@@ -39,7 +39,8 @@ function Change({ value }: { value: number | null }) {
 
 /**
  * Analytics › Store sales: what stores sell to their own customers (their orders), as opposed to
- * Platform revenue, which is what stores pay Zcom. All figures cover the last 30 days.
+ * Platform revenue, which is what stores pay Zcom. All figures cover the last 30 days. Sales are
+ * net (PRD-012 FR-8.2); sessions, page views and conversion are the server's usage-snapshot fields.
  */
 export function StoreSalesTab() {
   const navigate = useNavigate();
@@ -62,7 +63,8 @@ export function StoreSalesTab() {
         icon={<IconAnalytics aria-hidden />}
         section="violet"
         title="Store sales"
-        description="What stores sold to their customers in the last 30 days, compared with the 30 days before." />
+        description="What stores sold to their customers in the last 30 days, net of cancellations and refunds, compared with the 30 days before."
+      />
 
       {/* The figures come from the store list: show its loading and error states, not zeros. */}
       {error ? (
@@ -77,7 +79,7 @@ export function StoreSalesTab() {
         <KpiStrip>
           <StatCard
             bare
-            label="Store sales"
+            label="Net store sales"
             value={summary.sales}
             format="money"
             delta={summary.changePercent}
@@ -88,13 +90,19 @@ export function StoreSalesTab() {
             bare
             label="Average order value"
             value={summary.averageOrder == null ? "—" : formatMoney(summary.averageOrder, { whole: true })}
-            deltaLabel="Sales ÷ orders"
+            deltaLabel="Net sales ÷ orders"
           />
           <StatCard
             bare
             label="Selling stores"
             value={formatCount(summary.sellingStores)}
             deltaLabel={`of ${formatCount(summary.totalStores)} stores had an order`}
+          />
+          <StatCard
+            bare
+            label="Stores with traffic"
+            value={formatCount(summary.storesWithTraffic)}
+            deltaLabel={`of ${formatCount(summary.totalStores)} stores reported sessions`}
           />
         </KpiStrip>
 
@@ -103,7 +111,7 @@ export function StoreSalesTab() {
             <Table aria-label="Sales by plan" removeWrapper classNames={cardTableClassNames}>
               <TableHeader>
                 <TableColumn>Plan</TableColumn>
-                <TableColumn align="end">Sales</TableColumn>
+                <TableColumn align="end">Net sales</TableColumn>
                 <TableColumn align="end">Share</TableColumn>
                 <TableColumn align="end">Orders</TableColumn>
                 <TableColumn align="end">Stores</TableColumn>
@@ -131,7 +139,7 @@ export function StoreSalesTab() {
             <Table aria-label="Stores that need a look" removeWrapper classNames={cardTableClassNames}>
               <TableHeader>
                 <TableColumn>Store</TableColumn>
-                <TableColumn align="end">Sales</TableColumn>
+                <TableColumn align="end">Net sales</TableColumn>
                 <TableColumn align="end">vs previous 30 days</TableColumn>
               </TableHeader>
               <TableBody
@@ -158,10 +166,13 @@ export function StoreSalesTab() {
             <TableHeader>
               <TableColumn>Store</TableColumn>
               <TableColumn>Plan</TableColumn>
-              <TableColumn align="end">Sales</TableColumn>
+              <TableColumn align="end">Net sales</TableColumn>
               <TableColumn align="end">vs previous 30 days</TableColumn>
               <TableColumn align="end">Orders</TableColumn>
               <TableColumn align="end">Average order</TableColumn>
+              <TableColumn align="end">Sessions</TableColumn>
+              <TableColumn align="end">Page views</TableColumn>
+              <TableColumn align="end">Conversion</TableColumn>
             </TableHeader>
             <TableBody items={rows} emptyContent={noData}>
               {(row) => (
@@ -178,6 +189,11 @@ export function StoreSalesTab() {
                   <TableCell><span className={right}>{formatCount(row.orders)}</span></TableCell>
                   <TableCell>
                     <span className={right}>{row.averageOrder == null ? "—" : formatMoney(row.averageOrder, { whole: true })}</span>
+                  </TableCell>
+                  <TableCell><span className={right}>{formatCount(row.sessions)}</span></TableCell>
+                  <TableCell><span className={right}>{formatCount(row.pageViews)}</span></TableCell>
+                  <TableCell>
+                    <span className={right}>{row.conversionRate == null ? "—" : formatPercent(row.conversionRate)}</span>
                   </TableCell>
                 </TableRow>
               )}

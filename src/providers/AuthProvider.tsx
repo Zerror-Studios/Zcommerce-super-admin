@@ -16,7 +16,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { PLATFORM_LOGIN, PLATFORM_LOGOUT, PLATFORM_ME } from "../graphql/auth";
+import {
+  PLATFORM_LOGIN,
+  PLATFORM_LOGOUT,
+  PLATFORM_LOGOUT_ALL,
+  PLATFORM_ME,
+} from "../graphql/auth";
 import {
   client,
   clearAuth,
@@ -37,9 +42,11 @@ import {
   getSessionUser,
   isUsableToken,
   setAccessToken,
+  setCsrfToken,
   setSessionUser,
   subscribeSession,
 } from "../lib/session-store";
+import { isSessionRejection } from "../lib/session-failure.util";
 import type { PlatformAuthPayload, PlatformUser } from "../types/platform-api";
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -65,6 +72,8 @@ interface AuthContextValue {
   user: PlatformUser | null;
   signIn: (email: string, password: string, totp?: string) => Promise<SignInResult>;
   signOut: () => Promise<void>;
+  /** Ends every session of this user on every device (PRD-014 PLT-13); throws if the server refused. */
+  signOutEverywhere: () => Promise<void>;
   /** Re-read `platformMe` (after MFA enrolment, role changes). */
   refreshUser: () => Promise<void>;
   /** Try the session restore again after an `unreachable` load. */
@@ -106,10 +115,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.platformMe);
       setStatus("authenticated");
       return true;
-    } catch {
-      clearSession();
-      setUser(null);
-      setStatus("guest");
+    } catch (error) {
+      // PRD-014 FE-23: only a server verdict on the session signs out. A
+      // network failure, timeout or 5xx keeps the session: a signed-in
+      // operator stays where they are, a restore offers Retry.
+      if (isSessionRejection(error)) {
+        clearSession();
+        setUser(null);
+        setStatus("guest");
+      } else if (!getSessionUser()) {
+        setStatus("unreachable");
+      }
       return false;
     }
   }, []);
@@ -160,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (message.type === "login") {
         // Only a well-formed, unexpired token is adopted (review C-L1).
         if (!isUsableToken(message.token)) return;
+        setCsrfToken(typeof message.csrfToken === "string" ? message.csrfToken : null);
         setAccessToken(message.token);
         void loadMe();
       } else if (message.type === "logout") {
@@ -183,11 +200,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         const payload = data?.platformLogin;
         if (!payload) return { ok: false, code: "UNAVAILABLE" };
+        setCsrfToken(payload.csrfToken ?? null);
         setAccessToken(payload.accessToken);
         setSessionUser(payload.user);
         setUser(payload.user);
         setStatus("authenticated");
-        broadcastLogin(payload.accessToken);
+        broadcastLogin(payload.accessToken, payload.csrfToken ?? null);
         return { ok: true, mfaRequired: payload.mfaRequired };
       } catch (error) {
         return { ok: false, code: signInFailureOf(error) };
@@ -212,6 +230,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearAuth("SIGNED_OUT");
   }, []);
 
+  const signOutEverywhere = useCallback(async () => {
+    // Unlike signOut, a failure is reported: the other devices would stay signed in.
+    await client.mutate({ mutation: PLATFORM_LOGOUT_ALL });
+    rememberSessionEnd("SIGNED_OUT");
+    clearSession();
+    await client.clearStore();
+    setUser(null);
+    setStatus("guest");
+    clearAuth("SIGNED_OUT");
+  }, []);
+
   const refreshUser = useCallback(async () => {
     await loadMe();
   }, [loadMe]);
@@ -224,11 +253,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: currentUser,
       signIn,
       signOut,
+      signOutEverywhere,
       refreshUser,
       retryRestore: restoreSession,
       can: (permission) => roleCan(currentUser?.role, permission),
     };
-  }, [refreshUser, restoreSession, signIn, signOut, status, user]);
+  }, [refreshUser, restoreSession, signIn, signOut, signOutEverywhere, status, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

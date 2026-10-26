@@ -20,10 +20,13 @@ import {
   type DataTableColumn,
 } from "../ui";
 import { IconPayments } from "../ui/icons";
+import { LoadMoreFooter, type LoadMoreFooterProps } from "../common/LoadMoreFooter";
 
 export interface TransactionsTabProps {
   transactions: Transaction[];
   isLoading?: boolean;
+  /** Server paging (FE-09): search and filters cover the loaded rows. */
+  paging?: Omit<LoadMoreFooterProps, "shown" | "noun">;
 }
 
 const columnOptions: DataTableColumn[] = [
@@ -46,9 +49,10 @@ const statusOptions: { key: TransactionStatus; label: string }[] = [
 
 /**
  * Subscriptions › Transactions (docs/design/04-super-admin.md §3.6): the kit table, 50 per page over the
- * 200 newest payments; search, status filter and page in the URL; Columns remembered.
+ * loaded payments (200 a page from the API, "Load more" for the next, FE-09); search, status filter and page
+ * in the URL; Columns remembered.
  */
-export function TransactionsTab({ transactions, isLoading = false }: TransactionsTabProps) {
+export function TransactionsTab({ transactions, isLoading = false, paging }: TransactionsTabProps) {
   const { clients } = useClients();
   const table = useTableUrlState();
   const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
@@ -162,13 +166,16 @@ export function TransactionsTab({ transactions, isLoading = false }: Transaction
       stickyFirstColumn
       scrollClassName="max-h-[70vh]"
       footer={
-        <TablePagination
-          page={page}
-          pageSize={table.pageSize}
-          total={filtered.length}
-          onPageChange={table.setPage}
-          onPageSizeChange={table.setPageSize}
-        />
+        <>
+          <TablePagination
+            page={page}
+            pageSize={table.pageSize}
+            total={filtered.length}
+            onPageChange={table.setPage}
+            onPageSizeChange={table.setPageSize}
+          />
+          {paging ? <LoadMoreFooter {...paging} shown={transactions.length} noun="payments" /> : null}
+        </>
       }
       emptyContent={
         isFiltered ? (

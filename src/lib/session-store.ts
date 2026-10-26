@@ -5,6 +5,10 @@
  * sessionStorage. The refresh token is an HttpOnly cookie the browser
  * sends on its own. A page reload therefore starts with no token and
  * restores the session through `platformRefreshToken`.
+ *
+ * The CSRF token (PRD-014 FR-1.11, D8) sits beside the access token, in
+ * memory only: `platformLogin` and `platformRefreshToken` return it, and
+ * the Apollo client sends it as `x-zcom-csrf` on every mutation.
  */
 
 import type { PlatformUser } from "../types/platform-api";
@@ -13,10 +17,11 @@ import type { PlatformUser } from "../types/platform-api";
 
 interface SessionState {
   accessToken: string | null;
+  csrfToken: string | null;
   user: PlatformUser | null;
 }
 
-let state: SessionState = { accessToken: null, user: null };
+let state: SessionState = { accessToken: null, csrfToken: null, user: null };
 
 const listeners = new Set<(state: SessionState) => void>();
 
@@ -30,6 +35,10 @@ export function getAccessToken(): string | null {
   return state.accessToken;
 }
 
+export function getCsrfToken(): string | null {
+  return state.csrfToken;
+}
+
 export function getSessionUser(): PlatformUser | null {
   return state.user;
 }
@@ -40,14 +49,23 @@ export function setAccessToken(accessToken: string | null): void {
   emit();
 }
 
+/**
+ * Store the session's CSRF token. `undefined` keeps the current one (a
+ * token adopted from another tab may arrive without it).
+ */
+export function setCsrfToken(csrfToken: string | null | undefined): void {
+  if (csrfToken === undefined || state.csrfToken === csrfToken) return;
+  state = { ...state, csrfToken };
+}
+
 export function setSessionUser(user: PlatformUser | null): void {
   state = { ...state, user };
   emit();
 }
 
 export function clearSession(): void {
-  if (!state.accessToken && !state.user) return;
-  state = { accessToken: null, user: null };
+  if (!state.accessToken && !state.csrfToken && !state.user) return;
+  state = { accessToken: null, csrfToken: null, user: null };
   emit();
 }
 

@@ -29,6 +29,40 @@ export type PlatformBillingCycle = "MONTHLY" | "YEARLY";
 
 export type PlanChangeEffective = "NOW" | "PERIOD_END";
 
+/** PRD-017 FR-1.1: a plan version's lifecycle; only ACTIVE is sellable. */
+export const platformPlanStatusEnum = {
+  DRAFT: "DRAFT",
+  ACTIVE: "ACTIVE",
+  LEGACY: "LEGACY",
+  ARCHIVED: "ARCHIVED",
+} as const;
+
+export type PlatformPlanStatus =
+  (typeof platformPlanStatusEnum)[keyof typeof platformPlanStatusEnum];
+
+/** PRD-016 FR-15: ORDERS_PAUSED = the store takes no new shopper orders. */
+export type PlatformBillingState = "OK" | "ORDERS_PAUSED";
+
+/** PRD-016 FR-14: how plan limits act. */
+export const entitlementsModeEnum = {
+  OFF: "OFF",
+  LOG: "LOG",
+  ENFORCE: "ENFORCE",
+} as const;
+
+export type EntitlementsMode =
+  (typeof entitlementsModeEnum)[keyof typeof entitlementsModeEnum];
+
+/** PRD-016 FR-19: how staff end a flagged payment. */
+export const flaggedPaymentActionEnum = {
+  APPLY: "APPLY",
+  REFUNDED_OUTSIDE: "REFUNDED_OUTSIDE",
+  DISMISS: "DISMISS",
+} as const;
+
+export type FlaggedPaymentAction =
+  (typeof flaggedPaymentActionEnum)[keyof typeof flaggedPaymentActionEnum];
+
 export type TenantOnboardingStatus = "PROVISIONING" | "READY" | "FAILED";
 
 /** `PlatformTenantRegion` enum keys; the API maps them to AWS region ids. */
@@ -51,6 +85,8 @@ export interface PlatformUser {
 
 export interface PlatformAuthPayload {
   accessToken: string;
+  /** Sent as `x-zcom-csrf` on every mutation (PRD-014 FR-1.11). */
+  csrfToken: string;
   expiresIn: number;
   user: PlatformUser;
   mfaRequired: boolean;
@@ -94,6 +130,77 @@ export interface PlatformPlan {
   };
   isActive: boolean;
   createdAt: string | null;
+  /** Stores on this plan, counted on the server; only `platformPlans` asks for it. */
+  tenantCount?: number;
+  // ── PRD-017 FR-1.1 (optional so older cached rows still type-check) ──
+  version?: number;
+  status?: PlatformPlanStatus;
+  isPublic?: boolean;
+  displayName?: string;
+  description?: string | null;
+  sortOrder?: number;
+  supersedesPlanId?: string | null;
+  supersededByPlanId?: string | null;
+  /** Non-cancelled subscriptions on the plan (FR-1.7). */
+  subscriberCount?: number;
+  /** Subscriptions with this plan pending (FR-1.7). */
+  pendingCount?: number;
+  /** The version chain, oldest first; only `platformPlan(id)`. */
+  versions?: PlatformPlan[];
+}
+
+export type PlatformPlanLimits = PlatformPlan["limits"];
+
+export type PlatformPlanFeatures = PlatformPlan["features"];
+
+/** `createPlan` input (PRD-017 §5.1); 0 in a limit = unlimited (PRD-016 D12). */
+export interface PlatformPlanInput {
+  tenantId?: string | null;
+  name: PlanName;
+  displayName: string;
+  description?: string | null;
+  status: "DRAFT" | "ACTIVE";
+  isPublic?: boolean;
+  sortOrder?: number;
+  price: { monthly: number; yearly: number };
+  limits: PlatformPlanLimits;
+  features: PlatformPlanFeatures;
+}
+
+/** `updatePlan` input: every field optional. */
+export type PlatformPlanUpdateInput = Partial<
+  Omit<PlatformPlanInput, "tenantId" | "name">
+>;
+
+export interface PlatformPlanUpdateResult {
+  plan: PlatformPlan;
+  versioned: boolean;
+  previousPlan: PlatformPlan | null;
+}
+
+export interface PlanMigrationResult {
+  scheduled: number;
+  alreadyScheduled: number;
+  deferredForNotice: number;
+}
+
+/** PRD-016 FR-6: what `changeTenantPlan` would do. */
+export interface PlatformPlanChangePreview {
+  effective: PlanChangeEffective;
+  effectiveAt: string;
+  credit: number;
+  charge: number;
+  amountDueNow: number;
+  nextInvoiceAmount: number;
+  currency: string;
+  /** Limit keys the store is already over on the new plan. */
+  overLimits: string[];
+  /**
+   * Platform credit the change issues (a forced NOW downgrade: credit −
+   * charge; monthly → yearly: the unused part); 0 = none. Optional for
+   * servers from before the field.
+   */
+  creditIssued?: number;
 }
 
 // ─── Subscriptions ────────────────────────────────────────────────────────
@@ -113,6 +220,15 @@ export interface PlatformSubscription {
   cancelledAt: string | null;
   cancelAtPeriodEnd: boolean;
   daysOverdue: number;
+  /** PRD-014 D6: plan scheduled for `renewalDate`, if any. */
+  pendingPlanId: string | null;
+  pendingBillingCycle: PlatformBillingCycle | null;
+  // ── PRD-016 FR-5, FR-15, FR-16 (optional for older cached rows) ──
+  creditBalance?: number;
+  billingState?: PlatformBillingState;
+  /** Null while dunning is off. */
+  ordersPauseAt?: string | null;
+  suspendsAt?: string | null;
 }
 
 // ─── Tenants ──────────────────────────────────────────────────────────────
@@ -147,11 +263,16 @@ export interface TenantUsage {
   date: string;
   products: number;
   orders30d: number;
+  /** Net revenue (PRD-012 FR-8.2). */
   revenue30d: number;
   growthPercent: number;
   storageMb: number;
   staffCount: number;
   lastActiveAt: string | null;
+  pageViews30d: number;
+  sessions30d: number;
+  /** Paid orders ÷ GA4 sessions, as a percent. */
+  conversionRate30d: number;
 }
 
 export interface PlatformTenant {
@@ -178,13 +299,92 @@ export interface PlatformTenant {
   usage: TenantUsage | null;
   suspendedAt: string | null;
   suspendReason: string | null;
+  /** PRD-018 FR-1.1; null while the store isn't suspended. */
+  suspendCategory?: TenantSuspendCategory | null;
+  /** PRD-018 FR-2.3: when a DELETED store may be purged. */
+  purgeAfter?: string | null;
+  /** PRD-018 FR-4.1. */
+  domainStatus?: TenantDomainStatus;
+  /** PRD-018 FR-4.2: a domain being verified (never resolves). */
+  pendingDomain?: string | null;
+  liveAt?: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+}
+
+// ─── Tenant data lifecycle (PRD-018 §5.1) ─────────────────────────────────
+
+export type TenantSuspendCategory =
+  | "BILLING"
+  | "POLICY"
+  | "OWNER_REQUEST"
+  | "MAINTENANCE";
+
+export type TenantDomainStatus =
+  | "NONE"
+  | "PENDING"
+  | "VERIFIED"
+  | "LIVE"
+  | "FAILED";
+
+export type GoLiveCheckState = "PASS" | "FAIL" | "UNKNOWN" | "WAIVED";
+
+/** FR-1.2: what a suspension or delete would leave open; `partial` = a count timed out. */
+export interface TenantMoneyInFlight {
+  pendingPayments: number;
+  paidUnfulfilledOrders: number;
+  refundsInProgress: number;
+  needsRefundOrders: number;
+  needsAttentionOrders: number;
+  openReturns: number;
+  activeHolds: number;
+  activeMarketplaceListings: number;
+  openPlatformInvoices: number;
+  partial: boolean;
+}
+
+/** FR-4.2: publish `recordName` TXT = `recordValue`, then check. */
+export interface TenantDomainVerification {
+  domain: string;
+  recordName: string;
+  recordValue: string;
+  status: TenantDomainStatus;
+  lastError: string | null;
+}
+
+/** FR-4.3: one go-live check. */
+export interface GoLiveCheck {
+  key: string;
+  label: string;
+  required: boolean;
+  state: GoLiveCheckState;
+  detail: string | null;
+}
+
+/** FR-2.5: the tombstone of a purged store. */
+export interface TenantPurgeRecord {
+  tenantId: string;
+  slug: string;
+  domain: string | null;
+  name: string;
+  deletedAt: string;
+  purgedAt: string;
+  reason: string | null;
 }
 
 export interface PlatformList<T> {
   items: T[];
   totalCount: number;
+}
+
+/**
+ * `createTenant` / `retryTenantProvisioning`. Since PRD-014 (PLT-07) the
+ * owner gets a set-password email and `ownerTemporaryPassword` is null.
+ */
+export interface CreateTenantResult {
+  tenant: PlatformTenant;
+  ownerTemporaryPassword: string | null;
+  ownerInviteSent: boolean;
 }
 
 // ─── Inputs (Phase 2) ─────────────────────────────────────────────────────
@@ -222,7 +422,15 @@ export interface UpdateTenantInput {
 export interface PlatformSettingsApi {
   health: { expiringWithinDays: number; inactiveAfterDays: number };
   gracePeriodDays: number;
-  billing: { provider: "MANUAL" | "NIMBBL" | "RAZORPAY" | "STRIPE"; configured?: boolean };
+  /** `configured` and `checkoutAvailable` are always sent by the server; optional because this type is also the update input. */
+  billing: {
+    provider: "MANUAL" | "NIMBBL" | "RAZORPAY" | "STRIPE";
+    configured?: boolean;
+    checkoutAvailable?: boolean;
+    /** PRD-017 FR-3.2: shown on the store's Billing page; null or "" clears it. */
+    bankTransferInstructions?: string | null;
+    supportContact?: string | null;
+  };
   reminders: {
     daysBeforeDue: number[];
     daysAfterDue: number[];
@@ -230,6 +438,51 @@ export interface PlatformSettingsApi {
     template: string;
   };
   yearKind: "CALENDAR" | "FINANCIAL";
+  /** PRD-016 FR-16; `enabled` stays false until its gate (D6/D7). Read-only in the full update. */
+  dunning?: PlatformDunningSettings;
+  /** PRD-016 FR-14. */
+  entitlementsMode?: EntitlementsMode;
+}
+
+export interface PlatformDunningSettings {
+  enabled: boolean;
+  pauseOrdersAfterDays: number;
+  suspendAfterDays: number;
+  trialSuspendAfterDays: number;
+}
+
+/**
+ * A partial `updatePlatformSettings` input: the server merges what is sent
+ * (dunning and the entitlement mode are saved on their own, audited).
+ */
+export interface PlatformSettingsPatch {
+  dunning?: Partial<PlatformDunningSettings>;
+  entitlementsMode?: EntitlementsMode;
+  /** Why this change; kept on the audit row only (max 500). */
+  note?: string;
+}
+
+// ─── Stale store payments (PRD-018 FR-1.8) ───────────────────────────────
+
+/** A store payment still PENDING 48 h after it was opened; no shopper field. */
+export interface StalePendingPayment {
+  tenantId: string;
+  tenantName: string;
+  tenantSlug: string;
+  tenantStatus: string;
+  paymentId: string;
+  orderId: string | null;
+  provider: string | null;
+  amount: number;
+  currency: string | null;
+  createdAt: string;
+  lastEnquiryAt: string | null;
+}
+
+export interface StalePendingPaymentList {
+  items: StalePendingPayment[];
+  /** A store DB couldn't be read; its rows are missing. */
+  partial: boolean;
 }
 
 // ─── Billing (Phase 3) ────────────────────────────────────────────────────
@@ -242,8 +495,10 @@ export interface PlatformInvoice {
   tenantName: string;
   subscriptionId: string;
   number: string;
-  planName: PlanName;
-  billingCycle: PlatformBillingCycle;
+  /** Schema `String!` (FE-23): a plan name, not guaranteed to be a known enum value. */
+  planName: string;
+  /** Schema `String!` (FE-23). */
+  billingCycle: string;
   periodStart: string;
   periodEnd: string;
   amount: number;
@@ -257,6 +512,22 @@ export interface PlatformInvoice {
   paidAt: string | null;
   couponCode: string | null;
   voidReason: string | null;
+  // ── PRD-016 §5.4, FR-5, FR-20, FR-27 ──
+  billingReason: "PERIOD" | "PRORATION";
+  amountPaid: number;
+  creditApplied: number;
+  /** Still owed; 0 unless ISSUED or OVERDUE. */
+  amountDue: number;
+  /** The new period of a stopped store (FR-27). */
+  restart: boolean;
+}
+
+export interface PlatformInvoiceFilter {
+  tenantId?: string | null;
+  status?: PlatformInvoiceStatus[] | null;
+  search?: string | null;
+  dueFrom?: string | null;
+  dueTo?: string | null;
 }
 
 export type PlatformPaymentStatus = "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED";
@@ -267,14 +538,41 @@ export interface PlatformPayment {
   tenantName: string;
   amount: number;
   currency: string;
+  /** Schema `String!`; the platform only writes these four (FE-23). */
   provider: "NIMBBL" | "RAZORPAY" | "STRIPE" | "MANUAL";
   type: string;
   status: PlatformPaymentStatus;
-  planName: PlanName | null;
+  /** Schema `String` (FE-23). */
+  planName: string | null;
   transactionId: string | null;
   periodStart: string | null;
   periodEnd: string | null;
   createdAt: string | null;
+  // ── PRD-016 FR-19 (optional for older cached rows) ──
+  /** AMOUNT_MISMATCH, SUBSCRIPTION_NOT_PAYABLE, INVOICE_NOT_OPEN, or a provider failure. */
+  failureReason?: string | null;
+  invoiceId?: string | null;
+  expectedAmount?: number | null;
+  flagged?: boolean;
+  /** APPLIED | REFUNDED_OUTSIDE | DISMISSED. */
+  resolution?: string | null;
+  resolutionNote?: string | null;
+  resolvedAt?: string | null;
+}
+
+/** PRD-016 FR-5: credit Zerror owes a store; spent by its next invoices. */
+export interface PlatformCredit {
+  id: string;
+  tenantId: string;
+  number: string;
+  amount: number;
+  remaining: number;
+  /** PRORATION | OVERPAYMENT | MANUAL. */
+  reason: string;
+  note: string | null;
+  sourceInvoiceId: string | null;
+  createdBy: string;
+  createdAt: string;
 }
 
 export interface PlatformCoupon {
@@ -283,6 +581,8 @@ export interface PlatformCoupon {
   discountType: "PERCENT" | "FIXED";
   discountValue: number;
   appliesTo: string;
+  /** PRD-016 FR-22: plan versions by id; wins over `appliesTo` when set. */
+  appliesToPlanIds?: string[];
   maxRedemptions: number;
   redemptions: number;
   expiresAt: string;
@@ -295,10 +595,15 @@ export interface PlatformCouponInput {
   discountType: "PERCENT" | "FIXED";
   discountValue: number;
   appliesTo: string;
+  /** PRD-016 FR-22 / PRD-017 FR-4.4: `[]` clears the list (the tier applies). */
+  appliesToPlanIds?: string[];
   maxRedemptions: number;
   expiresAt: string;
   active?: boolean;
 }
+
+/** `updatePlatformCoupon` input: every field optional (PRD-014 PLT-13). */
+export type PlatformCouponUpdateInput = Partial<PlatformCouponInput>;
 
 export interface ReminderPreview {
   tenantId: string;
@@ -382,6 +687,135 @@ export interface PlatformRevenueOverview {
   };
 }
 
+// ─── Platform analytics (PRD-012 FR-8.3) ──────────────────────────────────
+
+/** Health of a store's analytics sync; `null` when no analytics app is installed. */
+export type AnalyticsHealth =
+  | "OK"
+  | "ERROR"
+  | "QUOTA_PAUSED"
+  | "BACKFILLING"
+  | "NOT_CONNECTED";
+
+export type IntegrationStatus = "ACTIVE" | "INACTIVE" | "ERROR";
+
+export interface StorePerformanceRow {
+  tenantId: string;
+  slug: string;
+  name: string;
+  sessions30d: number;
+  orders30d: number;
+  /** Net revenue in the last 30 days. */
+  revenue30d: number;
+  growthPercent: number;
+  /** Percent. */
+  conversionRate30d: number;
+  pageViews30d: number;
+  analyticsHealth: AnalyticsHealth | string;
+}
+
+export interface PlatformAnalyticsTrendPoint {
+  /** YYYY-MM-DD. */
+  date: string;
+  sessions: number;
+  orders: number;
+  gmv: number;
+}
+
+export interface PlatformAnalyticsOverview {
+  kpis: {
+    sessions: number;
+    orders: number;
+    gmv: number;
+    /** Percent. */
+    conversionRate: number;
+    storesWithTraffic: number;
+    storesTotal: number;
+  };
+  previous: {
+    sessions: number;
+    orders: number;
+    gmv: number;
+    conversionRate: number;
+  };
+  topStoresByGmv: StorePerformanceRow[];
+  topStoresByGrowth: StorePerformanceRow[];
+  trend: PlatformAnalyticsTrendPoint[];
+}
+
+export interface IntegrationHealthFilter {
+  provider?: string | null;
+  channelType?: string | null;
+  status?: string | null;
+  search?: string | null;
+}
+
+export interface IntegrationHealthRow {
+  tenantId: string;
+  slug: string;
+  name: string;
+  connectionId: string;
+  provider: string;
+  channelType: string;
+  status: IntegrationStatus | string;
+  lastTestedAt: string | null;
+  lastSyncAt: string | null;
+  lastError: string | null;
+  analyticsHealth: AnalyticsHealth | string | null;
+  dataThrough: string | null;
+}
+
+export interface PlatformIntegrationHealth {
+  rows: IntegrationHealthRow[];
+  totalCount: number;
+  counts: { status: string; count: number }[];
+  byProvider: { provider: string; count: number; errors: number }[];
+}
+
+export interface SyncMonitorSummary {
+  installations: number;
+  healthy: number;
+  error: number;
+  quotaPaused: number;
+  backfilling: number;
+  runs24hCompleted: number;
+  runs24hFailed: number;
+  quotaTokensToday: number;
+  durationMsP95: number;
+}
+
+export interface SyncMonitorRow {
+  tenantId: string;
+  slug: string;
+  name: string;
+  connectionId: string;
+  provider: string;
+  propertyId: string;
+  health: AnalyticsHealth | string;
+  lastSuccessAt: string | null;
+  lastRunAt: string | null;
+  lastError: string | null;
+  consecutiveFailures: number;
+  quotaTokensToday: number;
+  quotaPausedUntil: string | null;
+  backfillDone: number;
+  backfillTotal: number;
+  sessions7d: number;
+  sessions30d: number;
+  dataThrough: string | null;
+  runs24hCompleted: number;
+  runs24hFailed: number;
+  /** Set once an operator asked for a re-run; cleared when the scheduler picks it up. */
+  rerunRequestedAt: string | null;
+}
+
+export interface PlatformSyncMonitor {
+  summary: SyncMonitorSummary;
+  failing: SyncMonitorRow[];
+  backfills: SyncMonitorRow[];
+  installations: SyncMonitorRow[];
+}
+
 export interface ApiPeriodSnapshot {
   collectedCount: number;
   collectedAmount: number;
@@ -446,4 +880,172 @@ export interface PlatformCollections {
     paymentMethod: string;
     transactionId: string;
   }[];
+}
+
+// ─── ZCOM AI (PRD-021 FR-6, backend guide §9) ─────────────────────────────
+
+export interface PlatformAiUsageRow {
+  tenantId: string;
+  name: string;
+  slug: string;
+  planName: string | null;
+  aiEnabled: boolean;
+  paused: boolean;
+  questionsThisWeek: number;
+  questionsThisMonth: number;
+  questionsPerWeek: number;
+  /** 0–100 of this week's limit (0 when the plan has none). */
+  percentOfLimit: number;
+  tokensThisMonth: number;
+  costUsdThisMonth: number;
+  costInrThisMonth: number;
+  /** 0–1. */
+  cacheHitRate: number;
+}
+
+export interface PlatformAiUsageList {
+  items: PlatformAiUsageRow[];
+  totalCount: number;
+}
+
+export interface PlatformAiTopQuestion {
+  excerpt: string;
+  count: number;
+  lastAskedAt: string;
+}
+
+export interface PlatformAiModelMix {
+  model: string;
+  calls: number;
+  costUsd: number;
+}
+
+export interface PlatformAiTotals {
+  spendTodayUsd: number;
+  dailyCapUsd: number;
+  dailyCapReached: boolean;
+  spendMonthUsd: number;
+  spendMonthInr: number;
+  monthlyBudgetUsd: number;
+  /** 0–100. */
+  budgetUsedPercent: number;
+  /** Thresholds already passed, as whole percentages (e.g. [50, 80]). */
+  alertsCrossed: number[];
+  chatCalls: number;
+  avgCostPerQuestionUsd: number;
+  /** 0–1. */
+  cacheHitRate: number;
+  refusals: number;
+  failures: number;
+  modelMix: PlatformAiModelMix[];
+}
+
+export interface PlatformAiModelPrice {
+  model: string;
+  inputPerMTok: number;
+  outputPerMTok: number;
+  cacheWritePerMTok: number;
+  cacheReadPerMTok: number;
+  /** 0–1 multiplier for Message Batches. */
+  batchDiscount: number;
+}
+
+export interface PlatformAiConfig {
+  enabled: boolean;
+  defaultModel: string;
+  reasoningModel: string;
+  allowedModels: string[];
+  pricing: PlatformAiModelPrice[];
+  globalDailySpendCapUsd: number;
+  monthlyBudgetUsd: number;
+  /** Fractions of the monthly budget, 0–1. */
+  alertThresholds: number[];
+  usdInrRate: number;
+  /** "HH:mm" in each store's own time zone. */
+  nightCoolingStart: string;
+  nightCoolingEnd: string;
+  perQuestionTokenCeiling: number;
+  rateLimitPerMinute: number;
+  benchmarkMinStores: number;
+}
+
+/** Only the fields that change (the server keeps the rest). */
+export type PlatformAiConfigInput = Partial<PlatformAiConfig>;
+
+/** Per-store overrides; null = the plan's value. */
+export interface PlatformAiTenantSetting {
+  tenantId: string;
+  paused: boolean;
+  pausedReason: string | null;
+  questionsPerWeek: number | null;
+  /** -1 = fair use. */
+  connectorCallsPerWeek: number | null;
+  monthlyTokenBudget: number | null;
+}
+
+/**
+ * Sent whole every time: the server treats an omitted field like null
+ * (back to the plan), so a partial input would clear the others.
+ */
+export interface PlatformAiOverrideInput {
+  questionsPerWeek: number | null;
+  connectorCallsPerWeek: number | null;
+  monthlyTokenBudget: number | null;
+}
+
+export interface PlatformAiTopUpGrant {
+  id: string;
+  tenantId: string;
+  questions: number;
+  expiresAt: string;
+}
+
+export type PlatformAiTopUpRequestStatus = "OPEN" | "GRANTED" | "DISMISSED";
+
+export interface PlatformAiTopUpRequest {
+  id: string;
+  tenantId: string;
+  storeName: string;
+  /** The store's week, "yyyy-MM-dd" of its Monday. */
+  week: string;
+  status: PlatformAiTopUpRequestStatus;
+  createdAt: string | null;
+  handledAt: string | null;
+}
+
+export interface PlatformAiTopUpRequestList {
+  items: PlatformAiTopUpRequest[];
+  totalCount: number;
+}
+
+export interface PlatformAiDataHealthRow {
+  tenantId: string;
+  storeName: string;
+  slug: string | null;
+  computedAt: string;
+  costCoveragePct: number;
+  settingsFilled: boolean;
+  spendMonths: number;
+  computeStatus: string;
+  computeMs: number;
+  canSeeProfitability: boolean;
+}
+
+export interface PlatformAiDataHealthList {
+  items: PlatformAiDataHealthRow[];
+  totalCount: number;
+}
+
+export type PlatformAiBenchmarkPeriod = "LAST_30D" | "ALL_TIME";
+
+export interface PlatformAiBenchmark {
+  period: string;
+  metricKey: string;
+  category: string;
+  unit: string;
+  stores: number;
+  p25: number;
+  median: number;
+  p75: number;
+  computedFor: string;
 }
