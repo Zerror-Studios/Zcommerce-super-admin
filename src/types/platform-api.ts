@@ -881,3 +881,171 @@ export interface PlatformCollections {
     transactionId: string;
   }[];
 }
+
+// ─── ZCOM AI (PRD-021 FR-6, backend guide §9) ─────────────────────────────
+
+export interface PlatformAiUsageRow {
+  tenantId: string;
+  name: string;
+  slug: string;
+  planName: string | null;
+  aiEnabled: boolean;
+  paused: boolean;
+  questionsThisWeek: number;
+  questionsThisMonth: number;
+  questionsPerWeek: number;
+  /** 0–100 of this week's limit (0 when the plan has none). */
+  percentOfLimit: number;
+  tokensThisMonth: number;
+  costUsdThisMonth: number;
+  costInrThisMonth: number;
+  /** 0–1. */
+  cacheHitRate: number;
+}
+
+export interface PlatformAiUsageList {
+  items: PlatformAiUsageRow[];
+  totalCount: number;
+}
+
+export interface PlatformAiTopQuestion {
+  excerpt: string;
+  count: number;
+  lastAskedAt: string;
+}
+
+export interface PlatformAiModelMix {
+  model: string;
+  calls: number;
+  costUsd: number;
+}
+
+export interface PlatformAiTotals {
+  spendTodayUsd: number;
+  dailyCapUsd: number;
+  dailyCapReached: boolean;
+  spendMonthUsd: number;
+  spendMonthInr: number;
+  monthlyBudgetUsd: number;
+  /** 0–100. */
+  budgetUsedPercent: number;
+  /** Thresholds already passed, as whole percentages (e.g. [50, 80]). */
+  alertsCrossed: number[];
+  chatCalls: number;
+  avgCostPerQuestionUsd: number;
+  /** 0–1. */
+  cacheHitRate: number;
+  refusals: number;
+  failures: number;
+  modelMix: PlatformAiModelMix[];
+}
+
+export interface PlatformAiModelPrice {
+  model: string;
+  inputPerMTok: number;
+  outputPerMTok: number;
+  cacheWritePerMTok: number;
+  cacheReadPerMTok: number;
+  /** 0–1 multiplier for Message Batches. */
+  batchDiscount: number;
+}
+
+export interface PlatformAiConfig {
+  enabled: boolean;
+  defaultModel: string;
+  reasoningModel: string;
+  allowedModels: string[];
+  pricing: PlatformAiModelPrice[];
+  globalDailySpendCapUsd: number;
+  monthlyBudgetUsd: number;
+  /** Fractions of the monthly budget, 0–1. */
+  alertThresholds: number[];
+  usdInrRate: number;
+  /** "HH:mm" in each store's own time zone. */
+  nightCoolingStart: string;
+  nightCoolingEnd: string;
+  perQuestionTokenCeiling: number;
+  rateLimitPerMinute: number;
+  benchmarkMinStores: number;
+}
+
+/** Only the fields that change (the server keeps the rest). */
+export type PlatformAiConfigInput = Partial<PlatformAiConfig>;
+
+/** Per-store overrides; null = the plan's value. */
+export interface PlatformAiTenantSetting {
+  tenantId: string;
+  paused: boolean;
+  pausedReason: string | null;
+  questionsPerWeek: number | null;
+  /** -1 = fair use. */
+  connectorCallsPerWeek: number | null;
+  monthlyTokenBudget: number | null;
+}
+
+/**
+ * Sent whole every time: the server treats an omitted field like null
+ * (back to the plan), so a partial input would clear the others.
+ */
+export interface PlatformAiOverrideInput {
+  questionsPerWeek: number | null;
+  connectorCallsPerWeek: number | null;
+  monthlyTokenBudget: number | null;
+}
+
+export interface PlatformAiTopUpGrant {
+  id: string;
+  tenantId: string;
+  questions: number;
+  expiresAt: string;
+}
+
+export type PlatformAiTopUpRequestStatus = "OPEN" | "GRANTED" | "DISMISSED";
+
+export interface PlatformAiTopUpRequest {
+  id: string;
+  tenantId: string;
+  storeName: string;
+  /** The store's week, "yyyy-MM-dd" of its Monday. */
+  week: string;
+  status: PlatformAiTopUpRequestStatus;
+  createdAt: string | null;
+  handledAt: string | null;
+}
+
+export interface PlatformAiTopUpRequestList {
+  items: PlatformAiTopUpRequest[];
+  totalCount: number;
+}
+
+export interface PlatformAiDataHealthRow {
+  tenantId: string;
+  storeName: string;
+  slug: string | null;
+  computedAt: string;
+  costCoveragePct: number;
+  settingsFilled: boolean;
+  spendMonths: number;
+  computeStatus: string;
+  computeMs: number;
+  canSeeProfitability: boolean;
+}
+
+export interface PlatformAiDataHealthList {
+  items: PlatformAiDataHealthRow[];
+  totalCount: number;
+}
+
+export type PlatformAiBenchmarkPeriod = "LAST_30D" | "ALL_TIME";
+
+export interface PlatformAiBenchmark {
+  period: string;
+  metricKey: string;
+  category: string;
+  unit: string;
+  stores: number;
+  p25: number;
+  median: number;
+  p75: number;
+  computedFor: string;
+}

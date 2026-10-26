@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { allNavItems, mainNavItems } from "../../config/navigation";
+import { allNavItems, mainNavItems, visibleNavItems } from "../../config/navigation";
 import { ASSISTANT_SUGGESTIONS, sampleAssistantAnswer } from "../../lib/aiSamples";
 import { client as apollo } from "../../lib/apollo-client";
 import { toPickerDay } from "../../lib/api-report-adapters";
@@ -106,15 +106,18 @@ export function DashboardLayout() {
   };
 
   const items = useMemo(
-    () => mainNavItems.map((item) => (item.key === "stores" ? { ...item, count: clients.length } : item)),
-    [clients.length],
+    () =>
+      visibleNavItems(mainNavItems, can).map((item) =>
+        item.key === "stores" ? { ...item, count: clients.length } : item,
+      ),
+    [can, clients.length],
   );
 
   const commandGroups = useMemo<CommandGroup[]>(
     () => [
       {
         title: "Pages",
-        items: allNavItems.flatMap((item) =>
+        items: visibleNavItems(allNavItems, can).flatMap((item) =>
           item.children?.length
             ? item.children.map((child) => ({ id: `page-${child.to}`, label: child.label, hint: item.label, keywords: item.label, icon: item.icon, href: child.to }))
             : [{ id: `page-${item.key}`, label: item.label, icon: item.icon, href: item.to }],
@@ -135,7 +138,7 @@ export function DashboardLayout() {
         ? [{ title: "Actions", items: [{ id: "add-store", label: "Add store", icon: IconAdd, href: "/stores/new" }] }]
         : []),
     ],
-    [canAddStore, clients],
+    [can, canAddStore, clients],
   );
 
   const unreadCount = notifications.filter((item) => item.unread).length;

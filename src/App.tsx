@@ -8,6 +8,7 @@ import { useAuth } from "./providers/AuthProvider";
 // Review C-L11: each page is its own chunk, so the sign-in screen doesn't
 // ship recharts and the store pages. The pages use named exports.
 const Analytics = lazy(() => import("./pages/Analytics").then((m) => ({ default: m.Analytics })));
+const Ai = lazy(() => import("./pages/Ai").then((m) => ({ default: m.Ai })));
 const AddClient = lazy(() => import("./pages/AddClient").then((m) => ({ default: m.AddClient })));
 const Billing = lazy(() => import("./pages/Billing").then((m) => ({ default: m.Billing })));
 const ClientDetail = lazy(() => import("./pages/ClientDetail").then((m) => ({ default: m.ClientDetail })));
@@ -83,6 +84,10 @@ export default function App() {
 
           <Route path="analytics" element={<Navigate to="/analytics/revenue" replace />} />
           <Route path="analytics/:section" element={<Analytics />} />
+
+          {/* PRD-021 FR-6: ZCOM AI usage, top-ups, data health, benchmarks and settings. */}
+          <Route path="ai" element={<Navigate to="/ai/overview" replace />} />
+          <Route path="ai/:section" element={<Ai />} />
 
           <Route path="settings" element={<Settings />} />
           {/* Payment reminders moved from Settings to Subscriptions. */}

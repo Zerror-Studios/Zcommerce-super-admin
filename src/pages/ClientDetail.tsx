@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@apollo/client";
 import { addToast } from "@heroui/react";
 import { useMemo, useState, type Key, type ReactNode } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { ClientAiCard } from "../components/clients/ClientAiCard";
 import { ClientAnalyticsCard } from "../components/clients/ClientAnalyticsCard";
 import { ClientBillingTab } from "../components/clients/ClientBillingTab";
 import { ClientOverviewTab } from "../components/clients/ClientOverviewTab";
@@ -72,6 +73,7 @@ export function ClientDetail() {
   const canManage = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
   const canImpersonate = can(PLATFORM_PERMISSIONS.TENANTS_IMPERSONATE);
   const canManageBilling = can(PLATFORM_PERMISSIONS.BILLING_MANAGE);
+  const canReadAi = can(PLATFORM_PERMISSIONS.AI_READ);
 
   const listedClient = id ? getClient(id) : undefined;
   // PRD-014 FE-09: a store that isn't in the loaded list (a deep link while
@@ -227,6 +229,13 @@ export function ClientDetail() {
         <Section id="store-analytics" title="Analytics">
           <ClientAnalyticsCard client={client} />
         </Section>
+
+        {/* PRD-021 FR-6.4: AI pause, limit overrides, top-ups and most-asked questions. */}
+        {canReadAi ? (
+          <Section id="store-ai" title="AI">
+            <ClientAiCard client={client} />
+          </Section>
+        ) : null}
 
         {/* PRD-014 PLT-13: the daily usage snapshots, one row per month. */}
         <Section id="store-usage-history" title="Usage history">

@@ -1,5 +1,6 @@
 import type { NavItem } from "../components/layout/types";
-import { IconAnalytics, IconBilling, IconHome, IconSettings, IconStore } from "../components/ui/icons";
+import { PLATFORM_PERMISSIONS, type PlatformPermission } from "../lib/permissions";
+import { IconAnalytics, IconBilling, IconChat, IconHome, IconSettings, IconStore } from "../components/ui/icons";
 
 /**
  * Super Admin navigation (docs/design/04-super-admin.md §1, sections renamed by the owner 2026-10-16:
@@ -40,6 +41,21 @@ export const mainNavItems: NavItem[] = [
       { label: "Sync monitor", to: "/analytics/sync" },
     ],
   },
+  {
+    key: "ai",
+    label: "AI",
+    to: "/ai",
+    icon: IconChat,
+    // PRD-021 FR-6: shown only with platform:ai:read (`visibleNavItems`).
+    children: [
+      { label: "Overview", to: "/ai/overview" },
+      { label: "Usage by store", to: "/ai/usage" },
+      { label: "Top-up requests", to: "/ai/top-ups" },
+      { label: "Data health", to: "/ai/data-health" },
+      { label: "Benchmarks", to: "/ai/benchmarks" },
+      { label: "Settings", to: "/ai/settings" },
+    ],
+  },
   // A single link: /settings lists every setting as cards (pages/Settings.tsx), like Merchant Admin.
   { key: "settings", label: "Settings", to: "/settings", icon: IconSettings },
 ];
@@ -57,3 +73,19 @@ export const settingsPages = [
 export const allNavItems: NavItem[] = mainNavItems.map((item) =>
   item.key === "settings" ? { ...item, children: [...settingsPages, { label: "Settings", to: "/settings" }] } : item,
 );
+
+/** Nav entries a role may not open at all; others show a lock page instead. */
+const NAV_PERMISSIONS: Partial<Record<string, PlatformPermission>> = {
+  ai: PLATFORM_PERMISSIONS.AI_READ,
+};
+
+/** `items` without the entries the caller's role can't open (PRD-021 FR-6). */
+export function visibleNavItems(
+  items: NavItem[],
+  can: (permission: PlatformPermission) => boolean,
+): NavItem[] {
+  return items.filter((item) => {
+    const permission = NAV_PERMISSIONS[item.key];
+    return !permission || can(permission);
+  });
+}

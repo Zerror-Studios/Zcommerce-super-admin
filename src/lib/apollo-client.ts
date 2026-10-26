@@ -502,6 +502,10 @@ const cache = new InMemoryCache({
     },
     // A tombstone has no `id`; one per purged tenant.
     TenantPurgeRecord: { keyFields: ["tenantId"] },
+    // PRD-021: one AI setting per store, and one platform AI config, so a
+    // change's result replaces what the screen shows without a refetch.
+    PlatformAiTenantSetting: { keyFields: ["tenantId"] },
+    PlatformAiConfig: { keyFields: [] },
   },
 });
 
