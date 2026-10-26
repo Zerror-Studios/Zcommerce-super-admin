@@ -2,7 +2,7 @@
 import { Select as HeroSelect } from "@heroui/react";
 import type { SelectProps as HeroSelectProps } from "@heroui/react";
 import { cx } from "./cx";
-import { fieldHeight, getDropdownClasses } from "./field-styles";
+import { OUTSIDE_LABEL_PLACEHOLDER, fieldHeight, getDropdownClasses } from "./field-styles";
 import type { FieldSize } from "./field-styles";
 import { IconCaret } from "./icons";
 import { menuItemClasses, menuMotionProps, menuPopoverClasses } from "./menu-styles";
@@ -20,6 +20,7 @@ export function Select<T extends object = object>({
   popoverProps,
   selectorIcon,
   labelPlacement = "outside",
+  placeholder,
   ...rest
 }: SelectProps<T>) {
   const styles = getDropdownClasses();
@@ -28,6 +29,7 @@ export function Select<T extends object = object>({
       variant="bordered"
       size={size}
       labelPlacement={labelPlacement}
+      placeholder={placeholder ?? (labelPlacement === "outside" ? OUTSIDE_LABEL_PLACEHOLDER : undefined)}
       selectorIcon={selectorIcon ?? <IconCaret aria-hidden className="size-3" />}
       popoverProps={{ ...popoverProps, motionProps: popoverProps?.motionProps ?? menuMotionProps }}
       listboxProps={{

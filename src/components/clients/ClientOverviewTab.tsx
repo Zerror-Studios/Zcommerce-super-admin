@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import type { Client, Plan, Subscription } from "../../types";
 import { getPlanLabel } from "../../lib/display-labels.util";
 import { getStoreHealth } from "../../lib/storeHealth";
+import { healthFactorRows } from "../../lib/health-factors.util";
 import { formatDate } from "../../lib/utils";
-import { AiInsightCard, Card, EmptyState, HealthScore, KpiStrip, StatCard, Tooltip as UiTooltip, formatMoney, formatRange, getHealthBand, useAiEnabled } from "../ui";
+import { AiInsightCard, Card, Chip, EmptyState, HealthScore, KpiStrip, StatCard, Tooltip as UiTooltip, formatMoney, formatRange, getHealthBand, useAiEnabled } from "../ui";
 import { useState } from "react";
 import { storeInsight } from "../../lib/aiSamples";
 import { ClientUsageTab } from "./ClientUsageTab";
@@ -107,16 +108,30 @@ export function ClientOverviewTab({ client, subscription, plan, part }: ClientOv
       </Card>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <Card title="Health" className="h-full">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-            <HealthScore score={health.score} />
-            <ul className="flex flex-1 flex-wrap gap-x-6 gap-y-2 sm:pt-2.5">
-              {health.factors.map((factor) => (
-                <li key={factor} className="text-body text-fg-muted">
-                  {factor}
-                </li>
+        {/* Title and description like every card; the score is a compact chip beside the title (so it never
+            wraps between title and description). Then one row per area the server scores, each factor as a
+            coloured status. */}
+        <Card
+          title={
+            <span className="flex flex-wrap items-center gap-2">
+              Health
+              <HealthScore score={health.score} variant="compact" />
+            </span>
+          }
+          description="Out of 100, from account, orders, growth, billing and activity."
+          className="h-full"
+        >
+          <div className="flex flex-col">
+            <dl className="flex flex-col divide-y divide-line-subtle border-t border-line-subtle">
+              {healthFactorRows(health.factors).map((row) => (
+                <div key={row.factor} className="flex items-center justify-between gap-4 py-2.5">
+                  <dt className="text-label text-fg-muted">{row.area}</dt>
+                  <dd>
+                    <Chip tone={row.tone}>{row.factor}</Chip>
+                  </dd>
+                </div>
               ))}
-            </ul>
+            </dl>
           </div>
         </Card>
 

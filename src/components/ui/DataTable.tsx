@@ -5,7 +5,7 @@
  * sorting: the page passes one page of rows, the total, and handles onSortChange; use useTableUrlState to keep
  * it all in the URL and usePersistentColumns for the Columns choice.
  *
- * - First load: 8 skeleton rows the height of real rows, never a spinner in a blank card.
+ * - First load: one page of skeleton rows in the real columns, never a spinner in a blank card.
  * - Page, sort or filter change (isReloading): current rows stay at 60% with a thin progress line on top.
  * - Sticky header; optional sticky first column on sideways scroll; 56px rows; one line per cell.
  * - Never render more than 100 rows: page the data instead (§3.8).
@@ -16,6 +16,7 @@ import type { Key, ReactNode } from "react";
 import { cx } from "./cx";
 import { EmptyState } from "./EmptyState";
 import { Skeleton } from "./Skeleton";
+import { DEFAULT_PAGE_SIZE } from "./TablePagination";
 import type { TableSort } from "./table-state";
 import { tableCellClasses, tableCheckboxClassNames, tableHeaderCellClasses, tableRowClasses } from "./table-styles";
 import { Tooltip } from "./Tooltip";
@@ -81,6 +82,17 @@ export function TableSkeletonRows({ rows = 8 }: { rows?: number }) {
   );
 }
 
+/** A first-load placeholder row: one skeleton bar per visible column, one page of them. */
+interface SkeletonRow {
+  skeletonKey: string;
+}
+const SKELETON_ROWS: SkeletonRow[] = Array.from({ length: DEFAULT_PAGE_SIZE }, (_, index) => ({
+  skeletonKey: `skeleton-${index}`,
+}));
+const SKELETON_KEYS = SKELETON_ROWS.map((row) => row.skeletonKey);
+const isSkeletonRow = (row: unknown): row is SkeletonRow =>
+  typeof row === "object" && row !== null && "skeletonKey" in row;
+
 /** One-line cell text: ellipsis, full text in a tooltip. Names never wrap (§3.1). */
 export function CellText({ children, className }: { children: ReactNode; className?: string }) {
   const text = typeof children === "string" || typeof children === "number" ? String(children) : undefined;
@@ -121,6 +133,10 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   const shown = visibleColumns ? columns.filter((column) => visibleColumns.has(column.key)) : columns;
   const selectable = !!onSelectionChange;
+  // First load: placeholder rows in the real columns, so the header keeps its widths and the bars line up.
+  const showSkeleton = isLoading && rows.length === 0;
+  const items: (T | SkeletonRow)[] = showSkeleton ? SKELETON_ROWS : rows;
+  const rowKey = (item: T | SkeletonRow) => (isSkeletonRow(item) ? item.skeletonKey : getRowKey(item));
   const hasSelection = selectedKeys === "all" || (selectedKeys instanceof Set && selectedKeys.size > 0);
   const byKey = new Map(rows.map((row) => [getRowKey(row), row]));
   // The pinned name column sits after the 40px checkbox column when rows are selectable.
@@ -144,7 +160,8 @@ export function DataTable<T>({
         removeWrapper
         selectionMode={selectable ? "multiple" : "none"}
         selectionBehavior="toggle"
-        selectedKeys={selectedKeys}
+        selectedKeys={showSkeleton ? new Set<string>() : selectedKeys}
+        disabledKeys={showSkeleton ? SKELETON_KEYS : undefined}
         onSelectionChange={onSelectionChange}
         sortDescriptor={toDescriptor(sort)}
         onSortChange={(descriptor) =>
@@ -163,7 +180,7 @@ export function DataTable<T>({
         }
         checkboxesProps={{ classNames: tableCheckboxClassNames }}
         classNames={{
-          base: cx("overflow-auto custom-scroll", scrollClassName, pinned),
+          base: cx("overflow-auto custom-scroll no-scrollbar-x", scrollClassName, pinned),
           table: "min-w-full",
           thead: "sticky top-0 z-20 [&>tr]:first:shadow-none",
           th: cx(tableHeaderCellClasses, "whitespace-nowrap first:w-10 data-[sortable=true]:cursor-pointer"),
@@ -185,9 +202,7 @@ export function DataTable<T>({
           )}
         </TableHeader>
         <TableBody
-          items={rows}
-          isLoading={isLoading && rows.length === 0}
-          loadingContent={<TableSkeletonRows />}
+          items={items}
           emptyContent={
             isLoading
               ? " "
@@ -201,12 +216,19 @@ export function DataTable<T>({
           }
         >
           {(row) => (
-            <TableRow key={getRowKey(row)}>
-              {(columnKey) => (
-                <TableCell className={columns.find((c) => c.key === columnKey)?.align === "end" ? "text-right num" : undefined}>
-                  {renderCell(row, String(columnKey))}
-                </TableCell>
-              )}
+            <TableRow key={rowKey(row)}>
+              {(columnKey) => {
+                const align = columns.find((c) => c.key === columnKey)?.align;
+                return (
+                  <TableCell className={align === "end" ? "text-right num" : undefined}>
+                    {isSkeletonRow(row) ? (
+                      <Skeleton className={cx("h-3.5", columnKey === "actions" ? "ml-auto w-6" : "w-3/4 min-w-12", align === "end" && "ml-auto")} />
+                    ) : (
+                      renderCell(row, String(columnKey))
+                    )}
+                  </TableCell>
+                );
+              }}
             </TableRow>
           )}
         </TableBody>

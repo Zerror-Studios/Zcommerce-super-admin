@@ -84,6 +84,10 @@
   --zc-nav-hover-bg: #181B22;
   --zc-nav-active-bg: #1E2129;
   --zc-nav-count-bg: #1F5EFF;   /* unread notification count pill */
+  /* added (owner 2026-10-26): an open section's sub-menu sits on a lighter panel; the selected item is darker */
+  --zc-nav-sub-bg: #1B1E26;
+  --zc-nav-sub-hover-bg: #14171D;
+  --zc-nav-sub-active-bg: #0B0D11;
 
   /* LEGACY: the top bar is removed in Phase 3 (shell). Until then it uses the sidebar colours. */
   --zc-topbar: #0E1015;

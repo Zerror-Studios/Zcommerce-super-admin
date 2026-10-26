@@ -50,6 +50,7 @@ import {
   type DataTableColumn,
   type TableSort,
 } from "../ui";
+import { DEFAULT_PAGE_SIZE } from "../ui/TablePagination";
 import { IconLogin, IconMore, IconStore } from "../ui/icons";
 import { StoreActionDialog, type StoreAction } from "./storeActions";
 import { logInToStore } from "./storeLogin";
@@ -119,8 +120,8 @@ const tabItems: { key: StoreTab; label: string }[] = [
   { key: storeTabEnum.TRIALS_WEEK, label: "Trials ending this week" },
 ];
 
-/** The 200-row list is filtered and paged here, 50 per page (§3.7). */
-const PAGE_SIZE = 50;
+/** The 200-row list is filtered and paged here, one shared page size (10) like every table. */
+const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 // "Log in" stays on screen on every row width: the actions column is pinned to the right edge.
 const pinnedActions =

@@ -126,26 +126,35 @@ const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ["Esc"], label: "Close a dialog or menu" },
 ];
 
-/** Keyboard shortcuts (Settings › Account › Keyboard shortcuts). Ctrl replaces ⌘ on Windows. */
+/** The keyboard shortcuts as a list; the dialog and the Settings pane both show it. Ctrl replaces ⌘ on Windows. */
+export function ShortcutsList() {
+  return (
+    <>
+      <ul className="flex flex-col divide-y divide-line-subtle">
+        {SHORTCUTS.map((shortcut) => (
+          <li key={shortcut.label} className="flex items-center justify-between py-2.5">
+            <span className="text-body text-fg">{shortcut.label}</span>
+            <span className="flex gap-1">
+              {shortcut.keys.map((key) => (
+                <Kbd key={key}>{key}</Kbd>
+              ))}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="text-caption text-fg-subtle">On Windows, use Ctrl instead of ⌘.</p>
+    </>
+  );
+}
+
+/** Keyboard shortcuts in a dialog. */
 export function ShortcutsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   return (
     <Modal isOpen={isOpen} onOpenChange={(open) => !open && onClose()} width="sm">
       <ModalContent>
         <ModalHeader>Keyboard shortcuts</ModalHeader>
         <ModalBody className="pb-6">
-          <ul className="flex flex-col divide-y divide-line-subtle">
-            {SHORTCUTS.map((shortcut) => (
-              <li key={shortcut.label} className="flex items-center justify-between py-2.5">
-                <span className="text-body text-fg">{shortcut.label}</span>
-                <span className="flex gap-1">
-                  {shortcut.keys.map((key) => (
-                    <Kbd key={key}>{key}</Kbd>
-                  ))}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <p className="text-caption text-fg-subtle">On Windows, use Ctrl instead of ⌘.</p>
+          <ShortcutsList />
         </ModalBody>
       </ModalContent>
     </Modal>

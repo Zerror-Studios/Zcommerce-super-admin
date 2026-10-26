@@ -17,10 +17,13 @@ export const menuMotionProps = {
   },
 };
 
-/** Item: 32px, 8px radius, 14px text; muted fill on hover/keyboard focus; soft primary when selected. */
+/**
+ * Item: 32px (taller when it has a description line), 8px radius, 14px text; muted fill on hover/keyboard focus;
+ * soft primary when selected.
+ */
 export const menuItemClasses = {
   base: [
-    "h-8 rounded-lg px-2.5 gap-2 text-fg",
+    "min-h-8 h-auto rounded-lg px-2.5 py-1.5 gap-2 text-fg",
     "data-[hover=true]:bg-surface-sunken data-[hover=true]:text-fg",
     "data-[focus-visible=true]:bg-surface-sunken",
     "data-[selected=true]:bg-brand-soft data-[selected=true]:text-brand-text data-[selected=true]:font-medium",

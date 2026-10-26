@@ -20,6 +20,9 @@ const REGIONS: { key: TenantRegion; label: string }[] = [
   { key: "eu_west_1", label: "EU West (Ireland)" },
 ];
 
+/** Every card's fields: one column on phones, two from 768px, 16px apart, tops aligned. */
+const FIELD_GRID = "grid grid-cols-1 items-start gap-4 md:grid-cols-2";
+
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])?$/;
 
 function slugify(value: string): string {
@@ -31,7 +34,10 @@ function slugify(value: string): string {
     .slice(0, 40);
 }
 
-/** Add store (docs/design/04-super-admin.md §3.3, PRD-005 FR-3.3): 720px form, ghost Cancel + primary "Add store". */
+/**
+ * Add store (docs/design/04-super-admin.md §3.3, PRD-005 FR-3.3): full width (owner, 2026-10-26; was a 720px
+ * column), every card on the same two-column field grid, ghost Cancel + primary "Add store".
+ */
 export function AddClient() {
   const navigate = useNavigate();
   const { plans, createStore } = useClients();
@@ -105,12 +111,12 @@ export function AddClient() {
   };
 
   return (
-    <div className="mx-auto max-w-content-form">
+    <div>
       <PageHeader type="detail" back={{ href: "/stores", label: "Stores" }} title="Add store" />
 
       <div className="flex flex-col gap-4">
         <Card title="Store details" description="The slug names the database and the key prefix; it can't change later.">
-          <div className="flex flex-col gap-4">
+          <div className={FIELD_GRID}>
             <Input
               label="Store name"
               placeholder="Drift Skate Co."
@@ -119,28 +125,26 @@ export function AddClient() {
               isInvalid={!!errors.name}
               errorMessage={errors.name}
             />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Input
-                label="Slug"
-                placeholder="drift-skate"
-                value={effectiveSlug}
-                onValueChange={(value) => {
-                  setSlugTouched(true);
-                  setSlug(value.toLowerCase());
-                }}
-                isInvalid={!!errors.slug}
-                errorMessage={errors.slug}
-                description="Database: zcom_<slug>"
-              />
-              <Input
-                label="Storefront domain (optional)"
-                placeholder="driftskate.in"
-                value={domain}
-                onValueChange={setDomain}
-                isInvalid={!!errors.domain}
-                errorMessage={errors.domain}
-              />
-            </div>
+            <Input
+              label="Slug"
+              placeholder="drift-skate"
+              value={effectiveSlug}
+              onValueChange={(value) => {
+                setSlugTouched(true);
+                setSlug(value.toLowerCase());
+              }}
+              isInvalid={!!errors.slug}
+              errorMessage={errors.slug}
+              description="Database: zcom_<slug>"
+            />
+            <Input
+              label="Storefront domain (optional)"
+              placeholder="driftskate.in"
+              value={domain}
+              onValueChange={setDomain}
+              isInvalid={!!errors.domain}
+              errorMessage={errors.domain}
+            />
             <Select
               label="Region"
               selectedKeys={new Set([region])}
@@ -159,7 +163,7 @@ export function AddClient() {
         </Card>
 
         <Card title="Owner" description="Gets the owner login for the store dashboard.">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className={FIELD_GRID}>
             <Input
               label="Owner name"
               placeholder="Leo Martinez"
@@ -183,25 +187,31 @@ export function AddClient() {
 
         <Card title="Subscription">
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Select
-                label="Plan"
-                selectedKeys={selectedPlanId ? new Set([selectedPlanId]) : new Set()}
-                onSelectionChange={(keys) => {
-                  const value = Array.from(keys)[0];
-                  if (typeof value === "string") setPlanId(value);
-                }}
-                disallowEmptySelection
-                isInvalid={!!errors.planId}
-                errorMessage={errors.planId}
-                description={
-                  selectedPlan ? `${formatMoney(selectedPlan.priceMonthly, { whole: true })} / month` : undefined
-                }
-              >
-                {plans.map((plan) => (
-                  <SelectItem key={plan.id}>{PLAN_LABELS[plan.name]}</SelectItem>
-                ))}
-              </Select>
+            <div className={FIELD_GRID}>
+              {/* The price is a line under the select, not its description: HeroUI draws an outside label over
+                  the trigger when a select has a description. */}
+              <div className="flex flex-col gap-1.5">
+                <Select
+                  label="Plan"
+                  selectedKeys={selectedPlanId ? new Set([selectedPlanId]) : new Set()}
+                  onSelectionChange={(keys) => {
+                    const value = Array.from(keys)[0];
+                    if (typeof value === "string") setPlanId(value);
+                  }}
+                  disallowEmptySelection
+                  isInvalid={!!errors.planId}
+                  errorMessage={errors.planId}
+                >
+                  {plans.map((plan) => (
+                    <SelectItem key={plan.id}>{PLAN_LABELS[plan.name]}</SelectItem>
+                  ))}
+                </Select>
+                {selectedPlan ? (
+                  <p className="px-1 text-caption text-fg-muted num">
+                    {formatMoney(selectedPlan.priceMonthly, { whole: true })} / month
+                  </p>
+                ) : null}
+              </div>
               <Select
                 label="Billing cycle"
                 selectedKeys={new Set([billingCycle])}
