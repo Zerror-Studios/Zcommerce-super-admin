@@ -70,3 +70,25 @@ export function findLatestSubscription(
     subscriptions.filter((subscription) => subscription.clientId === clientId),
   ).get(clientId);
 }
+
+// ─── Collections plan filter (PRD-024 FR-1.2, D-02) ──────────────────────
+
+/**
+ * The `planId` that makes `platformCollections` filter by a plan **tier**.
+ * The server compares tiers, but looks the id up only among the plan
+ * versions stores are subscribed to; a version nobody is on (a newer one,
+ * or another store's custom plan) emptied the table. So send a version some
+ * subscription is on; with none on that tier, any version of the tier (the
+ * server then rightly finds no store).
+ */
+export function collectionsPlanIdForTier(
+  tier: string,
+  subscriptions: readonly Subscription[],
+  plans: readonly { id: string; name: string }[],
+): string | null {
+  const subscribed = subscriptions.find(
+    (subscription) => subscription.plan === tier && subscription.planId,
+  );
+  if (subscribed?.planId) return subscribed.planId;
+  return plans.find((plan) => plan.name === tier)?.id ?? null;
+}

@@ -67,12 +67,16 @@ export const PLATFORM_TENANT_FIELDS = gql`
       orders30d
       revenue30d
       growthPercent
+      previousRevenue
+      previousOrders
       storageMb
       staffCount
       lastActiveAt
       pageViews30d
       sessions30d
       conversionRate30d
+      partial
+      messagesThisMonth
     }
     suspendedAt
     suspendReason

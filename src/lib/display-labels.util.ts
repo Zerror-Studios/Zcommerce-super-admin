@@ -18,6 +18,7 @@ import {
   type SubscriptionHealthBucket,
   type SubscriptionStatus,
 } from "../types";
+import type { PlatformRole } from "../types/platform-api";
 
 // ─── Ordered value lists ──────────────────────────────────────────────────
 
@@ -61,6 +62,15 @@ export const HEALTH_BUCKET_LABELS: Record<SubscriptionHealthBucket, string> = {
   healthy: "Healthy",
   at_risk: "At risk",
   unhealthy: "Critical",
+};
+
+/** Platform staff roles (ADR-001); the shell and Settings › Team. */
+export const PLATFORM_ROLE_LABELS: Record<PlatformRole, string> = {
+  PLATFORM_OWNER: "Owner",
+  PLATFORM_ADMIN: "Admin",
+  BILLING_MANAGER: "Billing manager",
+  SUPPORT_AGENT: "Support agent",
+  READ_ONLY: "Read-only",
 };
 
 /** App providers as the apps service names them (PRD-010, PRD-011, PRD-012). */
@@ -117,4 +127,9 @@ export function getAppProviderLabel(provider: string): string {
 /** Human-readable app category ("ANALYTICS" → "Analytics"); unknown values pass through. */
 export function getChannelTypeLabel(channelType: string): string {
   return lookupLabel(CHANNEL_TYPE_LABELS, channelType);
+}
+
+/** Human-readable platform role ("BILLING_MANAGER" → "Billing manager"). */
+export function getPlatformRoleLabel(role: string): string {
+  return lookupLabel(PLATFORM_ROLE_LABELS, role);
 }

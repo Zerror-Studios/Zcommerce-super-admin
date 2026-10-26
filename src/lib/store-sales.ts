@@ -1,111 +1,117 @@
 /**
- * Store sales (what stores sell to their own customers), from the usage
- * snapshot each tenant carries (`revenue30d` as net revenue, `orders30d`,
- * `growthPercent`, and since PRD-012 FR-8.2 `sessions30d`, `pageViews30d`
- * and the server's `conversionRate30d`). Every figure covers the last 30 days
- * and compares with the 30 days before. growthPercent −100 means "no previous
- * sales". Traffic and conversion are shown as the server sent them.
+ * Store sales (what stores sell to their own customers), from the server
+ * rollup `platformStoreSales` (PRD-024 FR-3.4). The server sums each
+ * store's daily figures over the chosen window and the window before it,
+ * computes growth (null when the window before sold nothing) and reports
+ * totals per currency. Nothing is summed or worked back in the browser.
  */
 
-import type { Client } from "../types";
+import type {
+  PlatformStoreSales,
+  PlatformStoreSalesRow,
+  PlatformStoreSalesTotal,
+} from "../types/platform-api";
+
+// ─── Constants ────────────────────────────────────────────────────────────
+
+/** Stores whose sales fell by this much or more are flagged on Store sales. */
+export const SALES_DROP_ALERT_PERCENT = 20;
+
+/** Rows per page of `platformStoreSales` (the API caps a page at 100). */
+export const STORE_SALES_PAGE_LIMIT = 100;
+
+/** PRD-024 FR-2.1: what a null growth means, wherever it shows as "—". */
+export const NO_PREVIOUS_SALES_COPY = "No previous sales to compare";
+
+// ─── Types ────────────────────────────────────────────────────────────────
 
 export interface StoreSalesRow {
   clientId: string;
   storeName: string;
-  ownerEmail: string;
-  plan: Client["plan"];
-  status: Client["status"];
-  /** Net sales in the last 30 days. */
+  slug: string;
+  currency: string;
+  /** Net sales in the window. */
   sales: number;
   orders: number;
-  /** Average order value; null without orders. */
+  previousSales: number;
+  previousOrders: number;
+  /** Server average order value; null without orders. */
   averageOrder: number | null;
-  /** Change vs the previous 30 days; null when there were no sales then. */
+  /** Server growth vs the window before; null when nothing sold then. */
   changePercent: number | null;
-  /** GA4 sessions in the last 30 days; 0 without analytics. */
-  sessions: number;
-  pageViews: number;
-  /** Server conversion rate (percent); null without sessions. */
-  conversionRate: number | null;
 }
 
-/** Sales in the previous 30 days, worked back from the current sales and the change. */
-function previousSales(client: Client): number {
-  return client.growthPercent <= -100 ? 0 : client.revenue / (1 + client.growthPercent / 100);
-}
-
-export function storeSalesRows(clients: Client[]): StoreSalesRow[] {
-  return clients
-    .map((client) => ({
-      clientId: client.id,
-      storeName: client.storeName,
-      ownerEmail: client.ownerEmail,
-      plan: client.plan,
-      status: client.status,
-      sales: client.revenue,
-      orders: client.orders30d,
-      averageOrder: client.orders30d > 0 ? client.revenue / client.orders30d : null,
-      changePercent: client.growthPercent <= -100 ? null : client.growthPercent,
-      sessions: client.sessions30d,
-      pageViews: client.pageViews30d,
-      conversionRate: client.sessions30d > 0 ? client.conversionRate30d : null,
-    }))
-    .sort((a, b) => b.sales - a.sales);
-}
-
-export interface StoreSalesSummary {
+export interface StoreSalesTotal {
+  currency: string;
   sales: number;
   orders: number;
+  previousSales: number;
+  previousOrders: number;
+  /** Net sales ÷ orders of the server totals; null without orders. */
   averageOrder: number | null;
-  /** Total sales change vs the previous 30 days; null when nothing sold then. */
   changePercent: number | null;
-  /** Stores with at least one order in the last 30 days. */
-  sellingStores: number;
-  /** Stores whose analytics reported at least one session (PRD-012 FR-8.3). */
-  storesWithTraffic: number;
-  totalStores: number;
+  stores: number;
 }
 
-export function storeSalesSummary(clients: Client[]): StoreSalesSummary {
-  const sales = clients.reduce((sum, client) => sum + client.revenue, 0);
-  const orders = clients.reduce((sum, client) => sum + client.orders30d, 0);
-  const previous = clients.reduce((sum, client) => sum + previousSales(client), 0);
+export interface StoreSalesView {
+  rangeStart: string;
+  rangeEnd: string;
+  previousStart: string;
+  previousEnd: string;
+  /** One row per currency, largest first. */
+  totals: StoreSalesTotal[];
+  rows: StoreSalesRow[];
+  totalCount: number;
+}
+
+// ─── Mapping ──────────────────────────────────────────────────────────────
+
+export function toStoreSalesRow(row: PlatformStoreSalesRow): StoreSalesRow {
   return {
-    sales,
-    orders,
-    averageOrder: orders > 0 ? sales / orders : null,
-    changePercent: previous > 0 ? ((sales - previous) / previous) * 100 : null,
-    sellingStores: clients.filter((client) => client.orders30d > 0).length,
-    storesWithTraffic: clients.filter((client) => client.sessions30d > 0).length,
-    totalStores: clients.length,
+    clientId: row.tenantId,
+    storeName: row.name,
+    slug: row.slug,
+    currency: row.currency,
+    sales: row.revenue,
+    orders: row.orders,
+    previousSales: row.previousRevenue,
+    previousOrders: row.previousOrders,
+    averageOrder: row.orders > 0 ? row.averageOrderValue : null,
+    changePercent: row.growthPercent,
   };
 }
 
-export interface StoreSalesByPlan {
-  plan: Client["plan"];
-  sales: number;
-  orders: number;
-  stores: number;
-  sharePercent: number;
+export function toStoreSalesTotal(total: PlatformStoreSalesTotal): StoreSalesTotal {
+  return {
+    currency: total.currency,
+    sales: total.revenue,
+    orders: total.orders,
+    previousSales: total.previousRevenue,
+    previousOrders: total.previousOrders,
+    // A ratio of two server totals of one currency, never a sum across stores.
+    averageOrder: total.orders > 0 ? total.revenue / total.orders : null,
+    changePercent: total.growthPercent,
+    stores: total.stores,
+  };
 }
 
-export function storeSalesByPlan(clients: Client[]): StoreSalesByPlan[] {
-  const total = clients.reduce((sum, client) => sum + client.revenue, 0);
-  const plans = [...new Set(clients.map((client) => client.plan))];
-  return plans
-    .map((plan) => {
-      const group = clients.filter((client) => client.plan === plan);
-      const sales = group.reduce((sum, client) => sum + client.revenue, 0);
-      return {
-        plan,
-        sales,
-        orders: group.reduce((sum, client) => sum + client.orders30d, 0),
-        stores: group.length,
-        sharePercent: total > 0 ? (sales / total) * 100 : 0,
-      };
-    })
-    .sort((a, b) => b.sales - a.sales);
+export function toStoreSalesView(data: PlatformStoreSales): StoreSalesView {
+  return {
+    rangeStart: data.rangeStart,
+    rangeEnd: data.rangeEnd,
+    previousStart: data.previousStart,
+    previousEnd: data.previousEnd,
+    totals: data.totals.map(toStoreSalesTotal).sort((a, b) => b.sales - a.sales),
+    rows: data.stores.map(toStoreSalesRow),
+    totalCount: data.totalCount,
+  };
 }
 
-/** Stores whose sales fell by this much or more are flagged on Store sales. */
-export const SALES_DROP_ALERT_PERCENT = 20;
+/** No orders in the window, or sales down `SALES_DROP_ALERT_PERCENT` or more. */
+export function storesNeedingALook(rows: readonly StoreSalesRow[]): StoreSalesRow[] {
+  return rows.filter(
+    (row) =>
+      row.orders === 0 ||
+      (row.changePercent != null && row.changePercent <= -SALES_DROP_ALERT_PERCENT),
+  );
+}

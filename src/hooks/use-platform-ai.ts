@@ -27,6 +27,7 @@ import type {
   PlatformAiDataHealthList,
   PlatformAiTenantSetting,
   PlatformAiTopQuestion,
+  PlatformAiTopUpRequestStatus,
   PlatformAiTopUpRequestList,
   PlatformAiTotals,
   PlatformAiUsageList,
@@ -44,6 +45,16 @@ interface HookState<T> {
 export interface AiPageArgs {
   limit: number;
   offset: number;
+}
+
+/** PRD-024 FR-1.10 (B-11): the top-ups list by status (the server's default is OPEN). */
+export interface AiTopUpArgs extends AiPageArgs {
+  status?: PlatformAiTopUpRequestStatus;
+}
+
+/** PRD-024 FR-1.10 (B-11): false lists every store with insights, not only those needing attention. */
+export interface AiDataHealthArgs extends AiPageArgs {
+  needsAttention?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -71,11 +82,12 @@ export function useAiPlatformTotals(): HookState<PlatformAiTotals | null> {
 }
 
 export function useAiUsageByTenant(
-  args: AiPageArgs & { search: string },
+  args: AiPageArgs & { search: string; tenantId?: string },
 ): HookState<PlatformAiUsageList | null> {
   const canRead = useCanReadAi();
   const query = useQuery<{ aiUsageByTenant: PlatformAiUsageList }>(AI_USAGE_BY_TENANT, {
-    variables: { limit: args.limit, offset: args.offset, search: args.search || null },
+    // PRD-024 FR-3.6: `tenantId` reads one store's row (the store page).
+    variables: { limit: args.limit, offset: args.offset, search: args.search || null, tenantId: args.tenantId ?? null },
     skip: !canRead,
     fetchPolicy: "cache-and-network",
   });
@@ -87,10 +99,10 @@ export function useAiUsageByTenant(
   };
 }
 
-export function useAiTopUpRequests(args: AiPageArgs): HookState<PlatformAiTopUpRequestList | null> {
+export function useAiTopUpRequests(args: AiTopUpArgs): HookState<PlatformAiTopUpRequestList | null> {
   const canRead = useCanReadAi();
   const query = useQuery<{ aiTopUpRequests: PlatformAiTopUpRequestList }>(AI_TOP_UP_REQUESTS, {
-    variables: { status: "OPEN", limit: args.limit, offset: args.offset },
+    variables: { status: args.status ?? "OPEN", limit: args.limit, offset: args.offset },
     skip: !canRead,
     fetchPolicy: "cache-and-network",
   });
@@ -102,10 +114,10 @@ export function useAiTopUpRequests(args: AiPageArgs): HookState<PlatformAiTopUpR
   };
 }
 
-export function useAiDataHealth(args: AiPageArgs): HookState<PlatformAiDataHealthList | null> {
+export function useAiDataHealth(args: AiDataHealthArgs): HookState<PlatformAiDataHealthList | null> {
   const canRead = useCanReadAi();
   const query = useQuery<{ aiDataHealth: PlatformAiDataHealthList }>(AI_DATA_HEALTH, {
-    variables: { needsAttention: true, limit: args.limit, offset: args.offset },
+    variables: { needsAttention: args.needsAttention ?? true, limit: args.limit, offset: args.offset },
     skip: !canRead,
     fetchPolicy: "cache-and-network",
   });

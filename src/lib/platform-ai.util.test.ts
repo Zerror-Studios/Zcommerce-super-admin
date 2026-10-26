@@ -17,6 +17,8 @@ import {
   formatRate,
   formatUsd,
   metricKeyLabel,
+  topUpEmptyCopy,
+  topUpStatusOf,
 } from "./platform-ai.util";
 
 const config: PlatformAiConfig = {
@@ -249,5 +251,13 @@ describe("data health", () => {
     expect(
       aiDataHealthIssues({ ...row, costCoveragePct: 95, settingsFilled: true, computeStatus: "OK" }),
     ).toEqual([]);
+  });
+});
+
+describe("top-up status filter (PRD-024 FR-1.10)", () => {
+  it("accepts the three statuses and falls back to Open", () => {
+    expect(topUpStatusOf("GRANTED")).toBe("GRANTED");
+    expect(topUpStatusOf("bogus")).toBe("OPEN");
+    expect(topUpEmptyCopy("DISMISSED")).toBe("No dismissed requests");
   });
 });

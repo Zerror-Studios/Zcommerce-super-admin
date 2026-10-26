@@ -25,6 +25,8 @@ export const AI_PLATFORM_TOTALS = gql`
       budgetUsedPercent
       alertsCrossed
       chatCalls
+      answeredQuestions
+      cachedAnswers
       avgCostPerQuestionUsd
       cacheHitRate
       refusals
@@ -39,8 +41,8 @@ export const AI_PLATFORM_TOTALS = gql`
 `;
 
 export const AI_USAGE_BY_TENANT = gql`
-  query AiUsageByTenant($limit: Int, $offset: Int, $search: String) {
-    aiUsageByTenant(limit: $limit, offset: $offset, search: $search) {
+  query AiUsageByTenant($limit: Int, $offset: Int, $search: String, $tenantId: ID) {
+    aiUsageByTenant(limit: $limit, offset: $offset, search: $search, tenantId: $tenantId) {
       totalCount
       items {
         tenantId

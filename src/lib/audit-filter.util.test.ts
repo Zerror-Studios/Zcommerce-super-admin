@@ -3,6 +3,8 @@ import {
   ACTION_PREFIX_TOO_LONG_COPY,
   auditFilterOf,
   auditSearchErrorCopy,
+  nextActivityLimit,
+  tenantActivityFilter,
 } from "./audit-filter.util";
 
 describe("audit log search (PRD-014 close-out)", () => {
@@ -28,5 +30,16 @@ describe("audit log search (PRD-014 close-out)", () => {
     expect(
       auditSearchErrorCopy({ graphQLErrors: [{ extensions: { code: "FORBIDDEN" } }] }),
     ).toBeNull();
+  });
+});
+
+describe("store activity (PRD-024 FR-1.12)", () => {
+  it("filters the audit log on the store as target", () => {
+    expect(tenantActivityFilter("t-1")).toEqual({ targetId: "t-1" });
+  });
+
+  it("loads 20 more rows at a time, never past the server's cap", () => {
+    expect(nextActivityLimit(20)).toBe(40);
+    expect(nextActivityLimit(90)).toBe(100);
   });
 });

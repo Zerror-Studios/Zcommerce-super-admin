@@ -1,13 +1,20 @@
 import { useMemo, useState, type Key } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import type { Client, ClientStatus, Subscription } from "../../types";
-import { getPlanLabel, PLAN_LABELS, PLAN_NAMES } from "../../lib/display-labels.util";
+import type { Client, Subscription } from "../../types";
+import { getPlanLabel } from "../../lib/display-labels.util";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import { getStoreHealth } from "../../lib/storeHealth";
-import { paymentState, storeLifecycle } from "../../lib/storeStatus";
+import {
+  normaliseLifecycleKey,
+  paymentState,
+  STORE_LIFECYCLE_FILTERS,
+  storeLifecycle,
+  storeLifecycleLabel,
+} from "../../lib/storeStatus";
+import { clientPlanLabel, planFilterOptions } from "../../lib/plan-identity.util";
 import {
   compareByHealthThenDue,
   healthBandEnum,
@@ -101,7 +108,12 @@ const tableColumns: DataTableColumn[] = [...allColumns, { key: "actions", label:
 /** Shown by default; Plan and Renewal are optional columns (docs/design/04-super-admin.md §3.3). */
 const defaultColumnKeys: ColumnKey[] = ["storeName", "status", "payment", "storeHealth", "sales", "mrr"];
 
-const statusLabels: Record<ClientStatus, string> = { active: "Live", trial: "Trial", suspended: "Suspended" };
+
+/** A status filter chip's label (legacy `active` reads as Live). */
+function statusFilterLabel(value: string): string {
+  const key = normaliseLifecycleKey(value);
+  return key ? storeLifecycleLabel(key) : value;
+}
 
 const healthLabels: Record<HealthBandKey, string> = {
   [healthBandEnum.HEALTHY]: "Healthy",
@@ -113,6 +125,7 @@ const healthLabels: Record<HealthBandKey, string> = {
 const tabItems: { key: StoreTab; label: string }[] = [
   { key: storeTabEnum.ALL, label: "All" },
   { key: storeTabEnum.LIVE, label: "Live" },
+  { key: storeTabEnum.SET_UP, label: "Set up" },
   { key: storeTabEnum.TRIAL, label: "Trial" },
   { key: storeTabEnum.UNPAID, label: "Unpaid" },
   { key: storeTabEnum.SUSPENDED, label: "Suspended" },
@@ -249,7 +262,10 @@ export function ClientsTable({
   syncUrl = false,
 }: ClientsTableProps) {
   const navigate = useNavigate();
-  const { subscriptions } = useClients();
+  const { subscriptions, plans } = useClients();
+  // PRD-024 FR-1.3 (B-08): plan options and labels from platformPlans, by version id.
+  const planOptions = useMemo(() => planFilterOptions(plans), [plans]);
+  const planLabelById = useMemo(() => new Map(planOptions.map((option) => [option.key, option.label])), [planOptions]);
   const { can, user } = useAuth();
   // Client-side mirror of the backend guard (review C-M5): the server still decides.
   const canManage = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
@@ -325,12 +341,12 @@ export function ClientsTable({
   const applied: AppliedFilterItem[] = [
     ...filters.plans.map((plan) => ({
       key: `plan-${plan}`,
-      label: `Plan: ${getPlanLabel(plan as Client["plan"])}`,
+      label: `Plan: ${planLabelById.get(plan) ?? getPlanLabel(plan)}`,
       onRemove: () => state.setFilters({ plans: filters.plans.filter((p) => p !== plan) }),
     })),
     ...filters.statuses.map((status) => ({
       key: `status-${status}`,
-      label: `Status: ${statusLabels[status as ClientStatus] ?? status}`,
+      label: `Status: ${statusFilterLabel(status)}`,
       onRemove: () => state.setFilters({ statuses: filters.statuses.filter((s) => s !== status) }),
     })),
     ...filters.health.map((band) => ({
@@ -402,7 +418,7 @@ export function ClientsTable({
       case "mrr":
         return <span className="num">{formatMoney(client.mrr, { whole: true })}</span>;
       case "plan":
-        return <span>{getPlanLabel(client.plan)}</span>;
+        return <span>{clientPlanLabel(client)}</span>;
       case "renewalDate":
         return <RenewalBadge subscription={subscription} />;
       case "actions": {
@@ -511,15 +527,15 @@ export function ClientsTable({
           <>
             <FilterCheckboxGroup
               label="Plan"
-              options={PLAN_NAMES.map((planOption) => ({ key: planOption, label: PLAN_LABELS[planOption] }))}
+              options={planOptions}
               value={filters.plans}
               onChange={(value) => state.setFilters({ plans: value })}
             />
             <FilterCheckboxGroup
               label="Status"
-              options={(["active", "trial", "suspended"] as ClientStatus[]).map((statusOption) => ({
+              options={STORE_LIFECYCLE_FILTERS.map((statusOption) => ({
                 key: statusOption,
-                label: statusLabels[statusOption],
+                label: storeLifecycleLabel(statusOption),
               }))}
               value={filters.statuses}
               onChange={(value) => state.setFilters({ statuses: value })}

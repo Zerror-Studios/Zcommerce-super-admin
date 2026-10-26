@@ -34,8 +34,17 @@ export default defineConfig(({ command, mode }) => {
     );
   }
 
+  // PRD-024 FR-1.5 (P-06): the shell shows the build's version, not a
+  // hard-coded one: package version plus the commit when the host gives it.
+  const commit = (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7);
+  const version = process.env.npm_package_version ?? "dev";
+  const appVersion = commit ? `${version}+${commit}` : version;
+
   return {
     plugins: [react(), tailwindcss()],
+    define: {
+      __APP_VERSION__: JSON.stringify(appVersion),
+    },
     server: {
       // PRD-005 FR-11.1: same-origin `/v1/graphql` in dev, so the HttpOnly
       // refresh cookie is first-party. API_GATEWAY_URL is the backend

@@ -265,7 +265,11 @@ export interface TenantUsage {
   orders30d: number;
   /** Net revenue (PRD-012 FR-8.2). */
   revenue30d: number;
-  growthPercent: number;
+  /** PRD-024 FR-2.1: null when the previous 30 days sold nothing. */
+  growthPercent: number | null;
+  /** PRD-024 FR-2.1: the previous 30 days' net revenue and paid orders. */
+  previousRevenue?: number | null;
+  previousOrders?: number | null;
   storageMb: number;
   staffCount: number;
   lastActiveAt: string | null;
@@ -273,6 +277,10 @@ export interface TenantUsage {
   sessions30d: number;
   /** Paid orders ÷ GA4 sessions, as a percent. */
   conversionRate30d: number;
+  /** PRD-024 FR-2.7: a collector failed; its figures were carried from the previous snapshot. */
+  partial?: boolean;
+  /** PRD-024 FR-3.7: messages sent this month (IST), every channel; null until counted. */
+  messagesThisMonth?: number | null;
 }
 
 export interface PlatformTenant {
@@ -375,6 +383,12 @@ export interface TenantPurgeRecord {
 export interface PlatformList<T> {
   items: T[];
   totalCount: number;
+}
+
+/** PRD-024 FR-3.5: rows per status under every filter except status. */
+export interface PlatformStatusCount {
+  status: string;
+  count: number;
 }
 
 /**
@@ -520,6 +534,17 @@ export interface PlatformInvoice {
   amountDue: number;
   /** The new period of a stopped store (FR-27). */
   restart: boolean;
+  /** PRD-024 FR-3.8: oldest first; only the detail read selects it. */
+  statusHistory?: PlatformInvoiceStatusChange[];
+  /** PRD-024 FR-3.8: linked payment rows, newest first; only the detail read selects it. */
+  payments?: PlatformPayment[];
+}
+
+export interface PlatformInvoiceStatusChange {
+  status: PlatformInvoiceStatus;
+  at: string;
+  /** A platform user's email, or "system". */
+  actor: string;
 }
 
 export interface PlatformInvoiceFilter {
@@ -673,7 +698,12 @@ export interface PlatformRevenueOverview {
     txnCount: number;
   }[];
   summary: {
+    /** PRD-024 FR-2.2: ACTIVE subscriptions only. */
     monthlyBilling: number;
+    /** PRD-024 FR-2.2: monthly price of TRIAL subscriptions (not billed yet). */
+    trialPipeline: number;
+    /** PRD-024 FR-2.2: monthly price of PAST_DUE subscriptions. */
+    atRiskMrr: number;
     billableStores: number;
     earnedMonth: number;
     earnedYear: number;
@@ -705,9 +735,10 @@ export interface StorePerformanceRow {
   name: string;
   sessions30d: number;
   orders30d: number;
-  /** Net revenue in the last 30 days. */
+  /** PRD-024 FR-3.3: net revenue in the chosen window (the name is kept). */
   revenue30d: number;
-  growthPercent: number;
+  /** PRD-024 FR-2.1: null when the window before sold nothing. */
+  growthPercent: number | null;
   /** Percent. */
   conversionRate30d: number;
   pageViews30d: number;
@@ -730,6 +761,8 @@ export interface PlatformAnalyticsOverview {
     /** Percent. */
     conversionRate: number;
     storesWithTraffic: number;
+    /** PRD-024 FR-2.6: stores with GA4 sessions in the window (the conversion base). */
+    storesWithSessions: number;
     storesTotal: number;
   };
   previous: {
@@ -932,6 +965,10 @@ export interface PlatformAiTotals {
   /** Thresholds already passed, as whole percentages (e.g. [50, 80]). */
   alertsCrossed: number[];
   chatCalls: number;
+  /** PRD-024 FR-2.8: answered questions (cached answers included), as on Usage. */
+  answeredQuestions: number;
+  /** PRD-024 FR-2.8: answered from the answer cache. */
+  cachedAnswers: number;
   avgCostPerQuestionUsd: number;
   /** 0–1. */
   cacheHitRate: number;
@@ -1048,4 +1085,96 @@ export interface PlatformAiBenchmark {
   median: number;
   p75: number;
   computedFor: string;
+}
+
+// ─── PRD-024 Phase C reads ────────────────────────────────────────────────
+
+export interface PlatformMrrPlanRow {
+  /** Plan tier name. */
+  plan: string;
+  mrr: number;
+  stores: number;
+}
+
+/** One recorded day (FR-3.1); movements are null on the first recorded day. */
+export interface PlatformMrrDay {
+  /** YYYY-MM-DD. */
+  date: string;
+  mrr: number;
+  payingStores: number;
+  newMrr: number | null;
+  expansionMrr: number | null;
+  contractionMrr: number | null;
+  churnedMrr: number | null;
+  byPlan: PlatformMrrPlanRow[];
+}
+
+export interface PlatformStoreSalesRow {
+  tenantId: string;
+  slug: string;
+  name: string;
+  currency: string;
+  revenue: number;
+  orders: number;
+  previousRevenue: number;
+  previousOrders: number;
+  /** null when the previous window sold nothing. */
+  growthPercent: number | null;
+  averageOrderValue: number | null;
+}
+
+/** Per currency; stores in different currencies are never added together. */
+export interface PlatformStoreSalesTotal {
+  currency: string;
+  revenue: number;
+  orders: number;
+  previousRevenue: number;
+  previousOrders: number;
+  growthPercent: number | null;
+  stores: number;
+}
+
+export interface PlatformStoreSales {
+  rangeStart: string;
+  rangeEnd: string;
+  previousStart: string;
+  previousEnd: string;
+  totals: PlatformStoreSalesTotal[];
+  /** Highest revenue first; one page. */
+  stores: PlatformStoreSalesRow[];
+  totalCount: number;
+}
+
+export type PlatformReminderResult = "SENT" | "QUEUED" | "NOT_SENT_NO_CHANNEL";
+
+export interface PlatformReminderLogEntry {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  channel: "EMAIL" | "SMS" | "WHATSAPP";
+  recipient: string;
+  subject: string;
+  /** Negative = days before the due date. */
+  offsetDays: number;
+  dueDay: string;
+  /** "job", or the platform user id who sent it. */
+  requestedBy: string;
+  createdAt: string | null;
+  sentAt: string | null;
+  /** Schema `String!`: one of the results above, or a newer one. */
+  result: PlatformReminderResult | string;
+}
+
+export interface PlatformJobRun {
+  id: string;
+  job: string;
+  day: string;
+  /** RUNNING | DONE | DONE_WITH_ERRORS | FAILED */
+  status: string;
+  startedAt: string;
+  finishedAt: string | null;
+  durationMs: number | null;
+  /** The job's summary counts, as JSON. */
+  summary: string | null;
+  error: string | null;
 }

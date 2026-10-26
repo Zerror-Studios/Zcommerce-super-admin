@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthlyUsage, type UsageSnapshot } from "./usage-history.util";
+import { monthlyUsage, performanceSeries, type UsageSnapshot } from "./usage-history.util";
 
 const snapshot = (date: string, products: number): UsageSnapshot => ({
   date,
@@ -28,5 +28,18 @@ describe("monthlyUsage (PLT-13)", () => {
 
   it("returns nothing for no snapshots", () => {
     expect(monthlyUsage([])).toEqual([]);
+  });
+});
+
+describe("performanceSeries (PRD-024 FR-1.12)", () => {
+  it("charts each month's last snapshot, oldest first", () => {
+    const points = performanceSeries([
+      { ...snapshot("2026-10-25T00:00:00.000Z", 1), revenue30d: 900, orders30d: 9 },
+      { ...snapshot("2026-09-30T00:00:00.000Z", 1), revenue30d: 500, orders30d: 5 },
+    ]);
+    expect(points.map((point) => [point.month, point.revenue30d, point.orders30d])).toEqual([
+      ["2026-09", 500, 5],
+      ["2026-10", 900, 9],
+    ]);
   });
 });

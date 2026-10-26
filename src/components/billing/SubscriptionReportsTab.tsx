@@ -3,11 +3,10 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { PlanName, SubscriptionHealthBucket } from "../../types";
 import { getPlanLabel, PLAN_NAMES } from "../../lib/display-labels.util";
-import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
+import { collectionsPlanIdForTier, latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { useClients } from "../../providers/ClientsProvider";
 import { useCollections } from "../../hooks/use-platform-reports";
 import { InvoiceRowActions } from "./InvoiceRowActions";
-import { collectionRate } from "../../lib/periods";
 import { downloadCsv, rowsToCsv } from "../../lib/report-csv";
 import { paymentState } from "../../lib/storeStatus";
 import type { PaymentReportRow, ReportDrillFilter, ShopReportRow } from "../../types/reports";
@@ -176,7 +175,8 @@ export function SubscriptionReportsTab() {
     endDate: range.endDate,
     drill,
     search: table.search,
-    planId: plan === "all" ? null : (planList.find((p) => p.name === plan)?.id ?? null),
+    // PRD-024 FR-1.2, FR-2.3: the server resolves any version id to its tier and compares tiers.
+    planId: plan === "all" ? null : collectionsPlanIdForTier(plan, subscriptions, planList),
     health,
   });
   const loading = api.loading;
@@ -185,19 +185,20 @@ export function SubscriptionReportsTab() {
   const shopRows = api.data?.shopRows ?? [];
   const paymentRows = api.data?.paymentRows ?? [];
 
-  // KPI strip (docs/design/04-super-admin.md §3.5): Billed = Collected + Pending + Overdue, so the cells add up
-  // and the collection rate is lib/periods collectionRate(). Pending/Overdue match the table drill-downs.
+  // KPI strip (PRD-024 FR-2.3): every cell is the server's figure for one range. Due = invoices due in the range;
+  // Collected = what those invoices were paid (and its share); Received = payments received in the range,
+  // whatever invoice they paid; Open and Overdue = the range's unpaid invoices. Nothing is added up here.
   const kpis = useMemo(() => {
     if (!overview) return null;
-    const collected = overview.currentMonth.collectedAmount;
-    const previousCollected = overview.previousMonth.collectedAmount;
-    const open = overview.pendingPayments.amount + overview.overduePayments.amount;
+    const hasDue = overview.expectedRevenue > 0;
+    const previousHasDue = overview.previousMonth.expectedAmount > 0;
     return {
-      billed: collected + open,
-      collected,
-      collectedDelta:
-        previousCollected > 0 ? ((collected - previousCollected) / previousCollected) * 100 : null,
-      rate: collectionRate(collected, open),
+      due: overview.expectedRevenue,
+      collected: overview.collectedRevenue,
+      rate: hasDue ? overview.collectedPercent : null,
+      rateDelta:
+        hasDue && previousHasDue ? overview.collectedPercent - overview.previousMonth.collectedPercent : null,
+      received: overview.paidThisMonth,
       pending: overview.pendingPayments,
       overdue: overview.overduePayments,
     };
@@ -254,7 +255,7 @@ export function SubscriptionReportsTab() {
       title="Collections"
       description={
         kpis
-          ? `${formatMoney(kpis.billed, { whole: true })} billed · ${kpis.rate != null ? `${formatPercent(kpis.rate, 0)} collected` : "nothing collected yet"} · ${formatCount(kpis.overdue.count)} overdue`
+          ? `${formatMoney(kpis.due, { whole: true })} due · ${kpis.rate != null ? `${formatPercent(kpis.rate, 0)} of it collected` : "no invoices due"} · ${formatCount(kpis.overdue.count)} overdue`
           : "What stores owe and have paid for this period"
       }
       actions={
@@ -405,10 +406,10 @@ export function SubscriptionReportsTab() {
         <KpiStrip className="overflow-hidden">
           <StatCard
             bare
-            label={isThisMonth ? "Billed this month" : "Billed"}
-            value={kpis?.billed ?? 0}
+            label={isThisMonth ? "Due this month" : "Due in this period"}
+            value={kpis?.due ?? 0}
             format="money"
-            deltaLabel="Collected + pending + overdue"
+            deltaLabel="Invoices due in this period (void excluded)"
             isLoading={loading}
             href="?"
             className={kpiCellClass(drill === "all" && tableView === "shops")}
@@ -418,18 +419,33 @@ export function SubscriptionReportsTab() {
             label={kpis?.rate != null ? `Collected · ${formatPercent(kpis.rate, 0)}` : "Collected"}
             value={kpis?.collected ?? 0}
             format="money"
-            delta={kpis?.collectedDelta}
-            deltaLabel="vs previous period"
+            delta={kpis?.rateDelta}
+            deltaUnit="pts"
+            deltaLabel={kpis?.rateDelta != null ? "of due invoices, vs previous period" : "Paid of the invoices due"}
+            isLoading={loading}
+            href="?tab=invoices"
+            className={kpiCellClass(drill === "all" && tableView === "payments")}
+          />
+          <StatCard
+            bare
+            label="Received"
+            value={kpis?.received.amount ?? 0}
+            format="money"
+            deltaLabel={
+              kpis
+                ? `${formatCount(kpis.received.count)} ${kpis.received.count === 1 ? "payment" : "payments"} in this period, any invoice`
+                : undefined
+            }
             isLoading={loading}
             href="?tab=invoices&show=paid_month"
             className={kpiCellClass(drill === "paid_month")}
           />
           <StatCard
             bare
-            label="Pending"
+            label="Open"
             value={kpis?.pending.amount ?? 0}
             format="money"
-            deltaLabel={kpis ? `${formatCount(kpis.pending.count)} ${kpis.pending.count === 1 ? "invoice" : "invoices"} due` : undefined}
+            deltaLabel={kpis ? `${formatCount(kpis.pending.count)} ${kpis.pending.count === 1 ? "invoice" : "invoices"} due in this period, unpaid` : undefined}
             isLoading={loading}
             href="?tab=invoices&show=pending"
             className={kpiCellClass(drill === "pending")}
@@ -440,7 +456,7 @@ export function SubscriptionReportsTab() {
             value={kpis?.overdue.amount ?? 0}
             format="money"
             valueTone={kpis && kpis.overdue.amount > 0 ? "danger" : "default"}
-            deltaLabel={kpis ? `${formatCount(kpis.overdue.count)} ${kpis.overdue.count === 1 ? "invoice" : "invoices"} past due` : undefined}
+            deltaLabel={kpis ? `${formatCount(kpis.overdue.count)} ${kpis.overdue.count === 1 ? "invoice" : "invoices"} due in this period, past grace` : undefined}
             isLoading={loading}
             href="?tab=invoices&show=overdue"
             className={kpiCellClass(drill === "overdue")}

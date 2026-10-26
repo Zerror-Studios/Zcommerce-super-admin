@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Subscription } from "../types";
 import {
+  collectionsPlanIdForTier,
   findLatestSubscription,
   latestSubscriptionByClient,
 } from "./subscription-lookup.util";
@@ -53,5 +54,23 @@ describe("latestSubscriptionByClient", () => {
   it("findLatestSubscription returns undefined for unknown clients", () => {
     expect(findLatestSubscription([older], "nope")).toBeUndefined();
     expect(findLatestSubscription([newer, older], "c1")?.id).toBe("new");
+  });
+});
+
+describe("collections plan filter (PRD-024 FR-1.2)", () => {
+  const plans = [
+    { id: "plus-v3", name: "PLUS" },
+    { id: "plus-v2", name: "PLUS" },
+    { id: "starter-v1", name: "STARTER" },
+  ];
+
+  it("sends a plan version some store is subscribed to", () => {
+    const subs = [{ plan: "PLUS", planId: "plus-v2" } as Subscription];
+    expect(collectionsPlanIdForTier("PLUS", subs, plans)).toBe("plus-v2");
+  });
+
+  it("falls back to any version of the tier, or null", () => {
+    expect(collectionsPlanIdForTier("STARTER", [], plans)).toBe("starter-v1");
+    expect(collectionsPlanIdForTier("ENTERPRISE", [], plans)).toBeNull();
   });
 });

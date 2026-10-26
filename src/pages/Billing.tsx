@@ -2,15 +2,17 @@ import { useMemo } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { InvoicesTab } from "../components/billing/InvoicesTab";
 import { SubscriptionReportsTab } from "../components/billing/SubscriptionReportsTab";
+import { ReminderLogCard } from "../components/billing/ReminderLogCard";
 import { FlaggedPaymentsTab } from "../components/payments/FlaggedPaymentsTab";
 import { StalePendingPayments } from "../components/payments/StalePendingPayments";
 import { PageHeader } from "../components/common/PageHeader";
 import { AutomationSettingsTab } from "../components/settings/AutomationSettingsTab";
 import { TransactionsTab } from "../components/payments/TransactionsTab";
-import { Card, ErrorState, formatCount } from "../components/ui";
+import { Card, ErrorState, formatCount, useTableUrlState } from "../components/ui";
 import { IconPayments, IconSend } from "../components/ui/icons";
 import { toasts } from "../copy";
 import { usePayments } from "../hooks/use-platform-reports";
+import { splitParam } from "../lib/store-table.util";
 
 /**
  * Subscriptions › Collections (route "subscriptions", unchanged), Invoices (PRD-017 FR-4.3), Transactions,
@@ -23,16 +25,18 @@ type BillingSection = (typeof sections)[number];
 export function Billing() {
   const { section } = useParams<{ section: string }>();
   // PRD-005 FR-5.2: platform payments (payment_log), read only on Transactions.
-  const payments = usePayments({ skip: section !== "transactions" });
+  // PRD-024 FR-1.6 (B-01): search and status from the URL are applied by the server.
+  const table = useTableUrlState();
+  const statusFilter = useMemo(() => splitParam(table.filters.status), [table.filters.status]);
+  const payments = usePayments({
+    skip: section !== "transactions",
+    search: table.search,
+    statuses: statusFilter,
+  });
 
-  // The live line under the title (header A): how the loaded payments stand.
-  const statusCounts = useMemo(() => {
-    const counts = { success: 0, pending: 0, failed: 0 };
-    payments.data.forEach((txn) => {
-      if (txn.status === "success" || txn.status === "pending" || txn.status === "failed") counts[txn.status] += 1;
-    });
-    return counts;
-  }, [payments.data]);
+  // The live line under the title (header A): the server's counts per status (PRD-024 FR-3.5),
+  // over every payment matching the search, whatever status filter is applied.
+  const statusCounts = payments.statusCounts;
 
   const active = useMemo(() => {
     if (!section || !(sections as readonly string[]).includes(section)) return null;
@@ -57,6 +61,10 @@ export function Billing() {
           description="Remind stores before their plan renews or when a payment is overdue."
         />
         <AutomationSettingsTab />
+        {/* PRD-024 FR-3.9: what the reminders actually did. */}
+        <div className="mt-4">
+          <ReminderLogCard />
+        </div>
       </div>
     );
   }
@@ -107,7 +115,7 @@ export function Billing() {
         description={
           payments.loading
             ? "What stores paid Zcom for their plans"
-            : `${formatCount(statusCounts.success)} paid · ${formatCount(statusCounts.pending)} due · ${formatCount(statusCounts.failed)} failed`
+            : `${formatCount(statusCounts.success)} paid · ${formatCount(statusCounts.pending)} due · ${formatCount(statusCounts.failed)} failed · ${formatCount(statusCounts.refunded)} refunded`
         }
       />
       {payments.error ? (

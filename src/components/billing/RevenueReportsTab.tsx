@@ -3,8 +3,9 @@ import { endOfDay, startOfMonth, subMonths } from "date-fns";
 import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { getPaymentGatewayLabel, getPlanLabel, PLAN_LABELS } from "../../lib/display-labels.util";
-import { useRevenueOverview } from "../../hooks/use-platform-reports";
+import { useMrrHistory, useRevenueOverview } from "../../hooks/use-platform-reports";
 import { monthTotal } from "../../lib/api-report-adapters";
+import { NOT_RECORDED_COPY, firstRecordedDay, mrrByMonth } from "../../lib/platform-history.util";
 import { downloadCsv, rowsToCsv } from "../../lib/report-csv";
 import type { MonthlyPlanRevenue } from "../../types/reports";
 import { toasts } from "../../copy";
@@ -39,6 +40,7 @@ import {
   Tooltip,
   cx,
   formatCount,
+  formatDate,
   formatMoney,
   formatPercent,
   tableRowClasses,
@@ -75,7 +77,7 @@ function Explained({ children, tip }: { children: ReactNode; tip: ReactNode }) {
 
 interface TooltipPayloadItem {
   dataKey?: string | number;
-  value?: number;
+  value?: number | null;
   color?: string;
   name?: string;
 }
@@ -96,7 +98,10 @@ function ChartTooltip({ active, payload, label }: CustomTooltipProps) {
         <p key={String(entry.dataKey)} className="flex items-center gap-2 text-caption text-fg">
           <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: entry.color }} />
           <span className="text-fg-muted">{entry.name ?? entry.dataKey}</span>
-          <span className="ml-auto pl-3 font-medium num">{formatMoney(entry.value ?? 0, { whole: true })}</span>
+          <span className="ml-auto pl-3 font-medium num">
+            {/* PRD-024 FR-3.1: a month before the first MRR snapshot has no figure. */}
+            {entry.value == null ? NOT_RECORDED_COPY : formatMoney(entry.value, { whole: true })}
+          </span>
         </p>
       ))}
     </div>
@@ -114,13 +119,27 @@ const legendProps = {
 
 const moneyAxis = (v: number) => formatMoney(v, { compact: true });
 
+/** A month's MRR movement; "—" when no recorded day had one (the first day has none). */
+const movement = (value: number | null) => (value == null ? "—" : formatMoney(value, { whole: true }));
+
 export function RevenueReportsTab() {
   const navigate = useNavigate();
   const [range, setRange] = useState<DateRangeValue>(defaultRange);
 
   // PRD-005 FR-5.3: every figure comes from the server rollup.
   const api = useRevenueOverview(range);
-  const { monthly, trend, kpis, billing, planRows, gatewayRows, topStores } = api.data;
+  const { monthly, trend, kpis, planRows, gatewayRows, topStores, summary } = api.data;
+
+  // PRD-024 FR-3.1 (A-02): MRR comes from the daily snapshot job, never
+  // rebuilt from today's subscriptions; months before its first run are
+  // "Not recorded". The trend rows are the monthly rows, in the same order.
+  const mrrApi = useMrrHistory(range);
+  const mrrMonths = useMemo(() => mrrByMonth(mrrApi.data, monthly), [mrrApi.data, monthly]);
+  const mrrSince = firstRecordedDay(mrrApi.data);
+  const trendWithMrr = useMemo(
+    () => trend.map((point, index) => ({ ...point, mrr: mrrMonths[index]?.mrr ?? null })),
+    [trend, mrrMonths],
+  );
 
   const monthlyLabelled = useMemo(
     () => monthly.map((row) => ({ ...row, short: row.label.replace(/ 20\d\d$/, "") })),
@@ -210,9 +229,9 @@ export function RevenueReportsTab() {
           <StatCard
             bare
             isLoading={api.loading}
-            label="Pending"
+            label={<Explained tip="Invoices still open whose due date is in this period">Open invoices</Explained>}
             value={formatMoney(kpis.pendingAmount, { paise: true })}
-            deltaLabel="Awaiting settlement"
+            deltaLabel="Due in this period, unpaid"
           />
           <StatCard
             bare
@@ -225,21 +244,39 @@ export function RevenueReportsTab() {
           <StatCard
             bare
             isLoading={api.loading}
-            label={<Explained tip="Monthly recurring revenue">Monthly billing</Explained>}
-            value={billing}
+            label={
+              <Explained
+                tip={`Monthly recurring revenue from paying (ACTIVE) subscriptions. Not included: ${formatMoney(summary.trialPipeline, { whole: true })} a month in trials and ${formatMoney(summary.atRiskMrr, { whole: true })} a month past due.`}
+              >
+                Monthly billing
+              </Explained>
+            }
+            value={kpis.activeMrr}
             format="money"
-            deltaLabel={`${formatCount(kpis.payingStores)} paying ${kpis.payingStores === 1 ? "store" : "stores"}`}
+            deltaLabel={
+              summary.atRiskMrr > 0
+                ? `${formatCount(kpis.payingStores)} paying · ${formatMoney(summary.atRiskMrr, { whole: true })} past due`
+                : `${formatCount(kpis.payingStores)} paying ${kpis.payingStores === 1 ? "store" : "stores"}`
+            }
           />
         </KpiStrip>
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <Card title="Earnings trend" description="Plan bookings per month · dashed: 3-month average" padding="none">
+          <Card
+            title="Earnings trend"
+            description={
+              mrrSince
+                ? `Plan bookings per month · dashed: MRR at each month end, recorded since ${formatDate(mrrSince)}`
+                : "Plan bookings per month · MRR is not recorded for this period yet"
+            }
+            padding="none"
+          >
             <div className="h-72 px-3 pb-4">
               {trend.length === 0 ? (
                 noData
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={trend} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <ComposedChart data={trendWithMrr} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="reportsRevenueFill" x1="0" y1="0" x2="0" y2="1">
                         {areaGradientStops.map((stop) => (
@@ -262,7 +299,7 @@ export function RevenueReportsTab() {
                     <Line
                       type="monotone"
                       dataKey="mrr"
-                      name="3-month average"
+                      name="MRR"
                       stroke={chartColors.axis}
                       strokeWidth={1.5}
                       strokeDasharray="4 4"
@@ -302,6 +339,56 @@ export function RevenueReportsTab() {
             </div>
           </Card>
         </div>
+
+        <Card
+          title="MRR movement"
+          description={
+            mrrSince
+              ? `From the daily MRR snapshot, recorded since ${formatDate(mrrSince)}. Earlier months are not recorded.`
+              : "From the daily MRR snapshot. Nothing is recorded for this period yet."
+          }
+          padding="none"
+          className="overflow-hidden"
+        >
+          {mrrApi.error ? (
+            <div className="p-4">
+              <ErrorState inline title="Couldn't load the MRR history." onRetry={() => void mrrApi.refetch()} />
+            </div>
+          ) : (
+            <Table aria-label="MRR movement" removeWrapper classNames={cardTableClassNames}>
+              <TableHeader>
+                <TableColumn>Month</TableColumn>
+                <TableColumn align="end">MRR at month end</TableColumn>
+                <TableColumn align="end">Paying stores</TableColumn>
+                <TableColumn align="end">New</TableColumn>
+                <TableColumn align="end">Expansion</TableColumn>
+                <TableColumn align="end">Contraction</TableColumn>
+                <TableColumn align="end">Churned</TableColumn>
+              </TableHeader>
+              <TableBody items={[...mrrMonths].reverse()} isLoading={mrrApi.loading} emptyContent={noData}>
+                {(row) => (
+                  <TableRow key={row.key}>
+                    <TableCell className="font-medium">{row.label}</TableCell>
+                    {row.recordedDays === 0 ? (
+                      <TableCell><span className={cx(right, "text-fg-subtle")}>{NOT_RECORDED_COPY}</span></TableCell>
+                    ) : (
+                      <TableCell><span className={right}>{formatMoney(row.mrr, { whole: true })}</span></TableCell>
+                    )}
+                    <TableCell><span className={right}>{row.payingStores == null ? "—" : formatCount(row.payingStores)}</span></TableCell>
+                    <TableCell><span className={right}>{movement(row.newMrr)}</span></TableCell>
+                    <TableCell><span className={right}>{movement(row.expansionMrr)}</span></TableCell>
+                    <TableCell><span className={right}>{movement(row.contractionMrr)}</span></TableCell>
+                    <TableCell>
+                      <span className={cx(right, row.churnedMrr != null && row.churnedMrr > 0 && toneTextClasses.danger)}>
+                        {movement(row.churnedMrr)}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <Card title="Plan breakdown" padding="none" className="overflow-hidden">

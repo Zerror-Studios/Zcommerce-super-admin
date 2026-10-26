@@ -8,15 +8,13 @@ import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from 
 import { useMemo } from "react";
 
 import { PLATFORM_USAGE } from "../../graphql/tenants";
-import { monthlyUsage, type UsageSnapshot } from "../../lib/usage-history.util";
+import { monthlyUsage, USAGE_HISTORY_MONTHS, type UsageSnapshot } from "../../lib/usage-history.util";
 import { formatNumber } from "../../lib/utils";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { Card, EmptyState, ErrorState, Skeleton, formatMoney } from "../ui";
 import { IconAnalytics } from "../ui/icons";
 
 // ─── Constants ────────────────────────────────────────────────────────────
-
-const USAGE_HISTORY_MONTHS = 6;
 
 const columns = [
   { key: "month", label: "Month" },

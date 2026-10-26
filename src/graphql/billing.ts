@@ -53,6 +53,39 @@ export const PLATFORM_INVOICES = gql`
   }
 `;
 
+/**
+ * PRD-024 FR-3.8: one invoice's status history and linked payments, read
+ * when its detail dialog opens (the lists don't select them). The invoice
+ * search matches the number, so the dialog picks its row by id.
+ */
+export const PLATFORM_INVOICE_DETAIL = gql`
+  query PlatformInvoiceDetail($filter: PlatformInvoiceFilter, $limit: Int) {
+    platformInvoices(filter: $filter, limit: $limit) {
+      items {
+        id
+        statusHistory {
+          status
+          at
+          actor
+        }
+        payments {
+          id
+          amount
+          currency
+          provider
+          type
+          status
+          transactionId
+          createdAt
+          failureReason
+          flagged
+          resolution
+        }
+      }
+    }
+  }
+`;
+
 export const PLATFORM_PAYMENT_FIELDS = gql`
   fragment PlatformPaymentFields on PlatformPayment {
     id
@@ -86,6 +119,10 @@ export const PLATFORM_PAYMENTS = gql`
         ...PlatformPaymentFields
       }
       totalCount
+      countsByStatus {
+        status
+        count
+      }
     }
   }
 `;
@@ -217,11 +254,16 @@ export const PLATFORM_COUPON_FIELDS = gql`
 
 export const PLATFORM_COUPONS = gql`
   ${PLATFORM_COUPON_FIELDS}
-  query PlatformCoupons($limit: Int, $offset: Int) {
-    platformCoupons(limit: $limit, offset: $offset) {
+  query PlatformCoupons(
+    $limit: Int
+    $offset: Int
+    $search: String
+    $status: [PlatformCouponStatus!]
+  ) {
+    platformCoupons(limit: $limit, offset: $offset, search: $search, status: $status) {
       ...PlatformCouponFields
     }
-    platformCouponCount
+    platformCouponCount(search: $search, status: $status)
   }
 `;
 

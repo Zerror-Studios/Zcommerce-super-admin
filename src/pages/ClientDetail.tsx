@@ -2,11 +2,13 @@ import { useMutation, useQuery } from "@apollo/client";
 import { addToast } from "@heroui/react";
 import { useMemo, useState, type Key, type ReactNode } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { ClientActivityCard } from "../components/clients/ClientActivityCard";
 import { ClientAiCard } from "../components/clients/ClientAiCard";
 import { ClientAnalyticsCard } from "../components/clients/ClientAnalyticsCard";
 import { ClientBillingTab } from "../components/clients/ClientBillingTab";
 import { ClientOverviewTab } from "../components/clients/ClientOverviewTab";
 import { ClientPlatformBilling } from "../components/clients/ClientPlatformBilling";
+import { ReminderLogCard } from "../components/billing/ReminderLogCard";
 import { ClientUsageHistory } from "../components/clients/ClientUsageHistory";
 import { OnboardingCard } from "../components/clients/OnboardingCard";
 import { StoreDetailsCard } from "../components/clients/StoreDetailsCard";
@@ -61,7 +63,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
  * Store detail (docs/design/04-super-admin.md §3.4, header C): one page, no tabs (owner's request 2026-10-16),
  * laid out as the two-column editor (08 §2.14). The main column has Overview, Analytics, AI, Usage history,
  * Billing, Subscription, Store details (PRD-017 FR-4.5), Go live and Lifecycle (PRD-018 §6: its "tabs" are
- * sections here, keeping the one-page layout). Activity is left out: there is no per-store activity data yet.
+ * sections here, keeping the one-page layout). Activity lists the store's audit-log rows (PRD-024 FR-1.12).
  */
 export function ClientDetail() {
   const { id } = useParams<{ id: string }>();
@@ -93,10 +95,6 @@ export function ClientDetail() {
   );
   const defaultGracePeriodDays = settings.gracePeriodDays;
 
-  const plan = useMemo(
-    () => (client ? plans.find((p) => p.name === client.plan) : undefined),
-    [client, plans],
-  );
 
   const subscription = useMemo(() => {
     if (!client) return undefined;
@@ -154,12 +152,16 @@ export function ClientDetail() {
   // Q10 / PRD-018 FR-2.1: only the platform owner deletes a store.
   const isOwner = user?.role === "PLATFORM_OWNER";
 
-  // The save is fire-and-forget for the form; a failure still has to be seen (review C-L6).
-  const onSaveGracePeriod = (days: number | undefined) =>
-    updateClient(client.id, { gracePeriodDays: days }).catch((error: unknown) => {
-      const message = mutationFailureCopy(error);
-      if (message) toastError(message);
-    });
+  // PRD-024 FR-1.4 (D-04): resolves true only once the server saved it; a failure is shown (review C-L6).
+  const onSaveGracePeriod = (days: number | undefined): Promise<boolean> =>
+    updateClient(client.id, { gracePeriodDays: days }).then(
+      () => true,
+      (error: unknown) => {
+        const message = mutationFailureCopy(error);
+        if (message) toastError(message);
+        return false;
+      },
+    );
 
   const onMenuAction = (key: Key) => {
     if (
@@ -268,7 +270,7 @@ export function ClientDetail() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-w-0 flex-col gap-4">
           <OnboardingCard client={client} />
-          <ClientOverviewTab part="main" client={client} subscription={subscription} plan={plan} />
+          <ClientOverviewTab part="main" client={client} subscription={subscription} />
 
           {/* PRD-012 FR-8.3: analytics health and data-through from the master sync summary. */}
           <Section id="store-analytics" title="Analytics">
@@ -287,6 +289,11 @@ export function ClientDetail() {
             <ClientUsageHistory tenantId={client.id} />
           </Section>
 
+          {/* PRD-024 FR-1.12 (P-04): the platform audit log for this store. */}
+          <Section id="store-activity" title="Activity">
+            <ClientActivityCard tenantId={client.id} />
+          </Section>
+
           <Section id="store-billing" title="Billing">
             {/* PRD-016 FR-26, PRD-017 FR-4.2: billing state, invoices, credits. */}
             <div className="mb-4">
@@ -300,6 +307,10 @@ export function ClientDetail() {
               onSaveGracePeriod={onSaveGracePeriod}
               canEdit={canManage}
             />
+            {/* PRD-024 FR-3.9: the renewal reminders this store was sent. */}
+            <div className="mt-4">
+              <ReminderLogCard tenantId={client.id} />
+            </div>
           </Section>
           {canManageBilling ? (
             <Section id="store-subscription" title="Subscription">
@@ -331,7 +342,7 @@ export function ClientDetail() {
           aria-label="Store details"
           className="flex min-w-0 flex-col gap-4 lg:self-start"
         >
-          <ClientOverviewTab part="rail" client={client} subscription={subscription} plan={plan} />
+          <ClientOverviewTab part="rail" client={client} subscription={subscription} />
           <ClientBillingTab
             part="rail"
             client={client}

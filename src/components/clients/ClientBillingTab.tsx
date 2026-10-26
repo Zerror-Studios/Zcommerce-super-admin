@@ -28,7 +28,8 @@ export interface ClientBillingTabProps {
   client: Client;
   subscription?: Subscription;
   defaultGracePeriodDays: number;
-  onSaveGracePeriod: (days: number | undefined) => void;
+  /** Resolves true once the server saved it (PRD-024 FR-1.4: the toast waits for that). */
+  onSaveGracePeriod: (days: number | undefined) => Promise<boolean>;
   /** False for roles without tenants:manage: the override is shown but not editable. */
   canEdit?: boolean;
   /** Two-column store page: "rail" = payment status + grace period, "main" = billing history. */
@@ -66,6 +67,7 @@ export function ClientBillingTab({
   const [useOverride, setUseOverride] = useState(savedOverride != null);
   const [daysInput, setDaysInput] = useState(String(savedOverride ?? defaultGracePeriodDays));
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setUseOverride(client.gracePeriodDays != null);
@@ -83,21 +85,24 @@ export function ClientBillingTab({
   const graceDays = graceDaysFor(client, defaultGracePeriodDays);
   const payment = paymentState(subscription);
 
-  const onSave = () => {
-    if (!useOverride) {
-      setError(null);
-      onSaveGracePeriod(undefined);
-      addToast({ title: toasts.gracePeriodDefault(days(defaultGracePeriodDays)) });
-      return;
-    }
-    const n = Number(daysInput);
-    if (!Number.isFinite(n) || n < 0 || n > 30 || !Number.isInteger(n)) {
+  // PRD-024 FR-1.4 (D-04): the "saved" toast waits for the server's answer.
+  const onSave = async () => {
+    const n = useOverride ? Number(daysInput) : undefined;
+    if (n !== undefined && (!Number.isFinite(n) || n < 0 || n > 30 || !Number.isInteger(n))) {
       setError("Use a whole number from 0 to 30.");
       return;
     }
     setError(null);
-    onSaveGracePeriod(n);
-    addToast({ title: toasts.gracePeriodSet(days(n), client.storeName) });
+    setSaving(true);
+    const saved = await onSaveGracePeriod(n);
+    setSaving(false);
+    if (!saved) return;
+    addToast({
+      title:
+        n === undefined
+          ? toasts.gracePeriodDefault(days(defaultGracePeriodDays))
+          : toasts.gracePeriodSet(days(n), client.storeName),
+    });
   };
 
   const onCancel = () => {
@@ -168,7 +173,7 @@ export function ClientBillingTab({
                   Cancel
                 </UiButton>
               ) : null}
-              <UiButton variant="primary" isDisabled={!dirty || !canEdit} onPress={onSave}>
+              <UiButton variant="primary" isDisabled={!dirty || !canEdit} isLoading={saving} onPress={() => void onSave()}>
                 Save
               </UiButton>
             </div>

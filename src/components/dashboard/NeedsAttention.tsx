@@ -1,11 +1,11 @@
 import { useMemo, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Client, Subscription } from "../../types";
-import { getStoreHealth } from "../../lib/storeHealth";
+import { getStoreHealth, isCriticalHealth } from "../../lib/storeHealth";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { paymentState } from "../../lib/storeStatus";
-import { daysUntil, formatDate } from "../../lib/utils";
-import { Card, Skeleton, cx, getHealthBand, toneDotClasses, type Tone } from "../ui";
+import { formatDate } from "../../lib/utils";
+import { Card, Skeleton, cx, toneDotClasses, type Tone } from "../ui";
 
 export interface NeedsAttentionProps {
   clients: Client[];
@@ -34,7 +34,7 @@ function plural(n: number, one: string, many: string): string {
  * "Needs attention" (docs/design/04-super-admin.md §3.1), ordered by urgency: overdue stores, payments due
  * soon, health drops (Critical band), suspended stores. Every row opens the related store or list.
  */
-function buildItems({ clients, subscriptions, now }: NeedsAttentionProps): AttentionItem[] {
+function buildItems({ clients, subscriptions }: Pick<NeedsAttentionProps, "clients" | "subscriptions">): AttentionItem[] {
   const subByClient = latestSubscriptionByClient(subscriptions);
   const items: AttentionItem[] = [];
   const active = clients.filter((client) => client.status !== "suspended");
@@ -47,7 +47,8 @@ function buildItems({ clients, subscriptions, now }: NeedsAttentionProps): Atten
       return { client, sub, state };
     })
     .filter(({ sub, state }) => sub && state.tone === "danger")
-    .map(({ client, sub, state }) => ({ client, state, days: Math.max(0, -daysUntil(sub!.renewalDate, now)) }))
+    // PRD-024 FR-1.7 (B-05): the server's overdue days, not the renewal date.
+    .map(({ client, sub, state }) => ({ client, state, days: Math.max(0, sub!.daysOverdue ?? 0) }))
     .sort((a, b) => b.days - a.days)
     .forEach(({ client, state, days }) => {
       items.push({
@@ -89,7 +90,8 @@ function buildItems({ clients, subscriptions, now }: NeedsAttentionProps): Atten
   // 3. Health drops: stores in the Critical band.
   active
     .map((client) => ({ client, health: getStoreHealth(client) }))
-    .filter(({ health }) => getHealthBand(health.score).tone === "danger")
+    // PRD-024 FR-1.11: the one critical-health rule, shared with the Summary.
+    .filter(({ client }) => isCriticalHealth(client))
     .sort((a, b) => a.health.score - b.health.score)
     .forEach(({ client, health }) => {
       items.push({
@@ -122,10 +124,10 @@ function buildItems({ clients, subscriptions, now }: NeedsAttentionProps): Atten
 
 export function NeedsAttention(props: NeedsAttentionProps) {
   const navigate = useNavigate();
-  const { clients, subscriptions, now, isLoading } = props;
+  const { clients, subscriptions, isLoading } = props;
   const items = useMemo(
-    () => buildItems({ clients, subscriptions, now }),
-    [clients, subscriptions, now],
+    () => buildItems({ clients, subscriptions }),
+    [clients, subscriptions],
   );
 
   return (

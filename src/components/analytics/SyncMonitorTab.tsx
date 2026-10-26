@@ -175,7 +175,7 @@ export function SyncMonitorTab() {
           />
         </KpiStrip>
 
-        <Card title="Failing" description="Connections whose last run failed or whose quota is paused" padding="none" className="overflow-hidden">
+        <Card title="Failing" description="Connections in error, or with a failed run in the last 24 hours" padding="none" className="overflow-hidden">
           {api.loading ? (
             <TableSkeleton />
           ) : (

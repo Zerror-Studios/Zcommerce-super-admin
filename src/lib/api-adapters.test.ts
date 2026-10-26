@@ -117,6 +117,52 @@ describe("api adapters", () => {
     expect(paymentState(row).label).toBe("Overdue · 7 days");
   });
 
+  it("keeps the snapshot date, staff, region and the plan version (PRD-024 FR-1.3, FR-1.7)", () => {
+    const client = toClient({ ...tenant, liveAt: "2026-09-01T00:00:00.000Z" });
+    expect(client).toMatchObject({
+      hasUsage: true,
+      usageAsOf: "2026-10-17",
+      staffCount: 3,
+      region: "ap-south-1",
+      subscriptionStatus: "PAST_DUE",
+      liveAt: "2026-09-01T00:00:00.000Z",
+    });
+    expect(client.planRef).toEqual({
+      id: "plan-plus",
+      version: null,
+      displayName: null,
+      custom: false,
+      limits: { products: 5000, staff: 10 },
+    });
+    expect(toSubscription(subscription).daysOverdue).toBe(7);
+  });
+
+  it("marks a store without a usage snapshot as not measured (PRD-024 FR-1.7)", () => {
+    const client = toClient({ ...tenant, usage: null });
+    expect(client.hasUsage).toBe(false);
+    expect(client.usageAsOf).toBeUndefined();
+    expect(client.staffCount).toBeNull();
+  });
+
+  it("keeps a null growth as no comparison, never 0 or −100 (PRD-024 FR-2.1)", () => {
+    const usage = { ...tenant.usage!, growthPercent: null, previousRevenue: 0, previousOrders: 0 };
+    expect(toClient({ ...tenant, usage }).growthPercent).toBeNull();
+    expect(toClient({ ...tenant, usage: null }).growthPercent).toBeNull();
+    expect(toClient(tenant).growthPercent).toBe(12.5);
+  });
+
+  it("keeps messages this month and the partial flag (PRD-024 FR-2.7, FR-3.7)", () => {
+    const usage = { ...tenant.usage!, partial: true, messagesThisMonth: 42 };
+    expect(toClient({ ...tenant, usage })).toMatchObject({ messagesThisMonth: 42, usagePartial: true });
+    expect(toClient(tenant)).toMatchObject({ messagesThisMonth: null, usagePartial: false });
+  });
+
+  it("takes the plan from the subscription, and flags a custom plan (PRD-024 FR-1.3)", () => {
+    const custom = { ...plan, id: "plan-acme", tenantId: "t-1", version: 2, displayName: "Acme" };
+    const client = toClient({ ...tenant, plan, subscription: { ...subscription, plan: custom } });
+    expect(client.planRef).toMatchObject({ id: "plan-acme", version: 2, custom: true });
+  });
+
   it("derives trial and suspended statuses", () => {
     expect(toClient({ ...tenant, status: "SUSPENDED" }).status).toBe("suspended");
     expect(

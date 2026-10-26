@@ -18,6 +18,7 @@ import type {
   PlatformAiModelPrice,
   PlatformAiOverrideInput,
   PlatformAiTenantSetting,
+  PlatformAiTopUpRequestStatus,
 } from "../types/platform-api";
 
 // ─── Constants ────────────────────────────────────────────────────────────
@@ -500,4 +501,30 @@ export function aiDataHealthIssues(row: PlatformAiDataHealthRow): string[] {
   }
   if (!row.settingsFilled) issues.push("Business settings not filled in");
   return issues;
+}
+
+// ─── Top-ups and data health filters (PRD-024 FR-1.10, B-11) ─────────────
+
+/** The top-up list's status filter, in the order the tab offers it. */
+export const TOP_UP_STATUS_OPTIONS: readonly {
+  key: PlatformAiTopUpRequestStatus;
+  label: string;
+}[] = [
+  { key: "OPEN", label: "Open" },
+  { key: "GRANTED", label: "Granted" },
+  { key: "DISMISSED", label: "Dismissed" },
+];
+
+/** A status from the URL or a picker; anything else is the default, Open. */
+export function topUpStatusOf(value: unknown): PlatformAiTopUpRequestStatus {
+  return TOP_UP_STATUS_OPTIONS.some((option) => option.key === value)
+    ? (value as PlatformAiTopUpRequestStatus)
+    : "OPEN";
+}
+
+/** The empty state of the top-up list for a status. */
+export function topUpEmptyCopy(status: PlatformAiTopUpRequestStatus): string {
+  if (status === "GRANTED") return "No granted requests";
+  if (status === "DISMISSED") return "No dismissed requests";
+  return "No open requests";
 }

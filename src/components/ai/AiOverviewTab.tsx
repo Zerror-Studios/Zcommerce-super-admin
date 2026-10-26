@@ -84,8 +84,8 @@ export function AiOverviewTab() {
             bare
             isLoading={api.loading}
             label="Questions this month"
-            value={totals?.chatCalls ?? 0}
-            deltaLabel={`${formatUsd(totals?.avgCostPerQuestionUsd)} per question`}
+            value={totals?.answeredQuestions ?? 0}
+            deltaLabel={`Answered, ${formatCount(totals?.cachedAnswers)} from cache · ${formatUsd(totals?.avgCostPerQuestionUsd)} per question`}
           />
           <StatCard
             bare

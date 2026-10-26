@@ -62,7 +62,7 @@ export const toasts = {
   storeSuspended: (name: string) => `${name} suspended.`,
   storeReactivated: (name: string) => `${name} reactivated.`,
   storeAdded: (name: string) => `${name} added.`,
-  reminderSent: (count: number) => `Reminder sent to ${plural(count, "store", "stores")}.`,
+  reminderSent: (count: number) => `Email reminder queued for ${plural(count, "store", "stores")}.`,
   storeProvisioningFailed: (name: string) => `${name} was created but a provisioning step failed. Open the store to retry.`,
   mfaRequired: "Turn on two-step verification before changing platform data.",
   forbidden: "You don't have permission to do that.",

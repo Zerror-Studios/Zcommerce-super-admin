@@ -18,7 +18,11 @@ import {
 } from "react";
 import { PLATFORM_SETTINGS, UPDATE_PLATFORM_SETTINGS } from "../graphql/settings";
 import { toPlatformSettings, toPlatformSettingsInput } from "../lib/api-adapters";
-import { DEFAULT_PLATFORM_SETTINGS, setServerPlatformSettings } from "../lib/platformSettings";
+import {
+  DEFAULT_PLATFORM_SETTINGS,
+  isPlatformSettingsLoaded,
+  setServerPlatformSettings,
+} from "../lib/platformSettings";
 import type { PlatformSettings } from "../types";
 import type { PlatformSettingsApi, PlatformSettingsPatch } from "../types/platform-api";
 import { useAuth } from "./AuthProvider";
@@ -27,7 +31,16 @@ import { useAuth } from "./AuthProvider";
 
 interface SettingsContextValue {
   settings: PlatformSettings;
+  /**
+   * True until the server copy has loaded, including after a failed load:
+   * forms stay disabled so Save can't overwrite the server with the
+   * defaults (PRD-024 FR-1.1, D-01).
+   */
   loading: boolean;
+  /** The last load failure while no server copy is held (PRD-024 FR-1.1). */
+  error: Error | null;
+  /** Reloads the server copy after a failure. */
+  retry: () => void;
   updateSettings: (next: PlatformSettings) => Promise<void>;
   /**
    * Saves only the fields in `patch` (the server merges them): dunning and
@@ -85,14 +98,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [apollo, query],
   );
 
+  const retry = useCallback(() => {
+    void refetch().catch(() => undefined);
+  }, [refetch]);
+
+  const loadError = serverSettings ? null : (query.error ?? null);
+
   const value = useMemo<SettingsContextValue>(
     () => ({
       settings,
-      loading: query.loading && !query.data,
+      loading: !isPlatformSettingsLoaded(serverSettings),
+      error: loadError,
+      retry,
       updateSettings,
       updateSettingsPatch,
     }),
-    [query.data, query.loading, settings, updateSettings, updateSettingsPatch],
+    [loadError, retry, serverSettings, settings, updateSettings, updateSettingsPatch],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

@@ -6,6 +6,7 @@ import { platformRoleEnum } from "../../types/platform-api";
 import { errorCodeOf } from "../../lib/apollo-client";
 import { mutationFailureCopy } from "../../lib/mutation-errors";
 import { nextOffset, SERVER_PAGE_LIMIT } from "../../lib/offset-paging.util";
+import { PLATFORM_ROLE_LABELS } from "../../lib/display-labels.util";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import {
   PLATFORM_DISABLE_USER,
@@ -46,13 +47,7 @@ import {
   type DataTableColumn,
 } from "../ui";
 
-const ROLE_LABELS: Record<PlatformRole, string> = {
-  PLATFORM_OWNER: "Owner",
-  PLATFORM_ADMIN: "Admin",
-  BILLING_MANAGER: "Billing manager",
-  SUPPORT_AGENT: "Support agent",
-  READ_ONLY: "Read-only",
-};
+const ROLE_LABELS = PLATFORM_ROLE_LABELS;
 
 const columns: DataTableColumn[] = [
   { key: "name", label: "Member" },

@@ -1,6 +1,6 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
 import { useState } from "react";
-import { useAiBenchmarks } from "../../hooks/use-platform-ai";
+import { useAiBenchmarks, useAiConfig } from "../../hooks/use-platform-ai";
 import { formatMetricValue, metricKeyLabel } from "../../lib/platform-ai.util";
 import type { PlatformAiBenchmarkPeriod } from "../../types/platform-api";
 import { toasts } from "../../copy";
@@ -35,6 +35,9 @@ const right = "block text-right num";
 export function AiBenchmarksTab() {
   const [period, setPeriod] = useState<PlatformAiBenchmarkPeriod>("LAST_30D");
   const api = useAiBenchmarks(period);
+  // PRD-024 FR-1.5 (P-06): say why the list can be empty (the minimum is an AI setting).
+  const config = useAiConfig();
+  const minStores = config.data?.benchmarkMinStores ?? null;
   const rows = api.data;
   const computedFor = rows[0]?.computedFor;
 
@@ -92,7 +95,11 @@ export function AiBenchmarksTab() {
                 <EmptyState
                   icon={IconChartBar}
                   title="No benchmarks yet"
-                  description="They appear once enough stores have data for a metric."
+                  description={
+                    minStores != null
+                      ? `A metric appears once at least ${formatCount(minStores)} stores have data for it, so no store can be identified. The minimum is in AI › Settings.`
+                      : "A metric appears once enough stores have data for it, so no store can be identified."
+                  }
                 />
               }
             >

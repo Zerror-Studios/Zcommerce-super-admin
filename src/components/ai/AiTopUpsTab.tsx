@@ -5,9 +5,10 @@ import { Link } from "react-router-dom";
 import { DISMISS_AI_TOP_UP_REQUEST } from "../../graphql/ai";
 import { useAiTopUpRequests } from "../../hooks/use-platform-ai";
 import { mutationFailureCopy } from "../../lib/mutation-errors";
+import { TOP_UP_STATUS_OPTIONS, topUpEmptyCopy, topUpStatusOf } from "../../lib/platform-ai.util";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { useAuth } from "../../providers/AuthProvider";
-import type { PlatformAiTopUpRequest } from "../../types/platform-api";
+import type { PlatformAiTopUpRequest, PlatformAiTopUpRequestStatus } from "../../types/platform-api";
 import { toasts } from "../../copy";
 import { ConfirmModal } from "../common/ConfirmModal";
 import { dataTableClassNames } from "../common/dataTableStyles";
@@ -18,6 +19,8 @@ import {
   Card,
   EmptyState,
   ErrorState,
+  Select,
+  SelectItem,
   Skeleton,
   formatCount,
   formatDate,
@@ -39,12 +42,15 @@ export function AiTopUpsTab() {
   const { can } = useAuth();
   const canManage = can(PLATFORM_PERMISSIONS.AI_MANAGE);
   const [page, setPage] = useState(0);
+  // PRD-024 FR-1.10 (B-11): open, granted or dismissed requests.
+  const [status, setStatus] = useState<PlatformAiTopUpRequestStatus>("OPEN");
   const [granting, setGranting] = useState<{ tenantId: string; name: string } | null>(null);
   const [dismissing, setDismissing] = useState<PlatformAiTopUpRequest | null>(null);
   const [busy, setBusy] = useState(false);
   const [dismiss] = useMutation(DISMISS_AI_TOP_UP_REQUEST);
 
-  const api = useAiTopUpRequests({ limit: PAGE_SIZE, offset: page * PAGE_SIZE });
+  const api = useAiTopUpRequests({ status, limit: PAGE_SIZE, offset: page * PAGE_SIZE });
+  const isOpen = status === "OPEN";
   const rows = api.data?.items ?? [];
   const total = api.data?.totalCount ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -75,6 +81,22 @@ export function AiTopUpsTab() {
         title="AI top-up requests"
         count={total || undefined}
         description="Stores that used up this week's AI questions and asked for more."
+        actions={
+          <Select
+            aria-label="Request status"
+            size="sm"
+            className="w-40"
+            selectedKeys={new Set([status])}
+            disallowEmptySelection
+            onSelectionChange={(keys) => {
+              setStatus(topUpStatusOf(Array.from(keys)[0]));
+              setPage(0);
+            }}
+            items={TOP_UP_STATUS_OPTIONS}
+          >
+            {(option) => <SelectItem key={option.key}>{option.label}</SelectItem>}
+          </Select>
+        }
       />
 
       {api.error ? (
@@ -89,17 +111,17 @@ export function AiTopUpsTab() {
             ))}
           </div>
         ) : (
-          <Table aria-label="Open AI top-up requests" removeWrapper classNames={{ ...dataTableClassNames, tr: tableRowClasses }}>
+          <Table aria-label="AI top-up requests" removeWrapper classNames={{ ...dataTableClassNames, tr: tableRowClasses }}>
             <TableHeader>
               <TableColumn>Store</TableColumn>
               <TableColumn>Week of</TableColumn>
               <TableColumn>Requested</TableColumn>
-              <TableColumn align="end">Actions</TableColumn>
+              <TableColumn align="end">{isOpen ? "Actions" : "Handled"}</TableColumn>
             </TableHeader>
             <TableBody
               items={rows}
               emptyContent={
-                <EmptyState icon={IconGift} title="No open requests" description="Requests from stores appear here." />
+                <EmptyState icon={IconGift} title={topUpEmptyCopy(status)} description="Requests from stores appear here." />
               }
             >
               {(row) => (
@@ -112,7 +134,11 @@ export function AiTopUpsTab() {
                   <TableCell><span className="whitespace-nowrap num">{formatDate(row.week)}</span></TableCell>
                   <TableCell><span className="whitespace-nowrap num">{formatDateTime(row.createdAt)}</span></TableCell>
                   <TableCell>
-                    {canManage ? (
+                    {!isOpen ? (
+                      <span className="block whitespace-nowrap text-right text-caption text-fg-muted num">
+                        {row.handledAt ? formatDateTime(row.handledAt) : "—"}
+                      </span>
+                    ) : canManage ? (
                       <div className="flex justify-end gap-2">
                         <UiButton size="sm" variant="ghost" onPress={() => setDismissing(row)}>
                           Dismiss

@@ -3,6 +3,7 @@
  * server from the usage snapshot and the subscription (PRD-005 FR-3.6, one
  * rule everywhere); this file only adds the display band.
  */
+import { getHealthBand } from "../components/ui/status-map";
 import type { Client } from "../types";
 
 export interface StoreHealthResult {
@@ -40,4 +41,13 @@ function withBand(finalScore: number, factors: string[]): StoreHealthResult {
   }
 
   return { score: finalScore, label, tone, factors };
+}
+
+/**
+ * PRD-024 FR-1.11 (P-01): the one "critical health" rule, the kit's Critical
+ * band (`getHealthBand`). Home › Needs attention, the Home summary and the
+ * store summary all read it, so they never disagree about a store.
+ */
+export function isCriticalHealth(client: Client): boolean {
+  return getHealthBand(getStoreHealth(client).score).tone === "danger";
 }

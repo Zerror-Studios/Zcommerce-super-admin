@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { subscriptionStatusEnum, type Client, type Subscription } from "../../types";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { selectionToIdSet } from "../../lib/tableSelection";
-import { daysUntil, formatDate } from "../../lib/utils";
+import { formatDate } from "../../lib/utils";
+import { daysUntilDue } from "../../lib/storeStatus";
 import { mutationFailureCopy } from "../../lib/mutation-errors";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { useAuth } from "../../providers/AuthProvider";
@@ -101,7 +102,8 @@ export function AutomationSettingsTab() {
         id: client.id,
         client,
         subscription,
-        daysLeft: daysUntil(subscription.renewalDate),
+        // PRD-024 FR-1.7 (B-05): overdue days from the server.
+        daysLeft: daysUntilDue(subscription),
       });
     });
     return rows.sort((a, b) => a.daysLeft - b.daysLeft);
@@ -160,7 +162,8 @@ export function AutomationSettingsTab() {
     // PRD-005 FR-7.3: the server renders, logs and queues the reminders
     setSending(true);
     try {
-      const { data } = await sendReminders({ variables: { tenantIds: [...selected] } });
+      // PRD-024 FR-1.8: email only; SMS and WhatsApp can't deliver (no platform SMS account).
+      const { data } = await sendReminders({ variables: { tenantIds: [...selected], channels: ["EMAIL"] } });
       const batch = data?.sendRenewalReminders;
       if (batch?.skipped.length) {
         toastError(`${batch.skipped.length} skipped: ${batch.skipped[0].reason}`);

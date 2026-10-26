@@ -1,9 +1,18 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getPlanLabel } from "../../lib/display-labels.util";
-import { useClients } from "../../providers/ClientsProvider";
-import { SALES_DROP_ALERT_PERCENT, storeSalesByPlan, storeSalesRows, storeSalesSummary } from "../../lib/store-sales";
+import { useStoreSales } from "../../hooks/use-platform-analytics";
+import {
+  DEFAULT_PERFORMANCE_RANGE_DAYS,
+  PERFORMANCE_RANGE_DAYS,
+  lastDaysRange,
+  type PerformanceRangeDays,
+} from "../../lib/analytics-health";
+import {
+  NO_PREVIOUS_SALES_COPY,
+  SALES_DROP_ALERT_PERCENT,
+  storesNeedingALook,
+} from "../../lib/store-sales";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { PageHeader } from "../common/PageHeader";
 import { IconAnalytics } from "../ui/icons";
@@ -12,13 +21,15 @@ import {
   EmptyState,
   ErrorState,
   KpiStrip,
+  SegmentedControl,
   Skeleton,
   StatCard,
+  Tooltip,
   cx,
   formatCount,
+  formatDate,
   formatDelta,
   formatMoney,
-  formatPercent,
   tableRowClasses,
   toneTextClasses,
 } from "../ui";
@@ -32,26 +43,40 @@ const cardTableClassNames = {
 
 const right = "block text-right num";
 
+const rangeOptions = PERFORMANCE_RANGE_DAYS.map((days) => ({ value: String(days), label: `${days} days` }));
+
+/** PRD-024 FR-2.1: a null change is "—" with the reason, never −100 % or +100 %. */
 function Change({ value }: { value: number | null }) {
-  const tone = value == null || value === 0 ? undefined : value > 0 ? toneTextClasses.success : toneTextClasses.danger;
+  if (value == null) {
+    return (
+      <Tooltip content={NO_PREVIOUS_SALES_COPY}>
+        <span className={cx(right, "text-fg-subtle")}>—</span>
+      </Tooltip>
+    );
+  }
+  const tone = value === 0 ? undefined : value > 0 ? toneTextClasses.success : toneTextClasses.danger;
   return <span className={cx(right, tone)}>{formatDelta(value)}</span>;
 }
 
 /**
  * Analytics › Store sales: what stores sell to their own customers (their orders), as opposed to
- * Platform revenue, which is what stores pay Zcom. All figures cover the last 30 days. Sales are
- * net (PRD-012 FR-8.2); sessions, page views and conversion are the server's usage-snapshot fields.
+ * Platform revenue, which is what stores pay Zcom. PRD-024 FR-3.4: every figure is the server's
+ * rollup `platformStoreSales` for the chosen window (net of cancellations and refunds), compared
+ * with the window before it; totals are per currency and never added across currencies.
  */
 export function StoreSalesTab() {
   const navigate = useNavigate();
-  const { clients, loading, error, refetch } = useClients();
-  const summary = useMemo(() => storeSalesSummary(clients), [clients]);
-  const rows = useMemo(() => storeSalesRows(clients), [clients]);
-  const byPlan = useMemo(() => storeSalesByPlan(clients), [clients]);
-  const needsLook = useMemo(
-    () => rows.filter((row) => row.orders === 0 || (row.changePercent != null && row.changePercent <= -SALES_DROP_ALERT_PERCENT)),
-    [rows],
-  );
+  const [days, setDays] = useState<PerformanceRangeDays>(DEFAULT_PERFORMANCE_RANGE_DAYS);
+  const range = useMemo(() => lastDaysRange(days), [days]);
+  const api = useStoreSales(range);
+  const view = api.data;
+  const rows = useMemo(() => view?.rows ?? [], [view]);
+  const needsLook = useMemo(() => storesNeedingALook(rows), [rows]);
+  // One currency: the KPI strip shows it; several: the per-currency table carries the totals.
+  const primary = view?.totals.length === 1 ? view.totals[0] : null;
+  const previousLabel = view
+    ? `vs ${formatDate(view.previousStart)} – ${formatDate(view.previousEnd)}`
+    : `vs previous ${days} days`;
 
   const noData = <EmptyState compact description={emptyStates.noData} />;
   const openStore = (clientId: string) => navigate(`/stores/${clientId}`);
@@ -63,67 +88,83 @@ export function StoreSalesTab() {
         icon={<IconAnalytics aria-hidden />}
         section="violet"
         title="Store sales"
-        description="What stores sold to their customers in the last 30 days, net of cancellations and refunds, compared with the 30 days before."
+        description={`What stores sold to their customers in the last ${days} days, net of cancellations and refunds, compared with the ${days} days before.`}
+        actions={
+          <SegmentedControl
+            aria-label="Period"
+            options={rangeOptions}
+            value={String(days)}
+            onChange={(value) => setDays(Number(value) as PerformanceRangeDays)}
+          />
+        }
       />
 
-      {/* The figures come from the store list: show its loading and error states, not zeros. */}
-      {error ? (
-        <ErrorState title="Couldn't load the stores." description={toasts.genericError} onRetry={() => void refetch()} />
-      ) : loading ? (
+      {api.error ? (
+        <ErrorState title="Couldn't load store sales." description={toasts.genericError} onRetry={() => void api.refetch()} />
+      ) : api.loading || !view ? (
         <div className="space-y-4" role="status" aria-label="Loading store sales">
           <Skeleton className="h-24 w-full rounded-card" />
           <Skeleton className="h-72 w-full rounded-card" />
         </div>
       ) : (
       <div className="space-y-4">
-        <KpiStrip>
-          <StatCard
-            bare
-            label="Net store sales"
-            value={summary.sales}
-            format="money"
-            delta={summary.changePercent}
-            deltaLabel="vs previous 30 days"
-          />
-          <StatCard bare label="Orders" value={formatCount(summary.orders)} deltaLabel="Across all stores" />
-          <StatCard
-            bare
-            label="Average order value"
-            value={summary.averageOrder == null ? "—" : formatMoney(summary.averageOrder, { whole: true })}
-            deltaLabel="Net sales ÷ orders"
-          />
-          <StatCard
-            bare
-            label="Selling stores"
-            value={formatCount(summary.sellingStores)}
-            deltaLabel={`of ${formatCount(summary.totalStores)} stores had an order`}
-          />
-          <StatCard
-            bare
-            label="Stores with traffic"
-            value={formatCount(summary.storesWithTraffic)}
-            deltaLabel={`of ${formatCount(summary.totalStores)} stores reported sessions`}
-          />
-        </KpiStrip>
+        {primary ? (
+          <KpiStrip>
+            <StatCard
+              bare
+              label={`Net store sales · ${days}d`}
+              value={primary.sales}
+              format="money"
+              currency={primary.currency}
+              delta={primary.changePercent}
+              deltaLabel={primary.changePercent == null ? NO_PREVIOUS_SALES_COPY : previousLabel}
+            />
+            <StatCard
+              bare
+              label={`Orders · ${days}d`}
+              value={formatCount(primary.orders)}
+              deltaLabel={`${formatCount(primary.previousOrders)} in the ${days} days before`}
+            />
+            <StatCard
+              bare
+              label="Average order value"
+              value={primary.averageOrder == null ? "—" : formatMoney(primary.averageOrder, { currency: primary.currency, whole: true })}
+              deltaLabel="Net sales ÷ orders"
+            />
+            <StatCard
+              bare
+              label="Stores"
+              value={formatCount(primary.stores)}
+              deltaLabel="Every store not deleted"
+            />
+          </KpiStrip>
+        ) : null}
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <Card title="Sales by plan" padding="none" className="overflow-hidden">
-            <Table aria-label="Sales by plan" removeWrapper classNames={cardTableClassNames}>
+          <Card
+            title="Totals by currency"
+            description="Stores selling in different currencies are never added together"
+            padding="none"
+            className="overflow-hidden"
+          >
+            <Table aria-label="Store sales by currency" removeWrapper classNames={cardTableClassNames}>
               <TableHeader>
-                <TableColumn>Plan</TableColumn>
+                <TableColumn>Currency</TableColumn>
                 <TableColumn align="end">Net sales</TableColumn>
-                <TableColumn align="end">Share</TableColumn>
+                <TableColumn align="end">Change</TableColumn>
                 <TableColumn align="end">Orders</TableColumn>
                 <TableColumn align="end">Stores</TableColumn>
               </TableHeader>
-              <TableBody items={byPlan} emptyContent={noData}>
-                {(row) => (
-                  <TableRow key={row.plan}>
-                    <TableCell className="font-medium">{getPlanLabel(row.plan)}</TableCell>
-                    <TableCell><span className={right}>{formatMoney(row.sales, { whole: true })}</span></TableCell>
-                    <TableCell><span className={right}>{formatPercent(row.sharePercent)}</span></TableCell>
-                    <TableCell><span className={right}>{formatCount(row.orders)}</span></TableCell>
-                    <TableCell><span className={right}>{formatCount(row.stores)}</span></TableCell>
+              <TableBody items={view.totals} emptyContent={noData}>
+                {(total) => (
+                  <TableRow key={total.currency}>
+                    <TableCell className="font-medium">{total.currency}</TableCell>
+                    <TableCell>
+                      <span className={right}>{formatMoney(total.sales, { currency: total.currency, whole: true })}</span>
+                    </TableCell>
+                    <TableCell><Change value={total.changePercent} /></TableCell>
+                    <TableCell><span className={right}>{formatCount(total.orders)}</span></TableCell>
+                    <TableCell><span className={right}>{formatCount(total.stores)}</span></TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -140,7 +181,7 @@ export function StoreSalesTab() {
               <TableHeader>
                 <TableColumn>Store</TableColumn>
                 <TableColumn align="end">Net sales</TableColumn>
-                <TableColumn align="end">vs previous 30 days</TableColumn>
+                <TableColumn align="end">Change</TableColumn>
               </TableHeader>
               <TableBody
                 items={needsLook}
@@ -152,7 +193,9 @@ export function StoreSalesTab() {
                       <p className="max-w-56 truncate font-medium text-fg">{row.storeName}</p>
                       <p className="truncate text-caption text-fg-subtle">{row.orders === 0 ? "No orders" : `${formatCount(row.orders)} orders`}</p>
                     </TableCell>
-                    <TableCell><span className={right}>{formatMoney(row.sales, { whole: true })}</span></TableCell>
+                    <TableCell>
+                      <span className={right}>{formatMoney(row.sales, { currency: row.currency, whole: true })}</span>
+                    </TableCell>
                     <TableCell><Change value={row.changePercent} /></TableCell>
                   </TableRow>
                 )}
@@ -161,18 +204,24 @@ export function StoreSalesTab() {
           </Card>
         </div>
 
-        <Card title="Stores by sales" padding="none" className="overflow-hidden">
+        <Card
+          title="Stores by sales"
+          description={
+            view.totalCount > rows.length
+              ? `The top ${formatCount(rows.length)} of ${formatCount(view.totalCount)} stores by net sales`
+              : `${formatDate(view.rangeStart)} – ${formatDate(view.rangeEnd)}`
+          }
+          padding="none"
+          className="overflow-hidden"
+        >
           <Table aria-label="Stores by sales" removeWrapper classNames={cardTableClassNames}>
             <TableHeader>
               <TableColumn>Store</TableColumn>
-              <TableColumn>Plan</TableColumn>
-              <TableColumn align="end">Net sales</TableColumn>
-              <TableColumn align="end">vs previous 30 days</TableColumn>
-              <TableColumn align="end">Orders</TableColumn>
+              <TableColumn align="end">{`Net sales · ${days}d`}</TableColumn>
+              <TableColumn align="end">{`Previous ${days} days`}</TableColumn>
+              <TableColumn align="end">Change</TableColumn>
+              <TableColumn align="end">{`Orders · ${days}d`}</TableColumn>
               <TableColumn align="end">Average order</TableColumn>
-              <TableColumn align="end">Sessions</TableColumn>
-              <TableColumn align="end">Page views</TableColumn>
-              <TableColumn align="end">Conversion</TableColumn>
             </TableHeader>
             <TableBody items={rows} emptyContent={noData}>
               {(row) => (
@@ -180,20 +229,21 @@ export function StoreSalesTab() {
                   <TableCell>
                     <div className="min-w-0 max-w-64">
                       <p className="truncate whitespace-nowrap font-medium text-fg">{row.storeName}</p>
-                      <p className="truncate text-caption text-fg-subtle">{row.ownerEmail}</p>
+                      <p className="truncate text-caption text-fg-subtle">{row.slug}</p>
                     </div>
                   </TableCell>
-                  <TableCell>{getPlanLabel(row.plan)}</TableCell>
-                  <TableCell><span className={cx(right, "font-medium")}>{formatMoney(row.sales, { whole: true })}</span></TableCell>
+                  <TableCell>
+                    <span className={cx(right, "font-medium")}>{formatMoney(row.sales, { currency: row.currency, whole: true })}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className={right}>{formatMoney(row.previousSales, { currency: row.currency, whole: true })}</span>
+                  </TableCell>
                   <TableCell><Change value={row.changePercent} /></TableCell>
                   <TableCell><span className={right}>{formatCount(row.orders)}</span></TableCell>
                   <TableCell>
-                    <span className={right}>{row.averageOrder == null ? "—" : formatMoney(row.averageOrder, { whole: true })}</span>
-                  </TableCell>
-                  <TableCell><span className={right}>{formatCount(row.sessions)}</span></TableCell>
-                  <TableCell><span className={right}>{formatCount(row.pageViews)}</span></TableCell>
-                  <TableCell>
-                    <span className={right}>{row.conversionRate == null ? "—" : formatPercent(row.conversionRate)}</span>
+                    <span className={right}>
+                      {row.averageOrder == null ? "—" : formatMoney(row.averageOrder, { currency: row.currency, whole: true })}
+                    </span>
                   </TableCell>
                 </TableRow>
               )}

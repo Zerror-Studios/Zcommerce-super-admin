@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { allNavItems, mainNavItems, visibleNavItems } from "../../config/navigation";
+import { APP_VERSION } from "../../config/data-source";
 import { ASSISTANT_SUGGESTIONS, sampleAssistantAnswer } from "../../lib/aiSamples";
 import { client as apollo } from "../../lib/apollo-client";
 import { toPickerDay } from "../../lib/api-report-adapters";
+import { getPlatformRoleLabel } from "../../lib/display-labels.util";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { PLATFORM_REVENUE_OVERVIEW } from "../../graphql/reports";
 import type { PlatformRevenueOverview } from "../../types/platform-api";
@@ -21,7 +23,6 @@ import { cx, toneTextClasses } from "../ui";
 import type { CommandGroup, NotificationEntry } from "./types";
 
 const COLLAPSE_KEY = "zcommerce-sidebar-collapsed";
-const APP_VERSION = "1.0.0";
 
 function pathMatches(pathname: string, href: string, end = false): boolean {
   if (end) return pathname === href;
@@ -47,7 +48,7 @@ const NOTIFICATION_TABS = [
 
 export function DashboardLayout() {
   const location = useLocation();
-  const { signOut, can } = useAuth();
+  const { signOut, can, user } = useAuth();
   const { clients, subscriptions, incomplete, pageGuardReached, loadRemaining, totalCount } = useClients();
   const canAddStore = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
 
@@ -108,9 +109,10 @@ export function DashboardLayout() {
   const items = useMemo(
     () =>
       visibleNavItems(mainNavItems, can).map((item) =>
-        item.key === "stores" ? { ...item, count: clients.length } : item,
+        // PRD-024 FR-1.6 (B-06): the server's store count, not the loaded rows.
+        item.key === "stores" ? { ...item, count: totalCount } : item,
       ),
-    [can, clients.length],
+    [can, totalCount],
   );
 
   const commandGroups = useMemo<CommandGroup[]>(
@@ -163,7 +165,9 @@ export function DashboardLayout() {
     onOpenSearch: openPalette,
     unreadCount,
     renderNotifications: (row: ReactNode) => panel(row),
-    // One shared Super admin account: no name/email card, just Log out.
+    // PRD-024 FR-1.5 (P-06): the signed-in platform user (platformMe) and their role.
+    user: user ? { name: user.name || user.email, email: user.email, subtitle: getPlatformRoleLabel(user.role) } : undefined,
+    userMenu: [{ key: "logout", label: "Log out", onAction: handleLogout, danger: true }],
     onLogout: handleLogout,
     isActive,
   };

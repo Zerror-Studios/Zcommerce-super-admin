@@ -50,6 +50,32 @@ describe("store table", () => {
     expect(matchesFilters({ ...filters, overdue: true }, store, sub("a", "2026-10-01", "danger"))).toBe(true);
   });
 
+  it("tabs and the status filter follow the lifecycle (PRD-024 D4)", () => {
+    const live = { ...client("a", "active", 90), liveAt: "2026-10-01", subscriptionStatus: "ACTIVE" } as Client;
+    const setUp = { ...client("b", "active", 90), subscriptionStatus: "ACTIVE" } as Client;
+    const pastDue = { ...client("c", "active", 90), subscriptionStatus: "PAST_DUE" } as Client;
+    expect(matchesTab("live", live, undefined, NOW)).toBe(true);
+    expect(matchesTab("live", setUp, undefined, NOW)).toBe(false);
+    expect(matchesTab("setup", setUp, undefined, NOW)).toBe(true);
+    const filters = { plans: [], statuses: ["past_due"], health: [], overdue: false };
+    expect(matchesFilters(filters, pastDue, undefined)).toBe(true);
+    expect(matchesFilters(filters, live, undefined)).toBe(false);
+    // Older links: status=active means Live.
+    expect(matchesFilters({ ...filters, statuses: ["active"] }, live, undefined)).toBe(true);
+    expect(matchesFilters({ ...filters, statuses: ["active"] }, setUp, undefined)).toBe(false);
+  });
+
+  it("filters plans by version id, and by tier for older links (PRD-024 FR-1.3)", () => {
+    const store = {
+      ...client("a", "active", 90, "PLUS"),
+      planRef: { id: "plan-plus-v2", version: 2, displayName: "Plus", custom: false, limits: { products: null, staff: null } },
+    } as Client;
+    const filters = { plans: ["plan-plus-v2"], statuses: [], health: [], overdue: false };
+    expect(matchesFilters(filters, store, undefined)).toBe(true);
+    expect(matchesFilters({ ...filters, plans: ["plan-plus-v1"] }, store, undefined)).toBe(false);
+    expect(matchesFilters({ ...filters, plans: ["PLUS"] }, store, undefined)).toBe(true);
+  });
+
   it("sorts by health, then the earliest due date", () => {
     const subs = new Map([
       ["a", sub("a", "2026-11-10")],

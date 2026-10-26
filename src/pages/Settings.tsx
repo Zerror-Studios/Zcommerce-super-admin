@@ -20,6 +20,7 @@ import type { CouponWrite } from "../lib/coupon-form.util";
 import { useCoupons } from "../hooks/use-platform-reports";
 import { mutationFailureCopy } from "../lib/mutation-errors";
 import { PLATFORM_PERMISSIONS } from "../lib/permissions";
+import { splitParam } from "../lib/store-table.util";
 import { useAuth } from "../providers/AuthProvider";
 import {
   Button as UiButton,
@@ -31,6 +32,7 @@ import {
   TwoPaneCard,
   formatCount,
   toastError,
+  useTableUrlState,
   type PaneGroup,
 } from "../components/ui";
 import { toasts } from "../copy";
@@ -145,7 +147,15 @@ export function Settings() {
   const [logoutAllOpen, setLogoutAllOpen] = useState(false);
   const [query, setQuery] = useState("");
   // PRD-005 FR-7.2: platform discounts live on the server (read only on Discounts).
-  const apiCoupons = useCoupons({ skip: section !== "discounts" });
+  // PRD-024 FR-3.5 (B-07): the Discounts table's search and status (in the URL) filter on the server.
+  const couponTable = useTableUrlState();
+  const couponStatuses = useMemo(() => splitParam(couponTable.filters.status), [couponTable.filters.status]);
+  const couponsFiltered = couponTable.search.trim() !== "" || couponStatuses.length > 0;
+  const apiCoupons = useCoupons({
+    skip: section !== "discounts",
+    search: couponTable.search,
+    statuses: couponStatuses,
+  });
   const [createCoupon] = useMutation(CREATE_PLATFORM_COUPON);
   const [updateCoupon] = useMutation(UPDATE_PLATFORM_COUPON);
   const [deactivateCoupon] = useMutation(DEACTIVATE_PLATFORM_COUPON);
@@ -202,11 +212,12 @@ export function Settings() {
             label: sections[key].title,
             icon: <Icon aria-hidden />,
             href: `/settings/${key}`,
-            meta: key === "discounts" && couponCount > 0 ? formatCount(couponCount) : undefined,
+            // A filtered count would read as the total: show it only unfiltered.
+            meta: key === "discounts" && couponCount > 0 && !couponsFiltered ? formatCount(couponCount) : undefined,
           };
         }),
     }));
-  }, [couponCount, query]);
+  }, [couponCount, couponsFiltered, query]);
 
   // Unknown sections (including the old /settings/account) go back to the list.
   if (section && !isSection(section)) return <Navigate to="/settings" replace />;

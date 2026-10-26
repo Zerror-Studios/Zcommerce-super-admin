@@ -13,3 +13,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/** The build's version (vite.config.ts `define`, PRD-024 FR-1.5). */
+declare const __APP_VERSION__: string;

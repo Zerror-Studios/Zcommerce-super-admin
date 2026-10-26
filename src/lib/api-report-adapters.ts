@@ -40,6 +40,35 @@ const PAYMENT_STATUS: Record<PlatformPayment["status"], TransactionStatus> = {
   PENDING: "pending",
 };
 
+/** Console payment status → the API's (`success` → `SUCCESS`). */
+const API_PAYMENT_STATUS: Record<TransactionStatus, PlatformPayment["status"]> = {
+  success: "SUCCESS",
+  failed: "FAILED",
+  refunded: "REFUNDED",
+  pending: "PENDING",
+};
+
+/**
+ * PRD-024 FR-1.6 (B-01): the `platformPayments` filter. Search (store name,
+ * slug or transaction id) and status run on the server, over every payment,
+ * not over the loaded page. Null when nothing filters.
+ */
+export function paymentsFilterOf(input: {
+  tenantId?: string;
+  search?: string;
+  statuses?: readonly string[];
+}): { tenantId?: string; search?: string; status?: PlatformPayment["status"][] } | null {
+  const filter: { tenantId?: string; search?: string; status?: PlatformPayment["status"][] } = {};
+  if (input.tenantId) filter.tenantId = input.tenantId;
+  const search = input.search?.trim();
+  if (search) filter.search = search;
+  const status = (input.statuses ?? [])
+    .map((value) => API_PAYMENT_STATUS[value as TransactionStatus])
+    .filter((value): value is PlatformPayment["status"] => value !== undefined);
+  if (status.length) filter.status = status;
+  return Object.keys(filter).length ? filter : null;
+}
+
 export function toTransaction(payment: PlatformPayment): Transaction {
   return {
     id: payment.id,
@@ -52,10 +81,30 @@ export function toTransaction(payment: PlatformPayment): Transaction {
     date: payment.createdAt ?? new Date(0).toISOString(),
     dueDate: payment.periodStart ?? undefined,
     transactionId: payment.transactionId ?? payment.id,
+    // PRD-024 FR-1.6 (B-09): the plan the payment was for, not the store's plan today.
+    planName: payment.planName ?? undefined,
   };
 }
 
 // ─── Coupons ──────────────────────────────────────────────────────────────
+
+/** Console coupon status → the API's `PlatformCouponStatus`. */
+const API_COUPON_STATUS: Record<string, "ACTIVE" | "INACTIVE" | "EXPIRED"> = {
+  active: "ACTIVE",
+  inactive: "INACTIVE",
+  expired: "EXPIRED",
+};
+
+/**
+ * PRD-024 FR-3.5 (B-07): the `platformCoupons` status filter; null when
+ * nothing filters (unknown values are dropped, never sent).
+ */
+export function couponStatusesOf(statuses: readonly string[]): ("ACTIVE" | "INACTIVE" | "EXPIRED")[] | null {
+  const mapped = statuses
+    .map((value) => API_COUPON_STATUS[value])
+    .filter((value): value is "ACTIVE" | "INACTIVE" | "EXPIRED" => value !== undefined);
+  return mapped.length > 0 ? mapped : null;
+}
 
 export function toCoupon(coupon: PlatformCoupon): Coupon {
   return {
@@ -131,6 +180,8 @@ export const EMPTY_REVENUE: RevenueView = {
   billing: 0,
   summary: {
     monthlyBilling: 0,
+    trialPipeline: 0,
+    atRiskMrr: 0,
     billableStores: 0,
     earnedMonth: 0,
     earnedYear: 0,

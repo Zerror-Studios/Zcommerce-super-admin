@@ -4,6 +4,7 @@ import type { Client } from "../../types";
 import { toasts } from "../../copy";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { isOverdue, isUnpaid } from "../../lib/store-table.util";
+import { storeLifecycleEnum, storeLifecycleKey } from "../../lib/storeStatus";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
@@ -34,12 +35,14 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
     let overdue = 0;
     clients.forEach((client) => {
       const sub = byClient.get(client.id);
-      if (client.status === "active") live += 1;
+      if (storeLifecycleKey(client) === storeLifecycleEnum.LIVE) live += 1;
       if (isUnpaid(sub)) unpaid += 1;
       if (isOverdue(sub)) overdue += 1;
     });
-    return `${formatCount(live)} live · ${formatCount(unpaid)} unpaid · ${formatCount(overdue)} overdue`;
-  }, [clients, subscriptions]);
+    const line = `${formatCount(live)} live · ${formatCount(unpaid)} unpaid · ${formatCount(overdue)} overdue`;
+    // PRD-024 FR-1.6 (B-06): these are counted from the loaded rows; say so until every store is loaded.
+    return clients.length < totalCount ? `${line} in ${formatCount(clients.length)} loaded stores` : line;
+  }, [clients, subscriptions, totalCount]);
 
   return (
     <div>
@@ -48,7 +51,7 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
         icon={<IconStore aria-hidden />}
         section="teal"
         title="Stores"
-        count={clients.length}
+        count={totalCount}
         description={loading ? undefined : summary}
         actions={
           can(PLATFORM_PERMISSIONS.TENANTS_MANAGE) ? (

@@ -20,3 +20,7 @@ export const STORE_ADMIN_URL_TEMPLATE: string =
   (import.meta.env.PROD
     ? "https://store.zerrorstudios.com/store/{slug}"
     : "http://localhost:5173/store/{slug}");
+
+/** The build's version for the shell (vite.config.ts, PRD-024 FR-1.5). */
+export const APP_VERSION: string =
+  typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "dev";

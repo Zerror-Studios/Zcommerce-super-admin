@@ -81,7 +81,8 @@ export interface Client {
   orders30d: number;
   /** Net store sales in the last 30 days (PRD-012 FR-8.2). */
   revenue: number;
-  growthPercent: number;
+  /** PRD-024 FR-2.1: change vs the previous 30 days; null when nothing sold then (or no snapshot). */
+  growthPercent: number | null;
   /** GA4 traffic in the last 30 days; 0 without an analytics app (PRD-012 FR-8.2). */
   sessions30d: number;
   pageViews30d: number;
@@ -127,6 +128,35 @@ export interface Client {
   domainStatus?: TenantDomainStatus;
   pendingDomain?: string;
   liveAt?: string;
+  // ── PRD-024 FR-1.3, FR-1.7, FR-1.9 ──
+  /** The subscription's status; the lifecycle badge reads it with `liveAt`. */
+  subscriptionStatus?: SubscriptionStatus;
+  /** False when the server has no usage snapshot yet: the usage figures are not measured (show "—"). */
+  hasUsage?: boolean;
+  /** The snapshot's date ("as of"), when there is one. */
+  usageAsOf?: string;
+  /** Staff accounts in the latest snapshot; `null` without one. */
+  staffCount?: number | null;
+  /** PRD-024 FR-3.7: messages sent this month (every channel); `null` until counted. */
+  messagesThisMonth?: number | null;
+  /** PRD-024 FR-2.7: some snapshot figures were carried from the previous snapshot. */
+  usagePartial?: boolean;
+  region?: string;
+  /** The store's own plan version (id, version, limits), never matched by tier name. */
+  planRef?: ClientPlanRef;
+}
+
+/** PRD-024 FR-1.3 (D-03): the plan a store is on, by identity. */
+export interface ClientPlanRef {
+  id: string;
+  version: number | null;
+  displayName: string | null;
+  /** True for a custom plan that belongs to this store. */
+  custom: boolean;
+  limits: {
+    products: number | null;
+    staff: number | null;
+  };
 }
 
 export interface Subscription {
@@ -159,6 +189,8 @@ export interface Subscription {
   suspendsAt?: string;
   /** Server-computed payment badge; `lib/storeStatus` shows it. */
   paymentState?: { label: string; tone: "success" | "warning" | "danger" | "info" | "neutral"; detail: string | null };
+  /** PRD-024 FR-1.7 (B-05): days past due, from the server (0 when not overdue). */
+  daysOverdue?: number;
 }
 
 export interface Transaction {
@@ -172,6 +204,8 @@ export interface Transaction {
   date: string;
   dueDate?: string;
   transactionId: string;
+  /** The plan the payment was for (`PlatformPayment.planName`). */
+  planName?: string;
 }
 
 export interface Coupon {

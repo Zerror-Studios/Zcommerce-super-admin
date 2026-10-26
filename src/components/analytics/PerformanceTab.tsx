@@ -21,6 +21,7 @@ import {
   lastDaysRange,
   type PerformanceRangeDays,
 } from "../../lib/analytics-health";
+import { NO_PREVIOUS_SALES_COPY } from "../../lib/store-sales";
 import type { StorePerformanceRow } from "../../types/platform-api";
 import { emptyStates, toasts } from "../../copy";
 import { dataTableClassNames } from "../common/dataTableStyles";
@@ -33,6 +34,7 @@ import {
   KpiStrip,
   SegmentedControl,
   StatCard,
+  Tooltip,
   cx,
   formatCount,
   formatDate,
@@ -98,9 +100,15 @@ function ChartTooltip({ active, payload, label }: CustomTooltipProps) {
   );
 }
 
-function Growth({ value }: { value: number }) {
-  // growthPercent −100 means "no sales in the previous period" (docs/design/05-wording.md §2).
-  if (value <= -100) return <span className={cx(right, "text-fg-subtle")}>—</span>;
+function Growth({ value }: { value: number | null }) {
+  // PRD-024 FR-2.1: null = the window before sold nothing; there is no change to show.
+  if (value == null) {
+    return (
+      <Tooltip content={NO_PREVIOUS_SALES_COPY}>
+        <span className={cx(right, "text-fg-subtle")}>—</span>
+      </Tooltip>
+    );
+  }
   const tone = value === 0 ? undefined : value > 0 ? toneTextClasses.success : toneTextClasses.danger;
   return <span className={cx(right, tone)}>{formatDelta(value)}</span>;
 }
@@ -118,7 +126,9 @@ function StoreCell({ row }: { row: StorePerformanceRow }) {
  * Analytics › Performance (PRD-012 FR-8.3): platform-wide sessions, orders,
  * GMV and conversion for the last 7/30/90 days, the daily trend, and the top
  * stores by GMV and by growth. Every figure is the server's; the console only
- * shows the change against the previous period of the same length.
+ * shows the change against the previous period of the same length. Since
+ * PRD-024 FR-3.3 the server sums daily figures over the chosen window, so the
+ * store rows' `*30d` fields hold that window's sums (the labels say so).
  */
 export function PerformanceTab() {
   const navigate = useNavigate();
@@ -139,10 +149,10 @@ export function PerformanceTab() {
   const storeColumns = (
     <TableHeader>
       <TableColumn>Store</TableColumn>
-      <TableColumn align="end">Sessions · 30d</TableColumn>
-      <TableColumn align="end">Orders · 30d</TableColumn>
-      <TableColumn align="end">Net sales · 30d</TableColumn>
-      <TableColumn align="end">vs previous 30 days</TableColumn>
+      <TableColumn align="end">{`Sessions · ${days}d`}</TableColumn>
+      <TableColumn align="end">{`Orders · ${days}d`}</TableColumn>
+      <TableColumn align="end">{`Net sales · ${days}d`}</TableColumn>
+      <TableColumn align="end">{previousLabel}</TableColumn>
       <TableColumn align="end">Conversion</TableColumn>
       <TableColumn>Analytics</TableColumn>
     </TableHeader>
@@ -216,7 +226,11 @@ export function PerformanceTab() {
             format="percent"
             delta={kpis && previous ? changePoints(kpis.conversionRate, previous.conversionRate) : null}
             deltaUnit="pts"
-            deltaLabel={previousLabel}
+            deltaLabel={
+              kpis
+                ? `from ${formatCount(kpis.storesWithSessions)} ${kpis.storesWithSessions === 1 ? "store" : "stores"} with session data`
+                : previousLabel
+            }
           />
           <StatCard
             bare
@@ -272,7 +286,7 @@ export function PerformanceTab() {
           </div>
         </Card>
 
-        <Card title="Top stores by GMV" description="Net sales in the last 30 days" padding="none" className="overflow-hidden">
+        <Card title="Top stores by GMV" description={`Net sales in the last ${days} days`} padding="none" className="overflow-hidden">
           <Table aria-label="Top stores by GMV" removeWrapper classNames={cardTableClassNames}>
             {storeColumns}
             <TableBody items={overview?.topStoresByGmv ?? []} emptyContent={noData}>
@@ -281,7 +295,7 @@ export function PerformanceTab() {
           </Table>
         </Card>
 
-        <Card title="Top stores by growth" description="Largest rise in net sales against the 30 days before" padding="none" className="overflow-hidden">
+        <Card title="Top stores by growth" description={`Largest rise in net sales against the ${days} days before`} padding="none" className="overflow-hidden">
           <Table aria-label="Top stores by growth" removeWrapper classNames={cardTableClassNames}>
             {storeColumns}
             <TableBody items={overview?.topStoresByGrowth ?? []} emptyContent={noData}>

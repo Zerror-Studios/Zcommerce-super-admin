@@ -106,10 +106,12 @@ export function storeInsight(
       body: `Health is ${health.score}. Main factors: ${health.factors.slice(0, 3).join(", ").toLowerCase()}.`,
     };
   }
-  if (client.growthPercent <= -20) {
+  // PRD-024 FR-2.1: null growth (no previous sales) is no comparison, never a fall.
+  const growth = client.growthPercent ?? 0;
+  if (growth <= -20) {
     return {
       title: "Sales are falling",
-      body: `Store sales are down ${Math.abs(Math.round(client.growthPercent))}% on the previous 30 days.`,
+      body: `Store sales are down ${Math.abs(Math.round(growth))}% on the previous 30 days.`,
     };
   }
   return null;
@@ -187,7 +189,7 @@ export async function sampleAssistantAnswer(question: string, data: AssistantDat
     const rows = clients
       .filter((client) => client.status !== "suspended")
       .map((client) => ({ client, health: getStoreHealth(client) }))
-      .filter(({ client, health }) => health.score < 50 || client.growthPercent <= -20)
+      .filter(({ client, health }) => health.score < 50 || (client.growthPercent ?? 0) <= -20)
       .sort((a, b) => a.health.score - b.health.score);
     if (!rows.length) return { text: "Every store looks healthy right now.", used: "Used: store health", sample: true };
     return {
@@ -196,7 +198,7 @@ export async function sampleAssistantAnswer(question: string, data: AssistantDat
         title: "Stores to check",
         rows: rows.slice(0, 5).map(({ client, health }) => ({
           label: client.storeName,
-          value: client.growthPercent <= -20 ? `Health ${health.score} · sales ${Math.round(client.growthPercent)}%` : `Health ${health.score}`,
+          value: (client.growthPercent ?? 0) <= -20 ? `Health ${health.score} · sales ${Math.round(client.growthPercent ?? 0)}%` : `Health ${health.score}`,
           tone: health.score < 50 ? ("danger" as const) : undefined,
         })),
       },

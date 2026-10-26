@@ -3,13 +3,25 @@ import { useEffect, useState } from "react";
 import type { PlatformPaymentProvider, PlatformSettings } from "../../types";
 import { isUserInputError, mutationFailureCopy } from "../../lib/mutation-errors";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
+import { canEditPlatformSettings } from "../../lib/platformSettings";
 import { useAuth } from "../../providers/AuthProvider";
 import { usePlatformSettings } from "../../providers/SettingsProvider";
 import { toasts } from "../../copy";
 import { DunningSettingsCard } from "./DunningSettingsCard";
 import { EntitlementsModeCard } from "./EntitlementsModeCard";
 import { PlatformJobsCard } from "./PlatformJobsCard";
-import { Button as UiButton, Card, Chip, Input, Select, SelectItem, Switch, Textarea, toastError } from "../ui";
+import {
+  Button as UiButton,
+  Card,
+  Chip,
+  ErrorState,
+  Input,
+  Select,
+  SelectItem,
+  Switch,
+  Textarea,
+  toastError,
+} from "../ui";
 
 /** ADR-002 amendment: the provider is a setting; Razorpay is next, Nimbbl stays available. */
 const PROVIDERS: { key: PlatformPaymentProvider; label: string; hint: string }[] = [
@@ -38,11 +50,12 @@ export interface BillingRulesSettingsProps {
 /** Settings › Billing (PRD-005 FR-7.1): grace period, payment provider, health thresholds, reminder schedule. */
 export function BillingRulesSettings({ cards = ALL_CARDS }: BillingRulesSettingsProps) {
   const show = (card: BillingRulesCard) => cards.includes(card);
-  const { settings, loading, updateSettings } = usePlatformSettings();
+  const { settings, loading, error: loadError, retry, updateSettings } = usePlatformSettings();
   const { can } = useAuth();
   // settings:manage is owner-only; others see the rules read-only (review C-M5).
   const readOnly = !can(PLATFORM_PERMISSIONS.SETTINGS_MANAGE);
-  const disabled = loading || readOnly;
+  // PRD-024 FR-1.1: nothing is editable until the server copy has loaded.
+  const disabled = !canEditPlatformSettings({ loaded: !loading, readOnly });
   const [draft, setDraft] = useState<PlatformSettings>(settings);
   const [before, setBefore] = useState(settings.reminders.daysBeforeDue.join(", "));
   const [after, setAfter] = useState(settings.reminders.daysAfterDue.join(", "));
@@ -74,6 +87,23 @@ export function BillingRulesSettings({ cards = ALL_CARDS }: BillingRulesSettings
       setBusy(false);
     }
   };
+
+  // PRD-024 FR-1.1 (D-01): a failed load shows an error with Retry instead
+  // of the defaults, so Save can never overwrite the server's settings.
+  if (loadError) {
+    return (
+      <div className="flex max-w-content-form flex-col gap-4">
+        <Card>
+          <ErrorState
+            title="Couldn't load the platform settings."
+            description="Nothing can be changed until they load, so the saved rules aren't replaced by defaults."
+            onRetry={retry}
+          />
+        </Card>
+        {readOnly || !show("jobs") ? null : <PlatformJobsCard />}
+      </div>
+    );
+  }
 
   return (
     <div className="flex max-w-content-form flex-col gap-4">
@@ -197,16 +227,16 @@ export function BillingRulesSettings({ cards = ALL_CARDS }: BillingRulesSettings
             <Input label="Days before due" placeholder="7, 3, 1" value={before} onValueChange={setBefore} isDisabled={disabled} />
             <Input label="Days after due" placeholder="1, 3, 7" value={after} onValueChange={setAfter} isDisabled={disabled} />
           </div>
-          <div className="flex flex-wrap gap-6">
-            <Switch isSelected={draft.reminders.email} onValueChange={(on) => setDraft({ ...draft, reminders: { ...draft.reminders, email: on } })}>
+          {/* PRD-024 FR-1.8: only email can deliver; SMS and WhatsApp stay hidden until a platform SMS account exists (Q3). */}
+          <div className="flex flex-col gap-1">
+            <Switch
+              isSelected={draft.reminders.email}
+              onValueChange={(on) => setDraft({ ...draft, reminders: { ...draft.reminders, email: on } })}
+              isDisabled={disabled}
+            >
               Email
             </Switch>
-            <Switch isSelected={draft.reminders.sms} onValueChange={(on) => setDraft({ ...draft, reminders: { ...draft.reminders, sms: on } })}>
-              SMS
-            </Switch>
-            <Switch isSelected={draft.reminders.whatsapp} onValueChange={(on) => setDraft({ ...draft, reminders: { ...draft.reminders, whatsapp: on } })}>
-              WhatsApp
-            </Switch>
+            <p className="text-label text-fg-muted">SMS and WhatsApp reminders aren't available: there is no platform SMS account.</p>
           </div>
           <Textarea
             label="Reminder text"

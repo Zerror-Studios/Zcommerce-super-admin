@@ -2,7 +2,7 @@ import { useMutation } from "@apollo/client";
 import { addToast } from "@heroui/react";
 import { useRef, useState } from "react";
 import { SET_TENANT_AI_OVERRIDE, SET_TENANT_AI_PAUSED } from "../../graphql/ai";
-import { useAiTenantSetting, useAiTopQuestions } from "../../hooks/use-platform-ai";
+import { useAiTenantSetting, useAiTopQuestions, useAiUsageByTenant } from "../../hooks/use-platform-ai";
 import { mutationFailureCopy } from "../../lib/mutation-errors";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import {
@@ -13,6 +13,8 @@ import {
   aiOverrideDraft,
   aiOverrideInput,
   aiOverrideLabel,
+  formatInr,
+  formatUsd,
   type AiOverrideDraft,
   type FieldErrors,
 } from "../../lib/platform-ai.util";
@@ -102,6 +104,8 @@ export function ClientAiCard({ client }: ClientAiCardProps) {
         </>
       )}
 
+      <MonthUsage tenantId={client.id} />
+
       <div className="mt-5 border-t border-line-subtle pt-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -139,6 +143,35 @@ function Metric({ label, value }: { label: string; value: string }) {
     <div className="min-w-0">
       <dt className="text-label text-fg-muted">{label}</dt>
       <dd className="mt-0.5 text-body font-semibold text-fg num">{value}</dd>
+    </div>
+  );
+}
+
+// ─── This month (PRD-024 FR-3.6) ──────────────────────────────────────────
+
+/** This store's AI use this month, from its own `aiUsageByTenant` row. */
+function MonthUsage({ tenantId }: { tenantId: string }) {
+  const api = useAiUsageByTenant({ limit: 1, offset: 0, search: "", tenantId });
+  const row = api.data?.items.find((item) => item.tenantId === tenantId) ?? null;
+  return (
+    <div className="mt-5 border-t border-line-subtle pt-4">
+      <p className="text-body font-medium text-fg">This month</p>
+      {api.error ? (
+        <ErrorState inline title="Couldn't load this store's AI usage." onRetry={() => void api.refetch()} />
+      ) : api.loading ? (
+        <Skeleton className="mt-3 h-12 w-full rounded-lg" />
+      ) : !row ? (
+        <p className="mt-1 text-body text-fg-muted">No AI usage recorded for this store.</p>
+      ) : (
+        <dl className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Metric
+            label="Questions"
+            value={`${formatCount(row.questionsThisMonth)} · ${formatCount(row.questionsThisWeek)} this week`}
+          />
+          <Metric label="Tokens" value={formatCount(row.tokensThisMonth)} />
+          <Metric label="Cost" value={`${formatUsd(row.costUsdThisMonth)} · ${formatInr(row.costInrThisMonth)}`} />
+        </dl>
+      )}
     </div>
   );
 }

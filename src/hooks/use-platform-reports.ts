@@ -9,12 +9,21 @@ import { useQuery } from "@apollo/client";
 import { useCallback, useMemo, useState } from "react";
 import {
   PLATFORM_COUPONS,
+  PLATFORM_INVOICE_DETAIL,
   PLATFORM_INVOICES,
   PLATFORM_PAYMENTS,
 } from "../graphql/billing";
-import { PLATFORM_COLLECTIONS, PLATFORM_REVENUE_OVERVIEW } from "../graphql/reports";
+import {
+  PLATFORM_COLLECTIONS,
+  PLATFORM_JOB_RUNS,
+  PLATFORM_MRR_HISTORY,
+  PLATFORM_REMINDER_LOG,
+  PLATFORM_REVENUE_OVERVIEW,
+} from "../graphql/reports";
 import {
   EMPTY_REVENUE,
+  couponStatusesOf,
+  paymentsFilterOf,
   toCollectionsView,
   toCoupon,
   toPickerDay,
@@ -29,6 +38,12 @@ import {
   nextOffset,
   PAYMENTS_PAGE_LIMIT,
 } from "../lib/offset-paging.util";
+import { PLATFORM_PERMISSIONS } from "../lib/permissions";
+import {
+  mrrHistoryWindow,
+  paymentStatusCounts,
+  type PaymentStatusCounts,
+} from "../lib/platform-history.util";
 import { useAuth } from "../providers/AuthProvider";
 import type { Coupon, Transaction } from "../types";
 import type {
@@ -36,10 +51,17 @@ import type {
   PlatformCoupon,
   PlatformInvoice,
   PlatformInvoiceFilter,
+  PlatformJobRun,
   PlatformList,
+  PlatformMrrDay,
   PlatformPayment,
+  PlatformReminderLogEntry,
   PlatformRevenueOverview,
+  PlatformStatusCount,
 } from "../types/platform-api";
+
+/** `platformPayments` with the PRD-024 FR-3.5 counts. */
+type PaymentPage = PlatformList<PlatformPayment> & { countsByStatus?: PlatformStatusCount[] };
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -117,11 +139,17 @@ export interface PaymentsArgs {
   tenantId?: string;
   /** Don't fetch (the screen that needs it is not shown). */
   skip?: boolean;
+  /** PRD-024 FR-1.6: server-side search (store name, slug, transaction id). */
+  search?: string;
+  /** PRD-024 FR-1.6: console statuses (`success`, `pending`, …), filtered on the server. */
+  statuses?: readonly string[];
 }
 
 export interface PaymentsState extends HookState<Transaction[]> {
   /** Payments on the server; more than `data.length` means `loadMore` has more (FE-09). */
   totalCount: number;
+  /** PRD-024 FR-3.5: the server's counts per status, under every filter except status. */
+  statusCounts: PaymentStatusCounts;
   hasMore: boolean;
   loadingMore: boolean;
   /** Reads the next page (the API caps a page at 200). */
@@ -129,15 +157,21 @@ export interface PaymentsState extends HookState<Transaction[]> {
 }
 
 /** Platform payments, newest first, a page of 200 at a time (PRD-014 FE-09). */
-export function usePayments({ tenantId, skip = false }: PaymentsArgs = {}): PaymentsState {
+export function usePayments({ tenantId, skip = false, search, statuses }: PaymentsArgs = {}): PaymentsState {
   const { isAuthenticated } = useAuth();
-  const query = useQuery<{ platformPayments: PlatformList<PlatformPayment> }>(PLATFORM_PAYMENTS, {
-    variables: { filter: tenantId ? { tenantId } : null, limit: PAYMENTS_PAGE_LIMIT, offset: 0 },
+  const statusKey = (statuses ?? []).join();
+  const filter = useMemo(
+    () => paymentsFilterOf({ tenantId, search, statuses: statusKey ? statusKey.split(",") : [] }),
+    [search, statusKey, tenantId],
+  );
+  const query = useQuery<{ platformPayments: PaymentPage }>(PLATFORM_PAYMENTS, {
+    variables: { filter, limit: PAYMENTS_PAGE_LIMIT, offset: 0 },
     skip: skip || !isAuthenticated,
     fetchPolicy: "cache-and-network",
   });
   const page = query.data?.platformPayments;
   const data = useMemo(() => (page?.items ?? []).map(toTransaction), [page]);
+  const statusCounts = useMemo(() => paymentStatusCounts(page?.countsByStatus), [page]);
   const [lastPageSize, setLastPageSize] = useState<number | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const offset = nextOffset(page, PAYMENTS_PAGE_LIMIT, lastPageSize);
@@ -163,6 +197,7 @@ export function usePayments({ tenantId, skip = false }: PaymentsArgs = {}): Paym
     error: query.error ?? null,
     refetch,
     totalCount: page?.totalCount ?? data.length,
+    statusCounts,
     hasMore: offset !== null,
     loadingMore,
     loadMore,
@@ -178,19 +213,34 @@ export interface CouponsState extends HookState<Coupon[]> {
   loadMore: () => Promise<void>;
 }
 
+export interface CouponsArgs {
+  skip?: boolean;
+  /** PRD-024 FR-3.5: server search (code or plan). */
+  search?: string;
+  /** PRD-024 FR-3.5: console statuses (`active`, `inactive`, `expired`), filtered on the server. */
+  statuses?: readonly string[];
+}
+
 /** Platform coupons, newest first, a page of 100 at a time (PRD-014 close-out). */
-export function useCoupons({ skip = false }: { skip?: boolean } = {}): CouponsState {
+export function useCoupons({ skip = false, search, statuses }: CouponsArgs = {}): CouponsState {
   const { isAuthenticated } = useAuth();
+  const statusKey = (statuses ?? []).join();
+  const status = useMemo(
+    () => couponStatusesOf(statusKey ? statusKey.split(",") : []),
+    [statusKey],
+  );
   const query = useQuery<{ platformCoupons: PlatformCoupon[]; platformCouponCount: number }>(
     PLATFORM_COUPONS,
     {
-      variables: { limit: COUPONS_PAGE_LIMIT, offset: 0 },
+      variables: { limit: COUPONS_PAGE_LIMIT, offset: 0, search: search?.trim() || null, status },
       skip: skip || !isAuthenticated,
       fetchPolicy: "cache-and-network",
     },
   );
-  const rows = query.data?.platformCoupons;
-  const totalCount = query.data?.platformCouponCount ?? rows?.length ?? 0;
+  // Keep the last rows on screen while new filters load (the table stays mounted).
+  const shown = query.data ?? query.previousData;
+  const rows = shown?.platformCoupons;
+  const totalCount = shown?.platformCouponCount ?? rows?.length ?? 0;
   const page = useMemo(
     () => (rows ? { items: rows, totalCount } : undefined),
     [rows, totalCount],
@@ -217,7 +267,8 @@ export function useCoupons({ skip = false }: { skip?: boolean } = {}): CouponsSt
   }, [refetchCoupons]);
   return {
     data,
-    loading: query.loading && !query.data,
+    loading: query.loading && !shown,
+    reloading: query.loading && !!shown,
     error: query.error ?? null,
     refetch,
     totalCount,
@@ -322,5 +373,108 @@ export function useFlaggedPayments(): PagedListState<PlatformPayment> {
     hasMore: offset !== null,
     loadingMore,
     loadMore,
+  };
+}
+
+// ─── PRD-024 Phase C reads ────────────────────────────────────────────────
+
+/**
+ * FR-3.1 (reports:read): recorded MRR days for the picker range (cut to the
+ * server's 731 days). Days before the first snapshot are absent.
+ */
+export function useMrrHistory(range: { startDate: Date; endDate: Date }): HookState<PlatformMrrDay[]> {
+  const { isAuthenticated, can } = useAuth();
+  const historyWindow = mrrHistoryWindow(range.startDate, range.endDate);
+  const query = useQuery<{ platformMrrHistory: PlatformMrrDay[] }>(PLATFORM_MRR_HISTORY, {
+    variables: historyWindow,
+    skip: !isAuthenticated || !can(PLATFORM_PERMISSIONS.REPORTS_READ),
+    fetchPolicy: "cache-and-network",
+  });
+  const raw = query.data ?? query.previousData;
+  const data = useMemo(() => raw?.platformMrrHistory ?? [], [raw]);
+  return {
+    data,
+    loading: query.loading && !raw,
+    error: query.error ?? null,
+    refetch: query.refetch,
+  };
+}
+
+export interface ReminderLogState extends HookState<PlatformReminderLogEntry[]> {
+  totalCount: number;
+}
+
+/** FR-3.9 (billing:read): reminders sent, newest first; one store with `tenantId`. */
+export function useReminderLog(
+  { tenantId, limit, offset }: { tenantId?: string; limit: number; offset: number },
+): ReminderLogState {
+  const { isAuthenticated, can } = useAuth();
+  const query = useQuery<{ platformReminderLog: PlatformList<PlatformReminderLogEntry> }>(
+    PLATFORM_REMINDER_LOG,
+    {
+      variables: { tenantId: tenantId ?? null, limit, offset },
+      skip: !isAuthenticated || !can(PLATFORM_PERMISSIONS.BILLING_READ),
+      fetchPolicy: "cache-and-network",
+    },
+  );
+  const raw = query.data ?? query.previousData;
+  const data = useMemo(() => raw?.platformReminderLog.items ?? [], [raw]);
+  return {
+    data,
+    loading: query.loading && !raw,
+    reloading: query.loading && !!raw,
+    error: query.error ?? null,
+    refetch: query.refetch,
+    totalCount: raw?.platformReminderLog.totalCount ?? 0,
+  };
+}
+
+/** FR-3.10 (settings:manage): the platform jobs' latest runs, newest first. */
+export function useJobRuns({ limit, skip = false }: { limit: number; skip?: boolean }): HookState<PlatformJobRun[]> {
+  const { isAuthenticated, can } = useAuth();
+  const query = useQuery<{ platformJobRuns: PlatformJobRun[] }>(PLATFORM_JOB_RUNS, {
+    variables: { job: null, limit },
+    skip: skip || !isAuthenticated || !can(PLATFORM_PERMISSIONS.SETTINGS_MANAGE),
+    fetchPolicy: "cache-and-network",
+  });
+  const data = useMemo(() => query.data?.platformJobRuns ?? [], [query.data]);
+  return {
+    data,
+    loading: query.loading && !query.data,
+    error: query.error ?? null,
+    refetch: query.refetch,
+  };
+}
+
+/** Rows the detail read asks for: the invoice search matches numbers by substring. */
+const INVOICE_DETAIL_LIMIT = 10;
+
+/**
+ * FR-3.8 (billing:read): one invoice's status history and linked payments,
+ * read when its detail dialog opens.
+ */
+export function useInvoiceDetail(
+  invoice: Pick<PlatformInvoice, "id" | "tenantId" | "number"> | null,
+): HookState<Pick<PlatformInvoice, "statusHistory" | "payments"> | null> {
+  const { isAuthenticated, can } = useAuth();
+  const query = useQuery<{ platformInvoices: PlatformList<Pick<PlatformInvoice, "id" | "statusHistory" | "payments">> }>(
+    PLATFORM_INVOICE_DETAIL,
+    {
+      variables: invoice
+        ? { filter: { tenantId: invoice.tenantId, search: invoice.number }, limit: INVOICE_DETAIL_LIMIT }
+        : undefined,
+      skip: !invoice || !isAuthenticated || !can(PLATFORM_PERMISSIONS.BILLING_READ),
+      fetchPolicy: "cache-and-network",
+    },
+  );
+  const data = useMemo(
+    () => query.data?.platformInvoices.items.find((item) => item.id === invoice?.id) ?? null,
+    [invoice?.id, query.data],
+  );
+  return {
+    data,
+    loading: query.loading && !query.data,
+    error: query.error ?? null,
+    refetch: query.refetch,
   };
 }

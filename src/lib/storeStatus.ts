@@ -6,6 +6,7 @@
  */
 import type { Tone } from "../components/ui/tones";
 import type { Client, Subscription } from "../types";
+import { daysUntil } from "./utils";
 
 export interface StatusBadge {
   label: string;
@@ -14,20 +15,88 @@ export interface StatusBadge {
   detail?: string;
 }
 
-/** Store lifecycle. The data has active / trial / suspended; Building and Cancelled don't exist yet. */
-export function storeLifecycle(client: Client): StatusBadge {
-  // PRD-018 FR-2.3: a deleted store (in its grace period) is only reachable by link.
-  if (client.tenantStatus === "DELETED") return { label: "Deleted", tone: "neutral" };
-  switch (client.status) {
-    case "active":
-      return { label: "Live", tone: "success" };
-    case "trial":
-      return { label: "Trial", tone: "info" };
-    case "suspended":
-      return { label: "Suspended", tone: "danger" };
-    default:
-      return { label: "Unknown", tone: "neutral" };
+// ─── Store lifecycle (PRD-024 FR-1.9, decision D4) ──────────────────────
+
+/** The lifecycle states a store can show, in tab and filter order. */
+export const storeLifecycleEnum = {
+  LIVE: "live",
+  SET_UP: "setup",
+  TRIAL: "trial",
+  PAST_DUE: "past_due",
+  CANCELLED: "cancelled",
+  SUSPENDED: "suspended",
+  DELETED: "deleted",
+} as const;
+
+export type StoreLifecycleKey = (typeof storeLifecycleEnum)[keyof typeof storeLifecycleEnum];
+
+/** Every state but Deleted (deleted stores are listed apart, PRD-018). */
+export const STORE_LIFECYCLE_FILTERS: StoreLifecycleKey[] = [
+  storeLifecycleEnum.LIVE,
+  storeLifecycleEnum.SET_UP,
+  storeLifecycleEnum.TRIAL,
+  storeLifecycleEnum.PAST_DUE,
+  storeLifecycleEnum.CANCELLED,
+  storeLifecycleEnum.SUSPENDED,
+];
+
+const LIFECYCLE_BADGES: Record<StoreLifecycleKey, StatusBadge> = {
+  live: { label: "Live", tone: "success" },
+  setup: { label: "Set up", tone: "neutral" },
+  trial: { label: "Trial", tone: "info" },
+  past_due: { label: "Past due", tone: "warning" },
+  cancelled: { label: "Cancelled", tone: "neutral" },
+  suspended: { label: "Suspended", tone: "danger" },
+  deleted: { label: "Deleted", tone: "neutral" },
+};
+
+/** Older links used `status=active` for Live. */
+const LEGACY_LIFECYCLE_KEYS: Record<string, StoreLifecycleKey> = { active: storeLifecycleEnum.LIVE };
+
+export function isStoreLifecycleKey(value: string): value is StoreLifecycleKey {
+  return (Object.values(storeLifecycleEnum) as string[]).includes(value);
+}
+
+/** A status filter value from the URL, with the legacy `active` read as Live. */
+export function normaliseLifecycleKey(value: string): StoreLifecycleKey | undefined {
+  if (isStoreLifecycleKey(value)) return value;
+  return LEGACY_LIFECYCLE_KEYS[value];
+}
+
+/**
+ * D4: "Live" means the store went live (`liveAt`, PRD-018 FR-4.3). Deleted
+ * and suspended stores show that first; a store that never went live shows
+ * its subscription's state from the server (Trial, Past due, Cancelled,
+ * Suspended), and otherwise "Set up".
+ */
+export function storeLifecycleKey(client: Client): StoreLifecycleKey {
+  if (client.tenantStatus === "DELETED") return storeLifecycleEnum.DELETED;
+  if (client.tenantStatus === "SUSPENDED" || client.status === "suspended") {
+    return storeLifecycleEnum.SUSPENDED;
   }
+  if (client.liveAt) return storeLifecycleEnum.LIVE;
+  switch (client.subscriptionStatus) {
+    case "TRIAL":
+      return storeLifecycleEnum.TRIAL;
+    case "PAST_DUE":
+      return storeLifecycleEnum.PAST_DUE;
+    case "CANCELLED":
+      return storeLifecycleEnum.CANCELLED;
+    case "SUSPENDED":
+      return storeLifecycleEnum.SUSPENDED;
+    default:
+      return storeLifecycleEnum.SET_UP;
+  }
+}
+
+/** The label of a lifecycle state ("past_due" → "Past due"). */
+export function storeLifecycleLabel(key: StoreLifecycleKey): string {
+  return LIFECYCLE_BADGES[key].label;
+}
+
+/** The lifecycle badge (one status per store; the payment badge is a separate column). */
+export function storeLifecycle(client: Client): StatusBadge {
+  return LIFECYCLE_BADGES[storeLifecycleKey(client)];
 }
 
 /**
@@ -47,4 +116,15 @@ export function paymentState(subscription: Subscription | undefined): StatusBadg
 /** Grace days for a store: its own override, else the platform default (Settings › Billing rules). */
 export function graceDaysFor(client: Client, platformDefault: number): number {
   return client.gracePeriodDays ?? platformDefault;
+}
+
+/**
+ * PRD-024 FR-1.7 (B-05): days until the renewal, negative when overdue.
+ * Overdue days are the server's (`daysOverdue`); a renewal date that has
+ * passed without the server calling it overdue counts as due today.
+ */
+export function daysUntilDue(subscription: Subscription, now: Date = new Date()): number {
+  const overdue = subscription.daysOverdue ?? 0;
+  if (overdue > 0) return -overdue;
+  return Math.max(0, daysUntil(subscription.renewalDate, now));
 }

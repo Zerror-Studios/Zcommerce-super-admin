@@ -21,7 +21,7 @@ function plural(n: number, one: string, many: string): string {
 
 /** Home — "Platform overview" (docs/design/04-super-admin.md §3.1). Every number comes from the server rollup. */
 export function Home() {
-  const { clients, subscriptions, loading: clientsLoading, error: clientsError, refetch } = useClients();
+  const { clients, subscriptions, loading: clientsLoading, error: clientsError, refetch, totalCount } = useClients();
   const navigate = useNavigate();
   const { can } = useAuth();
   const now = useMemo(() => new Date(), []);
@@ -64,7 +64,7 @@ export function Home() {
         icon={<IconHome aria-hidden />}
         section="blue"
         title="Platform overview"
-        description={`${monthYear.format(now)} · ${plural(clients.length, "store", "stores")}`}
+        description={`${monthYear.format(now)} · ${plural(totalCount, "store", "stores")}`}
         actions={
           can(PLATFORM_PERMISSIONS.TENANTS_MANAGE) ? (
             <Button variant="primary" startIcon={<IconAdd aria-hidden />} onPress={() => navigate("/stores/new")}>

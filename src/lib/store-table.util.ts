@@ -10,7 +10,7 @@
 import { getHealthBand } from "../components/ui/status-map";
 import { subscriptionStatusEnum, type Client, type Subscription } from "../types";
 import { getStoreHealth } from "./storeHealth";
-import { paymentState } from "./storeStatus";
+import { normaliseLifecycleKey, paymentState, storeLifecycleEnum, storeLifecycleKey } from "./storeStatus";
 import { daysUntil } from "./utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -19,6 +19,7 @@ import { daysUntil } from "./utils";
 export const storeTabEnum = {
   ALL: "all",
   LIVE: "live",
+  SET_UP: "setup",
   TRIAL: "trial",
   UNPAID: "unpaid",
   SUSPENDED: "suspended",
@@ -97,12 +98,15 @@ export function matchesTab(
   now: Date,
 ): boolean {
   switch (tab) {
+    // PRD-024 FR-1.9 (D4): the lifecycle state, Live = went live (liveAt).
     case storeTabEnum.LIVE:
-      return client.status === "active";
+      return storeLifecycleKey(client) === storeLifecycleEnum.LIVE;
+    case storeTabEnum.SET_UP:
+      return storeLifecycleKey(client) === storeLifecycleEnum.SET_UP;
     case storeTabEnum.TRIAL:
-      return client.status === "trial";
+      return storeLifecycleKey(client) === storeLifecycleEnum.TRIAL;
     case storeTabEnum.SUSPENDED:
-      return client.status === "suspended";
+      return storeLifecycleKey(client) === storeLifecycleEnum.SUSPENDED;
     case storeTabEnum.UNPAID:
       return isUnpaid(subscription);
     case storeTabEnum.OVERDUE:
@@ -114,13 +118,28 @@ export function matchesTab(
   }
 }
 
+/**
+ * PRD-024 FR-1.3 (B-08): plan filter values are plan version ids from
+ * `platformPlans`; older links carry a tier name, still matched by tier.
+ */
+export function matchesPlanFilter(values: string[], client: Client): boolean {
+  const planId = client.planRef?.id;
+  return values.some((value) => value === planId || value === client.plan);
+}
+
+/** PRD-024 FR-1.9: status filter values are lifecycle states (legacy `active` = Live). */
+export function matchesStatusFilter(values: string[], client: Client): boolean {
+  const key = storeLifecycleKey(client);
+  return values.some((value) => normaliseLifecycleKey(value) === key);
+}
+
 export function matchesFilters(
   filters: StoreFilters,
   client: Client,
   subscription: Subscription | undefined,
 ): boolean {
-  if (filters.plans.length > 0 && !filters.plans.includes(client.plan)) return false;
-  if (filters.statuses.length > 0 && !filters.statuses.includes(client.status)) return false;
+  if (filters.plans.length > 0 && !matchesPlanFilter(filters.plans, client)) return false;
+  if (filters.statuses.length > 0 && !matchesStatusFilter(filters.statuses, client)) return false;
   if (filters.health.length > 0 && !filters.health.includes(healthBandOf(client))) return false;
   if (filters.overdue && !isOverdue(subscription)) return false;
   return true;

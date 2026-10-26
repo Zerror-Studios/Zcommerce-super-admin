@@ -34,3 +34,24 @@ export function auditSearchErrorCopy(error: unknown): string | null {
     ? ACTION_PREFIX_TOO_LONG_COPY
     : null;
 }
+
+// ─── Store activity (PRD-024 FR-1.12, P-04) ───────────────────────────────
+
+/** Rows the store page's Activity section reads at a time. */
+export const STORE_ACTIVITY_PAGE_SIZE = 20;
+
+/** The server's page cap (`clampPagination`). */
+export const STORE_ACTIVITY_MAX_ROWS = 100;
+
+/**
+ * The audit filter for one store: every row whose target is the tenant
+ * (store lifecycle, details, subscription actions), newest first.
+ */
+export function tenantActivityFilter(tenantId: string): { targetId: string } {
+  return { targetId: tenantId };
+}
+
+/** The next Activity page size, capped at the server's maximum. */
+export function nextActivityLimit(current: number): number {
+  return Math.min(STORE_ACTIVITY_MAX_ROWS, current + STORE_ACTIVITY_PAGE_SIZE);
+}

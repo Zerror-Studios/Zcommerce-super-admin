@@ -19,6 +19,7 @@ export const PLATFORM_ANALYTICS_OVERVIEW = gql`
         gmv
         conversionRate
         storesWithTraffic
+        storesWithSessions
         storesTotal
       }
       previous {

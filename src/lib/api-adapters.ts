@@ -9,7 +9,14 @@
  * over the client-side rules (one rule, on the server).
  */
 
-import type { Client, ClientStatus, Plan, PlatformSettings, Subscription } from "../types";
+import type {
+  Client,
+  ClientPlanRef,
+  ClientStatus,
+  Plan,
+  PlatformSettings,
+  Subscription,
+} from "../types";
 import { planNameEnum } from "../types";
 import type {
   PlatformPlan,
@@ -86,11 +93,34 @@ export function toSubscription(
     ordersPauseAt: row.ordersPauseAt ?? undefined,
     suspendsAt: row.suspendsAt ?? undefined,
     paymentState: tenant?.paymentState ?? undefined,
+    daysOverdue: row.daysOverdue ?? 0,
+  };
+}
+
+/**
+ * PRD-024 FR-1.3 (D-03): the store's own plan version, from the
+ * subscription (else the tenant). Limits come from that version, so a custom
+ * plan or a newer version of the tier never lends its limits.
+ */
+export function planRefOf(tenant: PlatformTenant): ClientPlanRef | undefined {
+  const plan = tenant.subscription?.plan ?? tenant.plan;
+  if (!plan) return undefined;
+  return {
+    id: plan.id,
+    version: plan.version ?? null,
+    displayName: plan.displayName ?? null,
+    custom: plan.tenantId != null,
+    limits: {
+      products: limitOf(plan.limits.maxSkus),
+      staff: limitOf(plan.limits.maxStaffAccounts),
+    },
   };
 }
 
 export function toClient(tenant: PlatformTenant): Client {
   const subscription = tenant.subscription;
+  // PRD-024 FR-1.7 (B-03): without a snapshot the usage figures are not
+  // measured; they stay 0 for sorting, and `hasUsage` makes screens show "—".
   const usage = tenant.usage;
   return {
     id: tenant.id,
@@ -102,7 +132,8 @@ export function toClient(tenant: PlatformTenant): Client {
     mrr: tenant.monthlyFee,
     orders30d: usage?.orders30d ?? 0,
     revenue: usage?.revenue30d ?? 0,
-    growthPercent: usage?.growthPercent ?? 0,
+    // PRD-024 FR-2.1: null (no previous sales, or no snapshot) is "no comparison", never 0.
+    growthPercent: usage ? usage.growthPercent : null,
     sessions30d: usage?.sessions30d ?? 0,
     pageViews30d: usage?.pageViews30d ?? 0,
     conversionRate30d: usage?.conversionRate30d ?? 0,
@@ -134,6 +165,14 @@ export function toClient(tenant: PlatformTenant): Client {
     domainStatus: tenant.domainStatus,
     pendingDomain: tenant.pendingDomain ?? undefined,
     liveAt: tenant.liveAt ?? undefined,
+    subscriptionStatus: subscription?.status ?? undefined,
+    hasUsage: usage != null,
+    usageAsOf: usage?.date ?? undefined,
+    staffCount: usage ? usage.staffCount : null,
+    messagesThisMonth: usage?.messagesThisMonth ?? null,
+    usagePartial: usage?.partial === true,
+    region: tenant.region ?? undefined,
+    planRef: planRefOf(tenant),
   };
 }
 

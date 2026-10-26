@@ -3,7 +3,14 @@ import { toastError } from "../components/ui";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { CreateTenantInput, TenantRegion } from "../types/platform-api";
-import { PLAN_LABELS } from "../lib/display-labels.util";
+import {
+  addStorePlans,
+  DEFAULT_STORE_CURRENCY,
+  DEFAULT_STORE_TIMEZONE,
+  normaliseCurrency,
+  planOptionLabel,
+  planPriceHint,
+} from "../lib/plan-identity.util";
 import { errorCodeOf } from "../lib/apollo-client";
 import { mutationFailureCopy } from "../lib/mutation-errors";
 import { PageHeader } from "../components/common/PageHeader";
@@ -40,7 +47,9 @@ function slugify(value: string): string {
  */
 export function AddClient() {
   const navigate = useNavigate();
-  const { plans, createStore } = useClients();
+  const { plans: allPlans, createStore } = useClients();
+  // PRD-024 FR-1.3 (D-03): global ACTIVE plans only, never another store's custom plan.
+  const plans = useMemo(() => addStorePlans(allPlans), [allPlans]);
   const [storeName, setStoreName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
@@ -52,6 +61,9 @@ export function AddClient() {
   const [planId, setPlanId] = useState("");
   const [billingCycle, setBillingCycle] = useState<CreateTenantInput["billingCycle"]>("MONTHLY");
   const [startActive, setStartActive] = useState(false);
+  // PRD-024 FR-1.4 (B-10): sent on create (the server's defaults shown).
+  const [timezone, setTimezone] = useState(DEFAULT_STORE_TIMEZONE);
+  const [currency, setCurrency] = useState(DEFAULT_STORE_CURRENCY);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [created, setCreated] = useState<CreateStoreResult | null>(null);
@@ -68,6 +80,8 @@ export function AddClient() {
     if (!ownerName.trim()) next.ownerName = "Enter the owner's name.";
     if (!ownerEmail.trim().includes("@")) next.ownerEmail = "Enter a valid owner email.";
     if (!selectedPlanId) next.planId = "Choose a plan.";
+    if (!timezone.trim()) next.timezone = "Enter a timezone, like Asia/Kolkata.";
+    if (!normaliseCurrency(currency)) next.currency = "Use a three-letter code, like INR.";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -87,6 +101,8 @@ export function AddClient() {
         planId: selectedPlanId,
         billingCycle,
         startActive,
+        timezone: timezone.trim(),
+        currency: normaliseCurrency(currency),
       });
       if (result.client.onboarding?.status === "READY") {
         addToast({ title: toasts.storeAdded(result.client.storeName) });
@@ -203,12 +219,12 @@ export function AddClient() {
                   errorMessage={errors.planId}
                 >
                   {plans.map((plan) => (
-                    <SelectItem key={plan.id}>{PLAN_LABELS[plan.name]}</SelectItem>
+                    <SelectItem key={plan.id}>{planOptionLabel(plan)}</SelectItem>
                   ))}
                 </Select>
                 {selectedPlan ? (
                   <p className="px-1 text-caption text-fg-muted num">
-                    {formatMoney(selectedPlan.priceMonthly, { whole: true })} / month
+                    {planPriceHint(selectedPlan, billingCycle, (amount) => formatMoney(amount, { whole: true }))}
                   </p>
                 ) : null}
               </div>
@@ -224,6 +240,25 @@ export function AddClient() {
                 <SelectItem key="MONTHLY">Monthly</SelectItem>
                 <SelectItem key="YEARLY">Yearly</SelectItem>
               </Select>
+            </div>
+            <div className={FIELD_GRID}>
+              <Input
+                label="Timezone"
+                placeholder={DEFAULT_STORE_TIMEZONE}
+                value={timezone}
+                onValueChange={setTimezone}
+                isInvalid={!!errors.timezone}
+                errorMessage={errors.timezone}
+              />
+              <Input
+                label="Currency"
+                placeholder={DEFAULT_STORE_CURRENCY}
+                value={currency}
+                onValueChange={(value) => setCurrency(value.toUpperCase())}
+                maxLength={3}
+                isInvalid={!!errors.currency}
+                errorMessage={errors.currency}
+              />
             </div>
             <Switch isSelected={startActive} onValueChange={setStartActive}>
               Start live (skip the 14-day trial)

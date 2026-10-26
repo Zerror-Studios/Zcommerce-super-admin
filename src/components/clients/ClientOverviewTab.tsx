@@ -1,19 +1,20 @@
 import type { ReactNode } from "react";
-import type { Client, Plan, Subscription } from "../../types";
+import type { Client, Subscription } from "../../types";
 import { getPlanLabel } from "../../lib/display-labels.util";
 import { getStoreHealth } from "../../lib/storeHealth";
 import { healthFactorRows } from "../../lib/health-factors.util";
+import { NO_PREVIOUS_SALES_COPY } from "../../lib/store-sales";
 import { formatDate } from "../../lib/utils";
-import { AiInsightCard, Card, Chip, EmptyState, HealthScore, KpiStrip, StatCard, Tooltip as UiTooltip, formatMoney, formatRange, getHealthBand, useAiEnabled } from "../ui";
+import { AiInsightCard, Card, Chip, HealthScore, KpiStrip, StatCard, formatMoney, formatRange, getHealthBand, useAiEnabled } from "../ui";
 import { useState } from "react";
 import { storeInsight } from "../../lib/aiSamples";
+import { ClientPerformanceCard } from "./ClientPerformanceCard";
 import { ClientUsageTab } from "./ClientUsageTab";
 import { NotesCard } from "./NotesCard";
 
 export interface ClientOverviewTabProps {
   client: Client;
   subscription?: Subscription;
-  plan?: Plan;
   /**
    * Store detail is a two-column editor (docs/design/08-fixes-and-screens.md §2.14): "main" renders the KPIs,
    * insight, performance, health and plan usage; "rail" renders Profile and Notes for the side column.
@@ -22,10 +23,13 @@ export interface ClientOverviewTabProps {
 }
 
 /** Store detail › Overview (docs/design/04-super-admin.md §3.4): KPIs → Insight → Performance → Health → Plan usage (main); Profile and Notes (rail). */
-export function ClientOverviewTab({ client, subscription, plan, part }: ClientOverviewTabProps) {
+export function ClientOverviewTab({ client, subscription, part }: ClientOverviewTabProps) {
   const health = getStoreHealth(client);
-  // growthPercent −100 means the comparison can't be shown as a real change (docs/design/05-wording.md §2).
-  const growthUnknown = client.growthPercent <= -100;
+  // PRD-024 FR-2.1: null growth = nothing sold in the previous 30 days; no change to show.
+  const growthUnknown = client.growthPercent == null;
+  // PRD-024 FR-1.7: snapshot figures say when they were taken.
+  const measured = client.hasUsage !== false;
+  const asOf = measured && client.usageAsOf ? ` · as of ${formatDate(client.usageAsOf)}` : "";
   // Insight card (AI flag), written from this store's own payment and health data.
   const aiEnabled = useAiEnabled();
   const [insightDismissed, setInsightDismissed] = useState(false);
@@ -64,23 +68,29 @@ export function ClientOverviewTab({ client, subscription, plan, part }: ClientOv
     // Main column: numbers → insight → performance → health and plan usage side by side on wide screens.
     <>
       <KpiStrip>
+        {/* PRD-024 FR-1.7 (B-03): "—" without a usage snapshot; "as of" its date otherwise. */}
         <StatCard
           bare
           label="Store sales · 30d"
-          value={client.revenue}
+          value={measured ? client.revenue : "—"}
           format="money"
-          delta={growthUnknown ? null : client.growthPercent}
+          delta={!measured || growthUnknown ? null : client.growthPercent}
           deltaLabel={
-            growthUnknown ? (
-              <UiTooltip content="No sales in the previous period">
-                <span>—</span>
-              </UiTooltip>
+            !measured ? (
+              "No usage snapshot yet"
+            ) : growthUnknown ? (
+              `${NO_PREVIOUS_SALES_COPY}${asOf}`
             ) : (
-              "vs previous 30 days"
+              `vs previous 30 days${asOf}`
             )
           }
         />
-        <StatCard bare label="Orders · 30d" value={client.orders30d} deltaLabel={null} />
+        <StatCard
+          bare
+          label="Orders · 30d"
+          value={measured ? client.orders30d : "—"}
+          deltaLabel={measured ? (asOf ? asOf.replace(" · ", "") : null) : "No usage snapshot yet"}
+        />
         <StatCard
           bare
           label="Health"
@@ -99,13 +109,8 @@ export function ClientOverviewTab({ client, subscription, plan, part }: ClientOv
         />
       ) : null}
 
-      {/* No monthly store data exists yet (only the 30-day usage snapshot), so no trend is drawn (it used to be synthetic). */}
-      <Card title="Performance">
-        <EmptyState
-          compact
-          description="Monthly store sales aren't recorded yet. The figures above cover the last 30 days."
-        />
-      </Card>
+      {/* PRD-024 FR-1.12 (P-03): the store's monthly usage snapshots (platformUsage). */}
+      <ClientPerformanceCard tenantId={client.id} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {/* Title and description like every card; the score is a compact chip beside the title (so it never
@@ -135,7 +140,7 @@ export function ClientOverviewTab({ client, subscription, plan, part }: ClientOv
           </div>
         </Card>
 
-        <ClientUsageTab client={client} plan={plan} className="h-full" />
+        <ClientUsageTab client={client} className="h-full" />
       </div>
     </>
   );

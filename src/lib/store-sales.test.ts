@@ -1,60 +1,89 @@
 import { describe, expect, it } from "vitest";
-import type { Client } from "../types";
-import { storeSalesByPlan, storeSalesRows, storeSalesSummary } from "./store-sales";
+import type { PlatformStoreSales } from "../types/platform-api";
+import { storesNeedingALook, toStoreSalesView } from "./store-sales";
 
-const client = (
-  id: string,
-  plan: Client["plan"],
-  revenue: number,
-  orders30d: number,
-  growthPercent: number,
-  sessions30d = 0,
-  conversionRate30d = 0,
-): Client =>
-  ({
-    id,
-    storeName: id,
-    ownerEmail: `${id}@x.io`,
-    plan,
-    status: "active",
-    revenue,
-    orders30d,
-    growthPercent,
-    sessions30d,
-    pageViews30d: sessions30d * 3,
-    conversionRate30d,
-  }) as Client;
+const rollup: PlatformStoreSales = {
+  rangeStart: "2026-09-28",
+  rangeEnd: "2026-10-27",
+  previousStart: "2026-08-29",
+  previousEnd: "2026-09-27",
+  totals: [
+    { currency: "USD", revenue: 300, orders: 3, previousRevenue: 0, previousOrders: 0, growthPercent: null, stores: 1 },
+    { currency: "INR", revenue: 1250, orders: 15, previousRevenue: 1000, previousOrders: 9, growthPercent: 25, stores: 3 },
+  ],
+  stores: [
+    {
+      tenantId: "a",
+      slug: "a",
+      name: "A",
+      currency: "INR",
+      revenue: 1000,
+      orders: 10,
+      previousRevenue: 800,
+      previousOrders: 8,
+      growthPercent: 25,
+      averageOrderValue: 100,
+    },
+    {
+      tenantId: "u",
+      slug: "u",
+      name: "U",
+      currency: "USD",
+      revenue: 300,
+      orders: 3,
+      previousRevenue: 0,
+      previousOrders: 0,
+      growthPercent: null,
+      averageOrderValue: 100,
+    },
+    {
+      tenantId: "c",
+      slug: "c",
+      name: "C",
+      currency: "INR",
+      revenue: 250,
+      orders: 5,
+      previousRevenue: 500,
+      previousOrders: 1,
+      growthPercent: -50,
+      averageOrderValue: 50,
+    },
+    {
+      tenantId: "b",
+      slug: "b",
+      name: "B",
+      currency: "INR",
+      revenue: 0,
+      orders: 0,
+      previousRevenue: 0,
+      previousOrders: 0,
+      growthPercent: null,
+      averageOrderValue: null,
+    },
+  ],
+  totalCount: 4,
+};
 
-describe("store sales", () => {
-  const clients = [
-    client("a", "PREMIUM", 1000, 10, 25, 400, 2.5),
-    client("b", "STARTER", 500, 0, -100),
-    client("c", "PREMIUM", 250, 5, -50, 100, 5),
-  ];
-
-  it("ranks rows by sales and hides unknown change and average order", () => {
-    const rows = storeSalesRows(clients);
-    expect(rows.map((row) => row.clientId)).toEqual(["a", "b", "c"]);
-    expect(rows[0].averageOrder).toBe(100);
-    expect(rows[1]).toMatchObject({ averageOrder: null, changePercent: null });
+describe("store sales (PRD-024 FR-3.4)", () => {
+  it("keeps the server's rows and order, with null growth as no comparison", () => {
+    const view = toStoreSalesView(rollup);
+    expect(view.rows.map((row) => row.clientId)).toEqual(["a", "u", "c", "b"]);
+    expect(view.rows[0]).toMatchObject({ sales: 1000, previousSales: 800, changePercent: 25, averageOrder: 100 });
+    expect(view.rows[1].changePercent).toBeNull();
+    expect(view.rows[3]).toMatchObject({ averageOrder: null, changePercent: null });
+    expect(view.totalCount).toBe(4);
   });
 
-  it("passes the server's traffic and conversion through, hiding conversion without sessions", () => {
-    const rows = storeSalesRows(clients);
-    expect(rows[0]).toMatchObject({ sessions: 400, pageViews: 1200, conversionRate: 2.5 });
-    expect(rows[1]).toMatchObject({ sessions: 0, conversionRate: null });
+  it("reports totals per currency, largest first, never summed across currencies", () => {
+    const view = toStoreSalesView(rollup);
+    expect(view.totals.map((total) => total.currency)).toEqual(["INR", "USD"]);
+    expect(view.totals[0]).toMatchObject({ sales: 1250, orders: 15, previousSales: 1000, changePercent: 25, stores: 3 });
+    expect(view.totals[0].averageOrder).toBeCloseTo(1250 / 15, 5);
+    expect(view.totals[1].changePercent).toBeNull();
   });
 
-  it("works the previous 30 days back from the growth percent", () => {
-    const summary = storeSalesSummary(clients);
-    // previous: a 800, b 0 (no previous sales), c 500 → 1300; now 1750
-    expect(summary).toMatchObject({ sales: 1750, orders: 15, sellingStores: 2, storesWithTraffic: 2, totalStores: 3 });
-    expect(summary.changePercent).toBeCloseTo(((1750 - 1300) / 1300) * 100, 5);
-  });
-
-  it("groups by plan with the share of total sales", () => {
-    const byPlan = storeSalesByPlan(clients);
-    expect(byPlan[0]).toMatchObject({ plan: "PREMIUM", sales: 1250, orders: 15, stores: 2 });
-    expect(byPlan[0].sharePercent).toBeCloseTo((1250 / 1750) * 100, 5);
+  it("flags stores with no orders or a sharp drop", () => {
+    const flagged = storesNeedingALook(toStoreSalesView(rollup).rows).map((row) => row.clientId);
+    expect(flagged).toEqual(["c", "b"]);
   });
 });

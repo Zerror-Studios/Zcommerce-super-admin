@@ -140,7 +140,6 @@ export function CouponsTab({
   const table = useTableUrlState();
   const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
   const statusFilter = splitParam(table.filters.status);
-  const statusKey = statusFilter.join();
   const [visibleColumns, setVisibleColumns] = usePersistentColumns(
     "discounts",
     columns.map((column) => column.key),
@@ -158,20 +157,10 @@ export function CouponsTab({
     [allPlans],
   );
 
-  const filtered = useMemo(() => {
-    const query = table.search.trim().toLowerCase();
-    const wanted = statusKey ? statusKey.split(",") : [];
-    return coupons.filter((coupon) => {
-      const matchesSearch =
-        !query ||
-        coupon.code.toLowerCase().includes(query) ||
-        scopeOf(coupon).toLowerCase().includes(query);
-      const couponState = couponStatus(coupon);
-      const matchesStatus =
-        wanted.length === 0 || wanted.includes(couponState);
-      return matchesSearch && matchesStatus;
-    });
-  }, [coupons, table.search, statusKey, scopeOf]);
+  // PRD-024 FR-3.5 (B-07): search (code or plan) and status run on the server
+  // over every coupon (Settings passes them to `platformCoupons`); the rows
+  // arrive filtered.
+  const filtered = coupons;
 
   // Row actions only for roles with coupons:manage and a save handler.
   const shownColumns = useMemo(() => {
@@ -345,7 +334,7 @@ export function CouponsTab({
             <TableToolbar
               search={search}
               onSearchChange={setSearch}
-              searchPlaceholder="Search discounts"
+              searchPlaceholder="Search by code or plan"
               columns={columns.map((column) => ({ key: column.key, label: column.label }))}
               visibleColumns={Array.from(visibleColumns)}
               onVisibleColumnsChange={(keys) => setVisibleColumns(new Set(keys))}

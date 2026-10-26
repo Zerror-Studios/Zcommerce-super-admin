@@ -14,6 +14,7 @@ import {
   EmptyState,
   ErrorState,
   Skeleton,
+  Switch,
   formatCount,
   formatDateTime,
   formatPercent,
@@ -31,7 +32,10 @@ const PAGE_SIZE = 25;
 export function AiDataHealthTab() {
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
-  const api = useAiDataHealth({ limit: PAGE_SIZE, offset: page * PAGE_SIZE });
+  // PRD-024 FR-1.10 (B-11): every store with insights, not only those needing a nudge.
+  // Stores that never computed insights have no row on the server yet (backend follow-up).
+  const [showAll, setShowAll] = useState(false);
+  const api = useAiDataHealth({ needsAttention: !showAll, limit: PAGE_SIZE, offset: page * PAGE_SIZE });
   const rows = api.data?.items ?? [];
   const total = api.data?.totalCount ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -41,7 +45,23 @@ export function AiDataHealthTab() {
       <PageHeader
         title="AI data health"
         count={total || undefined}
-        description="Stores whose insights are held back by missing data or a failed run."
+        description={
+          showAll
+            ? "Every store that has computed insights, lowest cost coverage first."
+            : "Stores whose insights are held back by missing data or a failed run."
+        }
+        actions={
+          <Switch
+            size="sm"
+            isSelected={showAll}
+            onValueChange={(on) => {
+              setShowAll(on);
+              setPage(0);
+            }}
+          >
+            Show all stores
+          </Switch>
+        }
       />
 
       {api.error ? (
@@ -56,7 +76,7 @@ export function AiDataHealthTab() {
             ))}
           </div>
         ) : (
-          <Table aria-label="Stores needing data attention" removeWrapper classNames={{ ...dataTableClassNames, tr: tableRowClasses }}>
+          <Table aria-label={showAll ? "AI data health by store" : "Stores needing data attention"} removeWrapper classNames={{ ...dataTableClassNames, tr: tableRowClasses }}>
             <TableHeader>
               <TableColumn>Store</TableColumn>
               <TableColumn>Needs</TableColumn>
@@ -68,7 +88,11 @@ export function AiDataHealthTab() {
             <TableBody
               items={rows}
               emptyContent={
-                <EmptyState icon={IconStoreHealth} title="Every store's data is in shape" description="No store needs a nudge right now." />
+                showAll ? (
+                  <EmptyState icon={IconStoreHealth} title="No store has computed insights yet" description="Stores appear after their first insights run." />
+                ) : (
+                  <EmptyState icon={IconStoreHealth} title="Every store's data is in shape" description="No store needs a nudge right now." />
+                )
               }
             >
               {(row) => (
@@ -80,11 +104,15 @@ export function AiDataHealthTab() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <ul className="text-caption text-fg-muted">
-                      {aiDataHealthIssues(row).map((issue) => (
-                        <li key={issue}>{issue}</li>
-                      ))}
-                    </ul>
+                    {aiDataHealthIssues(row).length === 0 ? (
+                      <Chip tone="success">Nothing</Chip>
+                    ) : (
+                      <ul className="text-caption text-fg-muted">
+                        {aiDataHealthIssues(row).map((issue) => (
+                          <li key={issue}>{issue}</li>
+                        ))}
+                      </ul>
+                    )}
                   </TableCell>
                   <TableCell><span className="block text-right num">{formatPercent(row.costCoveragePct)}</span></TableCell>
                   <TableCell><span className="block text-right num">{formatCount(row.spendMonths)}</span></TableCell>

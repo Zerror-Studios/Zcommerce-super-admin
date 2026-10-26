@@ -61,7 +61,6 @@ export interface RevenueTrendPoint {
   month: string;
   fullLabel: string;
   revenue: number;
-  mrr: number;
 }
 
 // ─── Collections ──────────────────────────────────────────────────────────

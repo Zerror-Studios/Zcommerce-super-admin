@@ -15,13 +15,21 @@ import {
   PLATFORM_RERUN_ANALYTICS_SYNC,
   PLATFORM_SYNC_MONITOR,
 } from "../graphql/analytics";
+import { PLATFORM_STORE_SALES } from "../graphql/reports";
 import { toPickerDay } from "../lib/api-report-adapters";
 import type { DayRange } from "../lib/analytics-health";
+import { PLATFORM_PERMISSIONS } from "../lib/permissions";
+import {
+  STORE_SALES_PAGE_LIMIT,
+  toStoreSalesView,
+  type StoreSalesView,
+} from "../lib/store-sales";
 import { useAuth } from "../providers/AuthProvider";
 import type {
   IntegrationHealthFilter,
   PlatformAnalyticsOverview,
   PlatformIntegrationHealth,
+  PlatformStoreSales,
   PlatformSyncMonitor,
   SyncMonitorRow,
 } from "../types/platform-api";
@@ -53,6 +61,35 @@ export function useAnalyticsOverview(range: DayRange): HookState<PlatformAnalyti
   return {
     data: query.data?.platformAnalyticsOverview ?? null,
     loading: query.loading && !query.data,
+    error: query.error ?? null,
+    refetch: query.refetch,
+  };
+}
+
+/**
+ * Analytics › Store sales (PRD-024 FR-3.4): the server's per-store and
+ * per-currency rollup for the window, one page of the highest sellers.
+ */
+export function useStoreSales(range: DayRange): HookState<StoreSalesView | null> {
+  const { isAuthenticated, can } = useAuth();
+  const query = useQuery<{ platformStoreSales: PlatformStoreSales }>(PLATFORM_STORE_SALES, {
+    variables: {
+      range: { start: toPickerDay(range.startDate), end: toPickerDay(range.endDate) },
+      limit: STORE_SALES_PAGE_LIMIT,
+      offset: 0,
+    },
+    skip: !isAuthenticated || !can(PLATFORM_PERMISSIONS.REPORTS_READ),
+    fetchPolicy: "cache-and-network",
+  });
+  // Keep the last answer on screen while another window loads.
+  const raw = query.data ?? query.previousData;
+  const data = useMemo(
+    () => (raw ? toStoreSalesView(raw.platformStoreSales) : null),
+    [raw],
+  );
+  return {
+    data,
+    loading: query.loading && !raw,
     error: query.error ?? null,
     refetch: query.refetch,
   };

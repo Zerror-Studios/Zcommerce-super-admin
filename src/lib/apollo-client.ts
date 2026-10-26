@@ -494,7 +494,8 @@ const cache = new InMemoryCache({
         platformInvoices: offsetPagingPolicy(["filter"]),
         platformUsers: offsetPagingPolicy([]),
         // A plain array; the total is `platformCouponCount` (PRD-014 close-out).
-        platformCoupons: offsetListPolicy([]),
+        // PRD-024 FR-3.5: one cached list per search and status filter.
+        platformCoupons: offsetListPolicy(["search", "status"]),
         platformSubscriptions: { keyArgs: ["filter", "sort"] },
         // PRD-018 FR-2.5: purged-store tombstones, paged the same way.
         platformPurgedTenants: offsetPagingPolicy([]),

@@ -35,7 +35,6 @@ export const PLATFORM_REVENUE_OVERVIEW = gql`
         month
         fullLabel
         revenue
-        mrr
       }
       planRows {
         plan
@@ -63,6 +62,8 @@ export const PLATFORM_REVENUE_OVERVIEW = gql`
       }
       summary {
         monthlyBilling
+        trialPipeline
+        atRiskMrr
         billableStores
         earnedMonth
         earnedYear
@@ -167,6 +168,108 @@ export const PLATFORM_COLLECTIONS = gql`
         paymentMethod
         transactionId
       }
+    }
+  }
+`;
+
+// ─── PRD-024 Phase C reads ────────────────────────────────────────────────
+
+/**
+ * FR-3.1 (reports:read): recorded MRR days from the daily snapshot job,
+ * YYYY-MM-DD, at most 731 days. Days before the first run are absent.
+ */
+export const PLATFORM_MRR_HISTORY = gql`
+  query PlatformMrrHistory($from: String!, $to: String!) {
+    platformMrrHistory(from: $from, to: $to) {
+      date
+      mrr
+      payingStores
+      newMrr
+      expansionMrr
+      contractionMrr
+      churnedMrr
+      byPlan {
+        plan
+        mrr
+        stores
+      }
+    }
+  }
+`;
+
+/**
+ * FR-3.4 (reports:read): net revenue and paid orders per store for the
+ * window and the one before it; totals per currency.
+ */
+export const PLATFORM_STORE_SALES = gql`
+  query PlatformStoreSales($range: DateRangeInput!, $limit: Int, $offset: Int) {
+    platformStoreSales(range: $range, limit: $limit, offset: $offset) {
+      rangeStart
+      rangeEnd
+      previousStart
+      previousEnd
+      totals {
+        currency
+        revenue
+        orders
+        previousRevenue
+        previousOrders
+        growthPercent
+        stores
+      }
+      stores {
+        tenantId
+        slug
+        name
+        currency
+        revenue
+        orders
+        previousRevenue
+        previousOrders
+        growthPercent
+        averageOrderValue
+      }
+      totalCount
+    }
+  }
+`;
+
+/** FR-3.9 (billing:read): reminders sent, newest first; one store with tenantId. */
+export const PLATFORM_REMINDER_LOG = gql`
+  query PlatformReminderLog($tenantId: ID, $limit: Int, $offset: Int) {
+    platformReminderLog(tenantId: $tenantId, limit: $limit, offset: $offset) {
+      items {
+        id
+        tenantId
+        tenantName
+        channel
+        recipient
+        subject
+        offsetDays
+        dueDay
+        requestedBy
+        createdAt
+        sentAt
+        result
+      }
+      totalCount
+    }
+  }
+`;
+
+/** FR-3.10 (settings:manage): the platform jobs' latest runs, newest first. */
+export const PLATFORM_JOB_RUNS = gql`
+  query PlatformJobRuns($job: String, $limit: Int) {
+    platformJobRuns(job: $job, limit: $limit) {
+      id
+      job
+      day
+      status
+      startedAt
+      finishedAt
+      durationMs
+      summary
+      error
     }
   }
 `;

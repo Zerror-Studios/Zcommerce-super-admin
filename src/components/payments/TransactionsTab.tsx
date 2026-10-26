@@ -25,7 +25,7 @@ import { LoadMoreFooter, type LoadMoreFooterProps } from "../common/LoadMoreFoot
 export interface TransactionsTabProps {
   transactions: Transaction[];
   isLoading?: boolean;
-  /** Server paging (FE-09): search and filters cover the loaded rows. */
+  /** Server paging (FE-09); search and status are applied by the server (PRD-024 FR-1.6). */
   paging?: Omit<LoadMoreFooterProps, "shown" | "noun">;
 }
 
@@ -64,24 +64,9 @@ export function TransactionsTab({ transactions, isLoading = false, paging }: Tra
 
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
 
-  const statusKey = statuses.join();
-  const filtered = useMemo(() => {
-    const query = table.search.trim().toLowerCase();
-    const wanted = statusKey ? statusKey.split(",") : [];
-    return transactions.filter((txn) => {
-      const client = clientById.get(txn.clientId);
-      const email = client?.ownerEmail ?? "";
-      const plan = client?.plan ?? "";
-      const matchesSearch =
-        !query ||
-        txn.clientName.toLowerCase().includes(query) ||
-        email.toLowerCase().includes(query) ||
-        plan.toLowerCase().includes(query) ||
-        txn.transactionId.toLowerCase().includes(query);
-      const matchesStatus = wanted.length === 0 || wanted.includes(txn.status);
-      return matchesSearch && matchesStatus;
-    });
-  }, [table.search, statusKey, transactions, clientById]);
+  // PRD-024 FR-1.6 (B-01): the server applies search and status (Billing passes the URL's values to
+  // platformPayments), so the rows here are already the filtered list.
+  const filtered = transactions;
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / table.pageSize));
   const page = Math.min(table.page, pageCount);
@@ -105,9 +90,10 @@ export function TransactionsTab({ transactions, isLoading = false, paging }: Tra
             <p className="truncate text-caption text-fg-subtle">{client?.ownerEmail ?? "—"}</p>
           </div>
         );
+      // PRD-024 FR-1.6 (B-09): the plan the payment was for, as the server recorded it.
       case "plan":
-        return client?.plan ? (
-          <span className="text-fg">{getPlanLabel(client.plan)}</span>
+        return txn.planName ? (
+          <span className="text-fg">{getPlanLabel(txn.planName)}</span>
         ) : (
           <span className="text-fg-subtle">—</span>
         );
@@ -129,7 +115,7 @@ export function TransactionsTab({ transactions, isLoading = false, paging }: Tra
       <TableToolbar
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search transactions"
+        searchPlaceholder="Search store or transaction ID"
         columns={columnOptions.map((c) => ({ key: c.key, label: String(c.label) }))}
         visibleColumns={Array.from(visibleColumns)}
         onVisibleColumnsChange={(keys) => setVisibleColumns(new Set(keys))}
