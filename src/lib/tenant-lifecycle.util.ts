@@ -317,6 +317,9 @@ export const LIFECYCLE_REASON_COPY: Readonly<Record<string, string>> = {
     "The grace period has ended and the purge has started, so this store " +
     "can't be restored.",
   NOTE_REQUIRED: "Give a reason; it goes to the audit log.",
+  TENANT_CHANGED:
+    "This store changed while you were deleting it, so nothing was " +
+    "deleted. Reload the store and try again.",
   DOMAIN_TAKEN: "Another store has already proved control of this domain.",
   INVALID_DOMAIN: "Enter a domain like shop.example.com, without https:// or a path.",
   RESERVED_DOMAIN: "That domain belongs to the platform and can't be used by a store.",
@@ -330,6 +333,18 @@ export const LIFECYCLE_REASON_COPY: Readonly<Record<string, string>> = {
 /** The text for a failed lifecycle or go-live call, or `null` (already reported). */
 export function lifecycleFailureCopy(error: unknown): string | null {
   const reason = errorReasonOf(error);
+  // CP3-02: the delete went through but undoing it failed, so the store is
+  // left DELETED; "nothing was deleted" would be false.
+  if (
+    reason === "TENANT_CHANGED" &&
+    firstExtensions(error)?.rollback === "MISSED"
+  ) {
+    return (
+      "Money arrived while this store was being deleted and the delete " +
+      "couldn't be undone, so the store is still deleted. Restore it, then " +
+      "follow the tenant-purge runbook."
+    );
+  }
   if (reason && LIFECYCLE_REASON_COPY[reason]) return LIFECYCLE_REASON_COPY[reason];
   return mutationFailureCopy(error);
 }

@@ -24,7 +24,7 @@ Requirements, decisions, the security model (§7.2) and the contract live in the
 ## Implementation notes
 
 - New documents in `src/graphql/tenants.ts` (`SuspendTenant` gains `category`; `DeleteTenant` gains `force`, `forceReason`; `RestoreTenant`, `TenantMoneyInFlight`, `RequestTenantExport`, `TenantExports`, `StartDomainVerification`, `CheckDomainVerification`, `TenantGoLiveChecklist`, `MarkTenantLive`, `PlatformPurgedTenants`, `PlatformDataRequestStats`); adapters and vitest cases in `src/lib/`.
-- Every destructive action has a confirmation and shows the server answer before any toast; errors map `extensions.reason` (`MONEY_IN_FLIGHT` with counts, `PURGE_STARTED`, `DOMAIN_TAKEN`, `CHECKLIST_FAILED`, `INVALID_DOMAIN`, `RESERVED_DOMAIN`).
+- Every destructive action has a confirmation and shows the server answer before any toast; errors map `extensions.reason` (`MONEY_IN_FLIGHT` with counts, `PURGE_STARTED`, `DOMAIN_TAKEN`, `CHECKLIST_FAILED`, `INVALID_DOMAIN`, `RESERVED_DOMAIN`, and `TENANT_CHANGED` when a delete loses a race, review CP2-07).
 - Impersonating a `POLICY`-suspended store (to settle orders) uses the existing "Log in to store"; the store opens in restricted mode.
 - Rollout follows the backend phases A–E (§9); phase D waits for the lawyer.
 

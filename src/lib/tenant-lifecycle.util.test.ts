@@ -81,6 +81,16 @@ describe("delete and restore (FR-2.1, FR-2.3)", () => {
     expect(purgeCountdown("2026-10-25T00:00:00Z", now)).toEqual({ daysLeft: 0, expired: true });
     expect(purgeCountdown(null, now)).toBeNull();
     expect(lifecycleFailureCopy(failure("CONFLICT", { reason: "PURGE_STARTED" }))).toMatch(/can't be restored/);
+    // CP2-07: the conditional delete lost a race (CP-19)
+    expect(
+      lifecycleFailureCopy(failure("CONFLICT", { reason: "TENANT_CHANGED" })),
+    ).toMatch(/nothing was deleted/);
+    // CP3-02: the rollback missed, so the store stayed deleted
+    expect(
+      lifecycleFailureCopy(
+        failure("CONFLICT", { reason: "TENANT_CHANGED", rollback: "MISSED" }),
+      ),
+    ).toMatch(/still deleted/);
   });
 
   it("labels the suspension categories", () => {
