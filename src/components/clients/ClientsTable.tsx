@@ -7,6 +7,7 @@ import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import { getStoreHealth } from "../../lib/storeHealth";
+import { ownerContactGaps } from "../../lib/owner-contact.util";
 import {
   normaliseLifecycleKey,
   paymentState,
@@ -391,6 +392,12 @@ export function ClientsTable({
             <div className="min-w-0 max-w-64">
               <p className="truncate font-medium text-fg">{client.storeName}</p>
               <p className="truncate text-caption text-fg-subtle">{client.ownerEmail}</p>
+              {/* PRD-024 FR-4.4: migrated stores enter it by hand in Store details. */}
+              {ownerContactGaps(client).isMissingEmail ? (
+                <Chip tone="warning" className="mt-1">
+                  No owner email
+                </Chip>
+              ) : null}
             </div>
           </div>
         );

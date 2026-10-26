@@ -1,6 +1,8 @@
 import { addToast } from "@heroui/react";
 import { useEffect, useState } from "react";
 import type { PlatformPaymentProvider, PlatformSettings } from "../../types";
+import { useMessagingStatus } from "../../hooks/use-messaging-status";
+import { channelAvailability } from "../../lib/messaging-channels.util";
 import { isUserInputError, mutationFailureCopy } from "../../lib/mutation-errors";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { canEditPlatformSettings } from "../../lib/platformSettings";
@@ -61,6 +63,10 @@ export function BillingRulesSettings({ cards = ALL_CARDS }: BillingRulesSettings
   const [after, setAfter] = useState(settings.reminders.daysAfterDue.join(", "));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // PRD-024 FR-4.2.5: SMS and WhatsApp only when the backend has the MSG91 names.
+  const messaging = useMessagingStatus();
+  const smsChannel = channelAvailability("SMS", messaging);
+  const whatsappChannel = channelAvailability("WHATSAPP", messaging);
 
   useEffect(() => {
     setDraft(settings);
@@ -227,8 +233,9 @@ export function BillingRulesSettings({ cards = ALL_CARDS }: BillingRulesSettings
             <Input label="Days before due" placeholder="7, 3, 1" value={before} onValueChange={setBefore} isDisabled={disabled} />
             <Input label="Days after due" placeholder="1, 3, 7" value={after} onValueChange={setAfter} isDisabled={disabled} />
           </div>
-          {/* PRD-024 FR-1.8: only email can deliver; SMS and WhatsApp stay hidden until a platform SMS account exists (Q3). */}
-          <div className="flex flex-col gap-1">
+          {/* PRD-024 FR-4.2.5: SMS and WhatsApp go through the platform MSG91 account; a channel the backend
+              can't deliver stays visible but disabled, with the reason. */}
+          <div className="flex flex-col gap-2">
             <Switch
               isSelected={draft.reminders.email}
               onValueChange={(on) => setDraft({ ...draft, reminders: { ...draft.reminders, email: on } })}
@@ -236,7 +243,29 @@ export function BillingRulesSettings({ cards = ALL_CARDS }: BillingRulesSettings
             >
               Email
             </Switch>
-            <p className="text-label text-fg-muted">SMS and WhatsApp reminders aren't available: there is no platform SMS account.</p>
+            <div className="flex flex-col gap-0.5">
+              <Switch
+                isSelected={draft.reminders.sms && smsChannel.isConfigured}
+                onValueChange={(on) => setDraft({ ...draft, reminders: { ...draft.reminders, sms: on } })}
+                isDisabled={disabled || !smsChannel.isConfigured}
+              >
+                SMS
+              </Switch>
+              {smsChannel.hint ? <p className="text-label text-fg-muted">{smsChannel.hint}</p> : null}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <Switch
+                isSelected={draft.reminders.whatsapp && whatsappChannel.isConfigured}
+                onValueChange={(on) => setDraft({ ...draft, reminders: { ...draft.reminders, whatsapp: on } })}
+                isDisabled={disabled || !whatsappChannel.isConfigured}
+              >
+                WhatsApp
+              </Switch>
+              {whatsappChannel.hint ? <p className="text-label text-fg-muted">{whatsappChannel.hint}</p> : null}
+            </div>
+            {smsChannel.isConfigured || whatsappChannel.isConfigured ? (
+              <p className="text-label text-fg-muted">SMS and WhatsApp go to the store's owner phone.</p>
+            ) : null}
           </div>
           <Textarea
             label="Reminder text"

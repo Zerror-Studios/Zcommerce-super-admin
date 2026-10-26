@@ -7,6 +7,14 @@ import { selectionToIdSet } from "../../lib/tableSelection";
 import { formatDate } from "../../lib/utils";
 import { daysUntilDue } from "../../lib/storeStatus";
 import { mutationFailureCopy } from "../../lib/mutation-errors";
+import { useMessagingStatus } from "../../hooks/use-messaging-status";
+import {
+  channelAvailability,
+  channelListLabel,
+  reminderChannelsToSend,
+  type ReminderChannelSelection,
+} from "../../lib/messaging-channels.util";
+import { usePlatformSettings } from "../../providers/SettingsProvider";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
@@ -35,6 +43,7 @@ import {
   SelectItem,
   SelectionBar,
   StatCard,
+  Switch,
   TablePagination,
   cx,
   useTableUrlState,
@@ -90,6 +99,19 @@ export function AutomationSettingsTab() {
   const [preview, setPreview] = useState<ReminderPreview | null>(null);
   const apollo = useApolloClient();
   const [sendReminders] = useMutation<{ sendRenewalReminders: ReminderBatch }>(SEND_RENEWAL_REMINDERS);
+  // PRD-024 FR-4.2.5: the channels start from the reminder settings; SMS and
+  // WhatsApp can be switched on only when the backend has the MSG91 names.
+  const { settings } = usePlatformSettings();
+  const messaging = useMessagingStatus();
+  const smsChannel = channelAvailability("SMS", messaging);
+  const whatsappChannel = channelAvailability("WHATSAPP", messaging);
+  // Switches staff flip here override the settings for this screen only.
+  const [channelOverrides, setChannelOverrides] = useState<Partial<ReminderChannelSelection>>({});
+  const channelSelection: ReminderChannelSelection = {
+    email: channelOverrides.email ?? settings.reminders.email,
+    sms: channelOverrides.sms ?? settings.reminders.sms,
+    whatsapp: channelOverrides.whatsapp ?? settings.reminders.whatsapp,
+  };
 
   const subscriptionByClientId = useMemo(() => latestSubscriptionByClient(subscriptions), [subscriptions]);
 
@@ -159,16 +181,21 @@ export function AutomationSettingsTab() {
       toastError(toasts.selectStore);
       return;
     }
+    // PRD-024 FR-4.2.5: only the switched-on channels the backend can deliver.
+    const channels = reminderChannelsToSend(channelSelection, messaging);
+    if (channels.length === 0) {
+      toastError("Turn on at least one channel.");
+      return;
+    }
     // PRD-005 FR-7.3: the server renders, logs and queues the reminders
     setSending(true);
     try {
-      // PRD-024 FR-1.8: email only; SMS and WhatsApp can't deliver (no platform SMS account).
-      const { data } = await sendReminders({ variables: { tenantIds: [...selected], channels: ["EMAIL"] } });
+      const { data } = await sendReminders({ variables: { tenantIds: [...selected], channels } });
       const batch = data?.sendRenewalReminders;
       if (batch?.skipped.length) {
         toastError(`${batch.skipped.length} skipped: ${batch.skipped[0].reason}`);
       }
-      addToast({ title: toasts.reminderSent(batch?.queued ?? 0), color: "success" });
+      addToast({ title: toasts.reminderSent(batch?.queued ?? 0, channelListLabel(channels)), color: "success" });
     } catch (error) {
       // BAD_USER_INPUT and CONFLICT carry the server's message; FORBIDDEN and
       // MFA_REQUIRED are reported once by the Apollo link (review C-L6).
@@ -273,6 +300,38 @@ export function AutomationSettingsTab() {
           deltaLabel="Stores past their due date"
         />
       </KpiStrip>
+
+      {canSend ? (
+        <div role="group" aria-label="Reminder channels" className="flex flex-wrap items-start gap-x-6 gap-y-2">
+          <span className="text-label font-medium text-fg">Send through</span>
+          <Switch
+            isSelected={channelSelection.email}
+            onValueChange={(on) => setChannelOverrides((current) => ({ ...current, email: on }))}
+          >
+            Email
+          </Switch>
+          <div className="flex flex-col gap-0.5">
+            <Switch
+              isSelected={channelSelection.sms && smsChannel.isConfigured}
+              onValueChange={(on) => setChannelOverrides((current) => ({ ...current, sms: on }))}
+              isDisabled={!smsChannel.isConfigured}
+            >
+              SMS
+            </Switch>
+            {smsChannel.hint ? <span className="text-caption text-fg-muted">{smsChannel.hint}</span> : null}
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <Switch
+              isSelected={channelSelection.whatsapp && whatsappChannel.isConfigured}
+              onValueChange={(on) => setChannelOverrides((current) => ({ ...current, whatsapp: on }))}
+              isDisabled={!whatsappChannel.isConfigured}
+            >
+              WhatsApp
+            </Switch>
+            {whatsappChannel.hint ? <span className="text-caption text-fg-muted">{whatsappChannel.hint}</span> : null}
+          </div>
+        </div>
+      ) : null}
 
       <DataTable
         aria-label="Stores to remind"

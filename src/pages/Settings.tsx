@@ -6,6 +6,7 @@ import { BillingRulesSettings, type BillingRulesCard } from "../components/setti
 import { PlansSettings } from "../components/settings/PlansSettings";
 import { TeamSettings } from "../components/settings/TeamSettings";
 import { AuditLogSettings } from "../components/settings/AuditLogSettings";
+import { ProfileSecuritySettings } from "../components/settings/ProfileSecuritySettings";
 import { PageHeader } from "../components/common/PageHeader";
 import { ConfirmModal } from "../components/common/ConfirmModal";
 import { ShortcutsDialog } from "../components/layout/AppShell";
@@ -59,7 +60,7 @@ import {
  * by moving its cards; /settings/billing-rules is Grace period and reminders, plus the plan-limit mode, overdue payments and
  * the jobs (PRD-016). Payment reminders moved to Subscriptions (/settings/automation redirects there, see App.tsx).
  */
-type SettingsSection = "payment-gateway" | "billing-rules" | "health" | "plans" | "discounts" | "team" | "audit";
+type SettingsSection = "payment-gateway" | "billing-rules" | "health" | "plans" | "discounts" | "team" | "audit" | "profile";
 
 /** Pane rows that open a dialog instead of a section. */
 type SettingsAction = "shortcuts" | "logout-all";
@@ -112,6 +113,12 @@ const sections: Record<SettingsSection, SectionMeta> = {
     description: "Every change made from this console, newest first.",
     icon: IconLock,
   },
+  // PRD-024 FR-4.3 (D8)
+  profile: {
+    title: "Profile & security",
+    description: "Your account, password, two-step verification and the devices you're signed in on.",
+    icon: IconUser,
+  },
 };
 
 const actions: Record<SettingsAction, { label: string; keywords: string; icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }> }> = {
@@ -126,7 +133,7 @@ const DEFAULT_SECTION: SettingsSection = "payment-gateway";
 const groupOrder: { label: string; keys: (SettingsSection | SettingsAction)[] }[] = [
   { label: "Billing", keys: ["payment-gateway", "billing-rules", "health", "plans", "discounts"] },
   { label: "Team", keys: ["team"] },
-  { label: "System", keys: ["audit", "shortcuts", "logout-all"] },
+  { label: "System", keys: ["profile", "audit", "shortcuts", "logout-all"] },
 ];
 
 function isSection(value: string | undefined): value is SettingsSection {
@@ -316,6 +323,7 @@ export function Settings() {
         {active === "plans" ? <PlansSettings createOpen={createOpen} onCreateOpenChange={setCreateOpen} /> : null}
         {active === "team" ? <TeamSettings createOpen={createOpen} onCreateOpenChange={setCreateOpen} /> : null}
         {active === "audit" ? <AuditLogSettings /> : null}
+        {active === "profile" ? <ProfileSecuritySettings /> : null}
       </TwoPaneCard>
 
       <ShortcutsDialog isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />

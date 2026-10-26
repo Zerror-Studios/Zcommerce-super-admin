@@ -103,6 +103,8 @@ export interface Client {
   slug?: string;
   domain?: string;
   ownerPhone?: string;
+  /** PRD-024 FR-4.4: false when the server row has no owner email (`ownerEmail` then shows the billing contact). */
+  ownerEmailSet?: boolean;
   onboarding?: {
     status: "PROVISIONING" | "READY" | "FAILED";
     error: string | null;

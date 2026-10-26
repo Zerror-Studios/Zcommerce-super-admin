@@ -90,6 +90,12 @@ describe("reminder log (PRD-024 FR-3.9)", () => {
     expect(reminderResultView("SOMETHING_NEW")).toEqual({ label: "SOMETHING_NEW", tone: "neutral" });
   });
 
+  it("labels the SMS and WhatsApp results (FR-4.2.3)", () => {
+    expect(reminderResultView("FAILED")).toEqual({ label: "Failed", tone: "danger" });
+    expect(reminderResultView("NOT_SENT_NO_PHONE").label).toBe("Not sent · store has no owner phone");
+    expect(reminderResultView("NOT_SENT_NOT_CONFIGURED").label).toBe("Not sent · channel not configured");
+  });
+
   it("says when the reminder was due", () => {
     expect(reminderOffsetLabel(-3)).toBe("3 days before due");
     expect(reminderOffsetLabel(0)).toBe("On the due date");

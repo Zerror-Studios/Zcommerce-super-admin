@@ -23,6 +23,7 @@ import { PLATFORM_TENANT, RESEND_OWNER_INVITE } from "../graphql/tenants";
 import { subscriptionsOf, toClient } from "../lib/api-adapters";
 import { findLatestSubscription } from "../lib/subscription-lookup.util";
 import { mutationFailureCopy } from "../lib/mutation-errors";
+import { ownerContactGaps } from "../lib/owner-contact.util";
 import { PLATFORM_PERMISSIONS } from "../lib/permissions";
 import { paymentState, storeLifecycle } from "../lib/storeStatus";
 import { useAuth } from "../providers/AuthProvider";
@@ -148,6 +149,7 @@ export function ClientDetail() {
   const lifecycle = storeLifecycle(client);
   const payment = paymentState(subscription);
   const isDeleted = client.tenantStatus === "DELETED";
+  const contactGaps = ownerContactGaps(client);
   const isSuspended = !isDeleted && client.status === "suspended";
   // Q10 / PRD-018 FR-2.1: only the platform owner deletes a store.
   const isOwner = user?.role === "PLATFORM_OWNER";
@@ -269,6 +271,19 @@ export function ClientDetail() {
           with the page (owner, 2026-10-26: one scrollbar, not a second one inside the rail). */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-w-0 flex-col gap-4">
+          {/* PRD-024 FR-4.4 (D9): migrated stores get their owner contact by hand in Store details. */}
+          {contactGaps.isMissingEmail && !isDeleted ? (
+            <div role="status" className="rounded-lg border border-line bg-tone-warning-soft px-4 py-3 text-label text-fg">
+              <p className="font-medium">This store has no owner email.</p>
+              <p className="mt-0.5 text-fg-muted">
+                Resend owner invite and the billing emails need it
+                {contactGaps.isMissingPhone ? ", and SMS or WhatsApp reminders need the owner phone" : ""}.{" "}
+                <a href="#store-details" className="font-medium text-brand hover:underline">
+                  Add it in Store details
+                </a>
+              </p>
+            </div>
+          ) : null}
           <OnboardingCard client={client} />
           <ClientOverviewTab part="main" client={client} subscription={subscription} />
 

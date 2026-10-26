@@ -11,16 +11,17 @@ import { PLATFORM_REVENUE_OVERVIEW } from "../../graphql/reports";
 import type { PlatformRevenueOverview } from "../../types/platform-api";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
+import { useNotificationCounts } from "../../hooks/use-platform-notifications";
 import { IconAdd, IconNotifications, IconStore } from "../ui/icons";
 import { AppShell } from "./AppShell";
 import { AskBar, AssistantPanel } from "./Assistant";
 import { readStoredFlag, storeFlag, useShellHotkeys } from "./shell-utils";
 import { CommandPalette } from "./CommandPalette";
-import { NotificationsPanel } from "./NotificationsPanel";
+import { PlatformNotificationsPanel } from "./PlatformNotificationsPanel";
 import { Sidebar } from "./Sidebar";
 import { AiSpectrumDefs } from "../ui/Ai";
 import { cx, toneTextClasses } from "../ui";
-import type { CommandGroup, NotificationEntry } from "./types";
+import type { CommandGroup } from "./types";
 
 const COLLAPSE_KEY = "zcommerce-sidebar-collapsed";
 
@@ -40,12 +41,6 @@ function pageLabelFor(pathname: string): string | undefined {
   return undefined;
 }
 
-const NOTIFICATION_TABS = [
-  { key: "payments", label: "Payments" },
-  { key: "stores", label: "Stores" },
-  { key: "health", label: "Health" },
-];
-
 export function DashboardLayout() {
   const location = useLocation();
   const { signOut, can, user } = useAuth();
@@ -55,8 +50,8 @@ export function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(() => readStoredFlag(COLLAPSE_KEY));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  // No notifications feed exists yet (PRD-005 §8 Q14: the sample data went with mock mode); the panel shows its empty state.
-  const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
+  // PRD-024 FR-4.1.5: the server feed; the bell's count is polled while the browser tab is visible.
+  const notificationCounts = useNotificationCounts();
 
   const toggleSidebar = useCallback(() => {
     setCollapsed((prev) => {
@@ -143,18 +138,8 @@ export function DashboardLayout() {
     [can, canAddStore, clients],
   );
 
-  const unreadCount = notifications.filter((item) => item.unread).length;
-  const panel = (trigger: ReactNode) => (
-    <NotificationsPanel
-      trigger={trigger}
-      items={notifications}
-      tabs={NOTIFICATION_TABS}
-      onMarkAllRead={() => setNotifications((list) => list.map((item) => ({ ...item, unread: false })))}
-      onItemOpen={(entry) =>
-        setNotifications((list) => list.map((item) => (item.id === entry.id ? { ...item, unread: false } : item)))
-      }
-    />
-  );
+  const unreadCount = notificationCounts.total;
+  const panel = (trigger: ReactNode) => <PlatformNotificationsPanel trigger={trigger} counts={notificationCounts} />;
 
   const isActive = (to: string, end?: boolean) => pathMatches(location.pathname, to, end);
   const sidebarProps = {

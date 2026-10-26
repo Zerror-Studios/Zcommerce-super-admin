@@ -150,6 +150,7 @@ export function toClient(tenant: PlatformTenant): Client {
     slug: tenant.slug,
     domain: tenant.domain ?? undefined,
     ownerPhone: tenant.owner.phone ?? undefined,
+    ownerEmailSet: !!tenant.owner.email?.trim(),
     onboarding: tenant.onboarding,
     health: { score: tenant.healthScore, factors: tenant.healthFactors },
     paymentState: tenant.paymentState,

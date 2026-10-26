@@ -57,3 +57,13 @@ export const UPDATE_PLATFORM_SETTINGS = gql`
     }
   }
 `;
+
+/** PRD-024 FR-4.2.4 (billing:read): which reminder channels can deliver. */
+export const PLATFORM_MESSAGING_STATUS = gql`
+  query PlatformMessagingStatus {
+    platformMessagingStatus {
+      smsConfigured
+      whatsappConfigured
+    }
+  }
+`;

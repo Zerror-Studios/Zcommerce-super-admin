@@ -1145,7 +1145,14 @@ export interface PlatformStoreSales {
   totalCount: number;
 }
 
-export type PlatformReminderResult = "SENT" | "QUEUED" | "NOT_SENT_NO_CHANNEL";
+/** PRD-024 FR-4.2.3 adds FAILED and the two NOT_SENT_* results. */
+export type PlatformReminderResult =
+  | "SENT"
+  | "QUEUED"
+  | "FAILED"
+  | "NOT_SENT_NO_PHONE"
+  | "NOT_SENT_NOT_CONFIGURED"
+  | "NOT_SENT_NO_CHANNEL";
 
 export interface PlatformReminderLogEntry {
   id: string;
@@ -1177,4 +1184,70 @@ export interface PlatformJobRun {
   /** The job's summary counts, as JSON. */
   summary: string | null;
   error: string | null;
+}
+
+// ─── Notifications (PRD-024 FR-4.1) ───────────────────────────────────────
+
+/** The console's three notification tabs. */
+export const platformNotificationCategoryEnum = {
+  PAYMENTS: "PAYMENTS",
+  STORES: "STORES",
+  HEALTH: "HEALTH",
+} as const;
+
+export type PlatformNotificationCategory =
+  (typeof platformNotificationCategoryEnum)[keyof typeof platformNotificationCategoryEnum];
+
+export const platformNotificationSeverityEnum = {
+  INFO: "INFO",
+  WARNING: "WARNING",
+  CRITICAL: "CRITICAL",
+} as const;
+
+export type PlatformNotificationSeverity =
+  (typeof platformNotificationSeverityEnum)[keyof typeof platformNotificationSeverityEnum];
+
+export interface PlatformNotification {
+  id: string;
+  /** The source, e.g. `invoice.overdue` or `job.failed`. */
+  kind: string;
+  category: PlatformNotificationCategory;
+  severity: PlatformNotificationSeverity | string;
+  title: string;
+  body: string | null;
+  tenantId: string | null;
+  tenantName: string | null;
+  /** A console route, e.g. `/stores/<id>`. */
+  link: string | null;
+  createdAt: string;
+  /** Read by the signed-in user. */
+  read: boolean;
+}
+
+export interface PlatformNotificationList {
+  items: PlatformNotification[];
+  totalCount: number;
+  unreadCount: number;
+}
+
+// ─── Messaging (PRD-024 FR-4.2.4) ─────────────────────────────────────────
+
+/** Whether the backend has the platform MSG91 names for each channel. */
+export interface PlatformMessagingStatus {
+  smsConfigured: boolean;
+  whatsappConfigured: boolean;
+}
+
+// ─── Profile & security (PRD-024 FR-4.3) ──────────────────────────────────
+
+/** One of the signed-in user's own unrevoked sessions. */
+export interface PlatformSessionInfo {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  /** The session this browser holds. */
+  current: boolean;
 }

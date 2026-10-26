@@ -129,6 +129,10 @@ export function paymentStatusCounts(counts: readonly PlatformStatusCount[] | nul
 const REMINDER_RESULTS: Record<string, ChipView> = {
   SENT: { label: "Sent", tone: "success" },
   QUEUED: { label: "Queued", tone: "info" },
+  // PRD-024 FR-4.2.3: SMS and WhatsApp through the platform MSG91 account.
+  FAILED: { label: "Failed", tone: "danger" },
+  NOT_SENT_NO_PHONE: { label: "Not sent · store has no owner phone", tone: "warning" },
+  NOT_SENT_NOT_CONFIGURED: { label: "Not sent · channel not configured", tone: "neutral" },
   NOT_SENT_NO_CHANNEL: { label: "Not sent · no platform SMS or WhatsApp account", tone: "neutral" },
 };
 

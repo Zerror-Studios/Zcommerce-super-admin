@@ -62,7 +62,9 @@ export const toasts = {
   storeSuspended: (name: string) => `${name} suspended.`,
   storeReactivated: (name: string) => `${name} reactivated.`,
   storeAdded: (name: string) => `${name} added.`,
-  reminderSent: (count: number) => `Email reminder queued for ${plural(count, "store", "stores")}.`,
+  // PRD-024 FR-4.2.5: `count` is one per store and channel; only configured channels are sent.
+  reminderSent: (count: number, channels: string) =>
+    `${plural(count, "reminder", "reminders")} queued · ${channels}.`,
   storeProvisioningFailed: (name: string) => `${name} was created but a provisioning step failed. Open the store to retry.`,
   mfaRequired: "Turn on two-step verification before changing platform data.",
   forbidden: "You don't have permission to do that.",

@@ -85,3 +85,40 @@ export const PLATFORM_SET_PASSWORD = gql`
     platformSetPassword(token: $token, password: $password)
   }
 `;
+
+// ─── Profile & security (PRD-024 FR-4.3) ──────────────────────────────────
+
+/** Re-checks the current password and signs out every other session. */
+export const PLATFORM_CHANGE_PASSWORD = gql`
+  mutation PlatformChangePassword(
+    $currentPassword: String!
+    $newPassword: String!
+  ) {
+    platformChangePassword(
+      currentPassword: $currentPassword
+      newPassword: $newPassword
+    )
+  }
+`;
+
+/** The signed-in user's own unrevoked sessions. */
+export const PLATFORM_MY_SESSIONS = gql`
+  query PlatformMySessions {
+    platformMySessions {
+      id
+      userAgent
+      ipAddress
+      createdAt
+      lastUsedAt
+      expiresAt
+      current
+    }
+  }
+`;
+
+/** Ends one of the caller's own sessions (never another user's). */
+export const REVOKE_PLATFORM_SESSION = gql`
+  mutation RevokePlatformSession($id: ID!) {
+    revokePlatformSession(id: $id)
+  }
+`;

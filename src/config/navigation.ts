@@ -68,6 +68,7 @@ export const settingsPages = [
   { label: "Plans", to: "/settings/plans" },
   { label: "Discounts", to: "/settings/discounts" },
   { label: "Admins", to: "/settings/team" },
+  { label: "Profile & security", to: "/settings/profile" },
   { label: "Audit log", to: "/settings/audit" },
 ];
 
