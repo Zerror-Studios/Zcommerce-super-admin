@@ -12,7 +12,7 @@ import { NavLink } from "react-router-dom";
 import { cx } from "../ui/cx";
 import { Avatar } from "../ui/Media";
 import { Dropdown, DropdownMenu } from "../ui/Dropdown";
-import { IconClose, IconCollapseSidebar, IconLogout, IconNotifications, IconSearch } from "../ui/icons";
+import { IconCaret, IconClose, IconCollapseSidebar, IconLogout, IconNotifications, IconSearch } from "../ui/icons";
 import { menuItemDangerClasses } from "../ui/menu-styles";
 import { Kbd } from "../ui/Primitives";
 import { Tooltip } from "../ui/Tooltip";
@@ -341,13 +341,20 @@ function NavEntry({ item, collapsed, isActive, onNavigate }: { item: NavItem } &
             <>
               <span className="flex-1 truncate">{item.label}</span>
               {count > 0 ? <span className="text-caption font-normal text-nav-fg-muted num">{count}</span> : null}
+              {/* Sections with sub-pages show a chevron: right when closed, down when open. */}
+              {children.length ? (
+                <IconCaret
+                  aria-hidden
+                  className={cx("size-3.5 shrink-0 transition-transform duration-fast", !sectionActive && "-rotate-90")}
+                />
+              ) : null}
             </>
           )}
         </NavLink>
       </WithTooltip>
 
       {sectionActive && children.length && !collapsed ? (
-        <ul className="mt-0.5 flex flex-col gap-0.5">
+        <ul className="mt-1 flex flex-col gap-0.5 rounded-lg bg-nav-sub p-1">
           {children.map((child) => {
             const active = isActive(child.to);
             return (
@@ -357,9 +364,11 @@ function NavEntry({ item, collapsed, isActive, onNavigate }: { item: NavItem } &
                   aria-current={active ? "page" : undefined}
                   onClick={() => onNavigate?.()}
                   className={cx(
-                    "flex h-7 items-center rounded-lg pl-9 pr-2.5 text-label transition-colors duration-instant",
+                    "flex h-7 items-center rounded-field pl-8 pr-2.5 text-label transition-colors duration-instant",
                     focusRing,
-                    active ? "bg-nav-active text-nav-fg-strong" : "text-nav-fg hover:bg-nav-hover hover:text-nav-fg-strong",
+                    active
+                      ? "bg-nav-sub-active font-medium text-nav-fg-strong"
+                      : "text-nav-fg hover:bg-nav-sub-hover hover:text-nav-fg-strong",
                   )}
                 >
                   <span className="truncate">{child.label}</span>

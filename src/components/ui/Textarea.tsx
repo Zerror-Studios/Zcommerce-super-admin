@@ -2,17 +2,18 @@
 import { Textarea as HeroTextarea } from "@heroui/react";
 import type { TextAreaProps as HeroTextAreaProps } from "@heroui/react";
 import { cx } from "./cx";
-import { getInputClasses } from "./field-styles";
+import { OUTSIDE_LABEL_PLACEHOLDER, getInputClasses } from "./field-styles";
 
 export type TextareaProps = Omit<HeroTextAreaProps, "variant" | "radius">;
 
 /** Multi-line text field: same states as Input (component-specs §4), height grows with content. */
-export function Textarea({ classNames, labelPlacement = "outside", ...rest }: TextareaProps) {
+export function Textarea({ classNames, labelPlacement = "outside", placeholder, ...rest }: TextareaProps) {
   const styles = getInputClasses();
   return (
     <HeroTextarea
       variant="bordered"
       labelPlacement={labelPlacement}
+      placeholder={placeholder ?? (labelPlacement === "outside" ? OUTSIDE_LABEL_PLACEHOLDER : undefined)}
       classNames={{
         ...classNames,
         input: cx(styles.input, classNames?.input),

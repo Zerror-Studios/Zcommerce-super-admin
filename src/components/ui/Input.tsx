@@ -2,7 +2,7 @@
 import { Input as HeroInput } from "@heroui/react";
 import type { InputProps as HeroInputProps } from "@heroui/react";
 import { cx } from "./cx";
-import { fieldHeight, getInputClasses } from "./field-styles";
+import { OUTSIDE_LABEL_PLACEHOLDER, fieldHeight, getInputClasses } from "./field-styles";
 import type { FieldSize } from "./field-styles";
 import { IconError } from "./icons";
 
@@ -11,13 +11,14 @@ export interface InputProps extends Omit<HeroInputProps, "size" | "variant" | "r
 }
 
 /** Text field (component-specs §4): label above, 8px radius, error icon + message when invalid. */
-export function Input({ size = "md", classNames, isInvalid, endContent, labelPlacement = "outside", ...rest }: InputProps) {
+export function Input({ size = "md", classNames, isInvalid, endContent, labelPlacement = "outside", placeholder, ...rest }: InputProps) {
   const styles = getInputClasses();
   return (
     <HeroInput
       variant="bordered"
       size={size}
       labelPlacement={labelPlacement}
+      placeholder={placeholder ?? (labelPlacement === "outside" ? OUTSIDE_LABEL_PLACEHOLDER : undefined)}
       isInvalid={isInvalid}
       endContent={
         endContent ?? (isInvalid ? <IconError aria-hidden className="size-4 shrink-0 text-tone-danger-text" /> : undefined)

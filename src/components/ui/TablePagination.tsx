@@ -4,8 +4,9 @@ import { IconButton } from "./IconButton";
 import { IconNextPage, IconPrevPage } from "./icons";
 import { formatCount } from "./money";
 
-export const PAGE_SIZES = [25, 50, 100] as const;
-export const DEFAULT_PAGE_SIZE = 50;
+/** Owner choice (2026-10-26): every table shows at most 10 rows a page, so there is no rows-per-page choice. */
+export const PAGE_SIZES = [10] as const;
+export const DEFAULT_PAGE_SIZE = 10;
 
 export interface TablePaginationProps {
   /** 1-based page. */
@@ -35,7 +36,8 @@ export function TablePagination({
   className,
 }: TablePaginationProps) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  if (total === 0 || (pages <= 1 && !onPageSizeChange)) return null;
+  const canResize = !!onPageSizeChange && PAGE_SIZES.length > 1;
+  if (total === 0 || (pages <= 1 && !canResize)) return null;
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
@@ -51,7 +53,7 @@ export function TablePagination({
         {formatCount(from)}–{formatCount(to)} of {formatCount(total)}
       </p>
       <div className="flex items-center gap-3">
-        {onPageSizeChange ? (
+        {canResize ? (
           <label className="hidden items-center gap-2 sm:flex">
             Rows
             <select

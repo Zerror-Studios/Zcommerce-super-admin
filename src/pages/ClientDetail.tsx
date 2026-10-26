@@ -197,7 +197,9 @@ export function ClientDetail() {
       />
 
       {/* Two-column editor (docs/design/08-fixes-and-screens.md §2.14): the work on the left, the facts and
-          the per-store controls in a sticky rail on the right, danger zone last. One page, no tabs. */}
+          the per-store controls in a rail on the right; the danger zone is last in the main column, below
+          Subscription (owner, 2026-10-26). One page, no tabs. The rail scrolls
+          with the page (owner, 2026-10-26: one scrollbar, not a second one inside the rail). */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-w-0 flex-col gap-4">
           <OnboardingCard client={client} />
@@ -215,11 +217,16 @@ export function ClientDetail() {
               <SubscriptionActions client={client} subscription={subscription} plans={plans} />
             </Section>
           ) : null}
+          {canManage ? (
+            <Section id="store-settings" title="Danger zone">
+              <ClientDangerZone client={client} onDeleted={() => navigate("/stores")} />
+            </Section>
+          ) : null}
         </div>
 
         <aside
           aria-label="Store details"
-          className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-32 lg:max-h-[calc(100dvh-9rem)] lg:self-start lg:overflow-y-auto lg:custom-scroll"
+          className="flex min-w-0 flex-col gap-4 lg:self-start"
         >
           <ClientOverviewTab part="rail" client={client} subscription={subscription} plan={plan} />
           <ClientBillingTab
@@ -230,11 +237,6 @@ export function ClientDetail() {
             onSaveGracePeriod={onSaveGracePeriod}
             canEdit={canManage}
           />
-          {canManage ? (
-            <Section id="store-settings" title="Danger zone">
-              <ClientDangerZone client={client} onDeleted={() => navigate("/stores")} />
-            </Section>
-          ) : null}
         </aside>
       </div>
 

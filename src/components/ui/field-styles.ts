@@ -219,3 +219,9 @@ export const getTableSearchClasses = (className = "") => ({
 
 /** Leading magnifier for search fields (15px, tertiary). */
 export const tableSearchIconClass = "size-[15px] shrink-0 text-fg-subtle";
+
+/**
+ * HeroUI draws an "outside" label inside the box when there is no placeholder, so without one the field
+ * gets an invisible placeholder: the label always sits above, like every other field.
+ */
+export const OUTSIDE_LABEL_PLACEHOLDER = " ";

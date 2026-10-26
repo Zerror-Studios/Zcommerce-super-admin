@@ -66,6 +66,9 @@
   --color-nav-hover: var(--zc-nav-hover-bg);
   --color-nav-active: var(--zc-nav-active-bg);
   --color-nav-count: var(--zc-nav-count-bg);
+  --color-nav-sub: var(--zc-nav-sub-bg);
+  --color-nav-sub-hover: var(--zc-nav-sub-hover-bg);
+  --color-nav-sub-active: var(--zc-nav-sub-active-bg);
 
   --color-auth: var(--zc-auth-bg);
   --color-auth-card: var(--zc-auth-card);
@@ -228,6 +231,13 @@
   &::-webkit-scrollbar-thumb {
     background: var(--zc-scrollbar-thumb);
     border-radius: 999px;
+  }
+}
+
+/* Tables: no horizontal bar; sideways scroll still works (trackpad, Shift + wheel). The vertical bar stays. */
+@utility no-scrollbar-x {
+  &::-webkit-scrollbar:horizontal {
+    height: 0;
   }
 }
 
