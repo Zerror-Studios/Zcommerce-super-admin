@@ -24,8 +24,10 @@ export const fieldHeight: Record<FieldSize, string> = {
   lg: "h-10 min-h-10",
 };
 
+/* The hover compound keeps the ring while the pointer is still over a field it just focused. */
 const focusRing = `
   group-data-[focus=true]:!shadow-focus
+  group-data-[focus=true]:data-[hover=true]:!shadow-focus
 `;
 
 const fieldInput = `
@@ -99,6 +101,7 @@ export const getDropdownClasses = (className = "") => ({
     data-[hover=true]:!border-line-strong
 
     data-[focus=true]:!border-brand
+    data-[focus=true]:data-[hover=true]:!border-brand
     data-[open=true]:!border-brand
     data-[open=true]:data-[hover=true]:!border-brand
 
@@ -124,7 +127,7 @@ export const getSelectClasses = (className = "") => {
   };
 };
 
-/** Search field: 34px, white, strong border, 8px radius; primary border + ring on focus. */
+/** Search field: 34px, white, strong border, 8px radius; primary border + ring on focus (also while hovered). */
 export const getSearchInputClasses = (className = "") => ({
   inputWrapper: `
     ${className}
@@ -146,6 +149,7 @@ export const getSearchInputClasses = (className = "") => ({
     group-data-[focus=true]:!bg-surface
     group-data-[focus=true]:!border-brand
     group-data-[focus=true]:data-[hover=true]:!bg-surface
+    group-data-[focus=true]:data-[hover=true]:!border-brand
     ${focusRing}
   `,
   input: fieldInput,
@@ -210,6 +214,7 @@ export const getTableSearchClasses = (className = "") => ({
     group-data-[focus=true]:!bg-surface
     group-data-[focus=true]:!border-brand
     group-data-[focus=true]:data-[hover=true]:!bg-surface
+    group-data-[focus=true]:data-[hover=true]:!border-brand
     ${focusRing}
     ${className}
   `,

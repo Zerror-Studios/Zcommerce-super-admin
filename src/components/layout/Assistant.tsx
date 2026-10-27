@@ -145,7 +145,7 @@ export function AssistantPanel({
       placement="right"
       hideCloseButton
       backdrop="transparent"
-      classNames={{ base: "w-full max-w-[420px] rounded-none border-l border-line bg-surface shadow-modal" }}
+      classNames={{ base: "w-full max-w-assistant rounded-none border-l border-line bg-surface shadow-modal" }}
     >
       <DrawerContent>
         <DrawerHeader className="flex items-center gap-2 border-b border-line px-4 py-3">

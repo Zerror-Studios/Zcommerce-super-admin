@@ -9,7 +9,7 @@ import { AuditLogSettings } from "../components/settings/AuditLogSettings";
 import { ProfileSecuritySettings } from "../components/settings/ProfileSecuritySettings";
 import { PageHeader } from "../components/common/PageHeader";
 import { ConfirmModal } from "../components/common/ConfirmModal";
-import { ShortcutsDialog } from "../components/layout/AppShell";
+import { ShortcutsList } from "../components/layout/AppShell";
 import { useMutation } from "@apollo/client";
 import {
   CREATE_PLATFORM_COUPON,
@@ -60,10 +60,19 @@ import {
  * by moving its cards; /settings/billing-rules is Grace period and reminders, plus the plan-limit mode, overdue payments and
  * the jobs (PRD-016). Payment reminders moved to Subscriptions (/settings/automation redirects there, see App.tsx).
  */
-type SettingsSection = "payment-gateway" | "billing-rules" | "health" | "plans" | "discounts" | "team" | "audit" | "profile";
+type SettingsSection =
+  | "payment-gateway"
+  | "billing-rules"
+  | "health"
+  | "plans"
+  | "discounts"
+  | "team"
+  | "audit"
+  | "profile"
+  | "shortcuts";
 
-/** Pane rows that open a dialog instead of a section. */
-type SettingsAction = "shortcuts" | "logout-all";
+/** Pane rows that open a dialog instead of a section. Keyboard shortcuts is a section (owner 2026-10-27). */
+type SettingsAction = "logout-all";
 
 interface SectionMeta {
   title: string;
@@ -119,17 +128,21 @@ const sections: Record<SettingsSection, SectionMeta> = {
     description: "Your account, password, two-step verification and the devices you're signed in on.",
     icon: IconUser,
   },
+  shortcuts: {
+    title: "Keyboard shortcuts",
+    description: "Keys for search, the sidebar and other quick actions.",
+    icon: IconKeyboard,
+  },
 };
 
 const actions: Record<SettingsAction, { label: string; keywords: string; icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }> }> = {
-  shortcuts: { label: "Keyboard shortcuts", keywords: "keyboard shortcuts keys", icon: IconKeyboard },
   // PRD-014 PLT-13: platformLogoutAll (a lost laptop, a shared browser).
   "logout-all": { label: "Sign out everywhere", keywords: "sign out everywhere sessions devices logout", icon: IconLogout },
 };
 
 const DEFAULT_SECTION: SettingsSection = "payment-gateway";
 
-/** Left pane groups (§1.7: Billing · Team · System). Keyboard shortcuts and Sign out everywhere open dialogs. */
+/** Left pane groups (§1.7: Billing · Team · System). Sign out everywhere opens a dialog. */
 const groupOrder: { label: string; keys: (SettingsSection | SettingsAction)[] }[] = [
   { label: "Billing", keys: ["payment-gateway", "billing-rules", "health", "plans", "discounts"] },
   { label: "Team", keys: ["team"] },
@@ -150,7 +163,6 @@ export function Settings() {
   const { section } = useParams<{ section: string }>();
   const { can, signOutEverywhere } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [logoutAllOpen, setLogoutAllOpen] = useState(false);
   const [query, setQuery] = useState("");
   // PRD-005 FR-7.2: platform discounts live on the server (read only on Discounts).
@@ -205,7 +217,9 @@ export function Settings() {
       items: group.keys
         .filter((key) => {
           if (!term || group.label.toLowerCase().includes(term)) return true;
-          const text = isAction(key) ? actions[key].keywords : `${sections[key].title} ${sections[key].description}`;
+          const text = isAction(key)
+            ? actions[key].keywords
+            : `${sections[key].title} ${sections[key].description}${key === "shortcuts" ? " hotkeys" : ""}`;
           return text.toLowerCase().includes(term);
         })
         .map((key) => {
@@ -251,7 +265,7 @@ export function Settings() {
       <PageHeader
         type="page"
         icon={<IconSettings aria-hidden />}
-        section="slate"
+        section="blue"
         title="Settings"
         description="Billing rules, plans, the team and the audit trail for the Zcom platform"
         actions={
@@ -274,8 +288,7 @@ export function Settings() {
             groups={groups}
             activeKey={active}
             onSelect={(key) => {
-              if (key === "shortcuts") setShortcutsOpen(true);
-              else if (key === "logout-all") setLogoutAllOpen(true);
+              if (key === "logout-all") setLogoutAllOpen(true);
             }}
             emptyContent={`No settings match "${query.trim()}".`}
           />
@@ -324,9 +337,9 @@ export function Settings() {
         {active === "team" ? <TeamSettings createOpen={createOpen} onCreateOpenChange={setCreateOpen} /> : null}
         {active === "audit" ? <AuditLogSettings /> : null}
         {active === "profile" ? <ProfileSecuritySettings /> : null}
+        {active === "shortcuts" ? <ShortcutsList /> : null}
       </TwoPaneCard>
 
-      <ShortcutsDialog isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <ConfirmModal
         isOpen={logoutAllOpen}
         onClose={() => setLogoutAllOpen(false)}

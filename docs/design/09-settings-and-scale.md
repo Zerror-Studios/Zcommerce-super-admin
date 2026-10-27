@@ -15,7 +15,7 @@ Same rules as `README.md`: keep every feature, field, route and setting that exi
 Replace today's settings (many cards / tabs on one page) with the Shopify pattern: **one card, two panes**. The left pane lists every settings section, grouped; clicking a section loads its content in the right pane. The URL changes (`/settings/shipping`), so sections are deep-linkable and the browser back button works.
 
 ### 1.1 Page header
-Standard page header (`08` §1.5): 44px slate icon tile (sliders icon) → **H1 "Settings"** → one muted line `{Store name} · {domain} · {Plan} plan` → right: **Search settings** field (260px, same search component as everywhere else). No tinted hero here; settings are utilitarian.
+Standard page header (`08` §1.5): 44px blue icon tile (sliders icon) → **H1 "Settings"** → one muted line `{Store name} · {domain} · {Plan} plan` → right: **Search settings** field (260px, same search component as everywhere else). Like every page header it sits straight on the page, no card (owner 2026-10-27).
 
 ### 1.2 The card
 - One `card` (radius 14, 1px border) that fills the width, min-height 900px, `overflow:hidden`.
@@ -34,7 +34,7 @@ Standard page header (`08` §1.5): 44px slate icon tile (sliders icon) → **H1 
 | Group | Sections |
 |---|---|
 | Store | Store details · Domain · Plan & billing |
-| Store & checkout | Payments · Shipping & delivery · Tax · Receipts · Locations |
+| Store & checkout | Shipping & delivery · Tax · Receipts · Locations (payment apps live in Apps & channels) |
 | Team | Members (count) · Roles |
 | Notifications | Email notifications · SMS notifications (Off badge when disabled) |
 | Account | Login history · Keyboard shortcuts · About Zcom |
@@ -63,8 +63,8 @@ Every page in both apps uses exactly one of these three headers. Nothing else.
 
 | Type | Where | Structure (left → right) |
 |---|---|---|
-| **A · Tinted list header** | Top-level list pages: Products, Collections, Orders, Payments, Contacts, Campaigns, Blogs, Apps, Stores (Super Admin) | Tinted card in the section colour (`07` §3): 44px icon tile → H1 22/600 + muted count → one live summary line → actions right (one blue primary, ghost secondaries). Then the table card with tabs left, **search 240px + Filter · Sort · Columns** right in the same row. |
-| **B · Plain page header** | Dashboards and utilities: Home, Analytics (all tabs), Settings, Help & learn, Notifications | 44px icon tile (section colour; slate for Settings/Help) → H1 22/600 → one muted line → right: the page's control (date range button with 15px calendar stroke icon on Home/Analytics; search field on Settings/Help). Home alone adds the hero strip below (`07` §2). |
+| **A · List header** | Top-level list pages: Products, Collections, Orders, Payments, Contacts, Campaigns, Blogs, Apps, Stores (Super Admin) | No card, straight on the page (owner 2026-10-27; was a tinted card in the section colour, `07` §3): 44px icon tile in the section colour → H1 22/600 + muted count → one live summary line → actions right (one blue primary, ghost secondaries). Then the table card with tabs left, **search 240px + Filter · Sort · Columns** right in the same row. |
+| **B · Page header** | Dashboards and utilities: Home, Analytics (all tabs), Settings, Help & learn, Notifications | No card, like A: 44px icon tile (section colour; blue for Settings, slate for Help) → H1 22/600 → one muted line → right: the page's control (date range button with 15px calendar stroke icon on Home/Analytics; search field on Settings/Help). Home alone adds the hero strip below (`07` §2). |
 | **C · Detail / editor header** | Anything with a parent: product, order, payment, collection, template, blog post, store (Super Admin) | "← Parent" 13px link → H1 22/600 + status badge + one-line meta → right: Preview ↗ / secondary ghost / **Save** blue. No tile, no tint. Sticky at top when scrolling with a 1px bottom border. |
 
 Fixed numbers: H1 22/30/600 letter-spacing −0.01em; icon tile 44px radius 12; header-to-content gap 16px; the search component is identical everywhere (36px tall in headers, 34px in table toolbars, radius 8, 15px icon, placeholder `#9599A2`). Segmented tabs (All · Mobile · Desktop, Day · Week · Month) are the same 32px pill group everywhere, never underlined tabs mixed with pills on one page.
@@ -93,7 +93,7 @@ Stores will have thousands of products, orders, customers and media files; Super
 ### 3.1 Tables and lists
 - **Server-side pagination by default**, 50 rows per page (options 25 / 50 / 100). Pagination bar sits in the table footer: "1–50 of 12,480" left, page controls right, 44px tall. Never load everything.
 - **Virtualise** any list that renders more than ~200 rows at once (media grid, infinite timelines, Super Admin stores when "show all" is chosen). Row height is fixed (56px comfortable) so virtualisation is simple and scrolling never jumps.
-- **Sticky header row** and sticky first column (name) on horizontal scroll. Checkbox column 40px, actions column 48px, both pinned.
+- **Sticky header row** and sticky first column (name) on horizontal scroll. Checkbox column 32px (no right padding), actions column 96px with a visible "Actions" header, both pinned.
 - **Column control** (`Columns` button) remembers the user's choice per table in local storage. Default visible columns are the 5–7 named in `03`/`04`; extra columns exist but are hidden, never removed.
 - **Sorting** is server-side, one column at a time, arrow in the header; default sort is "newest first" for anything with a date.
 - **Filters** apply as chips under the toolbar only when active; "Clear all" at the end. Filters are in the URL (`?status=paid&from=…`) so views are shareable and survive refresh.

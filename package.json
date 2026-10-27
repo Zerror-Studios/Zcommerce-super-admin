@@ -12,7 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint:hex": "node scripts/check-hex.mjs",
-    "lint:px": "node scripts/check-px.mjs --max 40",
+    "lint:px": "node scripts/check-px.mjs --max 36",
     "validate:ops": "node scripts/validate-ops.mjs",
     "check:synced": "node scripts/check-synced-kit.mjs",
     "validate:contracts": "node ../zcom-backend/scripts/validate-clients/validate-clients.mjs src --client zcom-super-admin"

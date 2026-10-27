@@ -27,10 +27,13 @@
   --zc-font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* ---------- Surfaces ---------- */
-  --zc-bg: #F6F7F9;             /* spec --bg-canvas: page background behind cards */
+  --zc-bg: #E9ECEF;             /* spec --bg-canvas: page background behind cards (owner 2026-10-27: was #F6F7F9, darker so white cards stand out) */
   --zc-surface: #FFFFFF;        /* cards, tables, inputs, popovers */
   --zc-surface-muted: #FAFAFB;  /* spec --bg-subtle: table header, row hover */
   --zc-surface-sunken: #F2F3F5; /* spec --bg-muted: neutral badge, empty-state tile, skeleton */
+  /* added (owner 2026-10-27): table header row in a light blue with darker, bolder text (was surface-muted / fg-muted) */
+  --zc-table-head-bg: #EDF2FC;
+  --zc-table-head-fg: #2A3A5C;
 
   /* ---------- Text (all pass WCAG AA on white) ---------- */
   --zc-fg: #111318;

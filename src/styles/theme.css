@@ -12,6 +12,8 @@
   --color-surface: var(--zc-surface);
   --color-surface-muted: var(--zc-surface-muted);
   --color-surface-sunken: var(--zc-surface-sunken);
+  --color-table-head: var(--zc-table-head-bg);
+  --color-table-head-fg: var(--zc-table-head-fg);
   --color-fg: var(--zc-fg);
   --color-fg-muted: var(--zc-fg-muted);
   --color-fg-subtle: var(--zc-fg-subtle);
@@ -264,6 +266,7 @@
   --spacing-image-control-sm: var(--zc-image-control-sm);
   --spacing-blog-tools: var(--zc-blog-tools-w);
   --spacing-blog-panel: var(--zc-blog-panel-w);
+  --spacing-assistant: var(--zc-assistant-w);
   --spacing-media-folders: var(--zc-media-folders-w);
   --spacing-drawer-image: var(--zc-drawer-image);
 

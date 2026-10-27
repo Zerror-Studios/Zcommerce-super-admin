@@ -78,7 +78,7 @@ Page header
 |---|---|---|
 | Primary | `--accent` bg, white text, hover `--accent-hover` | One per view |
 | Secondary | white, 1px `--border-strong`, `--text`; hover `--bg-subtle` | Other important actions, date picker |
-| Ghost | transparent, `--text-secondary`/`#454A54`; hover `--bg-muted` | Low emphasis: Import, Export, Cancel, Filter, Sort, Columns, row "Log in" |
+| Ghost | `--bg-muted` fill, `--text`; hover primary (`--accent` fill, white text) (owner 2026-10-27; was transparent, `--text-secondary`, hover `--bg-muted`) | Low emphasis: Import, Export, Cancel, Filter, Sort, Columns, row "Log in" |
 | Destructive | white, 1px `--critical-border`, `--critical-fg`; filled `--critical-fg` inside confirm modals | Delete, Suspend, Refund |
 | Link | `--accent` text, underline on hover | "View all", inline links |
 
@@ -114,7 +114,7 @@ Footer:        1–20 of 248                                       Previous  Nex
 
 - **Row 1 toolbar**: status tabs on the left (underline style §8, stretched to the full 52px so the underline sits on the bottom border). On the right: search input (240–260px, 34px tall, page-specific placeholder), then ghost buttons **Filter**, **Sort**, **Columns** with 15px icons. If a table has no tabs, the search goes on the left and tools stay right.
 - **Filters**: "Filter" opens a popover listing the filterable fields that already exist today (status, collection, stock, date, payment, etc.). Applied filters show as removable chips in Row 1b; Row 1b is hidden when nothing is applied.
-- **Header row**: 40px, `--bg-subtle`, 13/500 `--text-secondary`, sentence case, bottom border `--border`. Sort arrows on hover/active. **No light-blue header.**
+- **Header row**: 40px, light blue `--zc-table-head-bg`, 13/600 `--zc-table-head-fg` (dark slate blue), sentence case, bottom border `--border`. Sort arrows on hover/active. Every column has a visible label; the trailing "···" column is headed **Actions** (96px, right-aligned). (Owner 2026-10-27: was `--bg-subtle` with 13/500 `--text-secondary`, "no light-blue header".)
 - **Rows**: 56px, 1px `--divider`, hover `--bg-subtle`, selected `--accent-subtle`. Clicking a row opens its detail page; checkboxes and row actions don't.
 - **Primary cell**: 36px thumbnail or initials avatar (radius 8) + name 14/500 + secondary line 12px tertiary (SKU, email).
 - **Numbers and money right-aligned**, tabular. Empty value: "—" in tertiary.

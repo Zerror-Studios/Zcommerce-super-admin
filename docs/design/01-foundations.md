@@ -44,7 +44,7 @@ All values are in `tokens.css`. Rules:
 - `--accent` only for: primary buttons, links, selected states (`--accent-subtle` bg), focus rings, the main chart series, unread count pills.
 - Status colours only inside badges, status dots, delta numbers and inline status text (e.g. "Out of stock").
 - The AI spectrum only on AI surfaces (see `02-components.md` §AI).
-- **Remove from the codebase:** the navy top bar colour, the light-blue table header (`#E5F1FF`-ish), Bootstrap blue `#0D6EFD`, orange/purple/cyan donut colours, any one-off greys. After Phase 1, `grep` for hex values in component/page files should return (almost) nothing.
+- **Remove from the codebase:** the navy top bar colour, the old light-blue table header (`#E5F1FF`-ish; the owner brought back a softer one as tokens on 2026-10-27, see `02` §6), Bootstrap blue `#0D6EFD`, orange/purple/cyan donut colours, any one-off greys. After Phase 1, `grep` for hex values in component/page files should return (almost) nothing.
 
 ## 5. Typography rules
 

@@ -18,7 +18,13 @@ import { EmptyState } from "./EmptyState";
 import { Skeleton } from "./Skeleton";
 import { DEFAULT_PAGE_SIZE } from "./TablePagination";
 import type { TableSort } from "./table-state";
-import { tableCellClasses, tableCheckboxClassNames, tableHeaderCellClasses, tableRowClasses } from "./table-styles";
+import {
+  tableActionsColumnClass,
+  tableCellClasses,
+  tableCheckboxClassNames,
+  tableHeaderCellClasses,
+  tableRowClasses,
+} from "./table-styles";
 import { Tooltip } from "./Tooltip";
 
 export interface DataTableColumn {
@@ -28,9 +34,9 @@ export interface DataTableColumn {
   align?: "start" | "center" | "end";
   /** Server-side sort on this column. */
   sortable?: boolean;
-  /** Fixed width class, e.g. "w-40" (checkbox 40px and actions 48px are set for you). */
+  /** Fixed width class, e.g. "w-40" (the 32px checkbox column and the actions column are set for you). */
   className?: string;
-  /** Visually hidden header text (actions column). */
+  /** Visually hidden header text. Ignored on the actions column, which always shows "Actions" (owner 2026-10-27). */
   hideLabel?: boolean;
 }
 
@@ -139,10 +145,12 @@ export function DataTable<T>({
   const rowKey = (item: T | SkeletonRow) => (isSkeletonRow(item) ? item.skeletonKey : getRowKey(item));
   const hasSelection = selectedKeys === "all" || (selectedKeys instanceof Set && selectedKeys.size > 0);
   const byKey = new Map(rows.map((row) => [getRowKey(row), row]));
-  // The pinned name column sits after the 40px checkbox column when rows are selectable.
+  // The checkbox column is 32px: 16px left padding + the 16px box, no right padding, so the next column sits close.
+  const checkboxColumn = selectable ? "first:w-8 first:pe-0" : undefined;
+  // The pinned name column sits after the 32px checkbox column when rows are selectable.
   const pinned = stickyFirstColumn
     ? selectable
-      ? "[&_th:nth-child(2)]:sticky [&_th:nth-child(2)]:left-10 [&_td:nth-child(2)]:sticky [&_td:nth-child(2)]:left-10 [&_th:first-child]:sticky [&_th:first-child]:left-0 [&_td:first-child]:sticky [&_td:first-child]:left-0 [&_td:nth-child(-n+2)]:z-10 [&_td:nth-child(-n+2)]:bg-surface"
+      ? "[&_th:nth-child(2)]:sticky [&_th:nth-child(2)]:left-8 [&_td:nth-child(2)]:sticky [&_td:nth-child(2)]:left-8 [&_th:first-child]:sticky [&_th:first-child]:left-0 [&_td:first-child]:sticky [&_td:first-child]:left-0 [&_td:nth-child(-n+2)]:z-10 [&_td:nth-child(-n+2)]:bg-surface"
       : "[&_th:first-child]:sticky [&_th:first-child]:left-0 [&_td:first-child]:sticky [&_td:first-child]:left-0 [&_td:first-child]:z-10 [&_td:first-child]:bg-surface"
     : undefined;
 
@@ -183,8 +191,8 @@ export function DataTable<T>({
           base: cx("overflow-auto custom-scroll no-scrollbar-x", scrollClassName, pinned),
           table: "min-w-full",
           thead: "sticky top-0 z-20 [&>tr]:first:shadow-none",
-          th: cx(tableHeaderCellClasses, "whitespace-nowrap first:w-10 data-[sortable=true]:cursor-pointer"),
-          td: cx(tableCellClasses, "whitespace-nowrap first:w-10"),
+          th: cx(tableHeaderCellClasses, "whitespace-nowrap data-[sortable=true]:cursor-pointer", checkboxColumn),
+          td: cx(tableCellClasses, "whitespace-nowrap", checkboxColumn),
           tr: cx(tableRowClasses, onRowAction && "cursor-pointer"),
           tbody: cx("transition-opacity duration-fast", isReloading && "opacity-60"),
         }}
@@ -195,9 +203,13 @@ export function DataTable<T>({
               key={column.key}
               align={column.align ?? (column.key === "actions" ? "end" : "start")}
               allowsSorting={!!column.sortable && !!onSortChange}
-              className={cx(column.key === "actions" && "w-12", column.className)}
+              className={cx(column.key === "actions" && tableActionsColumnClass, column.className)}
             >
-              {column.hideLabel ? <span className="sr-only">{column.label}</span> : column.label}
+              {column.key === "actions"
+                ? column.label || "Actions"
+                : column.hideLabel
+                  ? <span className="sr-only">{column.label}</span>
+                  : column.label}
             </TableColumn>
           )}
         </TableHeader>
