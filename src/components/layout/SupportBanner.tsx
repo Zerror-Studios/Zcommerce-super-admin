@@ -22,9 +22,10 @@ export interface SupportBannerProps {
 }
 
 /**
- * Support-session strip (docs/design/08-fixes-and-screens.md §1.1): 36px, full width at the very top of the
- * window, amber. "You're viewing {Store} as Zerror support. Changes are logged." · Exit · × hides it for this
- * browser session.
+ * Support-session strip (docs/design/08-fixes-and-screens.md §1.1): 36px, across the top of the main area,
+ * amber. "You're viewing {Store} as Zerror support. Changes are logged." · Exit · × hides it for this
+ * browser session. It scrolls with the page and has no z-index of its own, so dialogs and popovers cover it
+ * and it never stacks with a sticky page header (owner 2026-10-27: it showed over the Choose media dialog).
  */
 export function SupportBanner({ storeName, detail, onExit }: SupportBannerProps) {
   const [hidden, setHidden] = useState(readHidden);
@@ -40,7 +41,7 @@ export function SupportBanner({ storeName, detail, onExit }: SupportBannerProps)
   return (
     <div
       role="status"
-      className="zc-sec-amber sticky top-0 z-[var(--zc-z-toast)] flex min-h-support shrink-0 items-center gap-2.5 border-b border-support-line bg-support px-4 text-label text-support-fg"
+      className="zc-sec-amber flex min-h-support shrink-0 items-center gap-2.5 border-b border-support-line bg-support px-4 text-label text-support-fg"
     >
       <IconSupport aria-hidden className="size-4 shrink-0" />
       <p className="min-w-0 flex-1 truncate">
