@@ -47,7 +47,7 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
         section="teal"
         title="Stores"
         count={clients.length}
-        description={loading ? undefined : summary}
+        description={loading ? "Every store on the Zcom platform and its plan" : summary}
         actions={
           can(PLATFORM_PERMISSIONS.TENANTS_MANAGE) ? (
             <UiButton variant="primary" startIcon={<IconAdd aria-hidden />} onPress={() => navigate("/stores/new")}>

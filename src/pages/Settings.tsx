@@ -5,7 +5,7 @@ import { BillingRulesSettings, type BillingRulesCard } from "../components/setti
 import { TeamSettings } from "../components/settings/TeamSettings";
 import { AuditLogSettings } from "../components/settings/AuditLogSettings";
 import { PageHeader } from "../components/common/PageHeader";
-import { ShortcutsDialog } from "../components/layout/AppShell";
+import { ShortcutsList } from "../components/layout/AppShell";
 import { useMutation } from "@apollo/client";
 import { CREATE_PLATFORM_COUPON } from "../graphql/billing";
 import { toCouponInput } from "../lib/api-report-adapters";
@@ -47,7 +47,7 @@ import {
  * by moving its cards; /settings/billing-rules is Grace period and reminders. Payment reminders moved to Subscriptions
  * (/settings/automation redirects there, see App.tsx).
  */
-type SettingsSection = "payment-gateway" | "billing-rules" | "health" | "discounts" | "team" | "audit";
+type SettingsSection = "payment-gateway" | "billing-rules" | "health" | "discounts" | "team" | "audit" | "shortcuts";
 
 interface SectionMeta {
   title: string;
@@ -91,12 +91,17 @@ const sections: Record<SettingsSection, SectionMeta> = {
     description: "Every change made from this console, newest first.",
     icon: IconLock,
   },
+  shortcuts: {
+    title: "Keyboard shortcuts",
+    description: "Keys for search, the sidebar and other quick actions.",
+    icon: IconKeyboard,
+  },
 };
 
 const DEFAULT_SECTION: SettingsSection = "payment-gateway";
 
-/** Left pane groups (§1.7: Billing · Team · System). Keyboard shortcuts opens its dialog. */
-const groupOrder: { label: string; keys: (SettingsSection | "shortcuts")[] }[] = [
+/** Left pane groups (§1.7: Billing · Team · System). */
+const groupOrder: { label: string; keys: SettingsSection[] }[] = [
   { label: "Billing", keys: ["payment-gateway", "billing-rules", "health", "discounts"] },
   { label: "Team", keys: ["team"] },
   { label: "System", keys: ["audit", "shortcuts"] },
@@ -112,7 +117,6 @@ export function Settings() {
   const { section } = useParams<{ section: string }>();
   const { can } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [query, setQuery] = useState("");
   // PRD-005 FR-7.2: platform discounts live on the server (read only on Discounts).
   const apiCoupons = useCoupons({ skip: section !== "discounts" });
@@ -143,11 +147,10 @@ export function Settings() {
       items: group.keys
         .filter((key) => {
           if (!term || group.label.toLowerCase().includes(term)) return true;
-          const text = key === "shortcuts" ? "keyboard shortcuts keys" : `${sections[key].title} ${sections[key].description}`;
+          const text = `${sections[key].title} ${sections[key].description}${key === "shortcuts" ? " hotkeys" : ""}`;
           return text.toLowerCase().includes(term);
         })
         .map((key) => {
-          if (key === "shortcuts") return { key, label: "Keyboard shortcuts", icon: <IconKeyboard aria-hidden /> };
           const Icon = sections[key].icon;
           return {
             key,
@@ -181,7 +184,7 @@ export function Settings() {
       <PageHeader
         type="page"
         icon={<IconSettings aria-hidden />}
-        section="slate"
+        section="blue"
         title="Settings"
         description="Billing rules, the team and the audit trail for the Zcom platform"
         actions={
@@ -203,9 +206,6 @@ export function Settings() {
             aria-label="Settings sections"
             groups={groups}
             activeKey={active}
-            onSelect={(key) => {
-              if (key === "shortcuts") setShortcutsOpen(true);
-            }}
             emptyContent={`No settings match "${query.trim()}".`}
           />
         }
@@ -239,9 +239,8 @@ export function Settings() {
 
         {active === "team" ? <TeamSettings createOpen={createOpen} onCreateOpenChange={setCreateOpen} /> : null}
         {active === "audit" ? <AuditLogSettings /> : null}
+        {active === "shortcuts" ? <ShortcutsList /> : null}
       </TwoPaneCard>
-
-      <ShortcutsDialog isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }
