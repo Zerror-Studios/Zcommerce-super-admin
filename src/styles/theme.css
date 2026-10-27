@@ -266,6 +266,7 @@
   --spacing-image-control-sm: var(--zc-image-control-sm);
   --spacing-blog-tools: var(--zc-blog-tools-w);
   --spacing-blog-panel: var(--zc-blog-panel-w);
+  --spacing-assistant: var(--zc-assistant-w);
   --spacing-media-folders: var(--zc-media-folders-w);
   --spacing-drawer-image: var(--zc-drawer-image);
 

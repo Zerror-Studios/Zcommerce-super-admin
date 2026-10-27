@@ -60,6 +60,9 @@ export const chartColors = {
   get popoverShadow() { return theme().popoverShadow; },
 };
 
+/** Axis, legend and tooltip text in ApexCharts: the 12px caption size. Recharts takes the number 12. */
+export const CHART_FONT_SIZE = "12px";
+
 /** Fixed plan colors in both products (owner decision 2026-10-13: categorical palette instead of blue shades). */
 export const planColors: Record<string, string> = {
   // FE-16: both key sets, so the file is identical in both products. The
@@ -145,13 +148,13 @@ export function apexBaseOptions() {
     stroke: { curve: "smooth", width: 2 },
     markers: { size: 0, hover: { size: 4 } },
     dataLabels: { enabled: false },
-    legend: { fontSize: "12px", labels: { colors: t.axis } },
+    legend: { fontSize: CHART_FONT_SIZE, labels: { colors: t.axis } },
     xaxis: {
       axisBorder: { show: false },
       axisTicks: { show: false },
-      labels: { style: { colors: t.axis, fontSize: "12px" } },
+      labels: { style: { colors: t.axis, fontSize: CHART_FONT_SIZE } },
     },
-    yaxis: { labels: { style: { colors: t.axis, fontSize: "12px" } } },
-    tooltip: { theme: "light", style: { fontSize: "12px", fontFamily: t.fontFamily } },
+    yaxis: { labels: { style: { colors: t.axis, fontSize: CHART_FONT_SIZE } } },
+    tooltip: { theme: "light", style: { fontSize: CHART_FONT_SIZE, fontFamily: t.fontFamily } },
   };
 }
