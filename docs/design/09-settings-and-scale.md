@@ -34,7 +34,7 @@ Standard page header (`08` §1.5): 44px blue icon tile (sliders icon) → **H1 "
 | Group | Sections |
 |---|---|
 | Store | Store details · Domain · Plan & billing |
-| Store & checkout | Payments · Shipping & delivery · Tax · Receipts · Locations |
+| Store & checkout | Shipping & delivery · Tax · Receipts · Locations (payment apps live in Apps & channels) |
 | Team | Members (count) · Roles |
 | Notifications | Email notifications · SMS notifications (Off badge when disabled) |
 | Account | Login history · Keyboard shortcuts · About Zcom |
