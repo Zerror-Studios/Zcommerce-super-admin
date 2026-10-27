@@ -4,11 +4,10 @@
  * scrolls. Below 1024px the sidebar becomes an off-canvas drawer and a 52px light header shows a menu button,
  * the page title and the bell.
  */
-import { Drawer, DrawerBody, DrawerContent, ModalBody, ModalContent, ModalHeader } from "@heroui/react";
+import { Drawer, DrawerBody, DrawerContent } from "@heroui/react";
 import { useRef, useState, type ReactNode } from "react";
 import { cx } from "../ui/cx";
 import { IconMenu } from "../ui/icons";
-import { Modal } from "../ui/Modal";
 import { Kbd } from "../ui/Primitives";
 
 export interface AppShellProps {
@@ -126,10 +125,10 @@ const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ["Esc"], label: "Close a dialog or menu" },
 ];
 
-/** The keyboard shortcuts as a list; the dialog and the Settings pane both show it. Ctrl replaces ⌘ on Windows. */
+/** The keyboard shortcuts as a list, shown in the Settings › Keyboard shortcuts pane. Ctrl replaces ⌘ on Windows. */
 export function ShortcutsList() {
   return (
-    <>
+    <div className="flex flex-col gap-3">
       <ul className="flex flex-col divide-y divide-line-subtle">
         {SHORTCUTS.map((shortcut) => (
           <li key={shortcut.label} className="flex items-center justify-between py-2.5">
@@ -143,20 +142,6 @@ export function ShortcutsList() {
         ))}
       </ul>
       <p className="text-caption text-fg-subtle">On Windows, use Ctrl instead of ⌘.</p>
-    </>
-  );
-}
-
-/** Keyboard shortcuts in a dialog. */
-export function ShortcutsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  return (
-    <Modal isOpen={isOpen} onOpenChange={(open) => !open && onClose()} width="sm">
-      <ModalContent>
-        <ModalHeader>Keyboard shortcuts</ModalHeader>
-        <ModalBody className="pb-6">
-          <ShortcutsList />
-        </ModalBody>
-      </ModalContent>
-    </Modal>
+    </div>
   );
 }

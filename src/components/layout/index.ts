@@ -1,5 +1,5 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
-export { AppShell, ShortcutsDialog, ShortcutsList } from "./AppShell";
+export { AppShell, ShortcutsList } from "./AppShell";
 export { isSameDay, readStoredFlag, relativeTime, storeFlag, useShellHotkeys } from "./shell-utils";
 export type { AppShellProps } from "./AppShell";
 export { AskBar, AssistantPanel } from "./Assistant";

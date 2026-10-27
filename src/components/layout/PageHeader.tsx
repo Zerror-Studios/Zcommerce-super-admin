@@ -8,7 +8,8 @@ import type { Crumb } from "./types";
 /**
  * The three headers (docs/design/09-settings-and-scale.md §2). Every page uses exactly one:
  * - "list"   A · top-level list pages: tinted card in the section colour, icon tile, H1 + count, live line, actions.
- * - "page"   B · dashboards and utilities (Home, Analytics, Settings, Help): icon tile, H1, muted line, one control.
+ * - "page"   B · dashboards and utilities (Home, Analytics, Settings, Help): the same tinted card, icon tile, H1,
+ *               muted line, one control. Every top-level page header looks alike.
  * - "detail" C · anything with a parent: "← Parent", H1 + badges, one-line meta, actions; sticky with a hairline.
  * Without a type, a header with a back link is "detail", one with an icon is "page", and the rest render the
  * v1.0 plain header until their page is moved over.
@@ -125,7 +126,7 @@ export function PageHeader({
           {backLink.label}
         </BackLink>
       ) : null}
-      {kind === "list" ? <div className="zc-tinted-header rounded-card px-5 py-4">{body}</div> : body}
+      {kind === "list" || kind === "page" ? <div className="zc-tinted-header rounded-card px-5 py-4">{body}</div> : body}
       {children ? <div className="mt-4">{children}</div> : null}
     </div>
   );

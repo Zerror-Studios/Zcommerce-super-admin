@@ -8,7 +8,7 @@
 
 :root {
   /* ---------- Surfaces ---------- */
-  --bg-canvas:        #F6F7F9;  /* page background behind cards */
+  --bg-canvas:        #E9ECEF;  /* page background behind cards (2026-10-27: was #F6F7F9) */
   --bg-surface:       #FFFFFF;  /* cards, tables, inputs, popovers */
   --bg-subtle:        #FAFAFB;  /* table header, row hover */
   --bg-muted:         #F2F3F5;  /* neutral badge, empty-state icon tile, skeleton */
