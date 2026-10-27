@@ -6,15 +6,17 @@
 import { gql } from "@apollo/client";
 import { PLATFORM_PLAN_FIELDS } from "./plans";
 
-export const PLATFORM_SUBSCRIPTION_FIELDS = gql`
-  ${PLATFORM_PLAN_FIELDS}
-  fragment PlatformSubscriptionFields on PlatformSubscription {
+/**
+ * A subscription without its plan. The store reads use it: the server
+ * resolves `PlatformTenant.plan` and `subscription.plan` to the same plan,
+ * and asking for it twice per store took `PlatformTenants` to the gateway's
+ * query cost limit (5000). The console reads the store's `plan` instead.
+ */
+export const PLATFORM_SUBSCRIPTION_CORE_FIELDS = gql`
+  fragment PlatformSubscriptionCoreFields on PlatformSubscription {
     id
     tenantId
     tenantName
-    plan {
-      ...PlatformPlanFields
-    }
     status
     billingCycle
     mrr
@@ -31,6 +33,17 @@ export const PLATFORM_SUBSCRIPTION_FIELDS = gql`
     billingState
     ordersPauseAt
     suspendsAt
+  }
+`;
+
+export const PLATFORM_SUBSCRIPTION_FIELDS = gql`
+  ${PLATFORM_PLAN_FIELDS}
+  ${PLATFORM_SUBSCRIPTION_CORE_FIELDS}
+  fragment PlatformSubscriptionFields on PlatformSubscription {
+    ...PlatformSubscriptionCoreFields
+    plan {
+      ...PlatformPlanFields
+    }
   }
 `;
 

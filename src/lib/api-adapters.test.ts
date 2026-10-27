@@ -190,6 +190,12 @@ describe("api adapters", () => {
     expect(subscriptionsOf([tenant, { ...tenant, id: "t-2", subscription: null }])).toHaveLength(1);
   });
 
+  it("reads the store's plan when the store read leaves the subscription's plan out", () => {
+    const { plan: _omitted, ...withoutPlan } = subscription;
+    const [row] = subscriptionsOf([{ ...tenant, plan, subscription: withoutPlan }]);
+    expect(row).toMatchObject({ plan: plan.name, planId: plan.id });
+  });
+
   it("maps plans with a readable feature list and store count", () => {
     const mapped = toPlan({ ...plan, tenantCount: 2 });
     expect(mapped.priceMonthly).toBe(4999);

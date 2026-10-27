@@ -507,6 +507,11 @@ const cache = new InMemoryCache({
     // change's result replaces what the screen shows without a refetch.
     PlatformAiTenantSetting: { keyFields: ["tenantId"] },
     PlatformAiConfig: { keyFields: [] },
+    // A plan's limits and features have no id: merge them, so the store
+    // list (no AI fields) never drops the AI settings the Plans screen
+    // read for the same plan (PRD-017 D14).
+    PlatformPlanLimits: { merge: true },
+    PlatformPlanFeatures: { merge: true },
   },
 });
 

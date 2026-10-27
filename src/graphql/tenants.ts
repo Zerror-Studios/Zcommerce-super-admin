@@ -6,11 +6,11 @@
 
 import { gql } from "@apollo/client";
 import { PLATFORM_PLAN_FIELDS } from "./plans";
-import { PLATFORM_SUBSCRIPTION_FIELDS } from "./subscriptions";
+import { PLATFORM_SUBSCRIPTION_CORE_FIELDS } from "./subscriptions";
 
 export const PLATFORM_TENANT_FIELDS = gql`
   ${PLATFORM_PLAN_FIELDS}
-  ${PLATFORM_SUBSCRIPTION_FIELDS}
+  ${PLATFORM_SUBSCRIPTION_CORE_FIELDS}
   fragment PlatformTenantFields on PlatformTenant {
     id
     slug
@@ -43,8 +43,9 @@ export const PLATFORM_TENANT_FIELDS = gql`
     plan {
       ...PlatformPlanFields
     }
+    # Same plan as above on the server: not asked twice (query cost)
     subscription {
-      ...PlatformSubscriptionFields
+      ...PlatformSubscriptionCoreFields
     }
     monthlyFee
     healthScore

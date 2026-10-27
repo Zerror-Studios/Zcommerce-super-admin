@@ -117,11 +117,14 @@ export interface PlatformPlan {
     maxStaffAccounts: number;
     internationalMarkets: number;
     developmentHours: number;
-    /** PRD-021: 0 = none; changes in place (PRD-017 D14) */
-    aiQuestionsPerWeek: number;
+    /**
+     * PRD-021: 0 = none; changes in place (PRD-017 D14). Only the plan
+     * screens ask for the AI fields (`PLATFORM_PLAN_AI_FIELDS`).
+     */
+    aiQuestionsPerWeek?: number;
     /** -1 = fair use */
-    aiConnectorCallsPerWeek: number;
-    aiMonthlyTokenBudget: number;
+    aiConnectorCallsPerWeek?: number;
+    aiMonthlyTokenBudget?: number;
   };
   features: {
     onlineStore: boolean;
@@ -132,9 +135,9 @@ export interface PlatformPlan {
     prioritySupport: string;
     unlimitedWebHosting: boolean;
     sslCertificate: boolean;
-    /** PRD-021: Ask ZCOM and the AI limits apply only when true */
-    aiEnabled: boolean;
-    aiDailySummary: boolean;
+    /** PRD-021: Ask ZCOM and the AI limits apply only when true (plan screens only) */
+    aiEnabled?: boolean;
+    aiDailySummary?: boolean;
   };
   isActive: boolean;
   createdAt: string | null;
@@ -223,7 +226,8 @@ export interface PlatformSubscription {
   id: string;
   tenantId: string;
   tenantName: string;
-  plan: PlatformPlan | null;
+  /** Absent in the store reads (`PlatformSubscriptionCoreFields`): use the store's `plan`. */
+  plan?: PlatformPlan | null;
   status: SubscriptionStatus;
   billingCycle: PlatformBillingCycle;
   mrr: number;

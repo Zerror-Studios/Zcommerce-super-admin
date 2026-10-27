@@ -23,9 +23,6 @@ export const PLATFORM_PLAN_FIELDS = gql`
       maxStaffAccounts
       internationalMarkets
       developmentHours
-      aiQuestionsPerWeek
-      aiConnectorCallsPerWeek
-      aiMonthlyTokenBudget
     }
     features {
       onlineStore
@@ -36,8 +33,6 @@ export const PLATFORM_PLAN_FIELDS = gql`
       prioritySupport
       unlimitedWebHosting
       sslCertificate
-      aiEnabled
-      aiDailySummary
     }
     isActive
     createdAt
@@ -52,8 +47,28 @@ export const PLATFORM_PLAN_FIELDS = gql`
   }
 `;
 
+/**
+ * The plan's ZCOM AI settings (PRD-017 D14), asked only by the plan
+ * screens: the shared fragment is in `PlatformTenants` twice per store, and
+ * these fields there took it past the gateway's query cost limit (5000).
+ */
+export const PLATFORM_PLAN_AI_FIELDS = gql`
+  fragment PlatformPlanAiFields on PlatformPlan {
+    limits {
+      aiQuestionsPerWeek
+      aiConnectorCallsPerWeek
+      aiMonthlyTokenBudget
+    }
+    features {
+      aiEnabled
+      aiDailySummary
+    }
+  }
+`;
+
 export const PLATFORM_PLANS = gql`
   ${PLATFORM_PLAN_FIELDS}
+  ${PLATFORM_PLAN_AI_FIELDS}
   query PlatformPlans(
     $includeInactive: Boolean
     $tenantId: ID
@@ -65,6 +80,7 @@ export const PLATFORM_PLANS = gql`
       status: $status
     ) {
       ...PlatformPlanFields
+      ...PlatformPlanAiFields
       # Counted on the server, only here (not in the shared fragment).
       tenantCount
       subscriberCount
@@ -78,9 +94,11 @@ export const PLATFORM_PLANS = gql`
 /** One plan with its version chain, oldest first (FR-1.7). */
 export const PLATFORM_PLAN = gql`
   ${PLATFORM_PLAN_FIELDS}
+  ${PLATFORM_PLAN_AI_FIELDS}
   query PlatformPlan($id: ID!) {
     platformPlan(id: $id) {
       ...PlatformPlanFields
+      ...PlatformPlanAiFields
       tenantCount
       subscriberCount
       pendingCount
@@ -94,9 +112,11 @@ export const PLATFORM_PLAN = gql`
 
 export const CREATE_PLAN = gql`
   ${PLATFORM_PLAN_FIELDS}
+  ${PLATFORM_PLAN_AI_FIELDS}
   mutation CreatePlan($input: PlatformPlanInput!) {
     createPlan(input: $input) {
       ...PlatformPlanFields
+      ...PlatformPlanAiFields
       tenantCount
       subscriberCount
       pendingCount
@@ -107,17 +127,20 @@ export const CREATE_PLAN = gql`
 /** Versioned when the plan is in use (`versioned: true`, FR-1.4). */
 export const UPDATE_PLAN = gql`
   ${PLATFORM_PLAN_FIELDS}
+  ${PLATFORM_PLAN_AI_FIELDS}
   mutation UpdatePlan($id: ID!, $input: PlatformPlanUpdateInput!) {
     updatePlan(id: $id, input: $input) {
       versioned
       plan {
         ...PlatformPlanFields
+        ...PlatformPlanAiFields
         tenantCount
         subscriberCount
         pendingCount
       }
       previousPlan {
         ...PlatformPlanFields
+        ...PlatformPlanAiFields
         tenantCount
         subscriberCount
         pendingCount

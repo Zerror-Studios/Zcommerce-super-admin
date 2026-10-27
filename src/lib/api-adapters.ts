@@ -181,7 +181,13 @@ export function toClient(tenant: PlatformTenant): Client {
 export function subscriptionsOf(tenants: PlatformTenant[]): Subscription[] {
   return tenants
     .filter((tenant) => tenant.subscription)
-    .map((tenant) => toSubscription(tenant.subscription!, tenant));
+    // The store reads leave the subscription's plan out; it is the store's
+    .map((tenant) =>
+      toSubscription(
+        { ...tenant.subscription!, plan: tenant.subscription!.plan ?? tenant.plan },
+        tenant,
+      ),
+    );
 }
 
 /**
