@@ -78,7 +78,7 @@ Page header
 |---|---|---|
 | Primary | `--accent` bg, white text, hover `--accent-hover` | One per view |
 | Secondary | white, 1px `--border-strong`, `--text`; hover `--bg-subtle` | Other important actions, date picker |
-| Ghost | transparent, `--text-secondary`/`#454A54`; hover `--bg-muted` | Low emphasis: Import, Export, Cancel, Filter, Sort, Columns, row "Log in" |
+| Ghost | `--bg-muted` fill, `--text`; hover primary (`--accent` fill, white text) (owner 2026-10-27; was transparent, `--text-secondary`, hover `--bg-muted`) | Low emphasis: Import, Export, Cancel, Filter, Sort, Columns, row "Log in" |
 | Destructive | white, 1px `--critical-border`, `--critical-fg`; filled `--critical-fg` inside confirm modals | Delete, Suspend, Refund |
 | Link | `--accent` text, underline on hover | "View all", inline links |
 

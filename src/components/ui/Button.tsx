@@ -9,7 +9,7 @@ import { cx } from "./cx";
  * secondary or ghost. Cancel is never red.
  * - primary: filled blue
  * - secondary: white, strong border (other important actions, date picker)
- * - ghost: transparent, muted text (Import, Export, Cancel, Filter, Sort, Columns, row actions)
+ * - ghost: light grey fill, dark text; primary blue on hover (Import, Export, Cancel, Filter, Sort, Columns, row actions)
  * - destructive: white, red border and text (Delete, Suspend, Refund)
  * - danger: filled red, only inside destructive confirm modals
  * - link: blue text ("View all", inline links)
@@ -66,8 +66,9 @@ const variantClasses: Record<BaseVariant, string> = {
     "bg-brand text-brand-on data-[hover=true]:!opacity-100 data-[hover=true]:bg-brand-hover data-[pressed=true]:bg-brand-pressed",
   secondary:
     "border border-line-strong bg-surface text-fg data-[hover=true]:!opacity-100 data-[hover=true]:!bg-surface-muted data-[pressed=true]:!bg-surface-sunken",
+  // Owner 2026-10-27: the old hover look (light grey fill) is the resting state; hover turns primary
   ghost:
-    "bg-transparent text-fg-muted data-[hover=true]:!opacity-100 data-[hover=true]:!bg-surface-sunken data-[hover=true]:text-fg data-[pressed=true]:!bg-line",
+    "bg-surface-sunken text-fg data-[hover=true]:!opacity-100 data-[hover=true]:!bg-brand data-[hover=true]:!text-brand-on data-[pressed=true]:!bg-brand-pressed data-[pressed=true]:!text-brand-on",
   destructive:
     "border border-tone-danger-border bg-surface text-tone-danger-text data-[hover=true]:!opacity-100 data-[hover=true]:!bg-tone-danger-soft data-[pressed=true]:!bg-tone-danger-soft",
   danger:
