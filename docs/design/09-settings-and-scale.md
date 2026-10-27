@@ -15,7 +15,7 @@ Same rules as `README.md`: keep every feature, field, route and setting that exi
 Replace today's settings (many cards / tabs on one page) with the Shopify pattern: **one card, two panes**. The left pane lists every settings section, grouped; clicking a section loads its content in the right pane. The URL changes (`/settings/shipping`), so sections are deep-linkable and the browser back button works.
 
 ### 1.1 Page header
-Standard page header (`08` §1.5): 44px blue icon tile (sliders icon) → **H1 "Settings"** → one muted line `{Store name} · {domain} · {Plan} plan` → right: **Search settings** field (260px, same search component as everywhere else). The header sits in the same tinted card as every top-level page (blue).
+Standard page header (`08` §1.5): 44px blue icon tile (sliders icon) → **H1 "Settings"** → one muted line `{Store name} · {domain} · {Plan} plan` → right: **Search settings** field (260px, same search component as everywhere else). Like every page header it sits straight on the page, no card (owner 2026-10-27).
 
 ### 1.2 The card
 - One `card` (radius 14, 1px border) that fills the width, min-height 900px, `overflow:hidden`.
@@ -63,8 +63,8 @@ Every page in both apps uses exactly one of these three headers. Nothing else.
 
 | Type | Where | Structure (left → right) |
 |---|---|---|
-| **A · Tinted list header** | Top-level list pages: Products, Collections, Orders, Payments, Contacts, Campaigns, Blogs, Apps, Stores (Super Admin) | Tinted card in the section colour (`07` §3): 44px icon tile → H1 22/600 + muted count → one live summary line → actions right (one blue primary, ghost secondaries). Then the table card with tabs left, **search 240px + Filter · Sort · Columns** right in the same row. |
-| **B · Page header** | Dashboards and utilities: Home, Analytics (all tabs), Settings, Help & learn, Notifications | The same tinted card as A (owner, 2026-10-27: every top-level header looks alike): 44px icon tile (section colour; blue for Settings, slate for Help) → H1 22/600 → one muted line → right: the page's control (date range button with 15px calendar stroke icon on Home/Analytics; search field on Settings/Help). Home alone adds the hero strip below (`07` §2). |
+| **A · List header** | Top-level list pages: Products, Collections, Orders, Payments, Contacts, Campaigns, Blogs, Apps, Stores (Super Admin) | No card, straight on the page (owner 2026-10-27; was a tinted card in the section colour, `07` §3): 44px icon tile in the section colour → H1 22/600 + muted count → one live summary line → actions right (one blue primary, ghost secondaries). Then the table card with tabs left, **search 240px + Filter · Sort · Columns** right in the same row. |
+| **B · Page header** | Dashboards and utilities: Home, Analytics (all tabs), Settings, Help & learn, Notifications | No card, like A: 44px icon tile (section colour; blue for Settings, slate for Help) → H1 22/600 → one muted line → right: the page's control (date range button with 15px calendar stroke icon on Home/Analytics; search field on Settings/Help). Home alone adds the hero strip below (`07` §2). |
 | **C · Detail / editor header** | Anything with a parent: product, order, payment, collection, template, blog post, store (Super Admin) | "← Parent" 13px link → H1 22/600 + status badge + one-line meta → right: Preview ↗ / secondary ghost / **Save** blue. No tile, no tint. Sticky at top when scrolling with a 1px bottom border. |
 
 Fixed numbers: H1 22/30/600 letter-spacing −0.01em; icon tile 44px radius 12; header-to-content gap 16px; the search component is identical everywhere (36px tall in headers, 34px in table toolbars, radius 8, 15px icon, placeholder `#9599A2`). Segmented tabs (All · Mobile · Desktop, Day · Week · Month) are the same 32px pill group everywhere, never underlined tabs mixed with pills on one page.
