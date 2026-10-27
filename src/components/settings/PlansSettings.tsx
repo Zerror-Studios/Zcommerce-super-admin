@@ -135,7 +135,8 @@ export function PlansSettings({ createOpen, onCreateOpenChange }: PlansSettingsP
         if (!canManage) return null;
         const status = plan.status ?? "ACTIVE";
         const items = [
-          ...(status === "ACTIVE" || status === "DRAFT" ? [{ key: "edit", label: "Edit" }] : []),
+          // LEGACY: display fields and AI settings only (PRD-017 D14)
+          ...(status !== "ARCHIVED" ? [{ key: "edit", label: "Edit" }] : []),
           ...((plan.subscriberCount ?? 0) > 0 ? [{ key: "migrate", label: "Migrate stores" }] : []),
           ...(status !== "ARCHIVED" ? [{ key: "archive", label: "Archive", danger: true }] : []),
         ];

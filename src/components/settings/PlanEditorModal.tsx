@@ -6,6 +6,9 @@
  * the inline notice says before the save (no modal surprise, §6). Each
  * limit has an explicit "Unlimited" choice (stored as 0, PRD-016 D12). The
  * dialog waits for the server and shows its field errors in place (UX-24).
+ * The ZCOM AI section changes in place on this version, for every store on
+ * it, and never versions the plan (PRD-017 D14); a LEGACY version opens
+ * with only its display fields and AI settings editable.
  * Plan writes need `platform:plans:manage` and two-step verification.
  */
 
@@ -82,6 +85,9 @@ export function PlanEditorModal({ isOpen, onClose, plan, tenantId = null, tenant
 
   const notice = plan ? versioningNoticeOf(plan) : null;
   const isCustom = draft.tenantId != null;
+  // A LEGACY version keeps its terms; only display and AI change (D14)
+  const termsLocked = plan?.status === "LEGACY";
+  const storesOnVersion = plan ? (plan.subscriberCount ?? plan.tenantCount ?? 0) : 0;
   const set = (patch: Partial<PlanDraft>) => setDraft((current) => ({ ...current, ...patch }));
 
   const save = async () => {
@@ -208,6 +214,12 @@ export function PlanEditorModal({ isOpen, onClose, plan, tenantId = null, tenant
             </section>
 
             {/* Commercial terms: locked while stores use the plan (FR-1.4). */}
+            {termsLocked ? (
+              <p className="rounded-card border border-line bg-surface-muted p-3 text-label text-fg" role="note">
+                This is a legacy version: its price, limits and features can't change. You can still edit its
+                display fields and its AI settings.
+              </p>
+            ) : (
             <section className="flex flex-col gap-3" aria-label="Price, limits and features">
               <h3 className="text-label font-semibold text-fg-muted">Price, limits and features</h3>
               {notice ? (
@@ -329,6 +341,79 @@ export function PlanEditorModal({ isOpen, onClose, plan, tenantId = null, tenant
                     {label}
                   </Switch>
                 ))}
+              </div>
+            </section>
+            )}
+
+            {/* ZCOM AI: in place, never a new version (PRD-017 D14). */}
+            <section className="flex flex-col gap-3" aria-label="ZCOM AI">
+              <h3 className="text-label font-semibold text-fg-muted">ZCOM AI</h3>
+              <p className="text-caption text-fg-muted">
+                {editing && storesOnVersion > 0
+                  ? `Changes here apply to the ${storesOnVersion} ${storesOnVersion === 1 ? "store" : "stores"} on this version within a few minutes, without a new version.`
+                  : "Changes here apply to this version in place, without a new version."}{" "}
+                For one store only, use the AI card on its page.
+              </p>
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                <Switch
+                  isSelected={draft.features.aiEnabled}
+                  onValueChange={(aiEnabled) => set({ features: { ...draft.features, aiEnabled } })}
+                >
+                  Ask ZCOM and AI insights
+                </Switch>
+                <Switch
+                  isSelected={draft.features.aiDailySummary}
+                  onValueChange={(aiDailySummary) => set({ features: { ...draft.features, aiDailySummary } })}
+                  isDisabled={!draft.features.aiEnabled}
+                >
+                  Daily summary
+                </Switch>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <Input
+                  label="Questions per week"
+                  type="number"
+                  min={0}
+                  value={draft.ai.questionsPerWeek}
+                  onValueChange={(questionsPerWeek) => set({ ai: { ...draft.ai, questionsPerWeek } })}
+                  isDisabled={!draft.features.aiEnabled}
+                  isInvalid={!!errors["limits.aiQuestionsPerWeek"]}
+                  errorMessage={errors["limits.aiQuestionsPerWeek"]}
+                  description="0 = none"
+                />
+                <Input
+                  label="Monthly token budget"
+                  type="number"
+                  min={0}
+                  value={draft.ai.monthlyTokenBudget}
+                  onValueChange={(monthlyTokenBudget) => set({ ai: { ...draft.ai, monthlyTokenBudget } })}
+                  isDisabled={!draft.features.aiEnabled}
+                  isInvalid={!!errors["limits.aiMonthlyTokenBudget"]}
+                  errorMessage={errors["limits.aiMonthlyTokenBudget"]}
+                  description="0 = none"
+                />
+                <div className="flex flex-col gap-1">
+                  <Input
+                    label="Claude connector calls per week"
+                    type="number"
+                    min={0}
+                    value={draft.ai.connectorFairUse ? "" : draft.ai.connectorCallsPerWeek}
+                    placeholder={draft.ai.connectorFairUse ? "Fair use" : undefined}
+                    onValueChange={(connectorCallsPerWeek) =>
+                      set({ ai: { ...draft.ai, connectorFairUse: false, connectorCallsPerWeek } })
+                    }
+                    isDisabled={!draft.features.aiEnabled || draft.ai.connectorFairUse}
+                    isInvalid={!!errors["limits.aiConnectorCallsPerWeek"]}
+                    errorMessage={errors["limits.aiConnectorCallsPerWeek"]}
+                  />
+                  <Checkbox
+                    isSelected={draft.ai.connectorFairUse}
+                    onValueChange={(connectorFairUse) => set({ ai: { ...draft.ai, connectorFairUse } })}
+                    isDisabled={!draft.features.aiEnabled}
+                  >
+                    Fair use
+                  </Checkbox>
+                </div>
               </div>
             </section>
           </div>

@@ -23,6 +23,9 @@ export const PLATFORM_PLAN_FIELDS = gql`
       maxStaffAccounts
       internationalMarkets
       developmentHours
+      aiQuestionsPerWeek
+      aiConnectorCallsPerWeek
+      aiMonthlyTokenBudget
     }
     features {
       onlineStore
@@ -33,6 +36,8 @@ export const PLATFORM_PLAN_FIELDS = gql`
       prioritySupport
       unlimitedWebHosting
       sslCertificate
+      aiEnabled
+      aiDailySummary
     }
     isActive
     createdAt

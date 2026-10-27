@@ -22,6 +22,9 @@ const plan: PlatformPlan = {
     maxStaffAccounts: 10,
     internationalMarkets: 2,
     developmentHours: 4,
+    aiQuestionsPerWeek: 0,
+    aiConnectorCallsPerWeek: 0,
+    aiMonthlyTokenBudget: 0,
   },
   features: {
     onlineStore: true,
@@ -32,6 +35,8 @@ const plan: PlatformPlan = {
     prioritySupport: "6_HOURS",
     unlimitedWebHosting: true,
     sslCertificate: true,
+    aiEnabled: false,
+    aiDailySummary: false,
   },
   isActive: true,
   createdAt: "2026-01-01T00:00:00.000Z",

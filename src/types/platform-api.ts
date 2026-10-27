@@ -117,6 +117,11 @@ export interface PlatformPlan {
     maxStaffAccounts: number;
     internationalMarkets: number;
     developmentHours: number;
+    /** PRD-021: 0 = none; changes in place (PRD-017 D14) */
+    aiQuestionsPerWeek: number;
+    /** -1 = fair use */
+    aiConnectorCallsPerWeek: number;
+    aiMonthlyTokenBudget: number;
   };
   features: {
     onlineStore: boolean;
@@ -127,6 +132,9 @@ export interface PlatformPlan {
     prioritySupport: string;
     unlimitedWebHosting: boolean;
     sslCertificate: boolean;
+    /** PRD-021: Ask ZCOM and the AI limits apply only when true */
+    aiEnabled: boolean;
+    aiDailySummary: boolean;
   };
   isActive: boolean;
   createdAt: string | null;
@@ -167,10 +175,16 @@ export interface PlatformPlanInput {
   features: PlatformPlanFeatures;
 }
 
-/** `updatePlan` input: every field optional. */
+/**
+ * `updatePlan` input: every field optional; a missing limit or feature
+ * keeps its saved value (an AI-only edit sends just the AI keys, D14).
+ */
 export type PlatformPlanUpdateInput = Partial<
-  Omit<PlatformPlanInput, "tenantId" | "name">
->;
+  Omit<PlatformPlanInput, "tenantId" | "name" | "limits" | "features">
+> & {
+  limits?: Partial<PlatformPlanLimits>;
+  features?: Partial<PlatformPlanFeatures>;
+};
 
 export interface PlatformPlanUpdateResult {
   plan: PlatformPlan;

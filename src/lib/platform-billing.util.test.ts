@@ -73,6 +73,9 @@ function plan(id: string, overrides: Partial<PlatformPlan> = {}): PlatformPlan {
       maxStaffAccounts: 0,
       internationalMarkets: 0,
       developmentHours: 0,
+      aiQuestionsPerWeek: 0,
+      aiConnectorCallsPerWeek: 0,
+      aiMonthlyTokenBudget: 0,
     },
     features: {
       onlineStore: true,
@@ -83,6 +86,8 @@ function plan(id: string, overrides: Partial<PlatformPlan> = {}): PlatformPlan {
       prioritySupport: "24_HOURS",
       unlimitedWebHosting: true,
       sslCertificate: true,
+      aiEnabled: false,
+      aiDailySummary: false,
     },
     isActive: true,
     createdAt: null,

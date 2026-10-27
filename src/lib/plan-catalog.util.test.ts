@@ -28,6 +28,9 @@ function plan(overrides: Partial<PlatformPlan> = {}): PlatformPlan {
       maxStaffAccounts: 5,
       internationalMarkets: 0,
       developmentHours: 0,
+      aiQuestionsPerWeek: 0,
+      aiConnectorCallsPerWeek: 0,
+      aiMonthlyTokenBudget: 0,
     },
     features: {
       onlineStore: true,
@@ -38,6 +41,8 @@ function plan(overrides: Partial<PlatformPlan> = {}): PlatformPlan {
       prioritySupport: "24_HOURS",
       unlimitedWebHosting: true,
       sslCertificate: true,
+      aiEnabled: false,
+      aiDailySummary: false,
     },
     isActive: true,
     createdAt: null,
@@ -138,6 +143,47 @@ describe("plan updates and the versioning notice (PRD-017 FR-1.4, FR-7.3)", () =
   it("counts a plan that is only pending as in use, and an unused one not", () => {
     expect(isPlanInUse(plan({ tenantCount: 0, pendingCount: 1 }))).toBe(true);
     expect(versioningNoticeOf(plan({ tenantCount: 0, pendingCount: 0 }))).toBeNull();
+  });
+});
+
+describe("plan AI settings (PRD-017 D14)", () => {
+  it("sends only the AI keys when only AI changes, so the plan never versions", () => {
+    const saved = plan();
+    const draft = planToDraft(saved);
+    draft.features = { ...draft.features, aiEnabled: true, aiDailySummary: true };
+    draft.ai = { questionsPerWeek: "25", monthlyTokenBudget: "500000", connectorFairUse: true, connectorCallsPerWeek: "" };
+    const result = validatePlanDraft(draft);
+    expect(toPlanUpdateInput(saved, result.input!)).toEqual({
+      limits: { aiQuestionsPerWeek: 25, aiConnectorCallsPerWeek: -1, aiMonthlyTokenBudget: 500000 },
+      features: { aiEnabled: true, aiDailySummary: true },
+    });
+  });
+
+  it("ignores Apollo's __typename: never sent, never a commercial change", () => {
+    const base = plan();
+    const saved = {
+      ...base,
+      limits: { ...base.limits, __typename: "PlatformPlanLimits" },
+      features: { ...base.features, __typename: "PlatformPlanFeatures" },
+    } as PlatformPlan;
+    const draft = planToDraft(saved);
+    expect(draft.features).not.toHaveProperty("__typename");
+    draft.ai = { ...draft.ai, questionsPerWeek: "5" };
+    const patch = toPlanUpdateInput(saved, validatePlanDraft(draft).input!);
+    expect(patch).toEqual({
+      limits: { aiQuestionsPerWeek: 5, aiConnectorCallsPerWeek: 0, aiMonthlyTokenBudget: 0 },
+      features: { aiEnabled: false, aiDailySummary: false },
+    });
+  });
+
+  it("round-trips fair use and refuses negative AI limits", () => {
+    const draft = planToDraft(plan({ limits: { ...plan().limits, aiConnectorCallsPerWeek: -1 } }));
+    expect(draft.ai.connectorFairUse).toBe(true);
+    draft.ai = { ...draft.ai, questionsPerWeek: "-1", connectorFairUse: false, connectorCallsPerWeek: "" };
+    expect(validatePlanDraft(draft).errors).toMatchObject({
+      "limits.aiQuestionsPerWeek": expect.any(String),
+      "limits.aiConnectorCallsPerWeek": expect.any(String),
+    });
   });
 });
 

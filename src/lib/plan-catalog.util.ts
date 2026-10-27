@@ -6,7 +6,10 @@
  * changed. Each limit has an explicit "Unlimited" choice, stored as 0
  * (PRD-016 D12). Price, limits and features of a plan any store uses are
  * locked: saving creates the next version (FR-1.4), which
- * `versioningNoticeOf` says before the save. The server still decides.
+ * `versioningNoticeOf` says before the save. The ZCOM AI settings are not
+ * commercial terms: they change in place on the edited version, for every
+ * store on it, and never version a plan (PRD-017 D14). The server still
+ * decides.
  */
 
 import type { PlanName } from "../types";
@@ -25,8 +28,27 @@ import { PLAN_LABELS, PLAN_NAMES } from "./display-labels.util";
 /** A limit of 0 means "no limit" on the server (PRD-016 D12). */
 export const UNLIMITED_LIMIT = 0;
 
+/** The AI limits (PRD-021): 0 means none here, never unlimited. */
+export type AiLimitKey =
+  | "aiQuestionsPerWeek"
+  | "aiConnectorCallsPerWeek"
+  | "aiMonthlyTokenBudget";
+
+export type CommercialLimitKey = Exclude<keyof PlatformPlanLimits, AiLimitKey>;
+
+const AI_LIMIT_KEYS: readonly AiLimitKey[] = [
+  "aiQuestionsPerWeek",
+  "aiConnectorCallsPerWeek",
+  "aiMonthlyTokenBudget",
+];
+
+const AI_FEATURE_KEYS = ["aiEnabled", "aiDailySummary"] as const;
+
+/** `aiConnectorCallsPerWeek` with no weekly cap (core `AI_FAIR_USE`). */
+export const AI_FAIR_USE = -1;
+
 export const PLAN_LIMIT_FIELDS: readonly {
-  key: keyof PlatformPlanLimits;
+  key: CommercialLimitKey;
   label: string;
 }[] = [
   // PRD-016 D11: maxSkus counts products, so the UI says "products".
@@ -103,6 +125,14 @@ export interface PlanLimitDraft {
   value: string;
 }
 
+/** The plan's AI allowance as typed (PRD-017 D14). */
+export interface PlanAiDraft {
+  questionsPerWeek: string;
+  monthlyTokenBudget: string;
+  connectorFairUse: boolean;
+  connectorCallsPerWeek: string;
+}
+
 /** What the editor holds (numbers as typed). */
 export interface PlanDraft {
   tenantId: string | null;
@@ -114,8 +144,9 @@ export interface PlanDraft {
   sortOrder: string;
   priceMonthly: string;
   priceYearly: string;
-  limits: Record<keyof PlatformPlanLimits, PlanLimitDraft>;
+  limits: Record<CommercialLimitKey, PlanLimitDraft>;
   features: PlatformPlanFeatures;
+  ai: PlanAiDraft;
 }
 
 export type PlanFormErrors = Partial<Record<string, string>>;
@@ -138,6 +169,8 @@ const DEFAULT_FEATURES: PlatformPlanFeatures = {
   prioritySupport: "24_HOURS",
   unlimitedWebHosting: true,
   sslCertificate: true,
+  aiEnabled: false,
+  aiDailySummary: false,
 };
 
 function limitDraftOf(value: number | undefined): PlanLimitDraft {
@@ -147,12 +180,34 @@ function limitDraftOf(value: number | undefined): PlanLimitDraft {
 
 function limitDraftsOf(
   limits: Partial<PlatformPlanLimits> = {},
-): Record<keyof PlatformPlanLimits, PlanLimitDraft> {
-  const drafts = {} as Record<keyof PlatformPlanLimits, PlanLimitDraft>;
+): Record<CommercialLimitKey, PlanLimitDraft> {
+  const drafts = {} as Record<CommercialLimitKey, PlanLimitDraft>;
   for (const { key } of PLAN_LIMIT_FIELDS) {
     drafts[key] = limitDraftOf(limits[key]);
   }
   return drafts;
+}
+
+/**
+ * The plan's features without Apollo's `__typename`, which an input type
+ * refuses (the save would fail GraphQL validation).
+ */
+function featuresOf(features: Partial<PlatformPlanFeatures> = {}): PlatformPlanFeatures {
+  const out = { ...DEFAULT_FEATURES };
+  for (const key of Object.keys(DEFAULT_FEATURES) as (keyof PlatformPlanFeatures)[]) {
+    if (features[key] !== undefined) Object.assign(out, { [key]: features[key] });
+  }
+  return out;
+}
+
+function aiDraftOf(limits: Partial<PlatformPlanLimits> = {}): PlanAiDraft {
+  const connector = limits.aiConnectorCallsPerWeek ?? 0;
+  return {
+    questionsPerWeek: String(limits.aiQuestionsPerWeek ?? 0),
+    monthlyTokenBudget: String(limits.aiMonthlyTokenBudget ?? 0),
+    connectorFairUse: connector === AI_FAIR_USE,
+    connectorCallsPerWeek: connector === AI_FAIR_USE ? "" : String(connector),
+  };
 }
 
 /** A new plan; `tenantId` makes it a custom plan for one store. */
@@ -169,6 +224,7 @@ export function emptyPlanDraft(tenantId: string | null = null): PlanDraft {
     priceYearly: "",
     limits: limitDraftsOf(),
     features: { ...DEFAULT_FEATURES },
+    ai: aiDraftOf(),
   };
 }
 
@@ -184,11 +240,19 @@ export function planToDraft(plan: PlatformPlan): PlanDraft {
     priceMonthly: String(plan.price.monthly),
     priceYearly: String(plan.price.yearly),
     limits: limitDraftsOf(plan.limits),
-    features: { ...plan.features },
+    features: featuresOf(plan.features),
+    ai: aiDraftOf(plan.limits),
   };
 }
 
 // ─── Validation ───────────────────────────────────────────────────────────
+
+/** A whole number of `min` or more, or `null`. */
+function parseWhole(value: string, min = 0): number | null {
+  if (!value.trim()) return null;
+  const number = Number(value);
+  return Number.isInteger(number) && number >= min ? number : null;
+}
 
 function parsePrice(value: string): number | null {
   if (!value.trim()) return null;
@@ -228,6 +292,20 @@ export function validatePlanDraft(
     }
   }
 
+  // PRD-021: 0 = none for the AI limits (not unlimited)
+  const questions = parseWhole(draft.ai.questionsPerWeek);
+  if (questions === null) errors["limits.aiQuestionsPerWeek"] = "Enter 0 or more (0 = none).";
+  else limits.aiQuestionsPerWeek = questions;
+  const budget = parseWhole(draft.ai.monthlyTokenBudget);
+  if (budget === null) errors["limits.aiMonthlyTokenBudget"] = "Enter 0 or more (0 = none).";
+  else limits.aiMonthlyTokenBudget = budget;
+  const connector = draft.ai.connectorFairUse
+    ? AI_FAIR_USE
+    : parseWhole(draft.ai.connectorCallsPerWeek);
+  if (connector === null) {
+    errors["limits.aiConnectorCallsPerWeek"] = "Enter 0 or more, or Fair use.";
+  } else limits.aiConnectorCallsPerWeek = connector;
+
   if (Object.keys(errors).length > 0) return { input: null, errors };
   const isCustom = draft.tenantId != null;
   return {
@@ -250,12 +328,23 @@ export function validatePlanDraft(
 
 // ─── Updates and versioning ───────────────────────────────────────────────
 
-function sameRecord<T extends object>(a: T, b: T): boolean {
-  const keys = Object.keys(a) as (keyof T)[];
+function sameRecord<T extends object>(
+  a: T,
+  b: T,
+  skip: readonly string[] = [],
+): boolean {
+  // `__typename` (from Apollo) isn't a term; comparing it made every save
+  // look like a commercial change
+  const keys = (Object.keys(a) as (keyof T & string)[]).filter(
+    (key) => key !== "__typename" && !skip.includes(key),
+  );
   return keys.every((key) => a[key] === b[key]);
 }
 
-/** True when price, limits or features differ from the saved plan. */
+/**
+ * True when price, limits or features differ from the saved plan; the AI
+ * settings don't count (D14).
+ */
 export function commercialTermsChanged(
   plan: PlatformPlan,
   input: PlatformPlanInput,
@@ -263,9 +352,24 @@ export function commercialTermsChanged(
   return (
     plan.price.monthly !== input.price.monthly ||
     plan.price.yearly !== input.price.yearly ||
-    !sameRecord(plan.limits, input.limits) ||
-    !sameRecord(plan.features, input.features)
+    !sameRecord(plan.limits, input.limits, AI_LIMIT_KEYS) ||
+    !sameRecord(plan.features, input.features, AI_FEATURE_KEYS)
   );
+}
+
+/** The AI settings of `input`, when they differ from the saved plan. */
+function aiSettingsPatch(
+  plan: PlatformPlan,
+  input: PlatformPlanInput,
+): Pick<PlatformPlanUpdateInput, "limits" | "features"> | null {
+  const changed =
+    AI_LIMIT_KEYS.some((key) => (plan.limits[key] ?? 0) !== input.limits[key]) ||
+    AI_FEATURE_KEYS.some((key) => (plan.features[key] ?? false) !== input.features[key]);
+  if (!changed) return null;
+  return {
+    limits: Object.fromEntries(AI_LIMIT_KEYS.map((key) => [key, input.limits[key]])),
+    features: Object.fromEntries(AI_FEATURE_KEYS.map((key) => [key, input.features[key]])),
+  };
 }
 
 /** Only the fields that changed (FR-1.4), or `null` when nothing did. */
@@ -294,6 +398,9 @@ export function toPlanUpdateInput(
     patch.price = { ...input.price };
     patch.limits = { ...input.limits };
     patch.features = { ...input.features };
+  } else {
+    // AI only: just its keys, so the server never versions the plan (D14)
+    Object.assign(patch, aiSettingsPatch(plan, input));
   }
   return Object.keys(patch).length > 0 ? patch : null;
 }
