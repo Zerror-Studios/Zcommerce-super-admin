@@ -10,7 +10,6 @@ import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import { PageHeader } from "../common/PageHeader";
 import { ClientsTable } from "./ClientsTable";
-import { RemovedStoresPanel } from "./RemovedStoresPanel";
 import { IconAdd, IconStore } from "../ui/icons";
 import { Button as UiButton, ErrorState, cx, formatCount, toneTextClasses } from "../ui";
 
@@ -85,11 +84,6 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
       ) : (
         <ClientsTable clients={clients} isLoading={loading} allowColumnChoice syncUrl />
       )}
-
-      {/* PRD-018 FR-2.3, FR-2.5: deleted (restorable) and purged stores. */}
-      <div className="mt-8">
-        <RemovedStoresPanel />
-      </div>
     </div>
   );
 }

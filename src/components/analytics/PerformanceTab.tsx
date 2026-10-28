@@ -31,6 +31,7 @@ import {
   Card,
   EmptyState,
   ErrorState,
+  IconTrendUp,
   KpiStrip,
   SegmentedControl,
   StatCard,
@@ -175,6 +176,9 @@ export function PerformanceTab() {
   return (
     <div>
       <PageHeader
+        type="page"
+        icon={<IconTrendUp aria-hidden />}
+        section="violet"
         title="Performance"
         description="Traffic, orders and sales across every store, from each store's analytics and orders."
         actions={

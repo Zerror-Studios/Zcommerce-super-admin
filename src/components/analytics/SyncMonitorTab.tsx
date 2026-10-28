@@ -118,6 +118,9 @@ export function SyncMonitorTab() {
   return (
     <div>
       <PageHeader
+        type="page"
+        icon={<IconRefresh aria-hidden />}
+        section="violet"
         title="Sync monitor"
         description="Analytics sync runs in the last 24 hours, failing connections and history imports."
         actions={

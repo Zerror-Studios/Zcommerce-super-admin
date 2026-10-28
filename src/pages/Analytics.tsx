@@ -7,7 +7,7 @@ import { SyncMonitorTab } from "../components/analytics/SyncMonitorTab";
 import { RevenueReportsTab } from "../components/billing/RevenueReportsTab";
 import { PageHeader } from "../components/common/PageHeader";
 import { Card, EmptyState } from "../components/ui";
-import { IconLock } from "../components/ui/icons";
+import { IconAnalytics, IconLock } from "../components/ui/icons";
 import { PLATFORM_PERMISSIONS } from "../lib/permissions";
 import { useAuth } from "../providers/AuthProvider";
 
@@ -37,7 +37,7 @@ export function Analytics() {
   if (!can(PLATFORM_PERMISSIONS.REPORTS_READ)) {
     return (
       <div>
-        <PageHeader title="Analytics" />
+        <PageHeader type="page" icon={<IconAnalytics aria-hidden />} section="violet" title="Analytics" />
         <Card>
           <EmptyState
             icon={IconLock}

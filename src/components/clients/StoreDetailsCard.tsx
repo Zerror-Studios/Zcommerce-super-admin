@@ -11,6 +11,7 @@
 
 import { addToast } from "@heroui/react";
 import { useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import {
   lifecycleFailureCopy,
@@ -38,11 +39,11 @@ import {
 
 export interface StoreDetailsCardProps {
   client: Client;
-  /** The id of the Go live section, for the domain link. */
-  goLiveAnchor: string;
+  /** The Go live section's URL, for the domain link. */
+  goLiveHref: string;
 }
 
-export function StoreDetailsCard({ client, goLiveAnchor }: StoreDetailsCardProps) {
+export function StoreDetailsCard({ client, goLiveHref }: StoreDetailsCardProps) {
   const { can } = useAuth();
   const canManage = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
   const [open, setOpen] = useState(false);
@@ -67,9 +68,9 @@ export function StoreDetailsCard({ client, goLiveAnchor }: StoreDetailsCardProps
           <Row label="Domain">
             <span className="flex flex-wrap items-center gap-2">
               {client.domain ? <span className="font-mono">{client.domain}</span> : show("")}
-              <a href={`#${goLiveAnchor}`} className="text-label text-brand hover:underline">
+              <Link to={goLiveHref} className="text-label text-brand hover:underline">
                 Change in Go live
-              </a>
+              </Link>
             </span>
           </Row>
           <Row label="Owner">{show(draft.ownerName)}</Row>

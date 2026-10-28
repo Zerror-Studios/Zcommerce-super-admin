@@ -8,7 +8,7 @@ import { AiTopUpsTab } from "../components/ai/AiTopUpsTab";
 import { AiUsageTab } from "../components/ai/AiUsageTab";
 import { PageHeader } from "../components/common/PageHeader";
 import { Card, EmptyState } from "../components/ui";
-import { IconLock } from "../components/ui/icons";
+import { IconChat, IconLock } from "../components/ui/icons";
 import { PLATFORM_PERMISSIONS } from "../lib/permissions";
 import { useAuth } from "../providers/AuthProvider";
 
@@ -39,7 +39,7 @@ export function Ai() {
   if (!can(PLATFORM_PERMISSIONS.AI_READ)) {
     return (
       <div>
-        <PageHeader title="AI" />
+        <PageHeader type="page" icon={<IconChat aria-hidden />} section="pink" title="ZCOM AI" />
         <Card>
           <EmptyState
             icon={IconLock}

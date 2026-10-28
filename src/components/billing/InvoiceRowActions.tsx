@@ -10,6 +10,7 @@ import { toasts } from "../../copy";
 import { IconMore } from "../ui/icons";
 import {
   Button as UiButton,
+  ConfirmDialog,
   Dropdown,
   DropdownItem,
   DropdownMenu,
@@ -82,6 +83,12 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
     }
   };
 
+  // Cancel, X, Escape and an outside click all close here, so a stale error doesn't reappear.
+  const closeDialog = () => {
+    setDialog(null);
+    setError(null);
+  };
+
   const onAction = (key: Key) => {
     if (key === "payment" || key === "void" || key === "coupon") setDialog(key);
   };
@@ -105,7 +112,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
         </Dropdown>
       </div>
 
-      <Modal isOpen={dialog === "payment"} onClose={() => setDialog(null)} width="sm">
+      <Modal isOpen={dialog === "payment"} onClose={closeDialog} width="sm">
         <ModalContent>
           <ModalHeader>Record payment for {row.transactionId}</ModalHeader>
           <ModalBody>
@@ -116,7 +123,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
             </div>
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={() => setDialog(null)}>Cancel</UiButton>
+            <UiButton variant="ghost" onPress={closeDialog}>Cancel</UiButton>
             <UiButton
               variant="primary"
               isLoading={busy}
@@ -142,14 +149,14 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={dialog === "coupon"} onClose={() => setDialog(null)} width="sm">
+      <Modal isOpen={dialog === "coupon"} onClose={closeDialog} width="sm">
         <ModalContent>
           <ModalHeader>Apply a discount code</ModalHeader>
           <ModalBody>
             <Input label="Code" placeholder="LAUNCH25" value={code} onValueChange={(value) => setCode(value.toUpperCase())} isInvalid={!!error} errorMessage={error ?? undefined} />
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={() => setDialog(null)}>Cancel</UiButton>
+            <UiButton variant="ghost" onPress={closeDialog}>Cancel</UiButton>
             <UiButton
               variant="primary"
               isLoading={busy}
@@ -161,25 +168,17 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={dialog === "void"} onClose={() => setDialog(null)} width="sm">
-        <ModalContent>
-          <ModalHeader>Void invoice {row.transactionId}?</ModalHeader>
-          <ModalBody>
-            <p className="text-body text-fg-muted">The store no longer owes this amount. This can't be undone.</p>
-            <Textarea label="Reason" value={reason} onValueChange={setReason} isInvalid={!!error} errorMessage={error ?? undefined} className="mt-3" />
-          </ModalBody>
-          <ModalFooter>
-            <UiButton variant="ghost" onPress={() => setDialog(null)}>Cancel</UiButton>
-            <UiButton
-              variant="danger"
-              isLoading={busy}
-              onPress={() => void run(() => voidInvoice({ variables: { id: row.id, reason } }), toasts.invoiceVoided)}
-            >
-              Void invoice
-            </UiButton>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <ConfirmDialog
+        isOpen={dialog === "void"}
+        onClose={closeDialog}
+        onConfirm={() => void run(() => voidInvoice({ variables: { id: row.id, reason } }), toasts.invoiceVoided)}
+        title={`Void invoice ${row.transactionId}?`}
+        description="The store no longer owes this amount. This can't be undone."
+        confirmLabel="Void invoice"
+        isLoading={busy}
+      >
+        <Textarea label="Reason" value={reason} onValueChange={setReason} isInvalid={!!error} errorMessage={error ?? undefined} className="mt-3" />
+      </ConfirmDialog>
     </>
   );
 }

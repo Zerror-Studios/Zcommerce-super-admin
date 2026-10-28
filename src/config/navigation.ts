@@ -43,7 +43,7 @@ export const mainNavItems: NavItem[] = [
   },
   {
     key: "ai",
-    label: "AI",
+    label: "ZCOM AI",
     to: "/ai",
     icon: IconChat,
     // PRD-021 FR-6: shown only with platform:ai:read (`visibleNavItems`).

@@ -25,6 +25,8 @@ export const storeTabEnum = {
   SUSPENDED: "suspended",
   OVERDUE: "overdue",
   TRIALS_WEEK: "trials-week",
+  /** Deleted and purged stores: their own server lists (`RemovedStoresTable`); the store list leaves them out. */
+  DELETED: "deleted",
 } as const;
 
 export type StoreTab = (typeof storeTabEnum)[keyof typeof storeTabEnum];
@@ -113,6 +115,8 @@ export function matchesTab(
       return isOverdue(subscription);
     case storeTabEnum.TRIALS_WEEK:
       return isTrialEndingThisWeek(client, subscription, now);
+    case storeTabEnum.DELETED:
+      return false;
     default:
       return true;
   }

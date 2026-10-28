@@ -1,5 +1,6 @@
 import { addToast, type Selection } from "@heroui/react";
 import { toastError } from "../ui";
+import { ReminderChannelList } from "./ReminderChannelList";
 import { useMemo, useState } from "react";
 import { subscriptionStatusEnum, type Client, type Subscription } from "../../types";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
@@ -43,7 +44,7 @@ import {
   SelectItem,
   SelectionBar,
   StatCard,
-  Switch,
+  Card,
   TablePagination,
   cx,
   useTableUrlState,
@@ -302,35 +303,14 @@ export function AutomationSettingsTab() {
       </KpiStrip>
 
       {canSend ? (
-        <div role="group" aria-label="Reminder channels" className="flex flex-wrap items-start gap-x-6 gap-y-2">
-          <span className="text-label font-medium text-fg">Send through</span>
-          <Switch
-            isSelected={channelSelection.email}
-            onValueChange={(on) => setChannelOverrides((current) => ({ ...current, email: on }))}
-          >
-            Email
-          </Switch>
-          <div className="flex flex-col gap-0.5">
-            <Switch
-              isSelected={channelSelection.sms && smsChannel.isConfigured}
-              onValueChange={(on) => setChannelOverrides((current) => ({ ...current, sms: on }))}
-              isDisabled={!smsChannel.isConfigured}
-            >
-              SMS
-            </Switch>
-            {smsChannel.hint ? <span className="text-caption text-fg-muted">{smsChannel.hint}</span> : null}
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <Switch
-              isSelected={channelSelection.whatsapp && whatsappChannel.isConfigured}
-              onValueChange={(on) => setChannelOverrides((current) => ({ ...current, whatsapp: on }))}
-              isDisabled={!whatsappChannel.isConfigured}
-            >
-              WhatsApp
-            </Switch>
-            {whatsappChannel.hint ? <span className="text-caption text-fg-muted">{whatsappChannel.hint}</span> : null}
-          </div>
-        </div>
+        <Card title="Send through" description="Which channels these reminders use. SMS and WhatsApp go to the owner's phone.">
+          <ReminderChannelList
+            selection={channelSelection}
+            onChange={(channel, on) => setChannelOverrides((current) => ({ ...current, [channel]: on }))}
+            sms={smsChannel}
+            whatsapp={whatsappChannel}
+          />
+        </Card>
       ) : null}
 
       <DataTable

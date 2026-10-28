@@ -3,9 +3,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAiDataHealth } from "../../hooks/use-platform-ai";
 import { aiDataHealthIssues } from "../../lib/platform-ai.util";
+import { matchesText } from "../../lib/text-search.util";
 import { toasts } from "../../copy";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { PageHeader } from "../common/PageHeader";
+import { FilterEmpty } from "../common/FilterEmpty";
+import { TableToolbar } from "../common/TableToolbar";
 import { IconStoreHealth } from "../ui/icons";
 import {
   Button as UiButton,
@@ -36,14 +39,19 @@ export function AiDataHealthTab() {
   // Stores that never computed insights have no row on the server yet (backend follow-up).
   const [showAll, setShowAll] = useState(false);
   const api = useAiDataHealth({ needsAttention: !showAll, limit: PAGE_SIZE, offset: page * PAGE_SIZE });
-  const rows = api.data?.items ?? [];
+  // Searches this page's rows (data health has no server search).
+  const [search, setSearch] = useState("");
+  const rows = (api.data?.items ?? []).filter((row) => matchesText(search, row.storeName, row.slug));
   const total = api.data?.totalCount ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div>
       <PageHeader
-        title="AI data health"
+        type="list"
+        icon={<IconStoreHealth aria-hidden />}
+        section="pink"
+        title="ZCOM AI data health"
         count={total || undefined}
         description={
           showAll
@@ -69,6 +77,7 @@ export function AiDataHealthTab() {
       ) : null}
 
       <Card padding="none" className="overflow-hidden">
+        <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Search stores on this page" />
         {api.loading ? (
           <div className="space-y-3 p-4">
             {Array.from({ length: 4 }).map((_, index) => (
@@ -88,7 +97,9 @@ export function AiDataHealthTab() {
             <TableBody
               items={rows}
               emptyContent={
-                showAll ? (
+                search.trim() ? (
+                  <FilterEmpty things="stores" query={search} onClear={() => setSearch("")} />
+                ) : showAll ? (
                   <EmptyState icon={IconStoreHealth} title="No store has computed insights yet" description="Stores appear after their first insights run." />
                 ) : (
                   <EmptyState icon={IconStoreHealth} title="Every store's data is in shape" description="No store needs a nudge right now." />

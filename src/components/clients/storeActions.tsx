@@ -187,7 +187,7 @@ export function StoreActionDialog({ client, action, onClose, onDeleted }: StoreA
     (action === "restore" && !!countdown?.expired);
 
   return (
-    <Modal isOpen={open} onClose={onClose} width={action === "suspend" || action === "delete" ? "md" : "sm"}>
+    <Modal isOpen={open} onClose={onClose} width="sm">
       <ModalContent>
         <ModalHeader>{copy.title}</ModalHeader>
         <ModalBody>

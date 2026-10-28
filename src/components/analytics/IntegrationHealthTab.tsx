@@ -10,6 +10,7 @@ import {
   getChannelTypeLabel,
 } from "../../lib/display-labels.util";
 import { emptyStates, toasts } from "../../copy";
+import { AppliedFilters, type AppliedFilterItem } from "../common/AppliedFilters";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { PageHeader } from "../common/PageHeader";
 import { TableToolbar } from "../common/TableToolbar";
@@ -36,6 +37,9 @@ import { AnalyticsHealthChip, IntegrationStatusChip } from "./AnalyticsHealthChi
 
 const PAGE_SIZE = 25;
 
+/** The "All …" option of a filter select (an empty filter). */
+const ALL = "__all";
+
 const STATUS_OPTIONS = [
   { key: "ACTIVE", label: "Active" },
   { key: "INACTIVE", label: "Inactive" },
@@ -52,27 +56,31 @@ const cardTableClassNames = {
 
 const right = "block text-right num";
 
-/** One compact filter select in the toolbar; an empty selection means "all". */
+/** One select in the Filter popover, like Collections: "All …" first, applied on pick. */
 function FilterSelect({
   label,
+  allLabel,
   value,
   options,
   onChange,
 }: {
   label: string;
+  allLabel: string;
   value: string;
   options: { key: string; label: string }[];
   onChange: (value: string) => void;
 }) {
   return (
     <Select
-      aria-label={label}
-      placeholder={label}
+      label={label}
       size="sm"
-      className="w-40"
-      selectedKeys={value ? [value] : []}
-      onSelectionChange={(keys) => onChange(String(Array.from(keys)[0] ?? ""))}
-      items={options}
+      selectedKeys={new Set([value || ALL])}
+      onSelectionChange={(keys) => {
+        const next = String(Array.from(keys)[0] ?? ALL);
+        onChange(next === ALL ? "" : next);
+      }}
+      disallowEmptySelection
+      items={[{ key: ALL, label: allLabel }, ...options]}
     >
       {(option) => <SelectItem key={option.key}>{option.label}</SelectItem>}
     </Select>
@@ -123,6 +131,20 @@ export function IntegrationHealthTab() {
     setter(value);
     setPage(0);
   };
+  const labelOf = (options: { key: string; label: string }[], key: string) =>
+    options.find((option) => option.key === key)?.label ?? key;
+  const applied: AppliedFilterItem[] = [
+    ...(provider
+      ? [{ key: "provider", label: `Provider: ${labelOf(providerOptions, provider)}`, onRemove: () => withReset(setProvider)("") }]
+      : []),
+    ...(channelType
+      ? [{ key: "type", label: `Type: ${labelOf(TYPE_OPTIONS, channelType)}`, onRemove: () => withReset(setChannelType)("") }]
+      : []),
+    ...(status
+      ? [{ key: "status", label: `Status: ${labelOf(STATUS_OPTIONS, status)}`, onRemove: () => withReset(setStatus)("") }]
+      : []),
+  ];
+
   const clearFilters = () => {
     setSearch("");
     setProvider("");
@@ -149,6 +171,9 @@ export function IntegrationHealthTab() {
   return (
     <div>
       <PageHeader
+        type="page"
+        icon={<IconApps aria-hidden />}
+        section="violet"
         title="Integration health"
         description="Every app installed across stores, with its connection status and last sync."
       />
@@ -198,13 +223,41 @@ export function IntegrationHealthTab() {
             search={search}
             onSearchChange={withReset(setSearch)}
             searchPlaceholder="Search stores"
-            endContent={
-              <div className="flex flex-wrap items-center gap-2">
-                <FilterSelect label="Provider" value={provider} options={providerOptions} onChange={withReset(setProvider)} />
-                <FilterSelect label="Type" value={channelType} options={TYPE_OPTIONS} onChange={withReset(setChannelType)} />
-                <FilterSelect label="Status" value={status} options={STATUS_OPTIONS} onChange={withReset(setStatus)} />
-              </div>
+            // Provider, type and status in the Filter popover, like Collections (owner 2026-10-28).
+            filterContent={
+              <>
+                <FilterSelect
+                  label="Provider"
+                  allLabel="All providers"
+                  value={provider}
+                  options={providerOptions}
+                  onChange={withReset(setProvider)}
+                />
+                <FilterSelect
+                  label="Type"
+                  allLabel="All types"
+                  value={channelType}
+                  options={TYPE_OPTIONS}
+                  onChange={withReset(setChannelType)}
+                />
+                <FilterSelect
+                  label="Status"
+                  allLabel="Any status"
+                  value={status}
+                  options={STATUS_OPTIONS}
+                  onChange={withReset(setStatus)}
+                />
+              </>
             }
+          />
+          <AppliedFilters
+            items={applied}
+            onClearAll={() => {
+              setProvider("");
+              setChannelType("");
+              setStatus("");
+              setPage(0);
+            }}
           />
           {api.loading ? (
             <div className="space-y-3 p-4">

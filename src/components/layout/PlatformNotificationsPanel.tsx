@@ -39,14 +39,15 @@ import { Button } from "../ui/Button";
 import { cx } from "../ui/cx";
 import { EmptyState } from "../ui/EmptyState";
 import { ErrorState } from "../ui/ErrorState";
+import { IconButton } from "../ui/IconButton";
 import {
+  IconClose,
   IconNotifications,
   IconPayments,
   IconStore,
   IconStoreHealth,
 } from "../ui/icons";
 import { Modal } from "../ui/Modal";
-import { Kbd } from "../ui/Primitives";
 import { Skeleton } from "../ui/Skeleton";
 import { toastError } from "../ui/toast";
 import { toneClasses } from "../ui/tones";
@@ -265,7 +266,9 @@ const PlatformNotificationsPanel = ({
                   Mark all read
                 </Button>
               ) : null}
-              <Kbd>Esc</Kbd>
+              <IconButton aria-label="Close notifications" size="sm" showTooltip={false} onPress={() => setIsOpen(false)}>
+                <IconClose aria-hidden className="size-4" />
+              </IconButton>
             </div>
 
             {counts.tabs.length > 0 ? (

@@ -27,7 +27,7 @@ export function OwnerCredentialsDialog({
 }: OwnerCredentialsDialogProps) {
   const kind = ownerNoticeKind({ ownerInviteSent, ownerTemporaryPassword: temporaryPassword });
   return (
-    <Modal isOpen={isOpen} onClose={onClose} width="sm" isDismissable={false}>
+    <Modal isOpen={isOpen} onClose={onClose} width="sm">
       <ModalContent>
         <ModalHeader>{storeName} is ready</ModalHeader>
         <ModalBody>

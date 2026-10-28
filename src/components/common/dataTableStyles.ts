@@ -9,8 +9,11 @@ import {
 /** Outer bordered white panel that wraps toolbar + table. */
 export const tablePanelClassName = tablePanelClasses;
 
-/** Panel that fills remaining viewport below page header. */
-export const tablePanelFillClassName = `${tablePanelClasses} flex h-[calc(100dvh-12.5rem)] flex-col`;
+/**
+ * Panel that grows with its rows up to the viewport below the page header, then scrolls inside. An empty
+ * table stays as short as every other empty table (owner 2026-10-28; it used to fill the screen).
+ */
+export const tablePanelFillClassName = `${tablePanelClasses} flex max-h-[calc(100dvh-12.5rem)] flex-col`;
 
 /** Fixed-height scroll area for table body (header stays sticky). */
 export const tableScrollClassName =
@@ -31,7 +34,7 @@ export const dataTableClassNames = {
   emptyWrapper: "text-fg-muted h-full py-4",
 } as const;
 
-/** Taller table that fills the viewport panel. */
+/** Table inside the fill panel: scrolls once the panel reaches its maximum height. */
 export const dataTableFillClassNames = {
   ...dataTableClassNames,
   base: "bg-surface gap-0 rounded-none border-0 overflow-hidden min-h-0 flex-1 flex flex-col",

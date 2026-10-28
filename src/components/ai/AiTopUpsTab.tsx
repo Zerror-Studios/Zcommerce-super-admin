@@ -7,12 +7,15 @@ import { useAiTopUpRequests } from "../../hooks/use-platform-ai";
 import { mutationFailureCopy } from "../../lib/mutation-errors";
 import { TOP_UP_STATUS_OPTIONS, topUpEmptyCopy, topUpStatusOf } from "../../lib/platform-ai.util";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
+import { matchesText } from "../../lib/text-search.util";
 import { useAuth } from "../../providers/AuthProvider";
 import type { PlatformAiTopUpRequest, PlatformAiTopUpRequestStatus } from "../../types/platform-api";
 import { toasts } from "../../copy";
 import { ConfirmModal } from "../common/ConfirmModal";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { PageHeader } from "../common/PageHeader";
+import { FilterEmpty } from "../common/FilterEmpty";
+import { TableToolbar } from "../common/TableToolbar";
 import { IconGift } from "../ui/icons";
 import {
   Button as UiButton,
@@ -51,7 +54,9 @@ export function AiTopUpsTab() {
 
   const api = useAiTopUpRequests({ status, limit: PAGE_SIZE, offset: page * PAGE_SIZE });
   const isOpen = status === "OPEN";
-  const rows = api.data?.items ?? [];
+  // Searches this page's rows (the requests have no server search).
+  const [search, setSearch] = useState("");
+  const rows = (api.data?.items ?? []).filter((row) => matchesText(search, row.storeName));
   const total = api.data?.totalCount ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -78,7 +83,10 @@ export function AiTopUpsTab() {
   return (
     <div>
       <PageHeader
-        title="AI top-up requests"
+        type="list"
+        icon={<IconGift aria-hidden />}
+        section="pink"
+        title="ZCOM AI top-up requests"
         count={total || undefined}
         description="Stores that used up this week's AI questions and asked for more."
         actions={
@@ -104,6 +112,7 @@ export function AiTopUpsTab() {
       ) : null}
 
       <Card padding="none" className="overflow-hidden">
+        <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Search stores on this page" />
         {api.loading ? (
           <div className="space-y-3 p-4">
             {Array.from({ length: 4 }).map((_, index) => (
@@ -121,7 +130,11 @@ export function AiTopUpsTab() {
             <TableBody
               items={rows}
               emptyContent={
-                <EmptyState icon={IconGift} title={topUpEmptyCopy(status)} description="Requests from stores appear here." />
+                search.trim() ? (
+                  <FilterEmpty things="requests" query={search} onClear={() => setSearch("")} />
+                ) : (
+                  <EmptyState icon={IconGift} title={topUpEmptyCopy(status)} description="Requests from stores appear here." />
+                )
               }
             >
               {(row) => (

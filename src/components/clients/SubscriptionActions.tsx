@@ -24,6 +24,7 @@ import { ChangePlanDialog } from "./ChangePlanDialog";
 import {
   Button as UiButton,
   Card,
+  ConfirmDialog,
   Input,
   Modal,
   ModalBody,
@@ -106,6 +107,12 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
       inFlight.current = false;
       setBusy(false);
     }
+  };
+
+  // Cancel, X, Escape and an outside click all close here, so a stale error doesn't reappear.
+  const closeDialog = () => {
+    setDialog(null);
+    setFieldError(null);
   };
 
   const openReactivate = () => {
@@ -193,14 +200,14 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
       {/* Change plan: PRD-016 preview, eligible plans only (PRD-017 FR-4.2) */}
       <ChangePlanDialog
         isOpen={dialog === "plan"}
-        onClose={() => setDialog(null)}
+        onClose={closeDialog}
         client={client}
         subscription={subscription}
         onChanged={refetch}
       />
 
       {/* Reactivate (PRD-016 FR-18): a payment, or an audited override with a reason */}
-      <Modal isOpen={dialog === "reactivate"} onClose={() => setDialog(null)} width="sm">
+      <Modal isOpen={dialog === "reactivate"} onClose={closeDialog} width="sm">
         <ModalContent>
           <ModalHeader>Reactivate {client.storeName}'s subscription?</ModalHeader>
           <ModalBody>
@@ -227,7 +234,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
             />
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={() => setDialog(null)} isDisabled={busy}>
+            <UiButton variant="ghost" onPress={closeDialog} isDisabled={busy}>
               Cancel
             </UiButton>
             <UiButton
@@ -243,7 +250,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
       </Modal>
 
       {/* Extend trial */}
-      <Modal isOpen={dialog === "trial"} onClose={() => setDialog(null)} width="sm">
+      <Modal isOpen={dialog === "trial"} onClose={closeDialog} width="sm">
         <ModalContent>
           <ModalHeader>Extend trial</ModalHeader>
           <ModalBody>
@@ -259,7 +266,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
             />
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={() => setDialog(null)}>
+            <UiButton variant="ghost" onPress={closeDialog}>
               Cancel
             </UiButton>
             <UiButton
@@ -276,60 +283,34 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
       </Modal>
 
       {/* Cancel */}
-      <Modal isOpen={dialog === "cancel"} onClose={() => setDialog(null)} width="sm">
-        <ModalContent>
-          <ModalHeader>Cancel {client.storeName}'s subscription?</ModalHeader>
-          <ModalBody>
-            <p className="text-body text-fg-muted">
-              By default the subscription ends when the current period does. Immediate cancellation ends it today.
-            </p>
-            <Switch isSelected={immediate} onValueChange={setImmediate} className="mt-3">
-              Cancel immediately
-            </Switch>
-          </ModalBody>
-          <ModalFooter>
-            <UiButton variant="ghost" onPress={() => setDialog(null)}>
-              Keep subscription
-            </UiButton>
-            <UiButton
-              variant="danger"
-              isLoading={busy}
-              onPress={() => void act(() => cancel({ variables: { tenantId, immediate } }), toasts.subscriptionCancelled)}
-            >
-              Cancel subscription
-            </UiButton>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <ConfirmDialog
+        isOpen={dialog === "cancel"}
+        onClose={closeDialog}
+        onConfirm={() => void act(() => cancel({ variables: { tenantId, immediate } }), toasts.subscriptionCancelled)}
+        title={`Cancel ${client.storeName}'s subscription?`}
+        description="By default the subscription ends when the current period does. Immediate cancellation ends it today."
+        confirmLabel="Cancel subscription"
+        cancelLabel="Keep subscription"
+        isLoading={busy}
+      >
+        <Switch isSelected={immediate} onValueChange={setImmediate} className="mt-3">
+          Cancel immediately
+        </Switch>
+      </ConfirmDialog>
 
       {/* Mark past due (PRD-014 UX-39: asks first) */}
-      <Modal isOpen={dialog === "pastDue"} onClose={() => setDialog(null)} width="sm">
-        <ModalContent>
-          <ModalHeader>Mark {client.storeName} as past due?</ModalHeader>
-          <ModalBody>
-            <p className="text-body text-fg-muted">
-              The subscription moves to past due, recorded in its history as a failed payment. It becomes active
-              again when a payment is recorded.
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <UiButton variant="ghost" onPress={() => setDialog(null)}>
-              Cancel
-            </UiButton>
-            <UiButton
-              variant="danger"
-              isLoading={busy}
-              isDisabled={busy}
-              onPress={() => void act(() => markPastDue({ variables: { tenantId } }), toasts.markedPastDue)}
-            >
-              Mark past due
-            </UiButton>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <ConfirmDialog
+        isOpen={dialog === "pastDue"}
+        onClose={closeDialog}
+        onConfirm={() => void act(() => markPastDue({ variables: { tenantId } }), toasts.markedPastDue)}
+        title={`Mark ${client.storeName} as past due?`}
+        description="The subscription moves to past due, recorded in its history as a failed payment. It becomes active again when a payment is recorded."
+        confirmLabel="Mark past due"
+        isLoading={busy}
+      />
 
       {/* Activate without payment (PRD-014 SEC-04) */}
-      <Modal isOpen={dialog === "activate"} onClose={() => setDialog(null)} width="sm">
+      <Modal isOpen={dialog === "activate"} onClose={closeDialog} width="sm">
         <ModalContent>
           <ModalHeader>Activate {client.storeName} without a payment?</ModalHeader>
           <ModalBody>
@@ -349,7 +330,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
             />
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={() => setDialog(null)}>
+            <UiButton variant="ghost" onPress={closeDialog}>
               Cancel
             </UiButton>
             <UiButton
@@ -370,7 +351,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
       </Modal>
 
       {/* Record payment */}
-      <Modal isOpen={dialog === "payment"} onClose={() => setDialog(null)} width="sm">
+      <Modal isOpen={dialog === "payment"} onClose={closeDialog} width="sm">
         <ModalContent>
           <ModalHeader>Record a payment</ModalHeader>
           <ModalBody>
@@ -391,7 +372,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
             </div>
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={() => setDialog(null)}>
+            <UiButton variant="ghost" onPress={closeDialog}>
               Cancel
             </UiButton>
             <UiButton

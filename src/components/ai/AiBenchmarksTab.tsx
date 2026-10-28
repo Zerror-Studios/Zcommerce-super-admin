@@ -2,10 +2,13 @@ import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from 
 import { useState } from "react";
 import { useAiBenchmarks, useAiConfig } from "../../hooks/use-platform-ai";
 import { formatMetricValue, metricKeyLabel } from "../../lib/platform-ai.util";
+import { matchesText } from "../../lib/text-search.util";
 import type { PlatformAiBenchmarkPeriod } from "../../types/platform-api";
 import { toasts } from "../../copy";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { PageHeader } from "../common/PageHeader";
+import { FilterEmpty } from "../common/FilterEmpty";
+import { TableToolbar } from "../common/TableToolbar";
 import { IconChartBar } from "../ui/icons";
 import {
   Card,
@@ -38,13 +41,19 @@ export function AiBenchmarksTab() {
   // PRD-024 FR-1.5 (P-06): say why the list can be empty (the minimum is an AI setting).
   const config = useAiConfig();
   const minStores = config.data?.benchmarkMinStores ?? null;
-  const rows = api.data;
+  const [search, setSearch] = useState("");
+  const rows = (api.data ?? []).filter((row) =>
+    matchesText(search, metricKeyLabel(row.metricKey), metricKeyLabel(row.category)),
+  );
   const computedFor = rows[0]?.computedFor;
 
   return (
     <div>
       <PageHeader
-        title="AI benchmarks"
+        type="page"
+        icon={<IconChartBar aria-hidden />}
+        section="pink"
+        title="ZCOM AI benchmarks"
         description={
           computedFor
             ? `Anonymised medians across stores, computed for ${formatDate(computedFor)}.`
@@ -73,6 +82,7 @@ export function AiBenchmarksTab() {
       ) : null}
 
       <Card padding="none" className="overflow-hidden">
+        <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Search metrics" />
         {api.loading ? (
           <div className="space-y-3 p-4">
             {Array.from({ length: 6 }).map((_, index) => (
@@ -92,15 +102,19 @@ export function AiBenchmarksTab() {
             <TableBody
               items={rows}
               emptyContent={
+                search.trim() ? (
+                  <FilterEmpty things="metrics" query={search} onClear={() => setSearch("")} />
+                ) : (
                 <EmptyState
                   icon={IconChartBar}
                   title="No benchmarks yet"
                   description={
                     minStores != null
-                      ? `A metric appears once at least ${formatCount(minStores)} stores have data for it, so no store can be identified. The minimum is in AI › Settings.`
+                      ? `A metric appears once at least ${formatCount(minStores)} stores have data for it, so no store can be identified. The minimum is in ZCOM AI › Settings.`
                       : "A metric appears once enough stores have data for it, so no store can be identified."
                   }
                 />
+                )
               }
             >
               {(row) => (

@@ -20,10 +20,10 @@ import {
   Input,
   Select,
   SelectItem,
-  Switch,
   Textarea,
   toastError,
 } from "../ui";
+import { ReminderChannelList } from "./ReminderChannelList";
 
 /** ADR-002 amendment: the provider is a setting; Razorpay is next, Nimbbl stays available. */
 const PROVIDERS: { key: PlatformPaymentProvider; label: string; hint: string }[] = [
@@ -235,37 +235,15 @@ export function BillingRulesSettings({ cards = ALL_CARDS }: BillingRulesSettings
           </div>
           {/* PRD-024 FR-4.2.5: SMS and WhatsApp go through the platform MSG91 account; a channel the backend
               can't deliver stays visible but disabled, with the reason. */}
-          <div className="flex flex-col gap-2">
-            <Switch
-              isSelected={draft.reminders.email}
-              onValueChange={(on) => setDraft({ ...draft, reminders: { ...draft.reminders, email: on } })}
+          <div>
+            <p className="mb-2 text-label font-medium text-fg">Send through</p>
+            <ReminderChannelList
+              selection={draft.reminders}
+              onChange={(channel, on) => setDraft({ ...draft, reminders: { ...draft.reminders, [channel]: on } })}
+              sms={smsChannel}
+              whatsapp={whatsappChannel}
               isDisabled={disabled}
-            >
-              Email
-            </Switch>
-            <div className="flex flex-col gap-0.5">
-              <Switch
-                isSelected={draft.reminders.sms && smsChannel.isConfigured}
-                onValueChange={(on) => setDraft({ ...draft, reminders: { ...draft.reminders, sms: on } })}
-                isDisabled={disabled || !smsChannel.isConfigured}
-              >
-                SMS
-              </Switch>
-              {smsChannel.hint ? <p className="text-label text-fg-muted">{smsChannel.hint}</p> : null}
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <Switch
-                isSelected={draft.reminders.whatsapp && whatsappChannel.isConfigured}
-                onValueChange={(on) => setDraft({ ...draft, reminders: { ...draft.reminders, whatsapp: on } })}
-                isDisabled={disabled || !whatsappChannel.isConfigured}
-              >
-                WhatsApp
-              </Switch>
-              {whatsappChannel.hint ? <p className="text-label text-fg-muted">{whatsappChannel.hint}</p> : null}
-            </div>
-            {smsChannel.isConfigured || whatsappChannel.isConfigured ? (
-              <p className="text-label text-fg-muted">SMS and WhatsApp go to the store's owner phone.</p>
-            ) : null}
+            />
           </div>
           <Textarea
             label="Reminder text"

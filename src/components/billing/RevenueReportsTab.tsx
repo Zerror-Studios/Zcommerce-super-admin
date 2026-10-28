@@ -368,7 +368,7 @@ export function RevenueReportsTab() {
               <TableBody items={[...mrrMonths].reverse()} isLoading={mrrApi.loading} emptyContent={noData}>
                 {(row) => (
                   <TableRow key={row.key}>
-                    <TableCell className="font-medium">{row.label}</TableCell>
+                    <TableCell className="whitespace-nowrap font-medium">{row.label}</TableCell>
                     {row.recordedDays === 0 ? (
                       <TableCell><span className={cx(right, "text-fg-subtle")}>{NOT_RECORDED_COPY}</span></TableCell>
                     ) : (

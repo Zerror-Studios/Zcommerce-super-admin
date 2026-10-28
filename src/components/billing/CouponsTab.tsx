@@ -514,7 +514,7 @@ export function CouponsTab({
         onConfirm={confirmDeactivate}
         title={`Deactivate ${deactivateTarget?.code ?? ""}?`}
         description="The code can no longer be applied. Invoices that already use it are not changed."
-        confirmLabel="Deactivate"
+        confirmLabel="Deactivate discount"
         confirmColor="danger"
       />
     </>

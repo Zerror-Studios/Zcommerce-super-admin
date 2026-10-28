@@ -9,7 +9,7 @@ import { PageHeader } from "../components/common/PageHeader";
 import { AutomationSettingsTab } from "../components/settings/AutomationSettingsTab";
 import { TransactionsTab } from "../components/payments/TransactionsTab";
 import { Card, ErrorState, formatCount, useTableUrlState } from "../components/ui";
-import { IconPayments, IconSend } from "../components/ui/icons";
+import { IconFlag, IconPayments, IconSend, IconTime } from "../components/ui/icons";
 import { toasts } from "../copy";
 import { usePayments } from "../hooks/use-platform-reports";
 import { splitParam } from "../lib/store-table.util";
@@ -69,19 +69,16 @@ export function Billing() {
     );
   }
 
-  if (active === "invoices") {
-    return (
-      <div>
-        <PageHeader title="Invoices" description="Every invoice Zcommerce issued to a store, newest first." />
-        <InvoicesTab />
-      </div>
-    );
-  }
+  // Invoices renders its own header: the due-date picker shares state with the table (like Collections).
+  if (active === "invoices") return <InvoicesTab />;
 
   if (active === "flagged") {
     return (
       <div>
         <PageHeader
+          type="list"
+          icon={<IconFlag aria-hidden />}
+          section="green"
           title="Flagged payments"
           description="Payments that couldn't settle an invoice on their own. Apply, mark refunded or dismiss each one, with a note."
         />
@@ -94,10 +91,13 @@ export function Billing() {
     return (
       <div>
         <PageHeader
+          type="list"
+          icon={<IconTime aria-hidden />}
+          section="green"
           title="Stuck store payments"
           description="Shopper payments in suspended stores still pending 48 hours after they were opened. The enquiry job keeps checking them; follow up with the provider if one stays here."
         />
-        <Card padding="none">
+        <Card padding="none" className="overflow-hidden">
           <StalePendingPayments />
         </Card>
       </div>

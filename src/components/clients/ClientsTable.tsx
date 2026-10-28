@@ -32,12 +32,11 @@ import {
 import { useUrlSearch } from "../../hooks/use-url-search";
 import { AppliedFilters, type AppliedFilterItem } from "../common/AppliedFilters";
 import { FilterEmpty } from "../common/FilterEmpty";
-import { FilterCheckboxGroup, TableToolbar } from "../common/TableToolbar";
+import { TableToolbar } from "../common/TableToolbar";
 import { RenewalBadge } from "../common/RenewalBadge";
 import { StoreHealthCell } from "../common/StoreHealthCell";
 import {
   Button as UiButton,
-  Checkbox,
   Chip,
   DataTable,
   Dropdown,
@@ -47,6 +46,8 @@ import {
   DropdownTrigger,
   EmptyState,
   IconButton,
+  Select,
+  SelectItem,
   Tab,
   Tabs,
   TablePagination,
@@ -60,6 +61,7 @@ import {
 } from "../ui";
 import { DEFAULT_PAGE_SIZE } from "../ui/TablePagination";
 import { IconLogin, IconMore, IconStore } from "../ui/icons";
+import { RemovedStoresTable, useDeletedStoreCount } from "./RemovedStoresPanel";
 import { StoreActionDialog, type StoreAction } from "./storeActions";
 import { logInToStore } from "./storeLogin";
 import { emptyStates } from "../../copy";
@@ -122,17 +124,26 @@ const healthLabels: Record<HealthBandKey, string> = {
   [healthBandEnum.CRITICAL]: "Critical",
 };
 
-/** Status tabs, then the saved views (§3.7). */
+/**
+ * Status tabs (owner 2026-10-28: only the needed ones). Set up and Overdue are in Filter (Status, Payment
+ * overdue); older links to a dropped view (Set up, Overdue, Trials ending this week) still work and show that
+ * tab while it is open. Deleted is on the Stores page only.
+ */
 const tabItems: { key: StoreTab; label: string }[] = [
   { key: storeTabEnum.ALL, label: "All" },
   { key: storeTabEnum.LIVE, label: "Live" },
-  { key: storeTabEnum.SET_UP, label: "Set up" },
   { key: storeTabEnum.TRIAL, label: "Trial" },
   { key: storeTabEnum.UNPAID, label: "Unpaid" },
   { key: storeTabEnum.SUSPENDED, label: "Suspended" },
+];
+
+const legacyTabItems: { key: StoreTab; label: string }[] = [
+  { key: storeTabEnum.SET_UP, label: "Set up" },
   { key: storeTabEnum.OVERDUE, label: "Overdue" },
   { key: storeTabEnum.TRIALS_WEEK, label: "Trials ending this week" },
 ];
+
+const deletedTabItem = { key: storeTabEnum.DELETED, label: "Deleted" };
 
 /** The 200-row list is filtered and paged here, one shared page size (10) like every table. */
 const PAGE_SIZE = DEFAULT_PAGE_SIZE;
@@ -163,6 +174,40 @@ function compareClients(a: Client, b: Client, column: string, byClientId: Map<st
       return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: "base" });
     }
   }
+}
+
+/** The "All …" option of a filter select (an empty filter). */
+const ALL = "__all";
+
+/** One select in the Filter popover, like Collections: "All …" first, applied on pick. */
+function FilterSelect({
+  label,
+  allLabel,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  allLabel: string;
+  value: string | undefined;
+  options: { key: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Select
+      label={label}
+      size="sm"
+      selectedKeys={new Set([value || ALL])}
+      onSelectionChange={(keys) => {
+        const next = String(Array.from(keys)[0] ?? ALL);
+        onChange(next === ALL ? "" : next);
+      }}
+      disallowEmptySelection
+      items={[{ key: ALL, label: allLabel }, ...options]}
+    >
+      {(option) => <SelectItem key={option.key}>{option.label}</SelectItem>}
+    </Select>
+  );
 }
 
 // ─── State: the URL on the Stores page, local on Home ────────────────────────
@@ -274,7 +319,19 @@ export function ClientsTable({
   // Q10 / PRD-018 FR-2.1: only the platform owner deletes a store.
   const canDelete = canManage && user?.role === "PLATFORM_OWNER";
   const state = useStoresTableState(syncUrl);
-  const { tab, filters, sort } = state;
+  const { filters, sort } = state;
+  // The Deleted tab lives on the Stores page (syncUrl) only.
+  const showDeleted = syncUrl;
+  const tab = !showDeleted && state.tab === storeTabEnum.DELETED ? storeTabEnum.ALL : state.tab;
+  const deletedCount = useDeletedStoreCount(!showDeleted);
+  const shownTabs = useMemo(
+    () => [
+      ...tabItems,
+      ...legacyTabItems.filter((item) => item.key === tab),
+      ...(showDeleted ? [deletedTabItem] : []),
+    ],
+    [showDeleted, tab],
+  );
   const [searchInput, setSearchInput] = useUrlSearch(state.search, state.setSearch);
   const [savedColumns, setSavedColumns] = usePersistentColumns("stores", defaultColumnKeys);
   const [pending, setPending] = useState<{ client: Client; action: StoreAction } | null>(null);
@@ -303,15 +360,15 @@ export function ClientsTable({
   }, [clients, query, subscriptionByClientId, filters.plans.join(), filters.statuses.join(), filters.health.join(), filters.overdue]);
 
   const tabCounts = useMemo(() => {
-    const counts = Object.fromEntries(tabItems.map((item) => [item.key, 0])) as Record<StoreTab, number>;
+    const counts = Object.fromEntries(shownTabs.map((item) => [item.key, 0])) as Record<StoreTab, number>;
     searched.forEach((client) => {
       const sub = subscriptionByClientId.get(client.id);
-      tabItems.forEach(({ key }) => {
+      shownTabs.forEach(({ key }) => {
         if (matchesTab(key, client, sub, now)) counts[key] += 1;
       });
     });
     return counts;
-  }, [now, searched, subscriptionByClientId]);
+  }, [now, searched, shownTabs, subscriptionByClientId]);
 
   const sorted = useMemo(() => {
     const items = searched.filter((client) => matchesTab(tab, client, subscriptionByClientId.get(client.id), now));
@@ -391,13 +448,10 @@ export function ClientsTable({
             </span>
             <div className="min-w-0 max-w-64">
               <p className="truncate font-medium text-fg">{client.storeName}</p>
-              <p className="truncate text-caption text-fg-subtle">{client.ownerEmail}</p>
-              {/* PRD-024 FR-4.4: migrated stores enter it by hand in Store details. */}
-              {ownerContactGaps(client).isMissingEmail ? (
-                <Chip tone="warning" className="mt-1">
-                  No owner email
-                </Chip>
-              ) : null}
+              {/* PRD-024 FR-4.4: no owner email reads "—" (owner 2026-10-28: no chip; the store page has the banner). */}
+              <p className="truncate text-caption text-fg-subtle">
+                {ownerContactGaps(client).isMissingEmail ? "—" : client.ownerEmail}
+              </p>
             </div>
           </div>
         );
@@ -499,6 +553,32 @@ export function ClientsTable({
       <FilterEmpty things="stores" query={state.search} onClear={clearFilters} />
     );
 
+  const tabsNode = (
+    <Tabs
+      aria-label="Store views"
+      selectedKey={tab}
+      onSelectionChange={(key) => state.setTab(String(key) as StoreTab)}
+      classNames={{ base: "min-w-0 max-w-full self-stretch overflow-x-auto", tabList: "h-full border-b-0", tab: "h-13 whitespace-nowrap", panel: "hidden" }}
+    >
+      {shownTabs.map((item) => (
+        <Tab
+          key={item.key}
+          title={
+            <span className="flex items-center gap-1.5">
+              {item.label}
+              <span className="font-normal text-fg-subtle num">
+                {item.key === storeTabEnum.DELETED ? (deletedCount ?? "") : tabCounts[item.key]}
+              </span>
+            </span>
+          }
+        />
+      ))}
+    </Tabs>
+  );
+
+  // PRD-018 FR-2.3, FR-2.5: deleted (restorable) and purged stores, in the same table card.
+  if (tab === storeTabEnum.DELETED) return <RemovedStoresTable tabs={tabsNode} />;
+
   const toolbar = (
     <>
       <TableToolbar
@@ -510,55 +590,41 @@ export function ClientsTable({
         }
         visibleColumns={allowColumnChoice ? Array.from(savedColumns) : undefined}
         onVisibleColumnsChange={allowColumnChoice ? (keys) => setSavedColumns(new Set(keys)) : undefined}
-        tabs={
-          <Tabs
-            aria-label="Store views"
-            selectedKey={tab}
-            onSelectionChange={(key) => state.setTab(String(key) as StoreTab)}
-            classNames={{ base: "min-w-0 max-w-full self-stretch overflow-x-auto", tabList: "h-full border-b-0", tab: "h-13 whitespace-nowrap", panel: "hidden" }}
-          >
-            {tabItems.map((item) => (
-              <Tab
-                key={item.key}
-                title={
-                  <span className="flex items-center gap-1.5">
-                    {item.label}
-                    <span className="font-normal text-fg-subtle num">{tabCounts[item.key]}</span>
-                  </span>
-                }
-              />
-            ))}
-          </Tabs>
-        }
+        tabs={tabsNode}
+        // One select per filter, applied on pick, like Collections (owner 2026-10-28).
         filterContent={
           <>
-            <FilterCheckboxGroup
+            <FilterSelect
               label="Plan"
+              allLabel="All plans"
+              value={filters.plans[0]}
               options={planOptions}
-              value={filters.plans}
-              onChange={(value) => state.setFilters({ plans: value })}
+              onChange={(value) => state.setFilters({ plans: value ? [value] : [] })}
             />
-            <FilterCheckboxGroup
+            <FilterSelect
               label="Status"
+              allLabel="Any status"
+              value={filters.statuses[0]}
               options={STORE_LIFECYCLE_FILTERS.map((statusOption) => ({
                 key: statusOption,
                 label: storeLifecycleLabel(statusOption),
               }))}
-              value={filters.statuses}
-              onChange={(value) => state.setFilters({ statuses: value })}
+              onChange={(value) => state.setFilters({ statuses: value ? [value] : [] })}
             />
-            <FilterCheckboxGroup
+            <FilterSelect
               label="Health"
+              allLabel="Any health"
+              value={filters.health[0]}
               options={(Object.keys(healthLabels) as HealthBandKey[]).map((band) => ({ key: band, label: healthLabels[band] }))}
-              value={filters.health}
-              onChange={(value) => state.setFilters({ health: value as HealthBandKey[] })}
+              onChange={(value) => state.setFilters({ health: value ? [value as HealthBandKey] : [] })}
             />
-            <div className="space-y-2">
-              <p className="text-label font-medium text-fg-muted">Payment</p>
-              <Checkbox size="sm" isSelected={filters.overdue} onValueChange={(on) => state.setFilters({ overdue: on })}>
-                Payment overdue
-              </Checkbox>
-            </div>
+            <FilterSelect
+              label="Payment"
+              allLabel="Any payment"
+              value={filters.overdue ? "overdue" : undefined}
+              options={[{ key: "overdue", label: "Payment overdue" }]}
+              onChange={(value) => state.setFilters({ overdue: value === "overdue" })}
+            />
           </>
         }
       />

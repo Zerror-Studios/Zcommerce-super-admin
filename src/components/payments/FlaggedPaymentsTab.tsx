@@ -19,6 +19,7 @@ import { errorReasonOf } from "../../lib/apollo-client";
 import { getPaymentGatewayLabel, getPlanLabel } from "../../lib/display-labels.util";
 import { billingFailureCopy } from "../../lib/mutation-errors";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
+import { matchesText } from "../../lib/text-search.util";
 import {
   FLAGGED_ACTION_COPY,
   FLAGGED_REASON_LABELS,
@@ -29,7 +30,9 @@ import {
 import { useAuth } from "../../providers/AuthProvider";
 import { flaggedPaymentActionEnum, type FlaggedPaymentAction, type PlatformPayment } from "../../types/platform-api";
 import { dataTableFillClassNames, tablePanelFillClassName } from "../common/dataTableStyles";
+import { FilterEmpty } from "../common/FilterEmpty";
 import { LoadMoreFooter } from "../common/LoadMoreFooter";
+import { TableToolbar } from "../common/TableToolbar";
 import {
   Button as UiButton,
   Chip,
@@ -69,6 +72,12 @@ export function FlaggedPaymentsTab() {
   const canResolve = can(PLATFORM_PERMISSIONS.BILLING_MANAGE);
   const queue = useFlaggedPayments();
   const [resolving, setResolving] = useState<PlatformPayment | null>(null);
+  // Searches the loaded rows (the queue has no server search).
+  const [search, setSearch] = useState("");
+  const rows = useMemo(
+    () => queue.data.filter((payment) => matchesText(search, payment.tenantName, payment.transactionId, payment.planName)),
+    [queue.data, search],
+  );
 
   const renderCell = (payment: PlatformPayment, key: string) => {
     const money = (amount: number) => formatMoney(amount, { currency: payment.currency, paise: true });
@@ -114,6 +123,7 @@ export function FlaggedPaymentsTab() {
 
   return (
     <div className={tablePanelFillClassName}>
+      <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Search loaded payments" />
       {queue.error && queue.data.length === 0 ? (
         <ErrorState title="Couldn't load flagged payments." onRetry={() => void queue.refetch()} />
       ) : (
@@ -128,13 +138,17 @@ export function FlaggedPaymentsTab() {
           <TableBody
             isLoading={queue.loading}
             loadingContent={<Skeleton className="h-10 w-full rounded-lg" />}
-            items={queue.data}
+            items={rows}
             emptyContent={
+              search.trim() ? (
+                <FilterEmpty things="payments" query={search} onClear={() => setSearch("")} />
+              ) : (
               <EmptyState
                 icon={IconFlag}
                 title="Nothing to review"
                 description="Payments that don't match their invoice, or arrive after a subscription stopped, wait here."
               />
+              )
             }
           >
             {(payment) => (

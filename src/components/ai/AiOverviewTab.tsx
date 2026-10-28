@@ -4,7 +4,7 @@ import { formatInr, formatRate, formatUsd } from "../../lib/platform-ai.util";
 import { emptyStates, toasts } from "../../copy";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { PageHeader } from "../common/PageHeader";
-import { IconWarning } from "../ui/icons";
+import { IconChat, IconWarning } from "../ui/icons";
 import {
   Card,
   EmptyState,
@@ -38,7 +38,13 @@ export function AiOverviewTab() {
 
   return (
     <div>
-      <PageHeader title="AI overview" description="AI spend and quality across every store." />
+      <PageHeader
+        type="page"
+        icon={<IconChat aria-hidden />}
+        section="pink"
+        title="ZCOM AI overview"
+        description="ZCOM AI spend and quality across every store."
+      />
 
       {api.error ? (
         <ErrorState title="Couldn't load the AI totals." description={toasts.genericError} onRetry={() => void api.refetch()} />
@@ -110,7 +116,7 @@ export function AiOverviewTab() {
             >
               {(row) => (
                 <TableRow key={row.model}>
-                  <TableCell className="font-medium">{row.model}</TableCell>
+                  <TableCell className="whitespace-nowrap font-medium">{row.model}</TableCell>
                   <TableCell><span className={right}>{formatCount(row.calls)}</span></TableCell>
                   <TableCell><span className={right}>{formatUsd(row.costUsd)}</span></TableCell>
                 </TableRow>

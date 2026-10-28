@@ -28,6 +28,17 @@ export interface DateRangeValue {
 export interface DateRangeComparisonProps {
   value: DateRangeValue;
   onChange: (value: DateRangeValue) => void;
+  /**
+   * A filter that may be empty (Invoices' due date): an extra first option with this label ("Any due date").
+   * While `isAny` is true the button shows it and `value` only seeds the calendar; picking it calls `onClear`.
+   */
+  anyLabel?: string;
+  isAny?: boolean;
+  onClear?: () => void;
+  /** Latest pickable day; default today, null for none (due dates can be in the future). */
+  maxDate?: Date | null;
+  /** Show the comparison period (reports). Off for plain filters. Default true. */
+  compare?: boolean;
 }
 
 interface Preset {
@@ -35,12 +46,19 @@ interface Preset {
   getRange: () => DateRangeValue;
 }
 
-/** Presets from docs/design/04-super-admin.md §3.1 (This month / Last month / This year / Financial year / Custom). */
-function buildPresets(today: Date): Preset[] {
+/**
+ * Presets from docs/design/04-super-admin.md §3.1 (This month / Last month / This year / Financial year / Custom).
+ * Reports end the current periods today; `wholePeriods` (no max date, e.g. due dates) runs them to their end.
+ */
+function buildPresets(today: Date, wholePeriods = false): Preset[] {
+  const periodEnd = (end: Date) => (wholePeriods ? endOfDay(subDays(end, 1)) : endOfDay(today));
   return [
     {
       label: "This month",
-      getRange: () => ({ startDate: startOfMonth(today), endDate: endOfDay(today) }),
+      getRange: () => ({
+        startDate: startOfMonth(today),
+        endDate: wholePeriods ? endOfDay(endOfMonth(today)) : endOfDay(today),
+      }),
     },
     {
       label: "Last month",
@@ -51,14 +69,18 @@ function buildPresets(today: Date): Preset[] {
     },
     {
       label: "This year",
-      getRange: () => ({ startDate: yearPeriod(today, "calendar").start, endDate: endOfDay(today) }),
+      getRange: () => ({ startDate: yearPeriod(today, "calendar").start, endDate: periodEnd(yearPeriod(today, "calendar").end) }),
     },
     {
       label: "Financial year",
-      getRange: () => ({ startDate: yearPeriod(today, "financial").start, endDate: endOfDay(today) }),
+      getRange: () => ({ startDate: yearPeriod(today, "financial").start, endDate: periodEnd(yearPeriod(today, "financial").end) }),
     },
   ];
 }
+
+/** The picker's non-preset options. */
+const CUSTOM = "custom";
+const ANY = "any";
 
 function sameDay(a: Date, b: Date) {
   return format(a, "yyyy-MM-dd") === format(b, "yyyy-MM-dd");
@@ -79,12 +101,22 @@ function formatRangeLabel(start: Date, end: Date) {
 }
 
 /**
- * Date control (docs/design/02-components.md §2): one secondary "📅 This month ⌄" button; presets and a
- * custom calendar in a popover. The comparison period is shown inside the popover, not beside the button.
+ * Date control (docs/design/02-components.md §2): one secondary "📅 This month ⌄" button; presets beside a
+ * calendar in a popover. The calendar shows for every option (owner 2026-10-28): a preset marks its range on
+ * it, picking days there is Custom, and Apply sets the range. The comparison period is in the footer.
  */
-export function DateRangeComparison({ value, onChange }: DateRangeComparisonProps) {
+export function DateRangeComparison({
+  value,
+  onChange,
+  anyLabel,
+  isAny = false,
+  onClear,
+  maxDate,
+  compare = true,
+}: DateRangeComparisonProps) {
   const [open, setOpen] = useState(false);
-  const [custom, setCustom] = useState(false);
+  /** The highlighted option while open: the "any" option, a preset's label or Custom. */
+  const [choice, setChoice] = useState<string>(CUSTOM);
   const [draft, setDraft] = useState<Range[]>([
     {
       startDate: value.startDate,
@@ -94,20 +126,16 @@ export function DateRangeComparison({ value, onChange }: DateRangeComparisonProp
   ]);
   const rootRef = useRef<HTMLDivElement>(null);
   const today = useMemo(() => new Date(), []);
-  const presets = useMemo(() => buildPresets(today), [today]);
+  const presets = useMemo(() => buildPresets(today, maxDate === null), [maxDate, today]);
 
-  const previousPeriod = useMemo(
-    () => getPreviousPeriod(value.startDate, value.endDate),
-    [value.endDate, value.startDate],
-  );
-
-  const activePreset = presets.find((preset) => {
+  const matchedPreset = presets.find((preset) => {
     const range = preset.getRange();
     return (
       sameDay(range.startDate, value.startDate) &&
       sameDay(range.endDate, value.endDate)
     );
   })?.label;
+  const activePreset = anyLabel && isAny ? anyLabel : matchedPreset;
 
   useEffect(() => {
     if (!open) return;
@@ -140,19 +168,25 @@ export function DateRangeComparison({ value, onChange }: DateRangeComparisonProp
         key: "selection",
       },
     ]);
+    setChoice(CUSTOM);
   };
 
-  const applyPreset = (preset: Preset) => {
+  // A preset marks its range on the calendar; Apply sets it.
+  const pickPreset = (preset: Preset) => {
     const range = preset.getRange();
-    onChange({ startDate: startOfDay(range.startDate), endDate: endOfDay(range.endDate) });
-    setOpen(false);
+    setDraft([{ startDate: startOfDay(range.startDate), endDate: endOfDay(range.endDate), key: "selection" }]);
+    setChoice(preset.label);
   };
 
   const handleApply = () => {
-    onChange({
-      startDate: startOfDay(draftStart),
-      endDate: endOfDay(draftEnd),
-    });
+    if (choice === ANY) {
+      onClear?.();
+    } else {
+      onChange({
+        startDate: startOfDay(draftStart),
+        endDate: endOfDay(draftEnd),
+      });
+    }
     setOpen(false);
   };
 
@@ -174,7 +208,7 @@ export function DateRangeComparison({ value, onChange }: DateRangeComparisonProp
           if (!open) {
             // Start each visit from the applied range.
             setDraft([{ startDate: value.startDate, endDate: value.endDate, key: "selection" }]);
-            setCustom(!activePreset);
+            setChoice(anyLabel && isAny ? ANY : (matchedPreset ?? CUSTOM));
           }
           setOpen(!open);
         }}
@@ -190,11 +224,23 @@ export function DateRangeComparison({ value, onChange }: DateRangeComparisonProp
         >
           <div className="flex flex-col sm:flex-row">
             <ul className="shrink-0 space-y-0.5 border-b border-line p-1 sm:w-44 sm:border-b-0 sm:border-r">
+              {anyLabel ? (
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setChoice(ANY)}
+                    className={presetItemClass(choice === ANY)}
+                  >
+                    {anyLabel}
+                    {choice === ANY ? <IconCheck aria-hidden className="size-4" /> : null}
+                  </button>
+                </li>
+              ) : null}
               {presets.map((preset) => {
-                const selected = !custom && activePreset === preset.label;
+                const selected = choice === preset.label;
                 return (
                   <li key={preset.label}>
-                    <button type="button" onClick={() => applyPreset(preset)} className={presetItemClass(selected)}>
+                    <button type="button" onClick={() => pickPreset(preset)} className={presetItemClass(selected)}>
                       {preset.label}
                       {selected ? <IconCheck aria-hidden className="size-4" /> : null}
                     </button>
@@ -202,56 +248,48 @@ export function DateRangeComparison({ value, onChange }: DateRangeComparisonProp
                 );
               })}
               <li>
-                <button type="button" onClick={() => setCustom(true)} className={presetItemClass(custom)}>
+                <button type="button" onClick={() => setChoice(CUSTOM)} className={presetItemClass(choice === CUSTOM)}>
                   Custom
-                  {custom ? <IconCheck aria-hidden className="size-4" /> : null}
+                  {choice === CUSTOM ? <IconCheck aria-hidden className="size-4" /> : null}
                 </button>
               </li>
             </ul>
 
             <div className="min-w-0 flex-1">
-              {custom ? (
-                <DateRange
-                  ranges={draft}
-                  onChange={handleSelect}
-                  months={1}
-                  direction="horizontal"
-                  showDateDisplay={false}
-                  showMonthAndYearPickers
-                  rangeColors={[chartColors.series[0]]}
-                  maxDate={today}
-                  weekdayDisplayFormat="EEEEEE"
-                  monthDisplayFormat="MMMM"
-                />
-              ) : (
-                <div className="space-y-1 px-4 py-3">
-                  <p className="text-label font-medium text-fg-muted">Selected</p>
-                  <p className="text-body text-fg num">{formatRangeLabel(value.startDate, value.endDate)}</p>
-                  <p className="pt-2 text-label font-medium text-fg-muted">Compared with</p>
-                  <p className="text-body text-fg num">
-                    {formatRangeLabel(previousPeriod.startDate, previousPeriod.endDate)}
-                  </p>
-                </div>
-              )}
+              <DateRange
+                ranges={draft}
+                onChange={handleSelect}
+                months={1}
+                direction="horizontal"
+                showDateDisplay={false}
+                showMonthAndYearPickers
+                rangeColors={[chartColors.series[0]]}
+                maxDate={maxDate === null ? undefined : (maxDate ?? today)}
+                weekdayDisplayFormat="EEEEEE"
+                monthDisplayFormat="MMMM"
+              />
             </div>
           </div>
 
-          {custom ? (
-            <div className="flex flex-col gap-2 border-t border-line px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-caption text-fg-muted num">
-                {formatRangeLabel(draftStart, draftEnd)} · compared with the previous{" "}
-                {differenceInCalendarDays(draftEnd, draftStart) + 1} days
-              </p>
-              <div className="flex items-center gap-2">
-                <UiButton variant="ghost" size="sm" onPress={() => setOpen(false)}>
-                  Cancel
-                </UiButton>
-                <UiButton variant="primary" size="sm" onPress={handleApply}>
-                  Apply
-                </UiButton>
-              </div>
+          <div className="flex flex-col gap-2 border-t border-line px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-caption text-fg-muted num">
+              {choice === ANY ? anyLabel : formatRangeLabel(draftStart, draftEnd)}
+              {compare && choice !== ANY
+                ? ` · compared with ${formatRangeLabel(
+                    getPreviousPeriod(draftStart, draftEnd).startDate,
+                    getPreviousPeriod(draftStart, draftEnd).endDate,
+                  )}`
+                : null}
+            </p>
+            <div className="flex items-center gap-2">
+              <UiButton variant="ghost" size="sm" onPress={() => setOpen(false)}>
+                Cancel
+              </UiButton>
+              <UiButton variant="primary" size="sm" onPress={handleApply}>
+                Apply
+              </UiButton>
             </div>
-          ) : null}
+          </div>
         </div>
       ) : null}
     </div>

@@ -11,12 +11,16 @@
 
 import { useQuery } from "@apollo/client";
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PLATFORM_STALE_PENDING_PAYMENTS } from "../../graphql/billing";
 import { getAppProviderLabel } from "../../lib/display-labels.util";
+import { matchesText } from "../../lib/text-search.util";
 import { formatDate, formatDateTime } from "../../lib/utils";
 import type { StalePendingPaymentList } from "../../types/platform-api";
 import { compactTableClassNames } from "../common/dataTableStyles";
+import { FilterEmpty } from "../common/FilterEmpty";
+import { TableToolbar } from "../common/TableToolbar";
 import { CopyableId, EmptyState, ErrorState, Skeleton, cx, formatMoney, toneTextClasses } from "../ui";
 import { IconPayments } from "../ui/icons";
 
@@ -28,6 +32,8 @@ export interface StalePendingPaymentsProps {
   tenantId?: string;
 }
 
+const tableBaseUnderToolbar = compactTableClassNames.base.replace("border-t border-line ", "");
+
 export function StalePendingPayments({ tenantId }: StalePendingPaymentsProps) {
   const query = useQuery<{ platformStalePendingPayments: StalePendingPaymentList }>(
     PLATFORM_STALE_PENDING_PAYMENTS,
@@ -37,6 +43,11 @@ export function StalePendingPayments({ tenantId }: StalePendingPaymentsProps) {
     },
   );
   const list = query.data?.platformStalePendingPayments;
+  // Billing › Stuck store payments only; one store's list (Lifecycle) is short.
+  const [search, setSearch] = useState("");
+  const rows = (list?.items ?? []).filter((row) =>
+    matchesText(search, row.tenantName, row.paymentId, row.orderId, row.provider ? getAppProviderLabel(row.provider) : null),
+  );
 
   if (!list) {
     if (query.error) {
@@ -54,12 +65,20 @@ export function StalePendingPayments({ tenantId }: StalePendingPaymentsProps) {
 
   return (
     <div>
+      {tenantId ? null : (
+        <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Search stores or payments" />
+      )}
       {list.partial ? (
         <p role="note" className={cx("px-4 pt-3 text-label", toneTextClasses.warning)}>
           Some stores couldn't be read; their payments are missing from this list.
         </p>
       ) : null}
-      <Table aria-label="Payments pending for more than 48 hours" removeWrapper classNames={compactTableClassNames}>
+      <Table
+        aria-label="Payments pending for more than 48 hours"
+        removeWrapper
+        // Under the search toolbar its bottom border is the divider; no second line on the table.
+        classNames={tenantId ? compactTableClassNames : { ...compactTableClassNames, base: tableBaseUnderToolbar }}
+      >
         <TableHeader>
           <TableColumn>{tenantId ? "Payment" : "Store"}</TableColumn>
           <TableColumn>{tenantId ? "Order" : "Payment"}</TableColumn>
@@ -69,13 +88,17 @@ export function StalePendingPayments({ tenantId }: StalePendingPaymentsProps) {
           <TableColumn>Last enquiry</TableColumn>
         </TableHeader>
         <TableBody
-          items={list.items}
+          items={rows}
           emptyContent={
+            search.trim() ? (
+              <FilterEmpty things="payments" query={search} onClear={() => setSearch("")} />
+            ) : (
             <EmptyState
               icon={IconPayments}
               title="No stuck payments"
               description="Every payment opened more than 48 hours ago has settled."
             />
+            )
           }
         >
           {(row) => (

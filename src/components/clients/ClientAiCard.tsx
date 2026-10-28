@@ -66,7 +66,7 @@ export function ClientAiCard({ client }: ClientAiCardProps) {
 
   return (
     <Card
-      title="AI"
+      title="ZCOM AI"
       description="Ask ZCOM limits for this store. Empty limits use the plan's values."
       actions={
         canManage && setting ? (

@@ -129,7 +129,7 @@ Stores will have thousands of products, orders, customers and media files; Super
 ### 3.7 Super Admin specifics
 - Stores table: 50 per page, default sorted by health then billing due date; sticky store name; `Log in` stays visible on every row width.
 - Earnings charts and store list load separately; store list first.
-- Filters for plan, status, health and "payment overdue" in the URL; saved views ("Overdue", "Trials ending this week") as tabs.
+- Filters for plan, status, health and "payment overdue" in the URL; saved views ("Overdue", "Trials ending this week") as tabs. Since 2026-10-28 (owner) the Stores tabs are only All · Live · Trial · Unpaid · Suspended · Deleted; Overdue and Set up are filters, and the dropped views still open from old links.
 
 ### 3.8 Performance budget
 - Any route interactive under 2s on a mid-range laptop with the production dataset; list pages render first 50 rows under 300ms after data arrives.

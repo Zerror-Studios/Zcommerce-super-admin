@@ -79,7 +79,10 @@ export function AiUsageTab() {
   return (
     <div>
       <PageHeader
-        title="AI usage by store"
+        type="list"
+        icon={<IconChat aria-hidden />}
+        section="pink"
+        title="ZCOM AI usage by store"
         count={total || undefined}
         description="This week and this month, most expensive first."
         actions={

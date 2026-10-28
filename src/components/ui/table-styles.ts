@@ -20,9 +20,13 @@ export const tableHeaderCellClasses =
 /** Width of the trailing actions column ("Actions" label over the "···" button). */
 export const tableActionsColumnClass = "w-24";
 
-/** Body row: subtle fill on hover, soft primary fill when selected, divider between rows. */
+/**
+ * Body row: subtle fill on hover, soft primary fill when selected, divider between rows. The cells take the
+ * same fill, so sticky cells (pinned name or actions, which carry their own white background) change with the
+ * rest of the row instead of staying white (owner 2026-10-28).
+ */
 export const tableRowClasses =
-  "transition-colors duration-instant ease-standard hover:!bg-surface-muted data-[selected=true]:!bg-brand-soft border-b border-line-subtle last:border-b-0";
+  "transition-colors duration-instant ease-standard hover:!bg-surface-muted data-[selected=true]:!bg-brand-soft hover:[&>td]:!bg-surface-muted data-[selected=true]:[&>td]:!bg-brand-soft border-b border-line-subtle last:border-b-0";
 
 /** Body cell: 56px row height, 14px text, 16px side padding. Right-align numbers with "text-right num". */
 export const tableCellClasses = "h-14 px-4 text-sm !text-fg";

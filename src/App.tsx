@@ -75,6 +75,7 @@ export default function App() {
           <Route path="stores" element={<Clients />} />
           <Route path="stores/new" element={<AddClient />} />
           <Route path="stores/:id" element={<ClientDetail />} />
+          <Route path="stores/:id/:section" element={<ClientDetail />} />
           {/* Old "clients" URLs (before the Stores rename) keep working. */}
           <Route path="clients" element={<Navigate to="/stores" replace />} />
           <Route path="clients/new" element={<Navigate to="/stores/new" replace />} />

@@ -1,6 +1,7 @@
 import { useMutation } from "@apollo/client";
 import { addToast } from "@heroui/react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ComponentType } from "react";
+import { useSearchParams } from "react-router-dom";
 import { UPDATE_AI_CONFIG } from "../../graphql/ai";
 import { useAiConfig } from "../../hooks/use-platform-ai";
 import { mutationFailureCopy } from "../../lib/mutation-errors";
@@ -22,16 +23,25 @@ import { PageHeader } from "../common/PageHeader";
 import {
   Button as UiButton,
   Card,
-  Checkbox,
+  Chip,
   ErrorState,
+  IconBilling,
+  IconChat,
+  IconPayments,
+  IconSettings,
+  IconTime,
   Input,
+  PaneHeader,
+  PaneList,
   Select,
   SelectItem,
   Skeleton,
   Switch,
+  TwoPaneCard,
   cx,
   toastError,
   toneTextClasses,
+  type PaneGroup,
 } from "../ui";
 
 type TextField =
@@ -45,13 +55,70 @@ type TextField =
   | "rateLimitPerMinute"
   | "benchmarkMinStores";
 
+/** Per-model prices: four in US dollars per million tokens, then the batch multiplier. */
 const PRICE_COLUMNS = [
-  { key: "inputPerMTok", label: "Input $/M" },
-  { key: "outputPerMTok", label: "Output $/M" },
-  { key: "cacheWritePerMTok", label: "Cache write $/M" },
-  { key: "cacheReadPerMTok", label: "Cache read $/M" },
-  { key: "batchDiscount", label: "Batch ×" },
+  { key: "inputPerMTok", label: "Input" },
+  { key: "outputPerMTok", label: "Output" },
+  { key: "cacheWritePerMTok", label: "Cache write" },
+  { key: "cacheReadPerMTok", label: "Cache read" },
+  { key: "batchDiscount", label: "Batch multiplier" },
 ] as const;
+
+/** The two model roles in Assistant › Model roles; each picks one allowed model. */
+const MODEL_ROLES = [
+  { field: "defaultModel", label: "Default model", description: "Answers most questions." },
+  { field: "reasoningModel", label: "Reasoning model", description: "Used for harder questions." },
+] as const;
+
+// ─── Sections ────────────────────────────────────────────────────────────────
+
+/** The form's sections, laid out like Settings (owner 2026-10-28); `?section=` in the URL. */
+type AiSettingsSection = "assistant" | "spend" | "limits" | "night" | "prices";
+
+const aiSections: Record<
+  AiSettingsSection,
+  { title: string; description: string; icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>; fields: string[] }
+> = {
+  assistant: {
+    title: "Assistant",
+    description: "Switch ZCOM AI off for every store, and pick the models it may use.",
+    icon: IconChat,
+    fields: ["enabled", "allowedModels", "defaultModel", "reasoningModel"],
+  },
+  spend: {
+    title: "Spend",
+    description: "Caps in US dollars; the rate converts them for reports in rupees.",
+    icon: IconBilling,
+    fields: ["globalDailySpendCapUsd", "monthlyBudgetUsd", "alertThresholds", "usdInrRate"],
+  },
+  limits: {
+    title: "Limits",
+    description: "Per question and per store, on top of each plan's weekly questions.",
+    icon: IconSettings,
+    fields: ["perQuestionTokenCeiling", "rateLimitPerMinute", "benchmarkMinStores"],
+  },
+  night: {
+    title: "Night window",
+    description: "No scheduled insights runs in this window, in each store's own time zone (24-hour).",
+    icon: IconTime,
+    fields: ["nightCoolingStart", "nightCoolingEnd"],
+  },
+  prices: {
+    title: "Model prices",
+    description: "US dollars per million tokens; the batch multiplier applies to daily summaries.",
+    icon: IconPayments,
+    fields: ["pricing"],
+  },
+};
+
+const aiSectionGroups: { label: string; keys: AiSettingsSection[] }[] = [
+  { label: "Assistant", keys: ["assistant"] },
+  { label: "Budget", keys: ["spend", "limits", "night", "prices"] },
+];
+
+function isAiSection(value: string | null): value is AiSettingsSection {
+  return value != null && value in aiSections;
+}
 
 /**
  * AI › Settings (PRD-021 FR-6.4): the master `ai_config` (models, prices,
@@ -68,7 +135,10 @@ export function AiConfigTab() {
   return (
     <div>
       <PageHeader
-        title="AI settings"
+        type="page"
+        icon={<IconSettings aria-hidden />}
+        section="pink"
+        title="ZCOM AI settings"
         description="Models, prices, spend caps and limits for every store's AI. Changes reach every service within 60 seconds."
       />
       {api.error ? (
@@ -92,6 +162,9 @@ function AiConfigForm({ config, canManage }: { config: PlatformAiConfig; canMana
   const inFlight = useRef(false);
   const [update] = useMutation<{ updateAiConfig: PlatformAiConfig }>(UPDATE_AI_CONFIG);
   const models = useMemo(() => aiKnownModels(config), [config]);
+  const [params] = useSearchParams();
+  const sectionParam = params.get("section");
+  const active: AiSettingsSection = isAiSection(sectionParam) ? sectionParam : "assistant";
 
   const pending = aiConfigPatch(config, draft);
   const dirty = Object.keys(pending.input).length > 0 || Object.keys(pending.errors).length > 0;
@@ -164,150 +237,216 @@ function AiConfigForm({ config, canManage }: { config: PlatformAiConfig; canMana
     />
   );
 
+  // A section with an error shows a dot in the list, so a failed save is easy to find.
+  const hasError = (key: AiSettingsSection) => aiSections[key].fields.some((field) => !!errors[field]);
+  const paneGroups: PaneGroup[] = aiSectionGroups.map((group) => ({
+    label: group.label,
+    items: group.keys.map((key) => {
+      const Icon = aiSections[key].icon;
+      return {
+        key,
+        label: aiSections[key].title,
+        icon: <Icon aria-hidden />,
+        href: `?section=${key}`,
+        meta: hasError(key) ? <span aria-label="Has errors" className={cx("text-caption", toneTextClasses.danger)}>●</span> : undefined,
+      };
+    }),
+  }));
+  const meta = aiSections[active];
+
   return (
-    <div className="space-y-4">
-      {errors.form ? <p className={cx("text-body", toneTextClasses.danger)}>{errors.form}</p> : null}
+    <TwoPaneCard
+      showDetail={sectionParam != null}
+      back={{ href: "?", label: "ZCOM AI settings" }}
+      list={<PaneList aria-label="ZCOM AI settings sections" groups={paneGroups} activeKey={active} />}
+    >
+      <PaneHeader title={meta.title} description={meta.description} />
+      <div className="space-y-4">
+        {errors.form ? <p className={cx("text-body", toneTextClasses.danger)}>{errors.form}</p> : null}
 
-      <Card title="Assistant" description="Switch AI off for every store, and pick the models it may use.">
-        <div className="flex flex-col gap-4">
-          <Switch
-            isSelected={draft.enabled}
-            isReadOnly={readOnly}
-            onValueChange={(on) => setDraft((current) => ({ ...current, enabled: on }))}
-          >
-            AI is on for every store
-          </Switch>
-          {!draft.enabled ? (
-            <p className={cx("text-caption", toneTextClasses.warning)}>
-              Merchants see "The AI assistant is temporarily switched off".
-            </p>
-          ) : null}
-
-          <fieldset>
-            <legend className="mb-2 text-label text-fg-muted">Allowed models</legend>
-            <div className="flex flex-wrap gap-4">
-              {models.map((model) => (
-                <Checkbox
-                  key={model}
-                  isSelected={draft.allowedModels.includes(model)}
+        {/* Assistant (owner 2026-10-28 redesign): status row, one row per model, then the two model roles. */}
+        {active === "assistant" ? (
+          <>
+            <Card>
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-body font-semibold text-fg">ZCOM AI for every store</p>
+                    <Chip tone={draft.enabled ? "success" : "warning"}>{draft.enabled ? "On" : "Off"}</Chip>
+                  </div>
+                  <p className="mt-0.5 text-label text-fg-muted">
+                    {draft.enabled
+                      ? "Stores can ask questions and get their daily summary, within their plan's limits."
+                      : 'Merchants see "The AI assistant is temporarily switched off". Plans and store overrides are kept.'}
+                  </p>
+                </div>
+                <Switch
+                  aria-label="ZCOM AI for every store"
+                  isSelected={draft.enabled}
                   isReadOnly={readOnly}
-                  onValueChange={(on) => toggleModel(model, on)}
-                >
-                  {model}
-                </Checkbox>
-              ))}
-            </div>
-            {errors.allowedModels ? (
-              <p className={cx("mt-1 text-caption", toneTextClasses.danger)}>{errors.allowedModels}</p>
-            ) : null}
-          </fieldset>
+                  onValueChange={(on) => setDraft((current) => ({ ...current, enabled: on }))}
+                />
+              </div>
+            </Card>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {(["defaultModel", "reasoningModel"] as const).map((field) => (
-              <Select
-                key={field}
-                label={field === "defaultModel" ? "Default model" : "Reasoning model"}
-                description={field === "defaultModel" ? "Answers most questions." : "Used for harder questions."}
-                selectedKeys={draft[field] ? new Set([draft[field]]) : new Set()}
-                isDisabled={readOnly}
-                disallowEmptySelection
-                onSelectionChange={(keys) => {
-                  const value = Array.from(keys)[0];
-                  if (typeof value === "string") {
-                    setDraft((current) => ({ ...current, [field]: value }));
-                    setErrors((current) => ({ ...current, [field]: undefined }));
-                  }
-                }}
-                isInvalid={!!errors[field]}
-                errorMessage={errors[field]}
-              >
-                {draft.allowedModels.map((model) => (
-                  <SelectItem key={model}>{model}</SelectItem>
-                ))}
-              </Select>
-            ))}
-          </div>
-        </div>
-      </Card>
-
-      <Card title="Spend" description="Caps in US dollars; the rate converts them for reports in rupees.">
-        <div className="grid gap-4 sm:grid-cols-2">
-          {numberInput("globalDailySpendCapUsd", "Daily spend cap (USD)", "Past it, every store's assistant rests until tomorrow.")}
-          {numberInput("monthlyBudgetUsd", "Monthly budget (USD)")}
-          {numberInput("alertThresholds", "Budget alerts (%)", "Up to five, separated by commas, e.g. 50, 80, 100.")}
-          {numberInput("usdInrRate", "USD to INR rate")}
-        </div>
-      </Card>
-
-      <Card title="Limits" description="Per question and per store, on top of each plan's weekly questions.">
-        <div className="grid gap-4 sm:grid-cols-3">
-          {numberInput("perQuestionTokenCeiling", "Tokens per question")}
-          {numberInput("rateLimitPerMinute", "Questions per minute per store")}
-          {numberInput("benchmarkMinStores", "Stores per benchmark", "A benchmark shows only with at least this many stores.")}
-        </div>
-      </Card>
-
-      <Card title="Night window" description="No scheduled insights runs in this window, in each store's own time zone (24-hour).">
-        <div className="grid gap-4 sm:grid-cols-2">
-          {numberInput("nightCoolingStart", "Starts at")}
-          {numberInput("nightCoolingEnd", "Ends at")}
-        </div>
-      </Card>
-
-      <Card title="Model prices" description="US dollars per million tokens; the batch multiplier applies to daily summaries.">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-content-form text-body">
-            <thead>
-              <tr className="text-left text-label text-fg-muted">
-                <th className="py-2 pr-3 font-medium">Model</th>
-                {PRICE_COLUMNS.map((column) => (
-                  <th key={column.key} className="py-2 pr-3 font-medium">{column.label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {config.pricing.map((row) => (
-                <tr key={row.model} className="border-t border-line-subtle">
-                  <td className="py-2 pr-3 font-medium text-fg">{row.model}</td>
-                  {PRICE_COLUMNS.map((column) => (
-                    <td key={column.key} className="py-2 pr-3">
-                      <Input
-                        aria-label={`${row.model} ${column.label}`}
-                        size="sm"
-                        inputMode="decimal"
-                        value={draft.pricing[row.model]?.[column.key] ?? ""}
-                        onValueChange={(value) => setPrice(row.model, column.key, value)}
+            <Card title="Models" description="The models ZCOM AI may call. Switch one off to stop using it." padding="none">
+              <ul className="divide-y divide-line-subtle border-t border-line-subtle">
+                {models.map((model) => {
+                  const allowed = draft.allowedModels.includes(model);
+                  return (
+                    <li key={model} className="flex items-center justify-between gap-4 px-5 py-3">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <span className={cx("truncate font-mono text-label", allowed ? "text-fg" : "text-fg-subtle")}>
+                          {model}
+                        </span>
+                        {draft.defaultModel === model ? <Chip tone="info">Default</Chip> : null}
+                        {draft.reasoningModel === model ? <Chip tone="neutral">Reasoning</Chip> : null}
+                      </div>
+                      <Switch
+                        aria-label={`Allow ${model}`}
+                        isSelected={allowed}
                         isReadOnly={readOnly}
+                        onValueChange={(on) => toggleModel(model, on)}
                       />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {errors.pricing ? <p className={cx("mt-2 text-caption", toneTextClasses.danger)}>{errors.pricing}</p> : null}
-      </Card>
+                    </li>
+                  );
+                })}
+              </ul>
+              {errors.allowedModels ? (
+                <p className={cx("px-5 pb-3 text-caption", toneTextClasses.danger)}>{errors.allowedModels}</p>
+              ) : null}
+            </Card>
 
-      {canManage ? (
-        <div className="flex justify-end gap-2">
-          <UiButton
-            variant="ghost"
-            isDisabled={!dirty || busy}
-            onPress={() => {
-              setDraft(aiConfigDraft(config));
-              setErrors({});
-            }}
-          >
-            Discard changes
-          </UiButton>
-          <UiButton isDisabled={!dirty} isLoading={busy} onPress={() => void save()}>
-            Save AI settings
-          </UiButton>
-        </div>
-      ) : (
-        <p className="text-caption text-fg-muted">Changing AI settings needs the AI manage permission.</p>
-      )}
-    </div>
+            <Card title="Model roles" description="Which allowed model answers what." padding="none">
+              <ul className="divide-y divide-line-subtle border-t border-line-subtle">
+                {MODEL_ROLES.map((role) => (
+                  <li
+                    key={role.field}
+                    className="flex flex-col gap-3 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-body font-medium text-fg">{role.label}</p>
+                      <p className="mt-0.5 text-label text-fg-muted">{role.description}</p>
+                    </div>
+                    <Select
+                      aria-label={role.label}
+                      size="sm"
+                      className="w-full sm:w-64 sm:shrink-0"
+                      classNames={{ value: "font-mono" }}
+                      selectedKeys={draft[role.field] ? new Set([draft[role.field]]) : new Set()}
+                      isDisabled={readOnly}
+                      disallowEmptySelection
+                      onSelectionChange={(keys) => {
+                        const value = Array.from(keys)[0];
+                        if (typeof value === "string") {
+                          setDraft((current) => ({ ...current, [role.field]: value }));
+                          setErrors((current) => ({ ...current, [role.field]: undefined }));
+                        }
+                      }}
+                      isInvalid={!!errors[role.field]}
+                      errorMessage={errors[role.field]}
+                    >
+                      {draft.allowedModels.map((model) => (
+                        <SelectItem key={model} classNames={{ title: "font-mono" }}>
+                          {model}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </>
+        ) : (
+          <Card padding={active === "prices" ? "none" : "md"}>
+            {active === "spend" ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {numberInput("globalDailySpendCapUsd", "Daily spend cap (USD)", "Past it, every store's assistant rests until tomorrow.")}
+                {numberInput("monthlyBudgetUsd", "Monthly budget (USD)")}
+                {numberInput("alertThresholds", "Budget alerts (%)", "Up to five, separated by commas, e.g. 50, 80, 100.")}
+                {numberInput("usdInrRate", "USD to INR rate")}
+              </div>
+            ) : null}
+            {active === "limits" ? (
+              <div className="grid gap-4 sm:grid-cols-3">
+                {numberInput("perQuestionTokenCeiling", "Tokens per question")}
+                {numberInput("rateLimitPerMinute", "Questions per minute per store")}
+                {numberInput("benchmarkMinStores", "Stores per benchmark", "A benchmark shows only with at least this many stores.")}
+              </div>
+            ) : null}
+            {active === "night" ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {numberInput("nightCoolingStart", "Starts at")}
+                {numberInput("nightCoolingEnd", "Ends at")}
+              </div>
+            ) : null}
+            {active === "prices" ? (
+              // One row per model: its name, then the five prices as labelled fields (owner 2026-10-28).
+              <>
+                <ul className="divide-y divide-line-subtle">
+                  {config.pricing.map((row) => (
+                    <li key={row.model} className="px-5 py-4">
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-label font-medium text-fg">{row.model}</span>
+                        {draft.defaultModel === row.model ? <Chip tone="info">Default</Chip> : null}
+                        {draft.reasoningModel === row.model ? <Chip tone="neutral">Reasoning</Chip> : null}
+                        {!draft.allowedModels.includes(row.model) ? <Chip tone="neutral">Not allowed</Chip> : null}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+                        {PRICE_COLUMNS.map((column) => {
+                          const isMultiplier = column.key === "batchDiscount";
+                          return (
+                            <Input
+                              key={column.key}
+                              label={column.label}
+                              labelPlacement="outside"
+                              size="sm"
+                              inputMode="decimal"
+                              placeholder="0"
+                              startContent={isMultiplier ? null : <span className="text-label text-fg-subtle">$</span>}
+                              endContent={<span className="text-label text-fg-subtle">{isMultiplier ? "×" : "/M"}</span>}
+                              classNames={{ input: "num text-right" }}
+                              value={draft.pricing[row.model]?.[column.key] ?? ""}
+                              onValueChange={(value) => setPrice(row.model, column.key, value)}
+                              isReadOnly={readOnly}
+                            />
+                          );
+                        })}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {errors.pricing ? (
+                  <p className={cx("border-t border-line-subtle px-5 py-3 text-caption", toneTextClasses.danger)}>
+                    {errors.pricing}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+          </Card>
+        )}
+
+        {/* One save for every section: the draft keeps changes made in other sections. */}
+        {canManage ? (
+          <div className="flex justify-end gap-2">
+            <UiButton
+              variant="ghost"
+              isDisabled={!dirty || busy}
+              onPress={() => {
+                setDraft(aiConfigDraft(config));
+                setErrors({});
+              }}
+            >
+              Discard changes
+            </UiButton>
+            <UiButton isDisabled={!dirty} isLoading={busy} onPress={() => void save()}>
+              Save AI settings
+            </UiButton>
+          </div>
+        ) : (
+          <p className="text-caption text-fg-muted">Changing AI settings needs the AI manage permission.</p>
+        )}
+      </div>
+    </TwoPaneCard>
   );
 }

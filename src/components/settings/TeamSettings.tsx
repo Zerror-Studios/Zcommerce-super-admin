@@ -274,8 +274,8 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
             ? "They are signed out everywhere and can't log in again. Store sessions they opened with Log in end too."
             : "Their authenticator and recovery codes stop working. They set up two-step verification again at their next login."
         }
-        confirmLabel={confirmTarget?.action === "disable" ? "Disable" : "Reset two-step"}
-        confirmColor={confirmTarget?.action === "disable" ? "danger" : "warning"}
+        confirmLabel={confirmTarget?.action === "disable" ? "Disable member" : "Reset two-step"}
+        confirmColor="danger"
       />
 
       <Modal isOpen={roleTarget != null} onClose={() => setRoleTarget(null)} width="sm">

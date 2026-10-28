@@ -9,18 +9,21 @@
  */
 
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
+import { endOfDay, endOfMonth, format, startOfMonth } from "date-fns";
 import { useMemo, useState } from "react";
 import { useDebouncedValue } from "../../hooks/use-debounced-value";
 import { useInvoices } from "../../hooks/use-platform-reports";
 import { invoiceReasonLabel, toInvoiceActionRow } from "../../lib/platform-billing.util";
 import type { PlatformInvoice, PlatformInvoiceFilter, PlatformInvoiceStatus } from "../../types/platform-api";
+import { AppliedFilters, type AppliedFilterItem } from "../common/AppliedFilters";
 import { dataTableFillClassNames, tablePanelFillClassName } from "../common/dataTableStyles";
+import { DateRangeComparison, type DateRangeValue } from "../common/DateRangeComparison";
 import { LoadMoreFooter } from "../common/LoadMoreFooter";
+import { PageHeader } from "../common/PageHeader";
+import { TableToolbar } from "../common/TableToolbar";
 import {
   EmptyState,
   ErrorState,
-  Input,
-  SearchInput,
   Select,
   SelectItem,
   Skeleton,
@@ -29,6 +32,9 @@ import {
   tableRowClasses,
 } from "../ui";
 import { IconInvoice } from "../ui/icons";
+
+/** The Status select's "All statuses" option (no status filter). */
+const ALL = "__all";
 import { InvoiceDetailModal, InvoiceStatusChip } from "./InvoiceParts";
 import { InvoiceRowActions } from "./InvoiceRowActions";
 
@@ -59,21 +65,37 @@ function dayBound(value: string, end: boolean): string | null {
 
 export function InvoicesTab() {
   const [search, setSearch] = useState("");
-  const [statuses, setStatuses] = useState<PlatformInvoiceStatus[]>([]);
-  const [dueFrom, setDueFrom] = useState("");
-  const [dueTo, setDueTo] = useState("");
+  // Owner 2026-10-28: Status in the Filter popover (like Collections), the due date in the header's date picker.
+  const [status, setStatus] = useState<PlatformInvoiceStatus | null>(null);
+  const [due, setDue] = useState<DateRangeValue | null>(null);
+  const dueFrom = due ? format(due.startDate, "yyyy-MM-dd") : "";
+  const dueTo = due ? format(due.endDate, "yyyy-MM-dd") : "";
   const [open, setOpen] = useState<PlatformInvoice | null>(null);
   const debouncedSearch = useDebouncedValue(search.trim());
 
   const filter = useMemo<PlatformInvoiceFilter | null>(() => {
     const next: PlatformInvoiceFilter = {
       search: debouncedSearch || null,
-      status: statuses.length ? statuses : null,
+      status: status ? [status] : null,
       dueFrom: dayBound(dueFrom, false),
       dueTo: dayBound(dueTo, true),
     };
     return Object.values(next).some((value) => value != null) ? next : null;
-  }, [debouncedSearch, dueFrom, dueTo, statuses]);
+  }, [debouncedSearch, dueFrom, dueTo, status]);
+  // Seeds the calendar while no due date is picked.
+  const thisMonth = useMemo<DateRangeValue>(
+    () => ({ startDate: startOfMonth(new Date()), endDate: endOfDay(endOfMonth(new Date())) }),
+    [],
+  );
+  const applied: AppliedFilterItem[] = status
+    ? [
+        {
+          key: "status",
+          label: `Status: ${STATUS_OPTIONS.find((option) => option.key === status)?.label ?? status}`,
+          onRemove: () => setStatus(null),
+        },
+      ]
+    : [];
 
   const invoices = useInvoices(filter);
 
@@ -81,7 +103,7 @@ export function InvoicesTab() {
     const money = (amount: number) => formatMoney(amount, { currency: invoice.currency, paise: true });
     switch (key) {
       case "number":
-        return <span className="num font-medium text-fg">{invoice.number}</span>;
+        return <span className="num whitespace-nowrap font-medium text-fg">{invoice.number}</span>;
       case "store":
         return <span className="truncate text-fg">{invoice.tenantName}</span>;
       case "reason":
@@ -102,71 +124,89 @@ export function InvoicesTab() {
   };
 
   return (
-    <div className={tablePanelFillClassName}>
-      <div className="flex flex-wrap items-end gap-3 border-b border-line p-3">
-        <SearchInput
-          aria-label="Search invoices"
-          placeholder="Search by invoice number or store"
-          value={search}
-          onValueChange={setSearch}
-          className="w-full max-w-xs"
-        />
-        <Select
-          label="Status"
-          selectionMode="multiple"
-          selectedKeys={new Set(statuses)}
-          onSelectionChange={(keys) => setStatuses(Array.from(keys as Set<string>) as PlatformInvoiceStatus[])}
-          className="w-44"
-          size="sm"
-        >
-          {STATUS_OPTIONS.map((option) => (
-            <SelectItem key={option.key}>{option.label}</SelectItem>
-          ))}
-        </Select>
-        <Input label="Due from" type="date" size="sm" value={dueFrom} onValueChange={setDueFrom} className="w-40" />
-        <Input label="Due to" type="date" size="sm" value={dueTo} onValueChange={setDueTo} className="w-40" />
-      </div>
-
-      {invoices.error && invoices.data.length === 0 ? (
-        <ErrorState title="Couldn't load invoices." onRetry={() => void invoices.refetch()} />
-      ) : (
-        <Table aria-label="Invoices" classNames={{ ...dataTableFillClassNames, tr: tableRowClasses }}>
-          <TableHeader columns={columns}>
-            {(column) => (
-              <TableColumn key={column.key} align={column.end ? "end" : "start"}>
-                {column.label}
-              </TableColumn>
-            )}
-          </TableHeader>
-          <TableBody
-            isLoading={invoices.loading}
-            loadingContent={<Skeleton className="h-10 w-full rounded-lg" />}
-            items={invoices.data}
-            emptyContent={
-              <EmptyState
-                icon={IconInvoice}
-                title={filter ? "No invoices match these filters" : "No invoices yet"}
-                description={filter ? "Clear a filter to see more." : "Invoices appear here when stores are billed."}
-              />
-            }
-          >
-            {(invoice) => (
-              <TableRow key={invoice.id} onClick={() => setOpen(invoice)} className="cursor-pointer">
-                {(columnKey) => <TableCell>{renderCell(invoice, String(columnKey))}</TableCell>}
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      )}
-      <LoadMoreFooter
-        shown={invoices.data.length}
-        total={invoices.totalCount}
-        hasMore={invoices.hasMore && !invoices.error}
-        loading={invoices.loadingMore}
-        onLoadMore={invoices.loadMore}
-        noun="invoices"
+    <div>
+      <PageHeader
+        type="list"
+        icon={<IconInvoice aria-hidden />}
+        section="green"
+        title="Invoices"
+        description="Every invoice Zcommerce issued to a store, newest first."
+        actions={
+          <DateRangeComparison
+            value={due ?? thisMonth}
+            onChange={setDue}
+            anyLabel="Any due date"
+            isAny={!due}
+            onClear={() => setDue(null)}
+            maxDate={null}
+            compare={false}
+          />
+        }
       />
-      <InvoiceDetailModal invoice={open} onClose={() => setOpen(null)} />
+      <div className={tablePanelFillClassName}>
+        <TableToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search by invoice number or store"
+          filterContent={
+            <Select
+              label="Status"
+              size="sm"
+              selectedKeys={new Set([status ?? ALL])}
+              onSelectionChange={(keys) => {
+                const next = String(Array.from(keys)[0] ?? ALL);
+                setStatus(next === ALL ? null : (next as PlatformInvoiceStatus));
+              }}
+              disallowEmptySelection
+              items={[{ key: ALL, label: "All statuses" }, ...STATUS_OPTIONS]}
+            >
+              {(option) => <SelectItem key={option.key}>{option.label}</SelectItem>}
+            </Select>
+          }
+        />
+        <AppliedFilters items={applied} onClearAll={() => setStatus(null)} />
+
+        {invoices.error && invoices.data.length === 0 ? (
+          <ErrorState title="Couldn't load invoices." onRetry={() => void invoices.refetch()} />
+        ) : (
+          <Table aria-label="Invoices" classNames={{ ...dataTableFillClassNames, tr: tableRowClasses }}>
+            <TableHeader columns={columns}>
+              {(column) => (
+                <TableColumn key={column.key} align={column.end ? "end" : "start"}>
+                  {column.label}
+                </TableColumn>
+              )}
+            </TableHeader>
+            <TableBody
+              isLoading={invoices.loading}
+              loadingContent={<Skeleton className="h-10 w-full rounded-lg" />}
+              items={invoices.data}
+              emptyContent={
+                <EmptyState
+                  icon={IconInvoice}
+                  title={filter ? "No invoices match these filters" : "No invoices yet"}
+                  description={filter ? "Clear a filter to see more." : "Invoices appear here when stores are billed."}
+                />
+              }
+            >
+              {(invoice) => (
+                <TableRow key={invoice.id} onClick={() => setOpen(invoice)} className="cursor-pointer">
+                  {(columnKey) => <TableCell>{renderCell(invoice, String(columnKey))}</TableCell>}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+        <LoadMoreFooter
+          shown={invoices.data.length}
+          total={invoices.totalCount}
+          hasMore={invoices.hasMore && !invoices.error}
+          loading={invoices.loadingMore}
+          onLoadMore={invoices.loadMore}
+          noun="invoices"
+        />
+        <InvoiceDetailModal invoice={open} onClose={() => setOpen(null)} />
+      </div>
     </div>
   );
 }
