@@ -11,7 +11,7 @@
 
 import { useQuery } from "@apollo/client";
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { PLATFORM_STALE_PENDING_PAYMENTS } from "../../graphql/billing";
 import { getAppProviderLabel } from "../../lib/display-labels.util";
@@ -30,11 +30,13 @@ const STALE_PAYMENTS_LIMIT = 50;
 export interface StalePendingPaymentsProps {
   /** One store (ACTIVE or SUSPENDED); omit for every suspended store. */
   tenantId?: string;
+  /** Tabs on the left of the toolbar row (Subscriptions › Transactions: All payments · Flagged · Stuck). */
+  tabs?: ReactNode;
 }
 
 const tableBaseUnderToolbar = compactTableClassNames.base.replace("border-t border-line ", "");
 
-export function StalePendingPayments({ tenantId }: StalePendingPaymentsProps) {
+export function StalePendingPayments({ tenantId, tabs }: StalePendingPaymentsProps) {
   const query = useQuery<{ platformStalePendingPayments: StalePendingPaymentList }>(
     PLATFORM_STALE_PENDING_PAYMENTS,
     {
@@ -49,25 +51,33 @@ export function StalePendingPayments({ tenantId }: StalePendingPaymentsProps) {
     matchesText(search, row.tenantName, row.paymentId, row.orderId, row.provider ? getAppProviderLabel(row.provider) : null),
   );
 
+  const toolbar = tenantId ? null : (
+    <TableToolbar tabs={tabs} search={search} onSearchChange={setSearch} searchPlaceholder="Search stores or payments" />
+  );
+
   if (!list) {
     if (query.error) {
       return (
-        <ErrorState title="Couldn't read the pending payments." onRetry={() => void query.refetch()} />
+        <div>
+          {toolbar}
+          <ErrorState title="Couldn't read the pending payments." onRetry={() => void query.refetch()} />
+        </div>
       );
     }
     return (
-      <div className="space-y-2 p-4" role="status" aria-label="Loading the pending payments">
-        <Skeleton className="h-5 w-full rounded" />
-        <Skeleton className="h-5 w-3/4 rounded" />
+      <div>
+        {toolbar}
+        <div className="space-y-2 p-4" role="status" aria-label="Loading the pending payments">
+          <Skeleton className="h-5 w-full rounded" />
+          <Skeleton className="h-5 w-3/4 rounded" />
+        </div>
       </div>
     );
   }
 
   return (
     <div>
-      {tenantId ? null : (
-        <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Search stores or payments" />
-      )}
+      {toolbar}
       {list.partial ? (
         <p role="note" className={cx("px-4 pt-3 text-label", toneTextClasses.warning)}>
           Some stores couldn't be read; their payments are missing from this list.

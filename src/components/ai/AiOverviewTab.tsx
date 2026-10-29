@@ -4,7 +4,7 @@ import { formatInr, formatRate, formatUsd } from "../../lib/platform-ai.util";
 import { emptyStates, toasts } from "../../copy";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { PageHeader } from "../common/PageHeader";
-import { IconChat, IconWarning } from "../ui/icons";
+import { IconAi, IconWarning } from "../ui/icons";
 import {
   Card,
   EmptyState,
@@ -40,7 +40,7 @@ export function AiOverviewTab() {
     <div>
       <PageHeader
         type="page"
-        icon={<IconChat aria-hidden />}
+        icon={<IconAi aria-hidden />}
         section="pink"
         title="ZCOM AI overview"
         description="ZCOM AI spend and quality across every store."

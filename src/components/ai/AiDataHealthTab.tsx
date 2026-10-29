@@ -1,5 +1,5 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAiDataHealth } from "../../hooks/use-platform-ai";
 import { aiDataHealthIssues } from "../../lib/platform-ai.util";
@@ -32,7 +32,8 @@ const PAGE_SIZE = 25;
  * filled in) or a failed run. Use it to nudge merchants; the numbers come
  * from each store's latest snapshot.
  */
-export function AiDataHealthTab() {
+/** `tabs`: the ZCOM AI › Usage & data tabs, on the left of the toolbar row. */
+export function AiDataHealthTab({ tabs }: { tabs?: ReactNode } = {}) {
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
   // PRD-024 FR-1.10 (B-11): every store with insights, not only those needing a nudge.
@@ -77,7 +78,7 @@ export function AiDataHealthTab() {
       ) : null}
 
       <Card padding="none" className="overflow-hidden">
-        <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Search stores on this page" />
+        <TableToolbar tabs={tabs} search={search} onSearchChange={setSearch} searchPlaceholder="Search stores on this page" />
         {api.loading ? (
           <div className="space-y-3 p-4">
             {Array.from({ length: 4 }).map((_, index) => (

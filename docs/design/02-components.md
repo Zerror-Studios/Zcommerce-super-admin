@@ -78,7 +78,7 @@ Page header
 |---|---|---|
 | Primary | `--accent` bg, white text, hover `--accent-hover` | One per view |
 | Secondary | white, 1px `--border-strong`, `--text`; hover `--bg-subtle` | Other important actions, date picker |
-| Ghost | `--bg-muted` fill, `--text`; hover primary (`--accent` fill, white text) (owner 2026-10-27; was transparent, `--text-secondary`, hover `--bg-muted`) | Low emphasis: Import, Export, Cancel, Filter, Sort, Columns, row "Log in" |
+| Ghost | `--bg-muted` fill, `--text`; hover light blue (`--accent-subtle` fill, `--accent` text; owner 2026-10-29, was solid `--accent` with white text) (owner 2026-10-27; was transparent, `--text-secondary`, hover `--bg-muted`) | Low emphasis: Import, Export, Cancel, Filter, Sort, Columns, row "Log in" |
 | Destructive | white, 1px `--critical-border`, `--critical-fg`; filled `--critical-fg` inside confirm modals | Delete, Suspend, Refund |
 | Link | `--accent` text, underline on hover | "View all", inline links |
 
@@ -165,7 +165,7 @@ Footer:        1–20 of 248                                       Previous  Nex
 - **Popover/menu**: white, 1px `--border`, radius 12, `--shadow-md`, padding 4px; items 32px, radius 8, hover `--bg-muted`; destructive items last, after a divider, in `--critical-fg`.
 - **Tooltip**: `--text` bg, white 12px, radius 6, 400ms delay.
 - **Modal**: 480/640px, radius 16, `--shadow-lg`, backdrop rgba(17,19,24,.4). Title 16/600 + close; footer right: ghost Cancel + one primary/destructive. Fade + 4px rise, 220ms.
-- **Drawer** (right, 420–560px): quick view/edit and the AI assistant. Slide 220ms.
+- **Drawer** (right; kit `Drawer`): quick view/edit and the AI assistant. Every drawer the same (owner 2026-10-29): square corners, full height, 40% ink backdrop (the assistant too), title 16/600 with a bottom border, ghost close button, slim scrollbar. Two widths: **md 480px** (default: Search listing, block settings, details, assistant) and **lg 560px** (tables, image settings, variant editing). Full width on phones. Slide 220ms.
 - **Destructive confirm**: title "Delete Aura Apparel?", one sentence of consequence, button "Delete store".
 
 ## 12. Toasts and notifications panel
@@ -188,7 +188,7 @@ Footer:        1–20 of 248                                       Previous  Nex
 ## 14. Charts
 
 - Trends: main series 2px `--chart-1` + soft vertical gradient fill (14% → 0%); previous period 1.5px dashed `--chart-compare`; gridlines 1px `--chart-grid`, horizontal only; axis labels 12px tertiary; ₹ axis abbreviated (₹25k, ₹1.2L, ₹3.4Cr). Projected values: dashed `--chart-projected` outline bars.
-- Ranked categories: thin neutral bars (`--text` on `--bg-muted` track) with value on the right.
+- Ranked categories: thin primary bars (`--accent` on `--bg-muted` track; owner 2026-10-29, was `--text`) with value on the right.
 - Donuts only for ≤4 parts; otherwise a list or stacked bar. Categorical palette in token order.
 - Legend top-right, inline 12px. Tooltip uses the popover style.
 

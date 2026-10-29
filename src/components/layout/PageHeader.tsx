@@ -1,9 +1,10 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
-import type { ReactNode } from "react";
+import { useContext, useLayoutEffect, useRef, type ReactNode } from "react";
 import { BackLink } from "../ui/Primitives";
 import { IconTile, sectionClass, type SectionColor } from "../ui/IconTile";
 import { cx } from "../ui/cx";
 import type { Crumb } from "./types";
+import { PageIconContext } from "./page-icon";
 
 /**
  * The three headers (docs/design/09-settings-and-scale.md §2). Every page uses exactly one:
@@ -95,12 +96,33 @@ export function PageHeader({
   const backLink = back ?? backFromCrumbs(breadcrumbs);
   const kind: PageHeaderType | undefined = type ?? (backLink ? "detail" : icon ? "page" : undefined);
   const isSticky = sticky ?? (kind === "detail" && actions != null);
-  const showTile = icon != null && kind !== "detail";
+  // Every header has its icon box, detail pages too; without its own icon it takes the section's
+  // (PageIconContext, owner 2026-10-29).
+  const sectionIcon = useContext(PageIconContext);
+  const tileIcon = icon ?? sectionIcon;
+  const showTile = tileIcon != null;
+  const ref = useRef<HTMLDivElement>(null);
+
+  // A sticky header publishes its height as --zc-sticky-header-h, so other sticky parts (the two-pane list)
+  // stop below it instead of sliding under it (owner 2026-10-29: store detail's list lost its top rows).
+  useLayoutEffect(() => {
+    const node = ref.current;
+    if (!isSticky || !node) return;
+    const root = document.documentElement;
+    const update = () => root.style.setProperty("--zc-sticky-header-h", `${node.offsetHeight}px`);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--zc-sticky-header-h");
+    };
+  }, [isSticky]);
 
   const body = (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-center gap-3.5">
-        {showTile ? <IconTile section={section}>{icon}</IconTile> : null}
+        {showTile ? <IconTile section={section}>{tileIcon}</IconTile> : null}
         <div className="min-w-0">
           <Title title={title} count={count} badges={badges} />
           {description != null ? <div className="mt-0.5 text-body text-fg-muted">{description}</div> : null}
@@ -112,6 +134,7 @@ export function PageHeader({
 
   return (
     <div
+      ref={ref}
       className={cx(
         "mb-4",
         sectionClass(section),

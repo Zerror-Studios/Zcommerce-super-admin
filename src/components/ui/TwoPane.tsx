@@ -3,9 +3,12 @@
  * The two-pane card (docs/design/09-settings-and-scale.md §1, §2B): one card, a 260px list of things on the
  * left, the selected one on the right. Used by Settings, campaign channel pages, Roles, Locations, plans…
  * Below 1024px it stacks: the list is the page, and opening an item shows only the detail with a back link.
+ * From 1024px (owner 2026-10-29): the card is at least the screen's height below the page header, so the list
+ * keeps its size when a section is short, and the list sticks to the top while a long section scrolls.
  */
 import { useRef, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { PageIconContext } from "../layout/page-icon";
 import { BackLink } from "./Primitives";
 import { cx } from "./cx";
 
@@ -28,14 +31,17 @@ export interface TwoPaneCardProps {
 
 export function TwoPaneCard({ list, children, showDetail, back, className }: TwoPaneCardProps) {
   return (
-    <div className={cx("overflow-hidden rounded-panel border border-line bg-surface lg:flex", className)}>
+    // overflow-clip (not hidden) keeps the rounded corners without making the card a scroll box, so the
+    // list can stick. 13rem ≈ the app's top padding plus a page header.
+    <div className={cx("overflow-clip rounded-panel border border-line bg-surface lg:flex lg:min-h-[calc(100dvh-13rem)]", className)}>
       <aside
         className={cx(
           "shrink-0 bg-pane px-2.5 py-3 lg:w-pane lg:border-r lg:border-line",
           showDetail && "hidden lg:block",
         )}
       >
-        {list}
+        {/* Below a sticky page header when there is one (it sets --zc-sticky-header-h), else 16px from the top. */}
+        <div className="lg:sticky lg:top-[calc(var(--zc-sticky-header-h,0px)+1rem)]">{list}</div>
       </aside>
       <div className={cx("min-w-0 flex-1 px-4 pb-8 pt-5 sm:px-7 sm:pt-6", !showDetail && "hidden lg:block")}>
         {back ? (
@@ -43,7 +49,8 @@ export function TwoPaneCard({ list, children, showDetail, back, className }: Two
             {back.label}
           </BackLink>
         ) : null}
-        {children}
+        {/* Sections here have pane headers, not page headers: no section icon box. */}
+        <PageIconContext.Provider value={null}>{children}</PageIconContext.Provider>
       </div>
     </div>
   );

@@ -38,7 +38,7 @@ Reference images:
 
 ### 1.1 Support banner ("Zerror support is signed in…")
 - **Problem:** sits inside the page under the padding, pushes content, can't be closed.
-- **Fix:** a **36px full-width strip at the very top of the window**, above the sidebar and page (`position: sticky; top: 0`). Amber (`--warning-bg` #FFF4E5, text #7A4B00, bottom border #F6E2C2). Shield icon · "You're viewing **{Store}** as Zerror support. Changes are logged." · **Exit** link · **×** to hide for this session (remember in sessionStorage; the Exit link stays available in the user menu). Ref 13.
+- **Fix:** a **36px full-width strip at the very top of the window**, above the sidebar and page (`position: sticky; top: 0`). Amber (`--warning-bg` #FFF4E5, text #7A4B00, bottom border #F6E2C2). Shield icon · "You're viewing **{Store}** as Zerror admin. Changes are logged." (owner 2026-10-29: nothing after it, no email or reason) · **Exit** link · **×** to hide for this session (remember in sessionStorage; the Exit link stays available in the user menu). Ref 13.
 
 ### 1.2 Buttons that should have colour
 - **Problem:** everything is grey/white; the eye has nowhere to go.

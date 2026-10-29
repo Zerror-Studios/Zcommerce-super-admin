@@ -1,6 +1,6 @@
 import type { NavItem } from "../components/layout/types";
 import { PLATFORM_PERMISSIONS, type PlatformPermission } from "../lib/permissions";
-import { IconAnalytics, IconBilling, IconChat, IconHome, IconSettings, IconStore } from "../components/ui/icons";
+import { IconAnalytics, IconBilling, IconAi, IconHome, IconSend, IconSettings, IconStore } from "../components/ui/icons";
 
 /**
  * Super Admin navigation (docs/design/04-super-admin.md §1, sections renamed by the owner 2026-10-16:
@@ -18,14 +18,12 @@ export const mainNavItems: NavItem[] = [
     children: [
       { label: "Collections", to: "/billing/subscriptions" },
       { label: "Invoices", to: "/billing/invoices" },
+      // Flagged payments (PRD-016 FR-19) and stuck store payments (PRD-018 FR-1.8) are tabs inside Transactions.
       { label: "Transactions", to: "/billing/transactions" },
-      // PRD-016 FR-19: payments that need a person (amount mismatch, paid while stopped).
-      { label: "Flagged payments", to: "/billing/flagged" },
-      // PRD-018 FR-1.8: store payments pending > 48 h in suspended stores.
-      { label: "Stuck store payments", to: "/billing/stuck" },
-      { label: "Payment reminders", to: "/billing/reminders" },
     ],
   },
+  // Owner 2026-10-29: its own entry, not under Subscriptions.
+  { key: "reminders", label: "Payment reminders", to: "/reminders", icon: IconSend },
   {
     key: "analytics",
     label: "Analytics",
@@ -45,14 +43,12 @@ export const mainNavItems: NavItem[] = [
     key: "ai",
     label: "ZCOM AI",
     to: "/ai",
-    icon: IconChat,
+    icon: IconAi,
     // PRD-021 FR-6: shown only with platform:ai:read (`visibleNavItems`).
     children: [
       { label: "Overview", to: "/ai/overview" },
-      { label: "Usage by store", to: "/ai/usage" },
-      { label: "Top-up requests", to: "/ai/top-ups" },
-      { label: "Data health", to: "/ai/data-health" },
-      { label: "Benchmarks", to: "/ai/benchmarks" },
+      // Usage by store, Top-up requests, Data health and Benchmarks are its tabs (owner 2026-10-29).
+      { label: "Usage & data", to: "/ai/usage" },
       { label: "Settings", to: "/ai/settings" },
     ],
   },

@@ -1,6 +1,6 @@
 import { useApolloClient } from "@apollo/client";
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { AI_USAGE_CSV } from "../../graphql/ai";
 import { useAiUsageByTenant } from "../../hooks/use-platform-ai";
@@ -13,7 +13,7 @@ import { toasts } from "../../copy";
 import { dataTableClassNames } from "../common/dataTableStyles";
 import { PageHeader } from "../common/PageHeader";
 import { TableToolbar } from "../common/TableToolbar";
-import { IconChat, IconDownload } from "../ui/icons";
+import { IconAi, IconDownload } from "../ui/icons";
 import {
   Button as UiButton,
   Card,
@@ -38,7 +38,8 @@ const right = "block text-right num";
  * order), with the CSV export. Each row opens the store page, where the
  * store's AI setting, top-ups and top questions live.
  */
-export function AiUsageTab() {
+/** `tabs`: the ZCOM AI › Usage & data tabs, on the left of the toolbar row. */
+export function AiUsageTab({ tabs }: { tabs?: ReactNode } = {}) {
   const navigate = useNavigate();
   const client = useApolloClient();
   const [search, setSearch] = useState("");
@@ -67,20 +68,20 @@ export function AiUsageTab() {
 
   const emptyContent = debouncedSearch ? (
     <EmptyState
-      icon={IconChat}
+      icon={IconAi}
       title={`No stores match "${debouncedSearch}"`}
       description="Search by store name or slug."
       action={<UiButton variant="secondary" onPress={() => setSearch("")}>Clear search</UiButton>}
     />
   ) : (
-    <EmptyState icon={IconChat} title="No AI use yet" description="Stores appear here once they ask Ask ZCOM a question." />
+    <EmptyState icon={IconAi} title="No AI use yet" description="Stores appear here once they ask Ask ZCOM a question." />
   );
 
   return (
     <div>
       <PageHeader
         type="list"
-        icon={<IconChat aria-hidden />}
+        icon={<IconAi aria-hidden />}
         section="pink"
         title="ZCOM AI usage by store"
         count={total || undefined}
@@ -98,6 +99,7 @@ export function AiUsageTab() {
 
       <Card padding="none" className="overflow-hidden">
         <TableToolbar
+          tabs={tabs}
           search={search}
           onSearchChange={(value) => {
             setSearch(value);

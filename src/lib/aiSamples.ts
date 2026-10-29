@@ -76,7 +76,7 @@ export function platformBrief(input: { clients: Client[]; subscriptions: Subscri
 
   const actions: PlatformBrief["actions"] = [];
   if (pastGrace.length || overdue.length) actions.push({ label: "Review overdue stores", href: "/stores?tab=overdue" });
-  if (due.length) actions.push({ label: "Payment reminders", href: "/billing/reminders" });
+  if (due.length) actions.push({ label: "Payment reminders", href: "/reminders" });
   actions.push({ label: "View stores", href: "/stores" });
   return { lines: lines.slice(0, 3), actions: actions.slice(0, 3) };
 }
@@ -168,7 +168,7 @@ export async function sampleAssistantAnswer(question: string, data: AssistantDat
       },
       actions: [
         { label: "Open collections", href: "/billing/subscriptions", primary: true },
-        { label: "Payment reminders", href: "/billing/reminders" },
+        { label: "Payment reminders", href: "/reminders" },
       ],
       used: "Used: subscriptions, invoices",
       sample: true,

@@ -27,6 +27,8 @@ export { IconButton } from "./IconButton";
 export type { IconButtonProps, IconButtonSize, IconButtonVariant } from "./IconButton";
 export { Input } from "./Input";
 export type { InputProps } from "./Input";
+export { Drawer } from "./Drawer";
+export type { DrawerProps } from "./Drawer";
 export { Modal } from "./Modal";
 export type { ModalProps } from "./Modal";
 export { SearchInput } from "./SearchInput";
@@ -83,6 +85,10 @@ export type { Tone } from "./tones";
 export * from "./icons";
 
 export {
+  DrawerBody,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
   DropdownItem,
   DropdownSection,
   DropdownTrigger,

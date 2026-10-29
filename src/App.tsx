@@ -82,7 +82,10 @@ export default function App() {
           <Route path="clients/:id" element={<LegacyStoreRedirect />} />
 
           <Route path="billing" element={<Navigate to="/billing/subscriptions" replace />} />
+          {/* Payment reminders has its own sidebar entry (owner 2026-10-29); the old address redirects. */}
+          <Route path="billing/reminders" element={<Navigate to="/reminders" replace />} />
           <Route path="billing/:section" element={<Billing />} />
+          <Route path="reminders" element={<Billing section="reminders" />} />
 
           <Route path="analytics" element={<Navigate to="/analytics/revenue" replace />} />
           <Route path="analytics/:section" element={<Analytics />} />
@@ -92,8 +95,8 @@ export default function App() {
           <Route path="ai/:section" element={<Ai />} />
 
           <Route path="settings" element={<Settings />} />
-          {/* Payment reminders moved from Settings to Subscriptions. */}
-          <Route path="settings/automation" element={<Navigate to="/billing/reminders" replace />} />
+          {/* Payment reminders moved from Settings to its own page. */}
+          <Route path="settings/automation" element={<Navigate to="/reminders" replace />} />
           <Route path="settings/:section" element={<Settings />} />
 
           {/* MFA enrolment (PRD-005 FR-1.4). */}

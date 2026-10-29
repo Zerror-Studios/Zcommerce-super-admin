@@ -20,3 +20,17 @@ body {
 /* .custom-scroll (slim scrollbar) now lives in the shared src/styles/theme.css. */
 
 
+
+/* Everything inside drawers and dialogs scrolls with the slim .custom-scroll bar (theme.css) instead of the
+   browser's default, same as the store dashboard (owner 2026-10-29). `.no-scrollbar` still hides a bar: it
+   uses display: none, untouched here. */
+[role="dialog"]::-webkit-scrollbar,
+[role="dialog"] *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+[role="dialog"]::-webkit-scrollbar-thumb,
+[role="dialog"] *::-webkit-scrollbar-thumb {
+  background: var(--zc-scrollbar-thumb);
+  border-radius: 999px;
+}

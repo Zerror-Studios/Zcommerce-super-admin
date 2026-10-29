@@ -68,6 +68,7 @@ export {
   LuShapes as IconCategory,
   LuChartColumn as IconChartBar,
   LuMessageSquare as IconChat,
+  LuSparkles as IconAi,
   LuCloudUpload as IconCloudUpload,
   LuCode as IconCode,
   LuDroplet as IconColor,

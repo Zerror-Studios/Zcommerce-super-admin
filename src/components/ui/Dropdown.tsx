@@ -10,6 +10,7 @@ export type DropdownMenuProps<T extends object = object> = HeroDropdownMenuProps
 /**
  * Dropdown popover (component-specs §6). Keyboard handling and focus return come from HeroUI.
  * HeroUI dims and shrinks the trigger while open (opacity 70%, scale .97); that is turned off so it doesn't flash.
+ * HeroUI's 200px minimum width is 160px here (owner 2026-10-29: menus were too wide); longer items still widen it.
  */
 export function Dropdown({ classNames, motionProps, ...rest }: DropdownProps) {
   return (
@@ -18,18 +19,22 @@ export function Dropdown({ classNames, motionProps, ...rest }: DropdownProps) {
       classNames={{
         ...classNames,
         trigger: cx("aria-expanded:scale-100 aria-expanded:opacity-100", classNames?.trigger),
-        content: cx(menuPopoverClasses, classNames?.content),
+        content: cx(menuPopoverClasses, "min-w-40", classNames?.content),
       }}
       {...rest}
     />
   );
 }
 
-/** Menu with design-system item states. For a destructive item add menuItemDangerClasses. */
-export function DropdownMenu<T extends object = object>({ itemClasses, variant = "flat", ...rest }: DropdownMenuProps<T>) {
+/**
+ * Menu with design-system item states. For a destructive item add menuItemDangerClasses.
+ * The popover already has the 4px padding, so the menu's own (another 4px) is removed.
+ */
+export function DropdownMenu<T extends object = object>({ itemClasses, classNames, variant = "flat", ...rest }: DropdownMenuProps<T>) {
   return (
     <HeroDropdownMenu<T>
       variant={variant}
+      classNames={{ ...classNames, base: cx("p-0", classNames?.base) }}
       itemClasses={{
         ...menuItemClasses,
         ...itemClasses,

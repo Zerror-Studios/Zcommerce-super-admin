@@ -3,11 +3,12 @@
  * Dark sidebar (docs/design/02-components.md §1, ref 01/05/07). Top to bottom: wordmark → search (⌘K) →
  * navigation → divider + secondary items → spacer → Notifications → Settings → user row (avatar, name,
  * "{Store} · {Role}"; no email) or a plain red Log out row.
- * 248px, or a 64px icon rail when collapsed. Only the active section shows its children. No blue except
+ * 248px, or a 64px icon rail when collapsed. Only the active section shows its children; clicking its row again
+ * folds them away (and back). No blue except
  * the unread count pill.
  */
 import { DropdownItem, DropdownSection, DropdownTrigger } from "@heroui/react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { cx } from "../ui/cx";
 import { Avatar } from "../ui/Media";
@@ -323,6 +324,13 @@ function NavEntry({ item, collapsed, isActive, onNavigate }: { item: NavItem } &
     children.some((child) => isActive(child.to)) || (item.to != null && isActive(item.to, item.end));
   const target = item.to && !children.length ? item.to : (children[0]?.to ?? item.to ?? "#");
   const count = item.count ?? 0;
+  // The active section opens by itself; a click on its row folds it. Leaving the section resets that.
+  const [folded, setFolded] = useState(false);
+  useEffect(() => {
+    if (!sectionActive) setFolded(false);
+  }, [sectionActive]);
+  const open = sectionActive && !folded;
+  const toggles = sectionActive && children.length > 0 && !collapsed;
 
   return (
     <>
@@ -331,7 +339,15 @@ function NavEntry({ item, collapsed, isActive, onNavigate }: { item: NavItem } &
           to={target}
           end={item.end}
           aria-current={sectionActive && !children.length ? "page" : undefined}
-          onClick={() => onNavigate?.()}
+          aria-expanded={toggles ? open : undefined}
+          onClick={(event) => {
+            if (toggles) {
+              event.preventDefault();
+              setFolded((value) => !value);
+              return;
+            }
+            onNavigate?.();
+          }}
           className={cx(rowBase, collapsed && "justify-center px-0", sectionActive ? rowActive : rowIdle)}
         >
           <Icon aria-hidden className="size-4 shrink-0" />
@@ -345,7 +361,7 @@ function NavEntry({ item, collapsed, isActive, onNavigate }: { item: NavItem } &
               {children.length ? (
                 <IconCaret
                   aria-hidden
-                  className={cx("size-3.5 shrink-0 transition-transform duration-fast", !sectionActive && "-rotate-90")}
+                  className={cx("size-3.5 shrink-0 transition-transform duration-fast", !open && "-rotate-90")}
                 />
               ) : null}
             </>
@@ -353,7 +369,7 @@ function NavEntry({ item, collapsed, isActive, onNavigate }: { item: NavItem } &
         </NavLink>
       </WithTooltip>
 
-      {sectionActive && children.length && !collapsed ? (
+      {open && children.length && !collapsed ? (
         <ul className="mt-1 flex flex-col gap-0.5 rounded-lg bg-nav-sub p-1">
           {children.map((child) => {
             const active = isActive(child.to);

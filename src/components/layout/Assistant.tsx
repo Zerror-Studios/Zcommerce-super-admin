@@ -3,12 +3,13 @@
  * Ask bar + assistant panel (docs/design/02-components.md §16 items 3–4, ref 01/04). Render only when the `ai`
  * flag is on. The app supplies `onAsk`; until a backend exists it returns sample answers marked as such.
  */
-import { Drawer, DrawerBody, DrawerContent, DrawerFooter, DrawerHeader } from "@heroui/react";
+import { DrawerBody, DrawerContent, DrawerFooter, DrawerHeader } from "@heroui/react";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { AiFeedback, AiThinking, Sparkle } from "../ui/Ai";
 import { Button } from "../ui/Button";
 import { cx } from "../ui/cx";
+import { Drawer } from "../ui/Drawer";
 import { IconAdd, IconArrowRight, IconClose } from "../ui/icons";
 import { IconButton } from "../ui/IconButton";
 import { Kbd } from "../ui/Primitives";
@@ -142,10 +143,7 @@ export function AssistantPanel({
     <Drawer
       isOpen={isOpen}
       onOpenChange={(open) => !open && onClose()}
-      placement="right"
       hideCloseButton
-      backdrop="transparent"
-      classNames={{ base: "w-full max-w-assistant rounded-none border-l border-line bg-surface shadow-modal" }}
     >
       <DrawerContent>
         <DrawerHeader className="flex items-center gap-2 border-b border-line px-4 py-3">

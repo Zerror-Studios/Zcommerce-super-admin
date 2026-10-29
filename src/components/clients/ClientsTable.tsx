@@ -422,9 +422,6 @@ export function ClientsTable({
       case "view":
         navigate(`/stores/${client.id}`);
         break;
-      case "login":
-        void logInToStore(client);
-        break;
       case "suspend":
       case "reactivate":
       case "delete":
@@ -509,7 +506,6 @@ export function ClientsTable({
               <DropdownMenu aria-label={`Actions for ${client.storeName}`} onAction={(actionKey) => onMenuAction(client, actionKey)}>
                 <DropdownSection showDivider={canDelete} aria-label="Store">
                   <DropdownItem key="view">View details</DropdownItem>
-                  {canImpersonate ? <DropdownItem key="login">Log in</DropdownItem> : null}
                   {canManage ? (
                     <DropdownItem key={isSuspended ? "reactivate" : "suspend"}>
                       {isSuspended ? "Reactivate store" : "Suspend store"}

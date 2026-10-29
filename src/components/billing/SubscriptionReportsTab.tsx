@@ -1,4 +1,4 @@
-import { endOfDay, startOfDay, startOfMonth } from "date-fns";
+import { endOfDay, format, startOfDay, startOfMonth } from "date-fns";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { PlanName, SubscriptionHealthBucket } from "../../types";
@@ -6,10 +6,9 @@ import { getPlanLabel, PLAN_NAMES } from "../../lib/display-labels.util";
 import { collectionsPlanIdForTier, latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { useClients } from "../../providers/ClientsProvider";
 import { useCollections } from "../../hooks/use-platform-reports";
-import { InvoiceRowActions } from "./InvoiceRowActions";
 import { downloadCsv, rowsToCsv } from "../../lib/report-csv";
 import { paymentState } from "../../lib/storeStatus";
-import type { PaymentReportRow, ReportDrillFilter, ShopReportRow } from "../../types/reports";
+import type { ReportDrillFilter, ShopReportRow } from "../../types/reports";
 import { formatDate } from "../../lib/utils";
 import {
   DateRangeComparison,
@@ -35,9 +34,6 @@ import {
   Select,
   SelectItem,
   StatCard,
-  StatusChip,
-  Tab,
-  Tabs,
   cx,
   formatCount,
   formatMoney,
@@ -54,9 +50,6 @@ const defaultRange: DateRangeValue = {
   startDate: startOfMonth(AS_OF),
   endDate: endOfDay(AS_OF),
 };
-
-/** URL keys stay "shops"/"payments" internally; the tabs read Stores · Invoices. */
-type TableView = "shops" | "payments";
 
 const shopColumns = [
   { key: "storeName", label: "Store" },
@@ -82,26 +75,12 @@ const shopCsvColumns = [
   { key: "daysOverdue", label: "Days overdue" },
 ];
 
-const paymentColumns = [
-  { key: "shopName", label: "Store" },
-  { key: "plan", label: "Plan" },
-  { key: "amount", label: "Amount" },
-  { key: "dueDate", label: "Due date" },
-  { key: "paidDate", label: "Paid on" },
-  { key: "status", label: "Status" },
-];
-
-const rightAligned = new Set(["amountDue", "daysOverdue", "amount"]);
+const rightAligned = new Set(["amountDue", "daysOverdue"]);
 
 const shopTableColumns: DataTableColumn[] = shopColumns.map((c) => ({
   ...c,
   align: rightAligned.has(c.key) ? "end" : undefined,
 }));
-
-const paymentTableColumns: DataTableColumn[] = [
-  ...paymentColumns.map((c): DataTableColumn => ({ ...c, align: rightAligned.has(c.key) ? "end" : undefined })),
-  { key: "actions", label: "Actions", hideLabel: true },
-];
 
 /** subscriptionHealth buckets → the one health wording used everywhere (Healthy / At risk / Critical). */
 const healthDisplay: Record<SubscriptionHealthBucket, { label: string; tone: Tone }> = {
@@ -127,10 +106,7 @@ const drillLabels: Record<ReportDrillFilter, string> = {
   expected: "Expected",
 };
 
-const drillOptions: Record<TableView, ReportDrillFilter[]> = {
-  shops: ["all", "pending", "overdue", "overdue_grace", "renewals_7", "renewals_30", "churned_month"],
-  payments: ["all", "paid_month", "pending", "overdue"],
-};
+const drillOptions: ReportDrillFilter[] = ["all", "pending", "overdue", "overdue_grace", "renewals_7", "renewals_30", "churned_month"];
 
 const planOptions = ["all", ...PLAN_NAMES] as const;
 
@@ -144,8 +120,7 @@ export function SubscriptionReportsTab() {
   const navigate = useNavigate();
   const { subscriptions, plans: planList } = useClients();
   const [range, setRangeState] = useState<DateRangeValue>(defaultRange);
-  // Tab, drill-down, plan, health, search and page live in the URL (docs/design/09-settings-and-scale.md §3.1),
-  // so the KPI cells can be plain links (?tab=invoices&show=overdue).
+  // Drill-down, plan, health, search and page live in the URL (docs/design/09-settings-and-scale.md §3.1).
   const table = useTableUrlState();
   // The rollup runs on the server: the URL (and the query) see the search once typing stops (review C-M6).
   const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
@@ -162,12 +137,10 @@ export function SubscriptionReportsTab() {
   };
   const [visibleShopColumns, setVisibleShopColumns] = usePersistentColumns("collections-stores", defaultShopColumns);
 
-  const tableView: TableView = table.filters.tab === "invoices" ? "payments" : "shops";
   const showParam = table.filters.show ?? null;
   const drill: ReportDrillFilter = isDrill(showParam) ? showParam : "all";
 
   const setDrill = (show: ReportDrillFilter) => table.setFilter("show", show === "all" ? undefined : show);
-  const setTableView = (tab: TableView) => table.setFilter("tab", tab === "payments" ? "invoices" : undefined);
 
   // PRD-005 FR-5.3: the server applies the range, filters and drill.
   const api = useCollections({
@@ -183,7 +156,6 @@ export function SubscriptionReportsTab() {
   const error = api.error;
   const overview = error ? null : (api.data?.overview ?? null);
   const shopRows = api.data?.shopRows ?? [];
-  const paymentRows = api.data?.paymentRows ?? [];
 
   // KPI strip (PRD-024 FR-2.3): every cell is the server's figure for one range. Due = invoices due in the range;
   // Collected = what those invoices were paid (and its share); Received = payments received in the range,
@@ -206,45 +178,31 @@ export function SubscriptionReportsTab() {
 
   const subscriptionByClient = useMemo(() => latestSubscriptionByClient(subscriptions), [subscriptions]);
 
-  const activeRows = tableView === "shops" ? shopRows : paymentRows;
-  const pageCount = Math.max(1, Math.ceil(activeRows.length / table.pageSize));
+  const pageCount = Math.max(1, Math.ceil(shopRows.length / table.pageSize));
   const safePage = Math.min(table.page, pageCount);
-  const pageItems = activeRows.slice((safePage - 1) * table.pageSize, safePage * table.pageSize);
+  const pageItems = shopRows.slice((safePage - 1) * table.pageSize, safePage * table.pageSize);
 
   const isThisMonth =
     startOfDay(range.startDate).getTime() === startOfMonth(AS_OF).getTime();
   const hasFilters = plan !== "all" || health !== "all" || drill !== "all" || table.search.trim() !== "";
   const clearFilters = () => {
     setSearch("");
-    // One URL write; the tab stays.
+    // One URL write.
     table.setParams({ plan: undefined, health: undefined, show: undefined, q: undefined });
   };
 
   const exportCsv = () => {
-    if (tableView === "shops") {
-      const csv = rowsToCsv(
-        shopRows.map((r) => ({
-          ...r,
-          plan: getPlanLabel(r.plan),
-          health: healthDisplay[r.health].label,
-          lastPaymentDate: r.lastPaymentDate ? formatDate(r.lastPaymentDate) : "",
-          nextDueDate: r.nextDueDate ? formatDate(r.nextDueDate) : "",
-        })),
-        shopCsvColumns,
-      );
-      downloadCsv("collections-stores.csv", csv);
-    } else {
-      const csv = rowsToCsv(
-        paymentRows.map((r) => ({
-          ...r,
-          plan: getPlanLabel(r.plan),
-          dueDate: r.dueDate ? formatDate(r.dueDate) : "",
-          paidDate: r.paidDate ? formatDate(r.paidDate) : "",
-        })),
-        paymentColumns,
-      );
-      downloadCsv("collections-invoices.csv", csv);
-    }
+    const csv = rowsToCsv(
+      shopRows.map((r) => ({
+        ...r,
+        plan: getPlanLabel(r.plan),
+        health: healthDisplay[r.health].label,
+        lastPaymentDate: r.lastPaymentDate ? formatDate(r.lastPaymentDate) : "",
+        nextDueDate: r.nextDueDate ? formatDate(r.nextDueDate) : "",
+      })),
+      shopCsvColumns,
+    );
+    downloadCsv("collections-stores.csv", csv);
   };
 
   const header = (
@@ -336,67 +294,18 @@ export function SubscriptionReportsTab() {
     }
   };
 
-  const renderPaymentCell = (row: PaymentReportRow, key: string) => {
-    switch (key) {
-      case "shopName":
-        return (
-          <div className="min-w-0 max-w-64">
-            <p className="truncate whitespace-nowrap font-medium text-fg">{row.shopName}</p>
-            <p className="truncate text-caption text-fg-subtle">{row.ownerEmail}</p>
-          </div>
-        );
-      case "amount":
-        return <span className="block text-right num">{formatMoney(row.amount, { currency: row.currency, paise: true })}</span>;
-      case "dueDate":
-      case "paidDate":
-        return row[key] ? <span className="whitespace-nowrap num">{formatDate(row[key] as string)}</span> : muted;
-      case "status":
-        return <StatusChip domain="payment" status={row.status} />;
-      case "actions":
-        return <InvoiceRowActions row={row} onChanged={api.refetch} />;
-      default:
-        return String(row[key as keyof PaymentReportRow] ?? "—");
-    }
-  };
-
   const emptyContent = hasFilters ? (
-    <FilterEmpty things={tableView === "shops" ? "stores" : "invoices"} query={table.search} onClear={clearFilters} />
-  ) : tableView === "shops" ? (
-    <EmptyState icon={IconBilling} title="No stores yet" description="Stores appear here once they are on a plan." />
+    <FilterEmpty things="stores" query={table.search} onClear={clearFilters} />
   ) : (
-    <EmptyState icon={IconBilling} title="No invoices yet" description="Invoices and payments for this period will appear here." />
+    <EmptyState icon={IconBilling} title="No stores yet" description="Stores appear here once they are on a plan." />
   );
 
-  const tabs = (
-    <Tabs
-      aria-label="Collections view"
-      selectedKey={tableView}
-      onSelectionChange={(key) => setTableView(key as TableView)}
-      classNames={{ base: "h-full min-w-0 max-w-full", tabList: "h-full border-b-0", tab: "h-full" }}
-    >
-      <Tab
-        key="shops"
-        title={
-          <span>
-            Stores <span className="ml-1 font-normal text-fg-muted num">{shopRows.length}</span>
-          </span>
-        }
-      />
-      <Tab
-        key="payments"
-        title={
-          <span>
-            Invoices <span className="ml-1 font-normal text-fg-muted num">{paymentRows.length}</span>
-          </span>
-        }
-      />
-    </Tabs>
-  );
+  // Owner 2026-10-29: the invoices behind a figure are on the Invoices page (one invoice list, not two),
+  // filtered to the same due-date range; payments received are on Transactions.
+  const period = `from=${format(range.startDate, "yyyy-MM-dd")}&to=${format(range.endDate, "yyyy-MM-dd")}`;
+  const invoicesHref = (status: string) => `/billing/invoices?status=${status}&${period}`;
 
-
-  const currentDrillOptions = drillOptions[tableView].includes(drill)
-    ? drillOptions[tableView]
-    : [...drillOptions[tableView], drill];
+  const currentDrillOptions = drillOptions.includes(drill) ? drillOptions : [...drillOptions, drill];
 
   return (
     <div>
@@ -412,7 +321,7 @@ export function SubscriptionReportsTab() {
             deltaLabel="Invoices due in this period (void excluded)"
             isLoading={loading}
             href="?"
-            className={kpiCellClass(drill === "all" && tableView === "shops")}
+            className={kpiCellClass(drill === "all")}
           />
           <StatCard
             bare
@@ -423,8 +332,7 @@ export function SubscriptionReportsTab() {
             deltaUnit="pts"
             deltaLabel={kpis?.rateDelta != null ? "of due invoices, vs previous period" : "Paid of the invoices due"}
             isLoading={loading}
-            href="?tab=invoices"
-            className={kpiCellClass(drill === "all" && tableView === "payments")}
+            href={invoicesHref("PAID")}
           />
           <StatCard
             bare
@@ -437,8 +345,7 @@ export function SubscriptionReportsTab() {
                 : undefined
             }
             isLoading={loading}
-            href="?tab=invoices&show=paid_month"
-            className={kpiCellClass(drill === "paid_month")}
+            href="/billing/transactions?status=success"
           />
           <StatCard
             bare
@@ -447,8 +354,7 @@ export function SubscriptionReportsTab() {
             format="money"
             deltaLabel={kpis ? `${formatCount(kpis.pending.count)} ${kpis.pending.count === 1 ? "invoice" : "invoices"} due in this period, unpaid` : undefined}
             isLoading={loading}
-            href="?tab=invoices&show=pending"
-            className={kpiCellClass(drill === "pending")}
+            href={invoicesHref("ISSUED")}
           />
           <StatCard
             bare
@@ -458,8 +364,7 @@ export function SubscriptionReportsTab() {
             valueTone={kpis && kpis.overdue.amount > 0 ? "danger" : "default"}
             deltaLabel={kpis ? `${formatCount(kpis.overdue.count)} ${kpis.overdue.count === 1 ? "invoice" : "invoices"} due in this period, past grace` : undefined}
             isLoading={loading}
-            href="?tab=invoices&show=overdue"
-            className={kpiCellClass(drill === "overdue")}
+            href={invoicesHref("OVERDUE")}
           />
         </KpiStrip>
 
@@ -467,13 +372,12 @@ export function SubscriptionReportsTab() {
           const toolbar = (
             <>
               <TableToolbar
-                tabs={tabs}
                 search={search}
                 onSearchChange={setSearch}
-                searchPlaceholder={tableView === "shops" ? "Search billed stores" : "Search invoices"}
-                columns={tableView === "shops" ? shopColumns.map((c) => ({ key: c.key, label: c.label })) : undefined}
-                visibleColumns={tableView === "shops" ? Array.from(visibleShopColumns) : undefined}
-                onVisibleColumnsChange={tableView === "shops" ? (keys) => setVisibleShopColumns(new Set(keys)) : undefined}
+                searchPlaceholder="Search billed stores"
+                columns={shopColumns.map((c) => ({ key: c.key, label: c.label }))}
+                visibleColumns={Array.from(visibleShopColumns)}
+                onVisibleColumnsChange={(keys) => setVisibleShopColumns(new Set(keys))}
                 filterContent={
                   <>
                     <Select
@@ -487,7 +391,7 @@ export function SubscriptionReportsTab() {
                       disallowEmptySelection
                     >
                       {currentDrillOptions.map((option) => (
-                        <SelectItem key={option}>{option === "all" ? (tableView === "shops" ? "All stores" : "All invoices") : drillLabels[option]}</SelectItem>
+                        <SelectItem key={option}>{option === "all" ? "All stores" : drillLabels[option]}</SelectItem>
                       ))}
                     </Select>
                     <Select
@@ -504,8 +408,7 @@ export function SubscriptionReportsTab() {
                         <SelectItem key={p}>{p === "all" ? "All plans" : getPlanLabel(p)}</SelectItem>
                       ))}
                     </Select>
-                    {tableView === "shops" ? (
-                      <Select
+                    <Select
                         label="Health"
                         size="sm"
                         selectedKeys={new Set([health])}
@@ -521,7 +424,6 @@ export function SubscriptionReportsTab() {
                         <SelectItem key="at_risk">At risk</SelectItem>
                         <SelectItem key="unhealthy">Critical</SelectItem>
                       </Select>
-                    ) : null}
                   </>
                 }
               />
@@ -541,12 +443,12 @@ export function SubscriptionReportsTab() {
             <TablePagination
               page={safePage}
               pageSize={table.pageSize}
-              total={activeRows.length}
+              total={shopRows.length}
               onPageChange={table.setPage}
               onPageSizeChange={table.setPageSize}
             />
           );
-          return tableView === "shops" ? (
+          return (
             <DataTable
               aria-label="Stores"
               columns={shopTableColumns}
@@ -559,21 +461,6 @@ export function SubscriptionReportsTab() {
               toolbar={toolbar}
               footer={footer}
               onRowAction={(row) => navigate(`/stores/${row.clientId}`)}
-              stickyFirstColumn
-              scrollClassName="max-h-[70vh]"
-              emptyContent={emptyContent}
-            />
-          ) : (
-            <DataTable
-              aria-label="Invoices"
-              columns={paymentTableColumns}
-              rows={pageItems as PaymentReportRow[]}
-              getRowKey={(row) => row.id}
-              renderCell={renderPaymentCell}
-              isLoading={loading}
-              isReloading={api.reloading}
-              toolbar={toolbar}
-              footer={footer}
               stickyFirstColumn
               scrollClassName="max-h-[70vh]"
               emptyContent={emptyContent}

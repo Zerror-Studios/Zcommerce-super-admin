@@ -72,9 +72,11 @@ export function AppShell({
           </header>
         ) : null}
 
+        {/* The scrollbar's space is always kept, so a page that starts or stops scrolling (switching settings
+            sections) doesn't shift sideways (owner 2026-10-29). */}
         <main
           className={cx(
-            "custom-scroll relative min-h-0 flex-1 overflow-y-auto",
+            "custom-scroll relative min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]",
             contentClassName,
           )}
           onScroll={

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import type { Transaction, TransactionStatus } from "../../types";
 import { getPaymentGatewayLabel, getPlanLabel } from "../../lib/display-labels.util";
 import { joinParam, splitParam } from "../../lib/store-table.util";
@@ -27,6 +27,8 @@ export interface TransactionsTabProps {
   isLoading?: boolean;
   /** Server paging (FE-09); search and status are applied by the server (PRD-024 FR-1.6). */
   paging?: Omit<LoadMoreFooterProps, "shown" | "noun">;
+  /** Tabs on the left of the toolbar row (Subscriptions › Transactions: All payments · Flagged · Stuck). */
+  tabs?: ReactNode;
 }
 
 const columnOptions: DataTableColumn[] = [
@@ -52,7 +54,7 @@ const statusOptions: { key: TransactionStatus; label: string }[] = [
  * loaded payments (200 a page from the API, "Load more" for the next, FE-09); search, status filter and page
  * in the URL; Columns remembered.
  */
-export function TransactionsTab({ transactions, isLoading = false, paging }: TransactionsTabProps) {
+export function TransactionsTab({ transactions, isLoading = false, paging, tabs }: TransactionsTabProps) {
   const { clients } = useClients();
   const table = useTableUrlState();
   const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
@@ -113,6 +115,7 @@ export function TransactionsTab({ transactions, isLoading = false, paging }: Tra
   const toolbar = (
     <>
       <TableToolbar
+        tabs={tabs}
         search={search}
         onSearchChange={setSearch}
         searchPlaceholder="Search store or transaction ID"

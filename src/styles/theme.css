@@ -366,4 +366,10 @@ button.font-normal.min-w-max.tap-highlight-transparent {
 .zc-menu { animation: zc-menu-in var(--zc-dur-fast) var(--zc-ease) both; }
 .zc-menu[data-placement^="top"] { --zc-menu-from: 4px; }
 .zc-menu[data-placement^="bottom"] { --zc-menu-from: -4px; }
+/* Menu sections (DropdownSection): HeroUI puts 8px under each section and 8px above its divider, 16px around
+   one line plus 8px under the last section. 4px each here, none after the last (owner 2026-10-29). HeroUI
+   sections can't be wrapped (collection nodes), so this is CSS on the menu popover. */
+.zc-menu li[role="presentation"][data-slot="base"] { margin-bottom: 4px; }
+.zc-menu li[role="presentation"][data-slot="base"]:last-child { margin-bottom: 0; }
+.zc-menu li[role="presentation"][data-slot="base"] [role="separator"] { margin-top: 4px; }
 @keyframes zc-menu-in { from { translate: 0 var(--zc-menu-from, 0); } to { translate: 0 0; } }

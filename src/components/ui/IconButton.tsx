@@ -5,7 +5,7 @@ import { forwardRef } from "react";
 import { cx } from "./cx";
 import { Tooltip } from "./Tooltip";
 
-export type IconButtonVariant = "outline" | "ghost" | "topbar";
+export type IconButtonVariant = "outline" | "ghost" | "danger" | "topbar";
 export type IconButtonSize = "sm" | "md" | "lg";
 
 export interface IconButtonProps
@@ -22,7 +22,8 @@ export interface IconButtonProps
 
 /**
  * Icon-only buttons (docs/design/02-components.md §3): 8px radius, 16px icon, tooltip from aria-label.
- * outline = secondary look (white, strong border); ghost = transparent, muted icon (row "···", close).
+ * outline = secondary look (white, strong border); ghost = transparent, muted icon (row "···", close);
+ * danger = trash/remove: light grey fill, muted icon, light red with a red icon on hover (owner 2026-10-29).
  * Square size = control height: sm 32, md 36, lg 40.
  */
 const variantClasses: Record<IconButtonVariant, string> = {
@@ -30,6 +31,8 @@ const variantClasses: Record<IconButtonVariant, string> = {
     "rounded-lg border border-line-strong bg-surface text-fg data-[hover=true]:!opacity-100 data-[hover=true]:!bg-surface-muted data-[pressed=true]:!bg-surface-sunken",
   ghost:
     "rounded-lg bg-transparent text-fg-muted data-[hover=true]:!opacity-100 data-[hover=true]:!bg-surface-sunken data-[hover=true]:text-fg data-[pressed=true]:!bg-line",
+  danger:
+    "rounded-lg bg-surface-sunken text-fg-muted data-[hover=true]:!opacity-100 data-[hover=true]:!bg-tone-danger-soft data-[hover=true]:!text-tone-danger-text data-[pressed=true]:!bg-tone-danger-soft data-[pressed=true]:!text-tone-danger-text",
   topbar:
     "rounded-lg bg-topbar-control text-topbar-fg data-[hover=true]:!opacity-100 data-[hover=true]:bg-topbar-control-hover",
 };

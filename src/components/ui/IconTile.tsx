@@ -32,7 +32,8 @@ export function IconTile({ children, section, size = "lg", className }: IconTile
     <span
       aria-hidden
       className={cx(
-        "inline-flex shrink-0 items-center justify-center bg-sec-soft text-sec-fg",
+        // Owner 2026-10-29: one colour everywhere, the main sidebar's (was the section colour).
+        "inline-flex shrink-0 items-center justify-center bg-nav text-nav-fg-strong",
         sizes[size],
         sectionClass(section),
         className,

@@ -1,6 +1,6 @@
 import { useMutation } from "@apollo/client";
 import { addToast, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { DISMISS_AI_TOP_UP_REQUEST } from "../../graphql/ai";
 import { useAiTopUpRequests } from "../../hooks/use-platform-ai";
@@ -41,7 +41,8 @@ const PAGE_SIZE = 25;
  * until the end of the store's month and closes its open requests; Dismiss
  * closes one without granting. Both need `platform:ai:manage`.
  */
-export function AiTopUpsTab() {
+/** `tabs`: the ZCOM AI › Usage & data tabs, on the left of the toolbar row. */
+export function AiTopUpsTab({ tabs }: { tabs?: ReactNode } = {}) {
   const { can } = useAuth();
   const canManage = can(PLATFORM_PERMISSIONS.AI_MANAGE);
   const [page, setPage] = useState(0);
@@ -112,7 +113,7 @@ export function AiTopUpsTab() {
       ) : null}
 
       <Card padding="none" className="overflow-hidden">
-        <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Search stores on this page" />
+        <TableToolbar tabs={tabs} search={search} onSearchChange={setSearch} searchPlaceholder="Search stores on this page" />
         {api.loading ? (
           <div className="space-y-3 p-4">
             {Array.from({ length: 4 }).map((_, index) => (

@@ -96,7 +96,7 @@
 
   /* ---------- Layout sizes from 08/09 ---------- */
   --zc-drawer-image: 560px;
-  --zc-media-dialog-w: 1180px;
+  --zc-media-dialog-w: 1240px;   /* owner 2026-10-29: was 1180; the bar above the grid fits one row with details open */
   --zc-media-dialog-h: 820px;
   --zc-media-folders-w: 220px;
   --zc-blog-tools-w: 232px;

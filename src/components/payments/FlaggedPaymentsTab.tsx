@@ -12,7 +12,7 @@
 
 import { useMutation } from "@apollo/client";
 import { addToast, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { RESOLVE_FLAGGED_PLATFORM_PAYMENT } from "../../graphql/billing";
 import { useFlaggedPayments, useInvoices } from "../../hooks/use-platform-reports";
 import { errorReasonOf } from "../../lib/apollo-client";
@@ -67,7 +67,10 @@ const columns = [
 
 const ACTIONS = Object.values(flaggedPaymentActionEnum);
 
-export function FlaggedPaymentsTab() {
+export function FlaggedPaymentsTab({ tabs }: {
+  /** Tabs on the left of the toolbar row (Subscriptions › Transactions: All payments · Flagged · Stuck). */
+  tabs?: ReactNode;
+} = {}) {
   const { can } = useAuth();
   const canResolve = can(PLATFORM_PERMISSIONS.BILLING_MANAGE);
   const queue = useFlaggedPayments();
@@ -123,7 +126,7 @@ export function FlaggedPaymentsTab() {
 
   return (
     <div className={tablePanelFillClassName}>
-      <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Search loaded payments" />
+      <TableToolbar tabs={tabs} search={search} onSearchChange={setSearch} searchPlaceholder="Search loaded payments" />
       {queue.error && queue.data.length === 0 ? (
         <ErrorState title="Couldn't load flagged payments." onRetry={() => void queue.refetch()} />
       ) : (

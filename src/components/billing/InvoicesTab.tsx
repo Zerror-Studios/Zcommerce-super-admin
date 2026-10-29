@@ -9,8 +9,9 @@
  */
 
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { endOfDay, endOfMonth, format, startOfMonth } from "date-fns";
+import { endOfDay, endOfMonth, format, parseISO, startOfDay, startOfMonth } from "date-fns";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useDebouncedValue } from "../../hooks/use-debounced-value";
 import { useInvoices } from "../../hooks/use-platform-reports";
 import { invoiceReasonLabel, toInvoiceActionRow } from "../../lib/platform-billing.util";
@@ -57,6 +58,10 @@ const columns = [
   { key: "actions", label: "", end: true },
 ];
 
+const isStatus = (value: string | null): value is PlatformInvoiceStatus =>
+  STATUS_OPTIONS.some((option) => option.key === value);
+const isDay = (value: string | null): value is string => value != null && /^\d{4}-\d{2}-\d{2}$/.test(value);
+
 /** `YYYY-MM-DD` from the date input → an ISO day bound for the filter. */
 function dayBound(value: string, end: boolean): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -66,10 +71,34 @@ function dayBound(value: string, end: boolean): string | null {
 export function InvoicesTab() {
   const [search, setSearch] = useState("");
   // Owner 2026-10-28: Status in the Filter popover (like Collections), the due date in the header's date picker.
-  const [status, setStatus] = useState<PlatformInvoiceStatus | null>(null);
-  const [due, setDue] = useState<DateRangeValue | null>(null);
-  const dueFrom = due ? format(due.startDate, "yyyy-MM-dd") : "";
-  const dueTo = due ? format(due.endDate, "yyyy-MM-dd") : "";
+  // 2026-10-29: both live in the URL (?status=OVERDUE&from=2026-10-01&to=2026-10-31), so the Collections
+  // figures link straight to the invoices behind them, and a filtered view survives refresh.
+  const [params, setParams] = useSearchParams();
+  const statusParam = params.get("status");
+  const status: PlatformInvoiceStatus | null = isStatus(statusParam) ? statusParam : null;
+  const fromParam = params.get("from");
+  const toParam = params.get("to");
+  const dueFrom = isDay(fromParam) && isDay(toParam) ? fromParam : "";
+  const dueTo = isDay(fromParam) && isDay(toParam) ? toParam : "";
+  const due = useMemo<DateRangeValue | null>(
+    () => (dueFrom && dueTo ? { startDate: startOfDay(parseISO(dueFrom)), endDate: endOfDay(parseISO(dueTo)) } : null),
+    [dueFrom, dueTo],
+  );
+  const setParam = (patch: Record<string, string | null>) =>
+    setParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        Object.entries(patch).forEach(([key, value]) => (value ? next.set(key, value) : next.delete(key)));
+        return next;
+      },
+      { replace: true },
+    );
+  const setStatus = (value: PlatformInvoiceStatus | null) => setParam({ status: value });
+  const setDue = (value: DateRangeValue | null) =>
+    setParam({
+      from: value ? format(value.startDate, "yyyy-MM-dd") : null,
+      to: value ? format(value.endDate, "yyyy-MM-dd") : null,
+    });
   const [open, setOpen] = useState<PlatformInvoice | null>(null);
   const debouncedSearch = useDebouncedValue(search.trim());
 

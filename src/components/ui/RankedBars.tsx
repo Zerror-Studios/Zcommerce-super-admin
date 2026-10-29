@@ -13,7 +13,8 @@ export interface RankedBarItem {
 
 /**
  * Ranked categories (docs/design/02-components.md §14, ref 01 "Traffic sources"): label and value on one line,
- * a thin neutral bar (ink on a muted track) underneath. Bars are relative to the largest value.
+ * a thin primary-blue bar on a muted track underneath (owner 2026-10-29: blue, was ink). Bars are relative to
+ * the largest value.
  */
 export function RankedBars({ items, className }: { items: RankedBarItem[]; className?: string }) {
   const total = items.reduce((sum, item) => sum + Math.max(item.value, 0), 0);
@@ -29,7 +30,7 @@ export function RankedBars({ items, className }: { items: RankedBarItem[]; class
             </span>
           </div>
           <div className="mt-1.5 h-1 rounded-full bg-surface-sunken">
-            <div className="h-1 rounded-full bg-fg" style={{ width: max > 0 ? `${(item.value / max) * 100}%` : 0 }} />
+            <div className="h-1 rounded-full bg-brand" style={{ width: max > 0 ? `${(item.value / max) * 100}%` : 0 }} />
           </div>
         </li>
       ))}

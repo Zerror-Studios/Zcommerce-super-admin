@@ -26,7 +26,7 @@ import {
   Chip,
   ErrorState,
   IconBilling,
-  IconChat,
+  IconAi,
   IconPayments,
   IconSettings,
   IconTime,
@@ -82,7 +82,7 @@ const aiSections: Record<
   assistant: {
     title: "Assistant",
     description: "Switch ZCOM AI off for every store, and pick the models it may use.",
-    icon: IconChat,
+    icon: IconAi,
     fields: ["enabled", "allowedModels", "defaultModel", "reasoningModel"],
   },
   spend: {

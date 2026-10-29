@@ -1,5 +1,5 @@
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useAiBenchmarks, useAiConfig } from "../../hooks/use-platform-ai";
 import { formatMetricValue, metricKeyLabel } from "../../lib/platform-ai.util";
 import { matchesText } from "../../lib/text-search.util";
@@ -35,7 +35,8 @@ const right = "block text-right num";
  * stores have it (`benchmarkMinStores`); a benchmark never identifies a
  * store.
  */
-export function AiBenchmarksTab() {
+/** `tabs`: the ZCOM AI › Usage & data tabs, on the left of the toolbar row. */
+export function AiBenchmarksTab({ tabs }: { tabs?: ReactNode } = {}) {
   const [period, setPeriod] = useState<PlatformAiBenchmarkPeriod>("LAST_30D");
   const api = useAiBenchmarks(period);
   // PRD-024 FR-1.5 (P-06): say why the list can be empty (the minimum is an AI setting).
@@ -82,7 +83,7 @@ export function AiBenchmarksTab() {
       ) : null}
 
       <Card padding="none" className="overflow-hidden">
-        <TableToolbar search={search} onSearchChange={setSearch} searchPlaceholder="Search metrics" />
+        <TableToolbar tabs={tabs} search={search} onSearchChange={setSearch} searchPlaceholder="Search metrics" />
         {api.loading ? (
           <div className="space-y-3 p-4">
             {Array.from({ length: 6 }).map((_, index) => (
