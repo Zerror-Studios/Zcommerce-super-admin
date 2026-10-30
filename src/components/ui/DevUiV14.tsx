@@ -132,8 +132,8 @@ function DemoTable() {
       }
       bulkBar={
         <SelectionBar count={count} total={ORDERS.length} onSelectAll={() => setSelected("all")} onClear={() => setSelected(new Set())}>
-          <Button variant="ghost" size="sm">Export</Button>
-          <Button variant="ghost" size="sm">Archive</Button>
+          <Button variant="secondary" size="sm">Export</Button>
+          <Button variant="secondary" size="sm">Archive</Button>
         </SelectionBar>
       }
       footer={
@@ -225,7 +225,7 @@ function DemoTwoPane() {
         description="Where you ship, how much it costs and how long it takes."
         actions={<Button startIcon={<IconAdd aria-hidden />}>Add shipping profile</Button>}
       />
-      <Card title="General profile" description="All products · 2 locations" actions={<Button variant="ghost" size="sm">Edit rates</Button>}>
+      <Card title="General profile" description="All products · 2 locations" actions={<Button variant="secondary" size="sm">Edit rates</Button>}>
         <p className="text-body text-fg-muted">Domestic · ₹49 under ₹999, free above.</p>
       </Card>
     </TwoPaneCard>
@@ -277,8 +277,8 @@ export default function DevUiV14() {
           description="21 Oct 2026, 11:50 am · Online store · Customer"
           actions={
             <>
-              <Button variant="ghost">Print</Button>
-              <Button variant="ghost">Refund</Button>
+              <Button variant="secondary">Print</Button>
+              <Button variant="secondary">Refund</Button>
               <Button>Ship now</Button>
             </>
           }

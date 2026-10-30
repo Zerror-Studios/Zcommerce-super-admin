@@ -1,29 +1,29 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 import type { HTMLAttributes, ReactNode } from "react";
 import { cx } from "./cx";
-import { toneClasses, toneDotClasses } from "./tones";
 import type { Tone } from "./tones";
 
 export interface ChipProps extends HTMLAttributes<HTMLSpanElement> {
-  tone?: Tone;
+  /** Status tone; "ai" is for AI-made things ("Zcom AI", "AI suggestion") and takes a sparkle as startIcon. */
+  tone?: Tone | "ai";
   /** Show the 6px tone dot before the label (default true). */
   dot?: boolean;
+  /** Replaces the dot (12px). */
   startIcon?: ReactNode;
   children: ReactNode;
 }
 
-/** Status badge (docs/design/02-components.md §10): 22px, 6px radius, 12px/500, 6px dot, sentence case. Always shows text. */
+/**
+ * Status badge (01 §7.11, `.zc-badge` in src/styles/components.css): 22px, 6px radius, 12px/500, 6px dot,
+ * sentence case. Rectangular-rounded so it never looks like a button; never clickable. Always shows text.
+ */
 export function Chip({ tone = "neutral", dot = true, startIcon, className, children, ...rest }: ChipProps) {
   return (
     <span
-      className={cx(
-        "inline-flex h-[22px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm px-2 text-caption font-medium",
-        toneClasses[tone],
-        className,
-      )}
+      className={cx("zc-badge", `zc-badge--${tone}`, (startIcon || !dot) && "zc-badge--no-dot", className)}
       {...rest}
     >
-      {startIcon ?? (dot ? <span aria-hidden className={cx("size-1.5 shrink-0 rounded-full", toneDotClasses[tone])} /> : null)}
+      {startIcon}
       {children}
     </span>
   );

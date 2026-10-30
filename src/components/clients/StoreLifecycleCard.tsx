@@ -19,8 +19,8 @@ import { formatDate } from "../../lib/utils";
 import { useAuth } from "../../providers/AuthProvider";
 import type { Client } from "../../types";
 import { Button as UiButton, Card, Chip, cx, toneTextClasses } from "../ui";
-import { StalePendingPayments } from "../payments/StalePendingPayments";
 import { MoneyInFlightPanel } from "./MoneyInFlightPanel";
+import { StoreStuckPayments } from "./StoreStuckPayments";
 import { StoreActionDialog, type StoreAction } from "./storeActions";
 
 export interface StoreLifecycleCardProps {
@@ -41,50 +41,42 @@ export function StoreLifecycleCard({ client, onDeleted }: StoreLifecycleCardProp
 
   return (
     <>
-      <Card padding="none">
-        <div className="flex flex-col gap-2 px-5 py-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Chip tone={lifecycle.tone}>{lifecycle.label}</Chip>
-            {isSuspended ? <Chip tone="neutral">{suspendCategoryLabel(client.suspendCategory)}</Chip> : null}
-          </div>
-          {isSuspended ? (
-            <p className="text-body text-fg-muted">
-              {client.suspendedAt ? `Suspended on ${formatDate(client.suspendedAt)}` : "Suspended"}
-              {client.suspendReason ? `: ${client.suspendReason}` : "."}
-            </p>
+      <Card title="Status" actions={<Chip tone={lifecycle.tone}>{lifecycle.label}</Chip>}>
+        <div className="flex flex-col gap-4">
+          {isSuspended || (isDeleted && countdown) ? (
+            <div className="flex flex-col gap-2">
+              {isSuspended ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Chip tone="neutral">{suspendCategoryLabel(client.suspendCategory)}</Chip>
+                  <span className="text-body text-fg-muted">
+                    {client.suspendedAt ? `Suspended on ${formatDate(client.suspendedAt)}` : "Suspended"}
+                    {client.suspendReason ? `: ${client.suspendReason}` : "."}
+                  </span>
+                </div>
+              ) : null}
+              {isDeleted && countdown ? (
+                <p className={cx("text-body", countdown.expired ? toneTextClasses.danger : "text-fg")}>
+                  {countdown.expired
+                    ? `The grace period ended on ${formatDate(client.purgeAfter!)}; the data is being purged.`
+                    : `Data will be purged on ${formatDate(client.purgeAfter!)} (${countdown.daysLeft} days left).`}
+                </p>
+              ) : null}
+            </div>
           ) : null}
-          {isDeleted && countdown ? (
-            <p className={cx("text-body", countdown.expired ? toneTextClasses.danger : "text-fg")}>
-              {countdown.expired
-                ? `The grace period ended on ${formatDate(client.purgeAfter!)}; the data is being purged.`
-                : `Data will be purged on ${formatDate(client.purgeAfter!)} (${countdown.daysLeft} days left).`}
-            </p>
-          ) : null}
+          {!isDeleted ? <MoneyInFlightPanel tenantId={client.id} /> : null}
+          {isDeleted && !countdown ? <p className="text-body text-fg-muted">This store is deleted.</p> : null}
         </div>
+      </Card>
 
-        {!isDeleted ? (
-          <div className="border-t border-line-subtle px-5 py-4">
-            <MoneyInFlightPanel tenantId={client.id} />
-          </div>
-        ) : null}
+      {!isDeleted && canReadBilling ? <StoreStuckPayments tenantId={client.id} /> : null}
 
-        {!isDeleted && canReadBilling ? (
-          <div className="border-t border-line-subtle">
-            <p className="px-5 pt-4 text-label font-medium text-fg">Payments pending over 48 hours</p>
-            <StalePendingPayments tenantId={client.id} />
-          </div>
-        ) : null}
-
+      <Card padding="none" className="overflow-clip">
         {isDeleted ? (
           <LifecycleRow
             title="Restore store"
             description="Bring the store back, suspended at the owner's request, with all its data. Apps need reconnecting."
             action={
-              <UiButton
-                variant="secondary"
-                onPress={() => setAction("restore")}
-                isDisabled={!!countdown?.expired}
-              >
+              <UiButton size="sm" variant="secondary" onPress={() => setAction("restore")} isDisabled={!!countdown?.expired}>
                 Restore store
               </UiButton>
             }
@@ -95,7 +87,7 @@ export function StoreLifecycleCard({ client, onDeleted }: StoreLifecycleCardProp
               title="Reactivate store"
               description="Bring the storefront and the owner's dashboard back online."
               action={
-                <UiButton variant="secondary" onPress={() => setAction("reactivate")}>
+                <UiButton size="sm" variant="secondary" onPress={() => setAction("reactivate")}>
                   Reactivate store
                 </UiButton>
               }
@@ -104,7 +96,7 @@ export function StoreLifecycleCard({ client, onDeleted }: StoreLifecycleCardProp
               title="Change category"
               description="Policy blocks store staff; the other categories let them settle orders in a restricted dashboard."
               action={
-                <UiButton variant="secondary" onPress={() => setAction("category")}>
+                <UiButton size="sm" variant="secondary" onPress={() => setAction("category")}>
                   Change category
                 </UiButton>
               }
@@ -115,7 +107,7 @@ export function StoreLifecycleCard({ client, onDeleted }: StoreLifecycleCardProp
             title="Suspend store"
             description="Take the storefront offline. Payments already started still settle; orders and data are kept."
             action={
-              <UiButton variant="destructive" onPress={() => setAction("suspend")}>
+              <UiButton size="sm" variant="destructive-secondary" onPress={() => setAction("suspend")}>
                 Suspend store
               </UiButton>
             }
@@ -132,7 +124,7 @@ export function StoreLifecycleCard({ client, onDeleted }: StoreLifecycleCardProp
             }
             action={
               isOwner ? (
-                <UiButton variant="destructive" onPress={() => setAction("delete")}>
+                <UiButton size="sm" variant="destructive-secondary" onPress={() => setAction("delete")}>
                   Delete store
                 </UiButton>
               ) : null
@@ -156,10 +148,10 @@ function LifecycleRow({
   action: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 border-t border-line-subtle px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 border-t border-line-subtle px-5 py-4 first:border-t-0 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <p className="text-body font-medium text-fg">{title}</p>
-        <p className="mt-0.5 text-body text-fg-muted">{description}</p>
+        <p className="mt-0.5 text-label text-fg-muted">{description}</p>
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>

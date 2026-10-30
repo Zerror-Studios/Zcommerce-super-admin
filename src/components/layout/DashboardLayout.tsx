@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { allNavItems, mainNavItems, visibleNavItems } from "../../config/navigation";
 import { APP_VERSION } from "../../config/data-source";
 import { ASSISTANT_SUGGESTIONS, sampleAssistantAnswer } from "../../lib/aiSamples";
@@ -12,6 +12,10 @@ import type { PlatformRevenueOverview } from "../../types/platform-api";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import { useNotificationCounts } from "../../hooks/use-platform-notifications";
+import { useAiTopUpRequests } from "../../hooks/use-platform-ai";
+import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
+import { usePlatformSettings } from "../../providers/SettingsProvider";
+import { subscriptionsNeedingAction } from "../billing/subscription-rows";
 import { IconAdd, IconNotifications, IconStore } from "../ui/icons";
 import { AppShell } from "./AppShell";
 import { AskBar, AssistantPanel } from "./Assistant";
@@ -20,13 +24,21 @@ import { CommandPalette } from "./CommandPalette";
 import { PlatformNotificationsPanel } from "./PlatformNotificationsPanel";
 import { Sidebar } from "./Sidebar";
 import { AiSpectrumDefs } from "../ui/Ai";
-import { cx, toneTextClasses } from "../ui";
+import { ConfirmDialog, cx, toneTextClasses } from "../ui";
 import type { CommandGroup } from "./types";
 
 const COLLAPSE_KEY = "zcommerce-sidebar-collapsed";
 
+/** Menu items that open a page's first tab or section stay lit on its other tabs ("/analytics/revenue" → "/analytics"). */
+function sectionRoot(href: string): string {
+  if (href.startsWith("/analytics/")) return "/analytics";
+  if (href.startsWith("/settings/")) return "/settings";
+  return href;
+}
+
 function pathMatches(pathname: string, href: string, end = false): boolean {
   if (end) return pathname === href;
+  href = sectionRoot(href);
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -50,6 +62,9 @@ export function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(() => readStoredFlag(COLLAPSE_KEY));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // Sign out asks first (04 S-07i).
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const navigate = useNavigate();
   // PRD-024 FR-4.1.5: the server feed; the bell's count is polled while the browser tab is visible.
   const notificationCounts = useNotificationCounts();
 
@@ -101,13 +116,26 @@ export function DashboardLayout() {
     void signOut();
   };
 
+  // Menu counts (04 S-00, 02 §3.4): stores owing now or due within 7 days, and open AI top-up requests.
+  const { settings } = usePlatformSettings();
+  const subscriptionCount = useMemo(
+    () => subscriptionsNeedingAction(clients, latestSubscriptionByClient(subscriptions), settings.gracePeriodDays),
+    [clients, subscriptions, settings.gracePeriodDays],
+  );
+  // One row is enough: only the total is read (skipped without platform:ai:read).
+  const topUps = useAiTopUpRequests({ status: "OPEN", limit: 1, offset: 0 });
+  const openTopUps = topUps.data?.totalCount ?? 0;
+
   const items = useMemo(
     () =>
-      visibleNavItems(mainNavItems, can).map((item) =>
+      visibleNavItems(mainNavItems, can).map((item) => {
         // PRD-024 FR-1.6 (B-06): the server's store count, not the loaded rows.
-        item.key === "stores" ? { ...item, count: totalCount } : item,
-      ),
-    [can, totalCount],
+        if (item.key === "stores") return { ...item, count: totalCount };
+        if (item.key === "subscriptions") return { ...item, count: subscriptionCount };
+        if (item.key === "ai") return { ...item, count: openTopUps };
+        return item;
+      }),
+    [can, totalCount, subscriptionCount, openTopUps],
   );
 
   const commandGroups = useMemo<CommandGroup[]>(
@@ -152,7 +180,11 @@ export function DashboardLayout() {
     renderNotifications: (row: ReactNode) => panel(row),
     // PRD-024 FR-1.5 (P-06): the signed-in platform user (platformMe) and their role.
     user: user ? { name: user.name || user.email, email: user.email, subtitle: getPlatformRoleLabel(user.role) } : undefined,
-    userMenu: [{ key: "logout", label: "Log out", onAction: handleLogout, danger: true }],
+    // Account menu (02 §3.6): Profile & security, then Sign out (red, after a divider, confirms first).
+    userMenu: [
+      { key: "profile", label: "Profile & security", onAction: () => navigate("/settings/profile") },
+      { key: "logout", label: "Sign out", onAction: () => setSignOutOpen(true), danger: true },
+    ],
     onLogout: handleLogout,
     isActive,
   };
@@ -165,15 +197,19 @@ export function DashboardLayout() {
         isDrawerOpen={mobileOpen}
         onDrawerOpenChange={setMobileOpen}
         mobileTitle={pageLabel}
+        topBarTitle="Zcom"
+        topBarSubtitle="Super admin"
+        onOpenSearch={openPalette}
         floating={(hidden) => <AskBar placeholder="Ask anything about your stores…" hidden={hidden} onOpen={openAssistant} />}
         mobileActions={panel(
+          // Top bar bell (02 §4): circle on-dark 40px, an 8px blue dot when unread.
           <button
             type="button"
             aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"}
-            className="relative flex size-9 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-sunken hover:text-fg"
+            className="zc-icon-btn zc-icon-btn--on-dark zc-icon-btn--lg relative"
           >
-            <IconNotifications aria-hidden className="size-5" />
-            {unreadCount > 0 ? <span aria-hidden className="absolute right-2 top-2 size-1.5 rounded-full bg-brand" /> : null}
+            <IconNotifications aria-hidden />
+            {unreadCount > 0 ? <span aria-hidden className="absolute right-2.5 top-2.5 size-2 rounded-full bg-nav-count" /> : null}
           </button>,
         )}
       >
@@ -189,6 +225,17 @@ export function DashboardLayout() {
         <Outlet />
       </AppShell>
 
+      <ConfirmDialog
+        isOpen={signOutOpen}
+        onClose={() => setSignOutOpen(false)}
+        onConfirm={() => {
+          setSignOutOpen(false);
+          handleLogout();
+        }}
+        title="Sign out of Zcom?"
+        description="You'll need to sign in again to use the console."
+        confirmLabel="Sign out"
+      />
       <CommandPalette
         isOpen={paletteOpen}
         onClose={() => setPaletteOpen(false)}

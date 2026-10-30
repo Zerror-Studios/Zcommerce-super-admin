@@ -5,6 +5,9 @@ Applies to both apps: **Merchant Admin** (store owners) and **Super Admin** (Zer
 
 This folder is the single source of truth. It consolidates v1.0 (system), v1.1 (expression), v1.2 (fixes + real screens) and v1.3 (Settings, header rule, data at scale) and v1.4 (final Home, Order, Payment, Campaigns, Help, AI card). If two files disagree, **the higher-numbered file wins**, and the text always wins over an image.
 
+
+> **v2 (30 Oct 2026):** Rohit's final build pack in `../../Zcom-dashboard-handover/` (01 design system, 02 shell, 03 admin pages, 04 super admin pages) supersedes this folder wherever they disagree. Tokens are in `src/styles/tokens.css` (v2 block). The spec's `text-small` / `text-small-strong` are `text-label` / `text-label-strong` in code (HeroUI owns `text-small`).
+
 ---
 
 ## ⚠️ Read this first (Claude)

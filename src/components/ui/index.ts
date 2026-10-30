@@ -4,13 +4,18 @@
  * HeroUI building blocks without design-system styling of their own are re-exported as-is.
  */
 export { AppToastProvider } from "./AppToastProvider";
-export { toastError } from "./toast";
+export { toast, toastError } from "./toast";
+export type { ToastAction } from "./toast";
 export { Badge } from "./Badge";
 export type { BadgeProps } from "./Badge";
 export { IconTile, sectionClass } from "./IconTile";
 export type { IconTileProps, SectionColor } from "./IconTile";
-export { Button } from "./Button";
-export type { ButtonProps, ButtonSize, ButtonVariant } from "./Button";
+export { Button, ButtonLink } from "./Button";
+export type { ButtonLinkProps, ButtonProps, ButtonSize, ButtonVariant } from "./Button";
+export { AttentionList } from "./AttentionList";
+export type { AttentionItem, AttentionListProps, AttentionUrgency } from "./AttentionList";
+export { VideoBanner } from "./VideoBanner";
+export type { VideoBannerProps, VideoBannerTile } from "./VideoBanner";
 export { Card } from "./Card";
 export type { CardPadding, CardProps } from "./Card";
 export { CardWrapper, cardFrameClasses } from "./CardWrapper";
@@ -19,6 +24,8 @@ export { Checkbox } from "./Checkbox";
 export type { CheckboxProps } from "./Checkbox";
 export { Chip } from "./Chip";
 export type { ChipProps } from "./Chip";
+export { FilterChip, OptionChip } from "./FilterChips";
+export type { FilterChipProps, OptionChipProps } from "./FilterChips";
 export { ConfirmDialog } from "./ConfirmDialog";
 export type { ConfirmDialogProps } from "./ConfirmDialog";
 export { Dropdown, DropdownMenu } from "./Dropdown";
@@ -28,9 +35,22 @@ export type { IconButtonProps, IconButtonSize, IconButtonVariant } from "./IconB
 export { Input } from "./Input";
 export type { InputProps } from "./Input";
 export { Drawer } from "./Drawer";
-export type { DrawerProps } from "./Drawer";
+export type { DrawerProps, DrawerSize } from "./Drawer";
+export { FilterButton, FilterDrawer, countActiveFilters } from "./FilterDrawer";
+export type {
+  FilterButtonProps,
+  FilterDraftValue,
+  FilterDrawerProps,
+  FilterGroup,
+  FilterGroupType,
+  FilterOption,
+  FilterRange,
+  FilterValues,
+} from "./FilterDrawer";
+export { RowMenu } from "./RowMenu";
+export type { RowMenuItem, RowMenuProps } from "./RowMenu";
 export { Modal } from "./Modal";
-export type { ModalProps } from "./Modal";
+export type { ModalProps, ModalWidth } from "./Modal";
 export { SearchInput } from "./SearchInput";
 export type { SearchInputProps } from "./SearchInput";
 export { Select } from "./Select";
@@ -41,8 +61,8 @@ export { Spinner } from "./Spinner";
 export type { SpinnerProps } from "./Spinner";
 export { Switch } from "./Switch";
 export type { SwitchProps } from "./Switch";
-export { Tabs } from "./Tabs";
-export type { TabsProps } from "./Tabs";
+export { SegmentedSwitch, TabLabel, Tabs } from "./Tabs";
+export type { SegmentedItem, SegmentedSize, SegmentedSwitchProps, TabsProps } from "./Tabs";
 export { Textarea } from "./Textarea";
 export type { TextareaProps } from "./Textarea";
 export { Tooltip } from "./Tooltip";
@@ -111,6 +131,10 @@ export { AiAskInput, AiAvatar, AiFeedback, AiInsightCard, AiSpectrumDefs, AiSugg
 export type { AiAskInputProps, AiInsightCardProps, AiSuggestionProps, AiThinkingProps, BriefLine, TodaysBriefProps } from "./Ai";
 export { isAiEnabled, useAiEnabled } from "./ai-flag";
 export { PaneHeader, PaneList, TwoPaneCard } from "./TwoPane";
+export { FieldGrid, SettingsSearch, SettingsShell, fieldSpanFull, useSettingsFieldFocus } from "./SettingsShell";
+export { ProgressRing } from "./ProgressRing";
+export { ColorPicker } from "./ColorPicker";
+export type { SettingsMenuAction, SettingsMenuGroup, SettingsMenuItem, SettingsSearchEntry, SettingsShellProps } from "./SettingsShell";
 export type { PaneGroup, PaneHeaderProps, PaneItem, PaneListProps, TwoPaneCardProps } from "./TwoPane";
 export { CellText, DataTable, TableSkeletonRows } from "./DataTable";
 export type { DataTableColumn, DataTableProps } from "./DataTable";

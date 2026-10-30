@@ -8,13 +8,13 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   max?: number;
 }
 
-/** Count pill (docs/design/02-components.md §1): 18px, blue fill, white 11px/600, tabular numbers. Hidden at 0. */
+/** Count pill (01 §6.3): min 20×20, capsule, blue fill, white 11px/600, tabular numbers. Hidden at 0. */
 export function Badge({ count, max = 99, className, ...rest }: BadgeProps) {
   if (count <= 0) return null;
   return (
     <span
       className={cx(
-        "inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-nav-count px-1.5 text-[11px] font-semibold leading-none text-brand-on tabular-nums",
+        "inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-nav-count px-1.5 text-[11px] font-semibold leading-none text-brand-on tabular-nums",
         className,
       )}
       {...rest}

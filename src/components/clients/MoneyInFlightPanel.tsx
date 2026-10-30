@@ -39,13 +39,13 @@ export function MoneyInFlightPanel({
   return (
     <section
       aria-label="Money in flight"
-      className={cx("rounded-card border border-line p-3", className)}
+      className={cx("rounded-tile border border-line px-4 py-3", className)}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-label font-medium text-fg">Money in flight</h3>
         {!override ? (
           <UiButton
-            variant="ghost"
+            variant="secondary"
             size="sm"
             onPress={() => void query.refetch()}
             isDisabled={query.loading}
@@ -81,12 +81,13 @@ export function MoneyInFlightPanel({
               {moneyInFlightRows(counts).map((row) => {
                 const blocking = highlightBlockers && row.blocksDelete && row.count > 0;
                 return (
-                  <div key={row.key} className="flex justify-between gap-4">
-                    <dt className={cx(blocking ? "font-medium text-tone-danger-text" : "text-fg-muted")}>
+                  // 04 S-03i: the count sits in a fixed 64px column, left-aligned and tabular.
+                  <div key={row.key} className="flex items-baseline gap-4">
+                    <dt className={cx("min-w-0 flex-1", blocking ? "font-medium text-tone-danger-text" : "text-fg-muted")}>
                       {row.label}
                       {blocking ? <span className="sr-only"> (blocks delete)</span> : null}
                     </dt>
-                    <dd className={cx("num", row.count > 0 ? "text-fg" : "text-fg-subtle")}>
+                    <dd className={cx("w-16 shrink-0 text-left num", row.count > 0 ? "text-fg" : "text-fg-subtle")}>
                       {formatCount(row.count)}
                     </dd>
                   </div>

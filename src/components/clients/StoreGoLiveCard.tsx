@@ -38,13 +38,15 @@ import { formatDate } from "../../lib/utils";
 import { useAuth } from "../../providers/AuthProvider";
 import type { Client } from "../../types";
 import type { GoLiveCheck, TenantDomainVerification } from "../../types/platform-api";
-import { IconError, IconInfo, IconSuccess, IconWarning } from "../ui/icons";
+import { IconError, IconInfo, IconRefresh, IconSuccess, IconWarning } from "../ui/icons";
+import { KeyValue, KeyValueGrid } from "./StoreDetailParts";
 import {
   Button as UiButton,
   Card,
   Checkbox,
   Chip,
   CopyableId,
+  ErrorState,
   Input,
   Modal,
   ModalBody,
@@ -53,6 +55,7 @@ import {
   ModalHeader,
   Skeleton,
   Textarea,
+  Tooltip,
   cx,
   toastError,
 } from "../ui";
@@ -144,55 +147,62 @@ export function StoreGoLiveCard({ client }: StoreGoLiveCardProps) {
     }
   };
 
+  // Every required check passes, counting the ones the Mark live pop-up may waive with a reason (PRD-018 FR-4).
+  const stillFailing = blockingChecks(
+    checks,
+    checks.filter((item) => isWaivable(item.key)).map((item) => item.key),
+  );
+  const canMarkLive = status === "VERIFIED" && checks.length > 0 && stillFailing.length === 0;
+  const markLiveBlockedReason =
+    status === "LIVE"
+      ? "This store is already live"
+      : status !== "VERIFIED"
+        ? "Verify the domain first"
+        : "Every check must pass first";
+
   return (
     <div className="flex flex-col gap-4">
-      <Card title="Domain">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Chip tone={statusView.tone}>{statusView.label}</Chip>
-            {client.domain ? <span className="font-mono text-body text-fg">{client.domain}</span> : null}
-            {client.liveAt ? (
-              <span className="text-caption text-fg-muted">Live since {formatDate(client.liveAt)}</span>
-            ) : null}
-          </div>
+      <Card title="Domain" actions={<Chip tone={statusView.tone}>{statusView.label}</Chip>}>
+        <div className="flex flex-col gap-4">
+          {client.domain || client.liveAt ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              {client.domain ? <span className="text-body font-medium text-fg">{client.domain}</span> : null}
+              {client.liveAt ? (
+                <span className="text-label text-fg-muted">Live since {formatDate(client.liveAt)}</span>
+              ) : null}
+            </div>
+          ) : null}
           {status === "NONE" && client.domain ? (
-            <p className="text-caption text-fg-muted">
+            <p className="text-label text-fg-muted">
               This domain was set before verification existed. Verify it to keep it after the domain migration.
             </p>
           ) : null}
 
           {pendingDomain ? (
-            <section aria-label="Domain being verified" className="rounded-card border border-line p-3">
+            <section aria-label="Domain being verified" className="rounded-tile border border-line px-4 py-3">
               <p className="text-body text-fg">
-                Verifying <span className="font-mono">{pendingDomain}</span>
+                Verifying <span className="font-medium">{pendingDomain}</span>
                 {client.domain ? ". The store keeps serving its current domain until this one verifies." : "."}
               </p>
               {claim && claim.status !== "VERIFIED" ? (
-                <dl className="mt-2 flex flex-col gap-1 text-body">
-                  <div className="flex flex-wrap justify-between gap-2">
-                    <dt className="text-fg-muted">Record type</dt>
-                    <dd className="font-mono text-fg">TXT</dd>
-                  </div>
-                  <div className="flex flex-wrap justify-between gap-2">
-                    <dt className="text-fg-muted">Name</dt>
-                    <dd className="min-w-0 break-all">
-                      <CopyableId value={claim.recordName} />
-                    </dd>
-                  </div>
-                  <div className="flex flex-wrap justify-between gap-2">
-                    <dt className="text-fg-muted">Value</dt>
-                    <dd className="min-w-0 break-all">
-                      <CopyableId value={claim.recordValue} />
-                    </dd>
-                  </div>
-                </dl>
+                <KeyValueGrid columns={3} className="mt-3">
+                  <KeyValue label="Record type">
+                    <span className="font-mono">TXT</span>
+                  </KeyValue>
+                  <KeyValue label="Name">
+                    <CopyableId value={claim.recordName} />
+                  </KeyValue>
+                  <KeyValue label="Value">
+                    <CopyableId value={claim.recordValue} />
+                  </KeyValue>
+                </KeyValueGrid>
               ) : (
-                <p className="mt-1 text-caption text-fg-muted">
+                <p className="mt-1 text-label text-fg-muted">
                   Start the verification again below to see the TXT record to publish.
                 </p>
               )}
               {checkError ? (
-                <p role="alert" className="mt-2 text-body text-tone-danger-text">
+                <p role="alert" className="mt-2 text-label text-tone-danger-text">
                   {checkError}
                 </p>
               ) : null}
@@ -223,7 +233,7 @@ export function StoreGoLiveCard({ client }: StoreGoLiveCardProps) {
                 isInvalid={!!domainError}
                 errorMessage={domainError ?? undefined}
                 autoComplete="off"
-                className="sm:max-w-sm"
+                className="sm:w-90"
               />
               <UiButton
                 variant="primary"
@@ -241,11 +251,14 @@ export function StoreGoLiveCard({ client }: StoreGoLiveCardProps) {
 
       <Card
         title="Go-live checklist"
+        padding="none"
+        className="overflow-clip"
         actions={
           <UiButton
-            variant="ghost"
+            variant="secondary"
             size="sm"
-            isDisabled={checklist.loading}
+            startIcon={<IconRefresh aria-hidden />}
+            isLoading={checklist.loading && checks.length > 0}
             onPress={() => void checklist.refetch()}
           >
             Run again
@@ -253,40 +266,44 @@ export function StoreGoLiveCard({ client }: StoreGoLiveCardProps) {
         }
       >
         {checklist.loading && checks.length === 0 ? (
-          <div className="space-y-2" role="status" aria-label="Running the checks">
-            <Skeleton className="h-5 w-full rounded" />
-            <Skeleton className="h-5 w-5/6 rounded" />
-            <Skeleton className="h-5 w-2/3 rounded" />
+          <div className="flex flex-col gap-3 px-5 pb-5" role="status" aria-label="Running the checks">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={index} className="h-8 w-full rounded-lg" />
+            ))}
           </div>
         ) : checklist.error && checks.length === 0 ? (
-          <div role="alert" className="flex items-center justify-between gap-2">
-            <p className="text-body text-tone-danger-text">Couldn't run the go-live checks.</p>
-            <UiButton variant="secondary" size="sm" onPress={() => void checklist.refetch()}>
-              Retry
-            </UiButton>
+          <div className="px-5 pb-5">
+            <ErrorState inline title="Couldn't run the go-live checks." onRetry={() => void checklist.refetch()} />
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <>
             <ChecklistRows checks={checks} />
             {canManage ? (
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-caption text-fg-muted">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-subtle bg-card-footer px-5 py-3">
+                <p className="text-label text-fg-muted">
                   {status === "LIVE"
                     ? "This store is live."
                     : status === "VERIFIED"
                       ? "Every required check must pass; the payment app and legal pages can be waived with a reason."
                       : "Verify the domain before going live."}
                 </p>
-                <UiButton
-                  variant="primary"
-                  isDisabled={status !== "VERIFIED" || checks.length === 0}
-                  onPress={() => setLiveOpen(true)}
-                >
-                  Mark live
-                </UiButton>
+                {canMarkLive ? (
+                  <UiButton variant="primary" onPress={() => setLiveOpen(true)}>
+                    Mark live
+                  </UiButton>
+                ) : (
+                  <Tooltip content={markLiveBlockedReason}>
+                    {/* A disabled button gets no pointer events; the wrapper carries the tooltip. */}
+                    <span tabIndex={0} className="inline-flex rounded-full">
+                      <UiButton variant="primary" isDisabled>
+                        Mark live
+                      </UiButton>
+                    </span>
+                  </Tooltip>
+                )}
               </div>
             ) : null}
-          </div>
+          </>
         )}
       </Card>
 
@@ -301,22 +318,23 @@ export function StoreGoLiveCard({ client }: StoreGoLiveCardProps) {
   );
 }
 
+/** 56px rows: 20px status icon, the check and its reason, the badge on the right; dividers inset 20px. */
 function ChecklistRows({ checks }: { checks: readonly GoLiveCheck[] }) {
-  if (checks.length === 0) return <p className="text-body text-fg-muted">No checks returned.</p>;
+  if (checks.length === 0) return <p className="px-5 pb-5 text-body text-fg-muted">No checks returned.</p>;
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="mx-5 divide-y divide-line-subtle border-t border-line-subtle">
       {checks.map((check) => {
         const Icon = STATE_ICON[check.state];
         const view = GO_LIVE_STATE_VIEW[check.state];
         return (
-          <li key={check.key} className="flex items-start gap-2">
-            <Icon aria-hidden className={cx("mt-0.5 size-4 shrink-0", STATE_ICON_CLASS[check.state])} />
+          <li key={check.key} className="flex min-h-14 items-center gap-3 py-2">
+            <Icon aria-hidden className={cx("size-5 shrink-0", STATE_ICON_CLASS[check.state])} />
             <div className="min-w-0 flex-1">
-              <p className="text-body text-fg">
+              <p className="text-body font-medium text-fg">
                 {check.label}
-                {!check.required ? <span className="text-fg-subtle"> (optional)</span> : null}
+                {!check.required ? <span className="font-normal text-fg-subtle"> (optional)</span> : null}
               </p>
-              {check.detail ? <p className="text-caption text-fg-muted">{check.detail}</p> : null}
+              {check.detail ? <p className="text-label text-fg-muted">{check.detail}</p> : null}
             </div>
             <Chip tone={view.tone}>{view.label}</Chip>
           </li>
@@ -428,7 +446,7 @@ function MarkLiveDialog({ isOpen, onClose, client, checks, onRecheck }: MarkLive
           </div>
         </ModalBody>
         <ModalFooter>
-          <UiButton variant="ghost" onPress={close} isDisabled={loading}>
+          <UiButton variant="secondary" onPress={close} isDisabled={loading}>
             Cancel
           </UiButton>
           <UiButton

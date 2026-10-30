@@ -282,7 +282,7 @@ export function DateRangeComparison({
                 : null}
             </p>
             <div className="flex items-center gap-2">
-              <UiButton variant="ghost" size="sm" onPress={() => setOpen(false)}>
+              <UiButton variant="secondary" size="sm" onPress={() => setOpen(false)}>
                 Cancel
               </UiButton>
               <UiButton variant="primary" size="sm" onPress={handleApply}>

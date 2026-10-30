@@ -5,7 +5,11 @@ import { cx } from "./cx";
 
 export type CheckboxProps = Omit<HeroCheckboxProps, "color" | "radius">;
 
-/** Checkbox (docs/design/02-components.md §7): 16px, 4px radius, strong border, primary fill when checked. */
+/**
+ * Checkbox (01 §7.8, `.zc-check-box` in src/styles/components.css): 16px, 4px radius, a clear 1.5px grey
+ * outline so an empty box is visible; blue fill with a white tick or dash. Label 14px, 8px gap, the whole
+ * label is clickable.
+ */
 export function Checkbox({ classNames, size = "sm", ...rest }: CheckboxProps) {
   return (
     <HeroCheckbox
@@ -14,10 +18,8 @@ export function Checkbox({ classNames, size = "sm", ...rest }: CheckboxProps) {
       radius="sm"
       classNames={{
         ...classNames,
-        wrapper: cx(
-          "size-4 rounded-xs before:rounded-xs after:rounded-xs before:border before:border-line-strong after:bg-brand",
-          classNames?.wrapper,
-        ),
+        base: cx("min-h-6 gap-2", classNames?.base),
+        wrapper: cx("zc-check-box", classNames?.wrapper),
         icon: cx("text-brand-on", classNames?.icon),
         label: cx("text-sm text-fg", classNames?.label),
       }}

@@ -137,11 +137,11 @@ export function ArchivePlanDialog({ plan, plans, onClose }: PlanDialogProps) {
           ) : null}
         </ModalBody>
         <ModalFooter>
-          <UiButton variant="ghost" onPress={onClose} isDisabled={busy}>
+          <UiButton variant="secondary" onPress={onClose} isDisabled={busy}>
             Cancel
           </UiButton>
           <UiButton
-            variant="danger"
+            variant="destructive"
             isLoading={busy}
             isDisabled={busy || (inUse && options.length === 0)}
             onPress={() => void run()}
@@ -299,7 +299,7 @@ export function MigratePlanDialog({ plan, plans, onClose }: PlanDialogProps) {
             </UiButton>
           ) : (
             <>
-              <UiButton variant="ghost" onPress={onClose} isDisabled={busy}>
+              <UiButton variant="secondary" onPress={onClose} isDisabled={busy}>
                 Cancel
               </UiButton>
               <UiButton

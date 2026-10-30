@@ -82,6 +82,7 @@ export {
   LuCopy as IconDuplicate,
   LuArrowLeftRight as IconExchange,
   LuExternalLink as IconExternalLink,
+  LuArrowUpRight as IconExternalArrow,
   LuTruck as IconFastShipping,
   LuFile as IconFile,
   LuFileCode as IconFileCode,
@@ -155,6 +156,13 @@ export {
   LuGripVertical as IconDragHandle,
   LuArrowUp as IconSortAsc,
   LuArrowDown as IconSortDesc,
+  // v2 (page phase): row-menu and status icons the specs name.
+  LuArchive as IconArchive,
+  LuPause as IconPause,
+  LuTicketPercent as IconTicketPercent,
+  LuClipboard as IconClipboard,
+  LuMailX as IconMailX,
+  LuCircleX as IconXCircle,
 } from "react-icons/lu";
 
 /* Filled glyphs where a fill carries the meaning: brand logo, status dot, rating star. */

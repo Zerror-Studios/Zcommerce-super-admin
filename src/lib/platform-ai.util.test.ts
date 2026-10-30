@@ -16,6 +16,8 @@ import {
   formatMetricValue,
   formatRate,
   formatUsd,
+  formatUsdInr,
+  aiInrRate,
   metricKeyLabel,
   topUpEmptyCopy,
   topUpStatusOf,
@@ -259,5 +261,18 @@ describe("top-up status filter (PRD-024 FR-1.10)", () => {
     expect(topUpStatusOf("GRANTED")).toBe("GRANTED");
     expect(topUpStatusOf("bogus")).toBe("OPEN");
     expect(topUpEmptyCopy("DISMISSED")).toBe("No dismissed requests");
+  });
+});
+
+describe("formatUsdInr / aiInrRate (04 S-00b)", () => {
+  it("shows dollars with whole rupees, paise under a rupee", () => {
+    expect(formatUsdInr(0.093, 7.9)).toBe("$0.093 (₹8)");
+    expect(formatUsdInr(0.0038, 0.32)).toBe("$0.0038 (₹0.32)");
+    expect(formatUsdInr(12.5, null)).toBe("$12.50");
+  });
+  it("prefers the configured rate, else the implied one", () => {
+    expect(aiInrRate(84, 1, 90)).toBe(84);
+    expect(aiInrRate(null, 2, 170)).toBe(85);
+    expect(aiInrRate(null, 0, 0)).toBeNull();
   });
 });

@@ -100,8 +100,8 @@ export default function DevUiPage() {
         description="Every shared component in every state (docs/design/02-components.md). Hidden route."
         actions={
           <>
-            <Button variant="ghost" startIcon={<IconImport />}>Import</Button>
-            <Button variant="ghost" startIcon={<IconExport />}>Export</Button>
+            <Button variant="secondary" startIcon={<IconImport />}>Import</Button>
+            <Button variant="secondary" startIcon={<IconExport />}>Export</Button>
             <Button startIcon={<IconAdd />}>Add product</Button>
           </>
         }
@@ -110,10 +110,10 @@ export default function DevUiPage() {
       <Section title="Buttons">
         <Button>Primary</Button>
         <Button variant="secondary">Secondary</Button>
-        <Button variant="ghost">Ghost</Button>
-        <Button variant="destructive">Delete</Button>
-        <Button variant="danger">Delete store</Button>
-        <Button variant="link">View all</Button>
+        <Button variant="secondary">Ghost</Button>
+        <Button variant="destructive-secondary">Delete</Button>
+        <Button variant="destructive">Delete store</Button>
+        <Button variant="tertiary">View all</Button>
         <Button variant="secondary" startIcon={<IconCalendar />} endIcon={<IconCaret />}>Last 30 days</Button>
         <Button isLoading>Saving</Button>
         <Button isDisabled>Disabled</Button>
@@ -124,7 +124,7 @@ export default function DevUiPage() {
         <Button size="lg">Large 40</Button>
         <Button variant="secondary" size="sm">Previous</Button>
         <IconButton aria-label="More actions" size="sm"><IconMore /></IconButton>
-        <IconButton aria-label="Columns" variant="outline"><IconColumns /></IconButton>
+        <IconButton aria-label="Columns" variant="default"><IconColumns /></IconButton>
       </Section>
 
       <Section title="Badges (one tone map: statusTone)">
@@ -196,8 +196,8 @@ export default function DevUiPage() {
             </Tabs>
             <div className="flex items-center gap-1">
               <SearchInput placeholder="Search products" className="mr-1 w-64" />
-              <Button variant="ghost" size="sm" startIcon={<IconFilters />}>Filter</Button>
-              <Button variant="ghost" size="sm" startIcon={<IconColumns />}>Columns</Button>
+              <Button variant="secondary" size="sm" startIcon={<IconFilters />}>Filter</Button>
+              <Button variant="secondary" size="sm" startIcon={<IconColumns />}>Columns</Button>
             </div>
           </div>
           <Table
@@ -260,7 +260,7 @@ export default function DevUiPage() {
       </Section>
 
       <Section title="Cards">
-        <Card title="Needs attention" actions={<Button variant="link" size="sm">View all</Button>} className="w-80">
+        <Card title="Needs attention" actions={<Button variant="tertiary" size="sm">View all</Button>} className="w-80">
           <p className="text-body text-fg-muted">Card body, 20px padding. No shadow, no icon tiles.</p>
         </Card>
         <CardWrapper title="Revenue" description="Legacy CardWrapper" className="w-80">
@@ -343,7 +343,7 @@ export default function DevUiPage() {
       <Section title="Overlays and feedback">
         <Tooltip content="Tooltip text"><Button variant="secondary">Hover for tooltip</Button></Tooltip>
         <Button variant="secondary" onPress={() => setModalOpen(true)}>Open modal</Button>
-        <Button variant="destructive" onPress={() => setConfirmOpen(true)}>Delete store</Button>
+        <Button variant="destructive-secondary" onPress={() => setConfirmOpen(true)}>Delete store</Button>
         <Button variant="secondary" onPress={() => addToast({ title: "Product saved." })}>Toast</Button>
         <Button variant="secondary" onPress={() => toastError("Couldn't save the product.", { description: "Check your connection and try again." })}>Error toast</Button>
       </Section>
@@ -363,7 +363,7 @@ export default function DevUiPage() {
               <ModalHeader>Add tag</ModalHeader>
               <ModalBody><Input label="Tag name" placeholder="Summer sale" /></ModalBody>
               <ModalFooter>
-                <Button variant="ghost" onPress={close}>Cancel</Button>
+                <Button variant="secondary" onPress={close}>Cancel</Button>
                 <Button onPress={close}>Add tag</Button>
               </ModalFooter>
             </>

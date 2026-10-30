@@ -37,7 +37,12 @@ const MOD_KEY = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navig
 
 // ─── Ask bar ─────────────────────────────────────────────────────────────────
 
-/** Floating bottom-centre bar: sparkle · placeholder · ⌘J · send. Hides on scroll down (the shell passes `hidden`). */
+/**
+ * AI ask bar (01 §7.23, 02 §6, `.zc-askbar`): a floating 48px capsule at the bottom centre of `main`, max 560px,
+ * white with a 1px AI-gradient ring at rest (1.5px and the AI tint while focused) · sparkle · input · ⌘J chip ·
+ * a 36px solid-dark circle send button. Hides on scroll down (the shell passes `hidden`) and while a dialog,
+ * drawer or the save bar is open.
+ */
 export function AskBar({ placeholder, hidden, onOpen }: { placeholder: string; hidden: boolean; onOpen: (question?: string) => void }) {
   const [value, setValue] = useState("");
   const submit = (event: FormEvent) => {
@@ -50,27 +55,23 @@ export function AskBar({ placeholder, hidden, onOpen }: { placeholder: string; h
       onSubmit={submit}
       aria-label="Ask the assistant"
       className={cx(
-        "ai-edge pointer-events-auto flex h-12 w-full items-center gap-2 rounded-[14px] bg-surface/90 pl-4 pr-2 shadow-popover backdrop-blur-md transition-all duration-base ease-standard",
+        "zc-askbar pointer-events-auto transition-[opacity,transform] duration-base ease-standard",
         hidden ? "pointer-events-none translate-y-4 opacity-0" : "translate-y-0 opacity-100",
       )}
     >
-      <Sparkle />
+      <Sparkle className="size-4 shrink-0" />
       <input
         value={value}
         onChange={(event) => setValue(event.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="h-full min-w-0 flex-1 bg-transparent text-body text-fg outline-hidden placeholder:text-fg-placeholder"
+        className="h-full min-w-0 flex-1 bg-transparent text-body text-fg outline-hidden placeholder:text-fg-placeholder max-md:text-base"
         style={{ boxShadow: "none" }}
       />
       <Kbd className="hidden sm:inline-flex">{MOD_KEY}J</Kbd>
-      <button
-        type="submit"
-        aria-label="Ask"
-        className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-fg text-brand-on transition-opacity hover:opacity-90"
-      >
-        <IconArrowRight aria-hidden className="size-4 -rotate-90" />
-      </button>
+      <IconButton type="submit" aria-label="Ask" variant="solid-dark" showTooltip={false}>
+        <IconArrowRight aria-hidden className="-rotate-90" />
+      </IconButton>
     </form>
   );
 }
@@ -144,15 +145,22 @@ export function AssistantPanel({
       isOpen={isOpen}
       onOpenChange={(open) => !open && onClose()}
       hideCloseButton
+      size="sm"
+      classNames={{ base: "!max-w-[var(--zc-assistant-w)] !rounded-none border-l border-line" }}
     >
       <DrawerContent>
-        <DrawerHeader className="flex items-center gap-2 border-b border-line px-4 py-3">
-          <Sparkle />
-          <h2 className="flex-1 text-body font-semibold text-fg">Assistant</h2>
-          <IconButton aria-label="New chat" size="sm" onPress={() => setTurns([])}>
+        {/* 56px header (02 §6): AI tile + "Zcom AI", ghost circles for New chat and Close. */}
+        <DrawerHeader className="!min-h-14 !flex-row items-center gap-2 border-b border-line-subtle !py-2 !pl-4 !pr-3">
+          <span aria-hidden className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[image:var(--zc-ai-gradient)]">
+            <svg viewBox="0 0 24 24" className="size-3.5 fill-white">
+              <path d="M12 2.5l2.1 5.6 5.6 2.1-5.6 2.1L12 17.9l-2.1-5.6-5.6-2.1 5.6-2.1z" />
+            </svg>
+          </span>
+          <h2 className="flex-1 text-title-3 text-fg">Zcom AI</h2>
+          <IconButton aria-label="New chat" variant="ghost" size="sm" onPress={() => setTurns([])}>
             <IconAdd />
           </IconButton>
-          <IconButton aria-label="Close assistant" size="sm" onPress={onClose}>
+          <IconButton aria-label="Close assistant" variant="ghost" size="sm" onPress={onClose}>
             <IconClose />
           </IconButton>
         </DrawerHeader>

@@ -10,7 +10,7 @@
  */
 
 import { addToast } from "@heroui/react";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import {
@@ -36,6 +36,8 @@ import {
   ModalHeader,
   toastError,
 } from "../ui";
+import { IconEdit } from "../ui/icons";
+import { KeyValue, KeyValueGrid } from "./StoreDetailParts";
 
 export interface StoreDetailsCardProps {
   client: Client;
@@ -43,12 +45,12 @@ export interface StoreDetailsCardProps {
   goLiveHref: string;
 }
 
+/** Store detail › Store details (04 S-03b): one card, a 2-column key/value grid, "Edit" opens the md pop-up. */
 export function StoreDetailsCard({ client, goLiveHref }: StoreDetailsCardProps) {
   const { can } = useAuth();
   const canManage = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
   const [open, setOpen] = useState(false);
   const draft = storeDetailsDraftOf(client);
-  const show = (value: string) => value || <span className="text-fg-subtle">—</span>;
 
   return (
     <>
@@ -56,44 +58,35 @@ export function StoreDetailsCard({ client, goLiveHref }: StoreDetailsCardProps) 
         title="Store details"
         actions={
           canManage ? (
-            <UiButton variant="ghost" size="sm" onPress={() => setOpen(true)}>
+            <UiButton variant="secondary" size="sm" startIcon={<IconEdit aria-hidden />} onPress={() => setOpen(true)}>
               Edit
             </UiButton>
           ) : null
         }
       >
-        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-          <Row label="Store name">{show(draft.name)}</Row>
-          <Row label="Slug">{show(client.slug ?? "")}</Row>
-          <Row label="Domain">
-            <span className="flex flex-wrap items-center gap-2">
-              {client.domain ? <span className="font-mono">{client.domain}</span> : show("")}
+        <KeyValueGrid columns={2}>
+          <KeyValue label="Store name">{draft.name}</KeyValue>
+          <KeyValue label="Slug">{client.slug}</KeyValue>
+          <KeyValue label="Domain">
+            <span className="flex flex-wrap items-center gap-x-2">
+              {client.domain ? <span>{client.domain}</span> : <span className="text-fg-subtle">Not set</span>}
               <Link to={goLiveHref} className="text-label text-brand hover:underline">
                 Change in Go live
               </Link>
             </span>
-          </Row>
-          <Row label="Owner">{show(draft.ownerName)}</Row>
-          <Row label="Owner email">{show(draft.ownerEmail)}</Row>
-          <Row label="Owner phone">{show(draft.ownerPhone)}</Row>
-          <Row label="Billing email">{show(draft.billingContactEmail)}</Row>
-          <Row label="GSTIN">{show(draft.gstin)}</Row>
-          <Row label="Timezone">{show(draft.timezone)}</Row>
-          <Row label="Currency">{show(draft.currency)}</Row>
-        </dl>
+          </KeyValue>
+          <KeyValue label="Owner">{draft.ownerName}</KeyValue>
+          <KeyValue label="Owner email">{draft.ownerEmail}</KeyValue>
+          <KeyValue label="Owner phone">{draft.ownerPhone}</KeyValue>
+          <KeyValue label="Billing email">{draft.billingContactEmail}</KeyValue>
+          <KeyValue label="GSTIN">{draft.gstin}</KeyValue>
+          <KeyValue label="Time zone">{draft.timezone}</KeyValue>
+          <KeyValue label="Currency">{draft.currency}</KeyValue>
+        </KeyValueGrid>
       </Card>
 
-      {open ? <StoreDetailsDialog client={client} initial={draft} onClose={() => setOpen(false)} /> : null}
+      {open ? <StoreDetailsDialog client={client} onClose={() => setOpen(false)} /> : null}
     </>
-  );
-}
-
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-label text-fg-muted">{label}</dt>
-      <dd className="break-words text-body text-fg">{children}</dd>
-    </div>
   );
 }
 
@@ -110,19 +103,14 @@ const FIELDS: ReadonlyArray<{
   { key: "ownerPhone", label: "Owner phone", type: "tel" },
   { key: "billingContactEmail", label: "Billing email", type: "email", description: "Invoices go here when set." },
   { key: "gstin", label: "GSTIN", placeholder: "29ABCDE1234F1Z5" },
-  { key: "timezone", label: "Timezone", placeholder: "Asia/Kolkata" },
+  // Check first 05 #26: a searchable IANA select and required marks wait for Rohit; free text as live.
+  { key: "timezone", label: "Time zone", placeholder: "Asia/Kolkata" },
   { key: "currency", label: "Currency", placeholder: "INR" },
 ];
 
-function StoreDetailsDialog({
-  client,
-  initial,
-  onClose,
-}: {
-  client: Client;
-  initial: StoreDetailsDraft;
-  onClose: () => void;
-}) {
+/** The live Edit pop-up (md 640); also opened from the store header's "Edit store details". */
+export function StoreDetailsDialog({ client, onClose }: { client: Client; onClose: () => void }) {
+  const [initial] = useState<StoreDetailsDraft>(() => storeDetailsDraftOf(client));
   const { updateStoreDetails } = useClients();
   const [draft, setDraft] = useState<StoreDetailsDraft>(initial);
   const [errors, setErrors] = useState<StoreDetailsErrors>({});
@@ -190,7 +178,7 @@ function StoreDetailsDialog({
           </div>
         </ModalBody>
         <ModalFooter>
-          <UiButton variant="ghost" onPress={onClose} isDisabled={saving}>
+          <UiButton variant="secondary" onPress={onClose} isDisabled={saving}>
             Cancel
           </UiButton>
           <UiButton variant="primary" isLoading={saving} isDisabled={!changed} onPress={() => void save()}>

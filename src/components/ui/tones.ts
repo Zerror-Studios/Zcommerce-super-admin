@@ -18,7 +18,7 @@ export const toneClasses: Record<Tone, string> = {
 
 /** 6px status dot (badges, "Needs attention" rows, health). */
 export const toneDotClasses: Record<Tone, string> = {
-  neutral: "bg-tone-neutral",
+  neutral: "bg-tone-neutral-dot",
   info: "bg-brand",
   success: "bg-tone-success",
   warning: "bg-tone-warning-dot",

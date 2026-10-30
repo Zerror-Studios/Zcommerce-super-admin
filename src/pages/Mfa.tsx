@@ -152,7 +152,7 @@ export function Mfa() {
             {!replacing && startError && password ? <p className="text-caption text-danger">{startError}</p> : null}
             <div className="flex justify-end gap-2">
               {replacing ? (
-                <UiButton variant="ghost" onPress={() => setStep("done")}>
+                <UiButton variant="secondary" onPress={() => setStep("done")}>
                   Cancel
                 </UiButton>
               ) : null}
@@ -204,7 +204,7 @@ export function Mfa() {
               errorMessage={error}
             />
             <div className="flex justify-end gap-2">
-              <UiButton variant="ghost" onPress={() => navigate("/")}>
+              <UiButton variant="secondary" onPress={() => navigate("/")}>
                 Later
               </UiButton>
               <UiButton variant="primary" type="submit" isLoading={busy}>
@@ -238,7 +238,7 @@ export function Mfa() {
               Done
             </UiButton>
             {recoveryCodes.length === 0 ? (
-              <UiButton variant="ghost" onPress={() => setStep("intro")}>
+              <UiButton variant="secondary" onPress={() => setStep("intro")}>
                 Replace authenticator
               </UiButton>
             ) : null}

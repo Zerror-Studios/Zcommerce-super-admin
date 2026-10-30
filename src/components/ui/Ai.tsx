@@ -95,7 +95,7 @@ export function TodaysBrief({ lines, actions, onAskAi, message, action, onDismis
         <AiAvatar />
         <h2 className="flex-1 text-body font-semibold text-fg">Today&apos;s brief</h2>
         {onAskAi ? (
-          <Button variant="link" size="sm" onPress={onAskAi} endIcon={<IconArrowRight aria-hidden />}>
+          <Button variant="tertiary" size="sm" onPress={onAskAi} endIcon={<IconArrowRight aria-hidden />}>
             Ask AI
           </Button>
         ) : null}
@@ -107,7 +107,7 @@ export function TodaysBrief({ lines, actions, onAskAi, message, action, onDismis
       </div>
       <ul className="flex flex-col gap-1.5">
         {shown.map((line, index) => (
-          <li key={index} className="text-lead text-fg-muted">
+          <li key={index} className="text-body-l text-fg-muted">
             <span className="font-semibold text-fg">{line.what}</span>
             {line.why ? <> — {line.why}</> : null}
           </li>
@@ -392,7 +392,7 @@ export function AiSuggestion({
           ))}
         </div>
       ) : (
-        <div className="whitespace-pre-line text-lead text-fg">{text}</div>
+        <div className="whitespace-pre-line text-body-l text-fg">{text}</div>
       )}
 
       {!error ? (
@@ -430,14 +430,7 @@ export function WriteWithAiButton({
   size?: "sm" | "md";
 }) {
   return (
-    <Button
-      variant="secondary"
-      size={size}
-      startIcon={<Sparkle />}
-      onPress={onPress}
-      isLoading={isLoading}
-      className="btn-ai border-transparent data-[hover=true]:border-transparent"
-    >
+    <Button variant="ai" size={size} startIcon={<Sparkle />} onPress={onPress} isLoading={isLoading}>
       {label}
     </Button>
   );

@@ -29,7 +29,7 @@ export function LoadMoreFooter({
         Showing {shown} of {total} {noun}
       </span>
       <UiButton
-        variant="ghost"
+        variant="secondary"
         size="sm"
         isLoading={loading}
         onPress={() => void onLoadMore().catch(() => undefined)}

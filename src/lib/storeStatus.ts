@@ -43,8 +43,8 @@ export const STORE_LIFECYCLE_FILTERS: StoreLifecycleKey[] = [
 const LIFECYCLE_BADGES: Record<StoreLifecycleKey, StatusBadge> = {
   live: { label: "Live", tone: "success" },
   setup: { label: "Set up", tone: "neutral" },
-  trial: { label: "Trial", tone: "info" },
-  past_due: { label: "Past due", tone: "warning" },
+  trial: { label: "Trial", tone: "neutral" },
+  past_due: { label: "Past due", tone: "danger" },
   cancelled: { label: "Cancelled", tone: "neutral" },
   suspended: { label: "Suspended", tone: "danger" },
   deleted: { label: "Deleted", tone: "neutral" },

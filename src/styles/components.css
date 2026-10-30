@@ -1,0 +1,883 @@
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* Zcom v2 components (Zcom-dashboard-handover/tokens/components.example.css, 01 §7). Ported 1:1; the additions
+   are the HeroUI bridges: kit components render HeroUI elements, which carry data-hover / data-pressed /
+   data-focus-visible and their own utility classes. These rules are unlayered on purpose, so they beat
+   HeroUI's layered utilities; a caller can still override one with a `!` utility. Hover only applies on
+   devices that hover (01 §7). Keyframes (zc-spin, zc-shimmer) live in theme.css. */
+
+/* ---------------------------------------------------------------------
+   Button  (.zc-btn + one variant + optional size), 01 §7.1
+   --------------------------------------------------------------------- */
+.zc-btn {
+  --_h: var(--zc-control-h);
+  --_px: var(--zc-btn-px);
+  --_fs: 14px;
+  --_lh: 20px;
+  --_ls: -0.006em;
+  --_gap: 6px;
+  --_icon: 16px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--_gap);
+  height: var(--_h);
+  min-height: var(--_h);
+  min-width: 72px;
+  padding: 0 var(--_px);
+  border: 1px solid transparent;
+  border-radius: var(--zc-radius-pill);
+  font-family: var(--zc-font-sans);
+  font-size: var(--_fs);
+  line-height: var(--_lh);
+  letter-spacing: var(--_ls);
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  scale: none;
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--zc-dur-fast) var(--zc-ease),
+    border-color var(--zc-dur-fast) var(--zc-ease),
+    color var(--zc-dur-fast) var(--zc-ease),
+    box-shadow var(--zc-dur-fast) var(--zc-ease),
+    opacity var(--zc-dur-fast) var(--zc-ease),
+    transform var(--zc-dur-base) var(--zc-ease-press);
+}
+.zc-btn svg { width: var(--_icon); height: var(--_icon); flex: none; }
+.zc-btn:focus { outline: none; }
+.zc-btn:focus-visible,
+.zc-btn[data-focus-visible="true"] { outline: none; box-shadow: var(--zc-focus-ring-strong); }
+.zc-btn:active:not(:disabled):not([aria-disabled="true"]):not([aria-busy="true"]),
+.zc-btn[data-pressed="true"]:not(:disabled):not([aria-disabled="true"]):not([aria-busy="true"]) {
+  transform: scale(var(--zc-press-scale));
+  transition-duration: var(--zc-dur-instant);
+  transition-timing-function: var(--zc-ease);
+}
+.zc-btn:disabled,
+.zc-btn[aria-disabled="true"],
+.zc-btn[data-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+.zc-btn[aria-busy="true"] { cursor: progress; }
+.zc-btn--full { width: 100%; }
+
+/* Sizes (md is the default). md and sm become 40px on phone through the tokens. */
+.zc-btn--lg { --_h: var(--zc-control-h-lg); --_px: var(--zc-btn-px-lg); --_fs: 15px; --_lh: 20px; --_ls: -0.009em; --_gap: 8px; --_icon: 18px; min-width: 96px; }
+.zc-btn--sm { --_h: var(--zc-control-h-sm); --_px: var(--zc-btn-px-sm); --_fs: 13px; --_lh: 18px; --_ls: -0.003em; --_icon: 14px; min-width: 64px; }
+.zc-btn--xs { --_h: var(--zc-control-h-xs); --_px: var(--zc-btn-px-xs); --_fs: 12px; --_lh: 16px; --_ls: 0em; --_gap: 4px; --_icon: 14px; min-width: 0; }
+@media (max-width: 767px) {
+  .zc-btn--xs { --_h: 32px; }
+}
+
+/* Primary */
+.zc-btn--primary { background: var(--zc-primary); color: var(--zc-on-primary); }
+.zc-btn--primary:active:not(:disabled):not([aria-disabled="true"]),
+.zc-btn--primary[data-pressed="true"] { background: var(--zc-primary-pressed); }
+
+/* Secondary */
+.zc-btn--secondary { background: var(--zc-surface); border-color: var(--zc-border-strong); color: var(--zc-fg); }
+.zc-btn--secondary:active:not(:disabled):not([aria-disabled="true"]),
+.zc-btn--secondary[data-pressed="true"] { background: var(--zc-control-pressed-bg); }
+.zc-btn--secondary:focus-visible,
+.zc-btn--secondary[data-focus-visible="true"] { border-color: var(--zc-primary); }
+
+/* Tertiary (text button with a pill hover) */
+.zc-btn--tertiary { background: transparent; color: var(--zc-primary-text); min-width: 0; }
+.zc-btn--tertiary:active:not(:disabled):not([aria-disabled="true"]),
+.zc-btn--tertiary[data-pressed="true"] { background: var(--zc-primary-soft-strong); }
+
+/* Ghost (neutral tertiary) */
+.zc-btn--ghost { background: transparent; color: var(--zc-fg); min-width: 0; }
+.zc-btn--ghost:active:not(:disabled):not([aria-disabled="true"]),
+.zc-btn--ghost[data-pressed="true"] { background: var(--zc-ghost-pressed-bg); }
+
+/* Destructive (confirm dialogs only) */
+.zc-btn--destructive { background: var(--zc-danger); color: white; }
+.zc-btn--destructive:active:not(:disabled):not([aria-disabled="true"]),
+.zc-btn--destructive[data-pressed="true"] { background: var(--zc-danger-pressed); }
+.zc-btn--destructive:focus-visible,
+.zc-btn--destructive[data-focus-visible="true"] { box-shadow: 0 0 0 2px white, 0 0 0 4px rgba(180, 35, 24, 0.5); }
+
+/* Destructive secondary */
+.zc-btn--destructive-secondary { background: var(--zc-surface); border-color: var(--zc-danger-border); color: var(--zc-danger-text); }
+.zc-btn--destructive-secondary:active:not(:disabled):not([aria-disabled="true"]),
+.zc-btn--destructive-secondary[data-pressed="true"] { background: var(--zc-danger-soft-pressed); }
+
+/* Glass (only on video, photos, banners) */
+.zc-btn--glass {
+  background: var(--zc-glass-bg);
+  color: white;
+  box-shadow: var(--zc-glass-ring);
+  -webkit-backdrop-filter: var(--zc-glass-blur);
+  backdrop-filter: var(--zc-glass-blur);
+}
+.zc-btn--glass:active:not(:disabled),
+.zc-btn--glass[data-pressed="true"] { background: var(--zc-glass-bg-pressed); }
+.zc-btn--glass:focus-visible,
+.zc-btn--glass[data-focus-visible="true"] { box-shadow: var(--zc-glass-ring), 0 0 0 3px rgba(255, 255, 255, 0.6); }
+
+/* AI (gradient ring + sparkle icon) */
+.zc-btn--ai {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--zc-surface), var(--zc-surface)) padding-box,
+    var(--zc-ai-gradient) border-box;
+  color: var(--zc-fg);
+}
+
+/* Secondary on dark: ONLY on the blog editor's dark side panels (01 §7.1) */
+.zc-btn--secondary-on-dark { background: var(--zc-nav-surface); border-color: var(--zc-nav-border); color: white; }
+.zc-btn--secondary-on-dark:active:not(:disabled):not([aria-disabled="true"]),
+.zc-btn--secondary-on-dark[data-pressed="true"] { background: var(--zc-nav-active-bg); }
+.zc-btn--secondary-on-dark:focus-visible,
+.zc-btn--secondary-on-dark[data-focus-visible="true"] { box-shadow: 0 0 0 2px var(--zc-nav-bg), 0 0 0 4px rgba(255, 255, 255, 0.6); }
+
+@media (hover: hover) {
+  .zc-btn--primary:hover:not(:disabled):not([aria-disabled="true"]):not([data-pressed="true"]) { background: var(--zc-primary-hover); }
+  .zc-btn--secondary:hover:not(:disabled):not([aria-disabled="true"]):not([data-pressed="true"]) { background: var(--zc-control-hover-bg); border-color: var(--zc-control-hover-border); }
+  .zc-btn--tertiary:hover:not(:disabled):not([aria-disabled="true"]):not([data-pressed="true"]) { background: var(--zc-primary-soft); }
+  .zc-btn--ghost:hover:not(:disabled):not([aria-disabled="true"]):not([data-pressed="true"]) { background: var(--zc-ghost-hover-bg); }
+  .zc-btn--destructive:hover:not(:disabled):not([aria-disabled="true"]):not([data-pressed="true"]) { background: var(--zc-danger-hover); }
+  .zc-btn--destructive-secondary:hover:not(:disabled):not([aria-disabled="true"]):not([data-pressed="true"]) { background: var(--zc-danger-soft); }
+  .zc-btn--glass:hover:not(:disabled):not([data-pressed="true"]) { background: var(--zc-glass-bg-hover); color: white; }
+  .zc-btn--ai:hover:not(:disabled):not([aria-disabled="true"]) {
+    background:
+      linear-gradient(var(--zc-ai-tint), var(--zc-ai-tint)) padding-box,
+      linear-gradient(var(--zc-surface), var(--zc-surface)) padding-box,
+      var(--zc-ai-gradient) border-box;
+  }
+  .zc-btn--secondary-on-dark:hover:not(:disabled):not([aria-disabled="true"]):not([data-pressed="true"]) { background: var(--zc-nav-hover-bg); }
+}
+
+/* Loading: spinner replaces the leading icon; the label stays */
+.zc-spinner {
+  width: var(--_icon, 16px);
+  height: var(--_icon, 16px);
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: zc-spin 0.8s linear infinite;
+}
+
+/* ---------------------------------------------------------------------
+   Icon button (circle), 01 §7.2
+   --------------------------------------------------------------------- */
+.zc-icon-btn {
+  --_s: var(--zc-icon-btn);
+  --_i: 18px;
+  display: inline-grid;
+  place-items: center;
+  width: var(--_s);
+  min-width: var(--_s);
+  height: var(--_s);
+  min-height: var(--_s);
+  padding: 0;
+  flex: none;
+  border-radius: var(--zc-radius-circle);
+  border: 1px solid var(--zc-border-strong);
+  background: var(--zc-surface);
+  color: var(--zc-fg-muted);
+  cursor: pointer;
+  outline: none;
+  scale: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--zc-dur-fast) var(--zc-ease),
+    border-color var(--zc-dur-fast) var(--zc-ease),
+    color var(--zc-dur-fast) var(--zc-ease),
+    box-shadow var(--zc-dur-fast) var(--zc-ease),
+    transform var(--zc-dur-base) var(--zc-ease-press);
+}
+.zc-icon-btn svg { width: var(--_i); height: var(--_i); }
+.zc-icon-btn--sm { --_s: var(--zc-icon-btn-sm); --_i: 16px; }
+.zc-icon-btn--xs { --_s: var(--zc-icon-btn-xs); --_i: 14px; }
+.zc-icon-btn--lg { --_s: var(--zc-control-h-touch); --_i: 18px; } /* top bar and phone (40px) */
+@media (max-width: 767px) { .zc-icon-btn, .zc-icon-btn--sm { --_s: 40px; } }
+.zc-icon-btn:active:not(:disabled),
+.zc-icon-btn[data-pressed="true"]:not(:disabled) { background: var(--zc-control-pressed-bg); transform: scale(var(--zc-press-scale-icon)); transition-duration: var(--zc-dur-instant); transition-timing-function: var(--zc-ease); }
+.zc-icon-btn:focus { outline: none; }
+.zc-icon-btn:focus-visible,
+.zc-icon-btn[data-focus-visible="true"] { outline: none; box-shadow: var(--zc-focus-ring-strong); }
+.zc-icon-btn:disabled,
+.zc-icon-btn[data-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+.zc-icon-btn[aria-expanded="true"] { background: var(--zc-control-pressed-bg); color: var(--zc-fg); }
+/* ghost */
+.zc-icon-btn--ghost { border-color: transparent; background: transparent; }
+.zc-icon-btn--ghost:active:not(:disabled),
+.zc-icon-btn--ghost[data-pressed="true"] { background: var(--zc-ghost-pressed-bg); }
+/* danger: ghost at rest; red on hover (remove / delete in rows and cards) */
+.zc-icon-btn--danger { border-color: transparent; background: transparent; }
+.zc-icon-btn--danger:active:not(:disabled),
+.zc-icon-btn--danger[data-pressed="true"] { background: var(--zc-danger-soft-pressed); color: var(--zc-danger-text); }
+/* on dark (black menu, top bar) */
+.zc-icon-btn--on-dark { border-color: transparent; background: transparent; color: var(--zc-nav-text); }
+.zc-icon-btn--on-dark:active:not(:disabled),
+.zc-icon-btn--on-dark[data-pressed="true"] { background: var(--zc-nav-active-bg); }
+.zc-icon-btn--on-dark:focus-visible,
+.zc-icon-btn--on-dark[data-focus-visible="true"] { box-shadow: 0 0 0 2px var(--zc-nav-bg), 0 0 0 4px rgba(31, 94, 255, 0.55); }
+/* glass */
+.zc-icon-btn--glass { border-color: transparent; background: var(--zc-glass-bg); color: white; box-shadow: var(--zc-glass-ring); -webkit-backdrop-filter: var(--zc-glass-blur); backdrop-filter: var(--zc-glass-blur); }
+/* solid dark (AI send) */
+.zc-icon-btn--solid-dark { border-color: transparent; background: var(--zc-solid-dark); color: white; }
+
+@media (hover: hover) {
+  .zc-icon-btn:hover:not(:disabled):not([data-pressed="true"]) { background: var(--zc-control-hover-bg); border-color: var(--zc-control-hover-border); color: var(--zc-fg); }
+  .zc-icon-btn--ghost:hover:not(:disabled):not([data-pressed="true"]) { background: var(--zc-ghost-hover-bg); border-color: transparent; }
+  .zc-icon-btn--danger:hover:not(:disabled):not([data-pressed="true"]) { background: var(--zc-danger-soft); border-color: transparent; color: var(--zc-danger-text); }
+  .zc-icon-btn--on-dark:hover:not(:disabled):not([data-pressed="true"]) { background: var(--zc-nav-hover-bg); border-color: transparent; color: white; }
+  .zc-icon-btn--glass:hover:not(:disabled) { background: var(--zc-glass-bg-hover); border-color: transparent; color: white; }
+  .zc-icon-btn--solid-dark:hover:not(:disabled) { background: var(--zc-solid-dark-hover); border-color: transparent; color: white; }
+}
+
+/* ---------------------------------------------------------------------
+   Segmented switch (the only tab style), 01 §7.3
+   --------------------------------------------------------------------- */
+.zc-seg {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: var(--zc-seg-h);
+  padding: var(--zc-seg-pad);
+  border-radius: var(--zc-radius-pill);
+  background: var(--zc-surface-sunken);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.zc-seg::-webkit-scrollbar { display: none; }
+.zc-seg--scroll {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
+}
+.zc-seg__thumb {
+  position: absolute;
+  top: var(--zc-seg-pad);
+  bottom: var(--zc-seg-pad);
+  left: 0;
+  border-radius: var(--zc-radius-pill);
+  background: var(--zc-surface);
+  box-shadow: var(--zc-shadow-seg-thumb);
+  transition: transform var(--zc-dur-base) var(--zc-ease), width var(--zc-dur-base) var(--zc-ease);
+  pointer-events: none;
+}
+.zc-seg__item {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 6px;
+  height: calc(var(--zc-seg-h) - 2 * var(--zc-seg-pad));
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--zc-radius-pill);
+  background: transparent;
+  font: 500 13px/18px var(--zc-font-sans);
+  letter-spacing: -0.003em;
+  color: var(--zc-fg-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--zc-dur-fast) var(--zc-ease);
+}
+@media (hover: hover) { .zc-seg__item:hover { color: var(--zc-fg); } }
+.zc-seg__item[aria-selected="true"] { color: var(--zc-fg); }
+.zc-seg__item:focus { outline: none; }                 /* no blue line on click */
+.zc-seg__item:focus-visible { box-shadow: var(--zc-focus-ring-strong); }
+.zc-seg__item:disabled { opacity: 0.4; cursor: not-allowed; }
+.zc-seg__count { font-weight: 400; color: var(--zc-fg-muted); font-variant-numeric: tabular-nums; }
+.zc-seg--no-js .zc-seg__item[aria-selected="true"] { background: var(--zc-surface); box-shadow: var(--zc-shadow-seg-thumb); }
+.zc-seg--sm { height: var(--zc-seg-h-sm); }
+.zc-seg--sm .zc-seg__item { height: calc(var(--zc-seg-h-sm) - 2 * var(--zc-seg-pad)); padding: 0 10px; font-size: 12px; line-height: 16px; letter-spacing: 0; }
+
+/* HeroUI Tabs bridge (kit <Tabs>): the same look, HeroUI's own cursor is the sliding thumb. */
+.zc-seg-tabs { gap: 0; height: var(--zc-seg-h); padding: var(--zc-seg-pad); border-radius: var(--zc-radius-pill); background: var(--zc-surface-sunken); }
+.zc-seg-tabs--sm { height: var(--zc-seg-h-sm); }
+.zc-seg-tab {
+  height: calc(var(--zc-seg-h) - 2 * var(--zc-seg-pad));
+  padding: 0 12px;
+  border-radius: var(--zc-radius-pill);
+  outline: none;
+}
+.zc-seg-tabs--sm .zc-seg-tab { height: calc(var(--zc-seg-h-sm) - 2 * var(--zc-seg-pad)); padding: 0 10px; }
+.zc-seg-tab[data-focus-visible="true"] { outline: none; box-shadow: var(--zc-focus-ring-strong); z-index: 1; }
+.zc-seg-tab[data-disabled="true"] { opacity: 0.4; }
+.zc-seg-tab__content { font: 500 13px/18px var(--zc-font-sans); letter-spacing: -0.003em; color: var(--zc-fg-muted); transition: color var(--zc-dur-fast) var(--zc-ease); display: inline-flex; align-items: center; gap: 6px; }
+.zc-seg-tabs--sm .zc-seg-tab__content { font-size: 12px; line-height: 16px; letter-spacing: 0; }
+@media (hover: hover) { .zc-seg-tab[data-hover-unselected="true"] .zc-seg-tab__content, .zc-seg-tab:hover .zc-seg-tab__content { color: var(--zc-fg); } }
+.zc-seg-tab[data-selected="true"] .zc-seg-tab__content { color: var(--zc-fg); }
+.zc-seg-tab__cursor { border-radius: var(--zc-radius-pill); background: var(--zc-surface); box-shadow: var(--zc-shadow-seg-thumb); inset: 0; }
+
+/* ---------------------------------------------------------------------
+   Badge (status; never clickable), 01 §7.11
+   --------------------------------------------------------------------- */
+.zc-badge {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--zc-radius-badge);
+  font: 500 12px/16px var(--zc-font-sans);
+  white-space: nowrap;
+  background: var(--zc-neutral-soft);
+  color: var(--zc-neutral-text);
+}
+.zc-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--_dot, var(--zc-neutral-dot)); flex: none; }
+.zc-badge--no-dot::before { display: none; }
+.zc-badge svg { width: 12px; height: 12px; flex: none; }
+.zc-badge--success { background: var(--zc-success-soft); color: var(--zc-success); --_dot: var(--zc-success); }
+.zc-badge--warning { background: var(--zc-warning-soft); color: var(--zc-warning); --_dot: var(--zc-warning-dot); }
+.zc-badge--danger  { background: var(--zc-danger-soft);  color: var(--zc-danger-text); --_dot: var(--zc-danger-dot); }
+.zc-badge--info    { background: var(--zc-info-soft);    color: var(--zc-info); --_dot: var(--zc-primary); }
+.zc-badge--neutral { background: var(--zc-neutral-soft); color: var(--zc-neutral-text); --_dot: var(--zc-neutral-dot); }
+.zc-badge--ai      { background: var(--zc-ai-tint); color: var(--zc-ai-label); box-shadow: inset 0 0 0 1px var(--zc-ai-tint-border); }
+.zc-badge--ai::before { display: none; }               /* AI badge shows a 12px sparkle icon instead of the dot */
+
+/* ---------------------------------------------------------------------
+   Filter chip (applied filter, removable) and option chip (choice in the drawer), 01 §7.12
+   --------------------------------------------------------------------- */
+.zc-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 28px; padding: 0 4px 0 12px;
+  border-radius: var(--zc-radius-pill);
+  background: var(--zc-primary-soft); color: var(--zc-primary-text);
+  font: 500 12px/16px var(--zc-font-sans);
+  white-space: nowrap;
+}
+.zc-chip__remove { width: 20px; height: 20px; border-radius: 50%; border: 0; background: transparent; color: inherit; display: inline-grid; place-items: center; cursor: pointer; outline: none; transition: background-color var(--zc-dur-fast) var(--zc-ease); }
+.zc-chip__remove svg { width: 12px; height: 12px; }
+@media (hover: hover) { .zc-chip__remove:hover { background: var(--zc-primary-soft-strong); } }
+.zc-chip__remove:focus-visible { box-shadow: var(--zc-focus-ring-strong); }
+.zc-option {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 14px;
+  border-radius: var(--zc-radius-pill);
+  border: 1px solid var(--zc-border-strong); background: var(--zc-surface); color: var(--zc-fg);
+  font: 500 13px/18px var(--zc-font-sans); cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--zc-dur-fast) var(--zc-ease), border-color var(--zc-dur-fast) var(--zc-ease), color var(--zc-dur-fast) var(--zc-ease);
+}
+@media (hover: hover) { .zc-option:hover:not([aria-pressed="true"]) { background: var(--zc-control-hover-bg); border-color: var(--zc-control-hover-border); } }
+.zc-option[aria-pressed="true"] { background: var(--zc-fg); border-color: var(--zc-fg); color: white; }
+.zc-option:focus { outline: none; }
+.zc-option:focus-visible { box-shadow: var(--zc-focus-ring-strong); }
+.zc-option:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ---------------------------------------------------------------------
+   Checkbox and radio (custom-drawn, real <input> underneath), 01 §7.8
+   --------------------------------------------------------------------- */
+.zc-check { display: inline-flex; align-items: center; gap: 8px; min-height: 24px; cursor: pointer; font: 400 14px/20px var(--zc-font-sans); color: var(--zc-fg); }
+.zc-check input {
+  appearance: none; margin: 0; flex: none;
+  width: 16px; height: 16px;
+  border: 1.5px solid var(--zc-check-border);
+  border-radius: var(--zc-radius-checkbox);
+  background: var(--zc-surface) center / 12px 12px no-repeat;
+  cursor: pointer;
+  transition: background-color var(--zc-dur-fast) var(--zc-ease), border-color var(--zc-dur-fast) var(--zc-ease), box-shadow var(--zc-dur-fast) var(--zc-ease);
+}
+@media (hover: hover) { .zc-check input:hover:not(:checked):not(:indeterminate) { border-color: var(--zc-fg-muted); } }
+.zc-check input:checked,
+.zc-check input:indeterminate { background-color: var(--zc-primary); border-color: var(--zc-primary); }
+.zc-check input:checked { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m2.5 6.2 2.3 2.3 4.7-5'/%3E%3C/svg%3E"); }
+.zc-check input:indeterminate { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M3 6h6'/%3E%3C/svg%3E"); }
+.zc-check input[type="radio"] { border-radius: 50%; }
+.zc-check input[type="radio"]:checked { background-image: radial-gradient(circle, white 0 3px, transparent 3.5px); }
+.zc-check input:focus { outline: none; }
+.zc-check input:focus-visible { box-shadow: var(--zc-focus-ring-strong); }
+.zc-check input:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* HeroUI Checkbox / Radio bridge (kit <Checkbox>, HeroUI RadioGroup): 1.5px grey outline, blue when on. */
+.zc-check-box { width: 16px; height: 16px; margin-inline-end: 0; border-radius: var(--zc-radius-checkbox); }
+.zc-check-box::before { border-width: 1.5px; border-color: var(--zc-check-border); border-radius: var(--zc-radius-checkbox); }
+.zc-check-box::after { background: var(--zc-primary); border-radius: var(--zc-radius-checkbox); }
+@media (hover: hover) { .group:hover > .zc-check-box::before { border-color: var(--zc-fg-muted); } }
+.group[data-focus-visible="true"] > .zc-check-box { box-shadow: var(--zc-focus-ring-strong); outline: none; }
+
+/* ---------------------------------------------------------------------
+   Switch, 01 §7.9
+   --------------------------------------------------------------------- */
+.zc-switch {
+  position: relative; flex: none;
+  width: 36px; height: 20px; padding: 0;
+  border: 0; border-radius: var(--zc-radius-pill);
+  background: var(--zc-switch-off);
+  box-shadow: inset 0 0 0 1px rgba(17, 19, 24, 0.08);
+  cursor: pointer;
+  transition: background-color var(--zc-dur-base) var(--zc-ease);
+}
+.zc-switch::after {
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: white; box-shadow: 0 1px 2px rgba(17, 19, 24, 0.2);
+  transition: transform var(--zc-dur-base) var(--zc-ease);
+}
+.zc-switch[aria-checked="true"] { background: var(--zc-primary); }
+.zc-switch[aria-checked="true"]::after { transform: translateX(16px); }
+.zc-switch:focus { outline: none; }
+.zc-switch:focus-visible { box-shadow: var(--zc-focus-ring-strong); }
+.zc-switch:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* HeroUI Switch bridge (kit <Switch>): 36×20 track, 16px knob, 2px inset, travels 16px. */
+.zc-switch-track {
+  width: 36px; height: 20px; margin-inline-end: 0; padding: 0 2px;
+  border-radius: var(--zc-radius-pill);
+  background: var(--zc-switch-off);
+  box-shadow: inset 0 0 0 1px rgba(17, 19, 24, 0.08);
+  transition: background-color var(--zc-dur-base) var(--zc-ease);
+}
+.group[data-selected="true"] > .zc-switch-track { background: var(--zc-primary); box-shadow: none; }
+.group[data-focus-visible="true"] > .zc-switch-track { outline: none; box-shadow: var(--zc-focus-ring-strong); }
+.zc-switch-thumb { width: 16px; height: 16px; margin: 0; border-radius: 50%; background: white; box-shadow: 0 1px 2px rgba(17, 19, 24, 0.2); transition: transform var(--zc-dur-base) var(--zc-ease), margin var(--zc-dur-base) var(--zc-ease); }
+.group[data-selected="true"] > .zc-switch-track > .zc-switch-thumb { margin-inline-start: 16px; }
+.group[data-pressed="true"] > .zc-switch-track > .zc-switch-thumb { width: 16px; }
+
+/* ---------------------------------------------------------------------
+   Skeleton (synced shimmer: every block shares the same moving highlight), 01 §7.21
+   --------------------------------------------------------------------- */
+/* Layered (unlike the bridges above): pages size and shape their blocks with utilities (h-4 w-24, rounded-full). */
+@layer components {
+  .zc-skel {
+    display: block;
+    border-radius: 6px;
+    background-color: var(--zc-surface-sunken);
+    background-image: linear-gradient(90deg, rgba(255, 255, 255, 0) 0, rgba(255, 255, 255, 0.55) 50%, rgba(255, 255, 255, 0) 100%);
+    background-size: 480px 100%;
+    background-repeat: no-repeat;
+    background-attachment: fixed;    /* keeps all blocks in sync */
+    animation: zc-shimmer var(--zc-dur-shimmer) linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) { .zc-skel { animation: none; background-image: none; } }
+}
+
+/* ---------------------------------------------------------------------
+   Side drawer (01 §7.15b) — HeroUI Drawer bridge (kit <Drawer>, <FilterDrawer>)
+   Right side, full height, 20px radius on the left corners (none on phone), sizes sm 400 / md 560 / lg 640.
+   --------------------------------------------------------------------- */
+.zc-drawer {
+  width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  border-radius: var(--zc-radius-overlay) 0 0 var(--zc-radius-overlay);
+  background: var(--zc-surface);
+  box-shadow: var(--zc-shadow-modal);
+}
+.zc-drawer--sm { max-width: var(--zc-drawer-w); }
+.zc-drawer--md { max-width: var(--zc-drawer-w-md); }
+.zc-drawer--lg { max-width: var(--zc-drawer-w-lg); }
+@media (max-width: 767px) {
+  .zc-drawer, .zc-drawer--sm, .zc-drawer--md, .zc-drawer--lg { max-width: none; border-radius: 0; }
+}
+.zc-drawer__header {
+  display: flex;
+  min-height: 64px;
+  padding: 12px 64px 12px 24px;
+  font: 600 18px/26px var(--zc-font-sans);
+  letter-spacing: -0.014em;
+  color: var(--zc-fg);
+}
+.zc-drawer__body { padding: 20px 24px; gap: 0; color: var(--zc-fg); }
+.zc-drawer__footer {
+  min-height: 72px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--zc-divider);
+  background: var(--zc-surface);
+}
+/* Layout defaults sit in the components layer so a drawer's own flex utilities (a row header, a stacked footer) win:
+   title over description in the header, buttons right-aligned in the footer. */
+@layer components {
+  .zc-drawer__header { flex-direction: column; justify-content: center; gap: 2px; }
+  .zc-drawer__footer { gap: 8px; justify-content: flex-end; align-items: center; }
+}
+/* Toolbar header (Ask ZCOM, 02 §6): one 56px row — icon, title, ghost circles — instead of title over description. */
+.zc-drawer__header--bar {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 56px;
+  padding: 8px 12px 8px 16px;
+  font: inherit;
+  letter-spacing: normal;
+  border-bottom: 1px solid var(--zc-divider);
+}
+/* Composer footer: full-width rows stacked (chips, input, note) instead of right-aligned buttons. */
+.zc-drawer__footer--stack {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  min-height: 0;
+  padding: 12px 16px 16px;
+}
+/* The assistant panel is 420px (02 §6). */
+.zc-drawer--assistant { max-width: var(--zc-assistant-w); }
+@media (max-width: 767px) { .zc-drawer--assistant { max-width: none; } }
+.zc-drawer__close {
+  top: 16px;
+  right: 16px;
+  inset-inline-end: 16px;
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--zc-radius-circle);
+  color: var(--zc-fg-muted);
+  background: transparent;
+  outline: none;
+  transition: background-color var(--zc-dur-fast) var(--zc-ease), color var(--zc-dur-fast) var(--zc-ease);
+}
+.zc-drawer__close svg { width: 18px; height: 18px; }
+@media (hover: hover) { .zc-drawer__close:hover { background: var(--zc-ghost-hover-bg); color: var(--zc-fg); } }
+.zc-drawer__close:active { background: var(--zc-ghost-pressed-bg); }
+.zc-drawer__close[data-focus-visible="true"], .zc-drawer__close:focus-visible { box-shadow: var(--zc-focus-ring-strong); }
+.zc-drawer-backdrop { background: var(--zc-overlay); }
+
+/* Filter drawer body: groups 24px apart (the body is a flex column with gap-6), micro labels 12px above their controls (01 §7.15). */
+.zc-filter-group__label {
+  display: block;
+  margin-bottom: 12px;
+  font: 600 11px/14px var(--zc-font-sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--zc-fg-muted);
+}
+
+/* ---------------------------------------------------------------------
+   Modal and phone sheet (01 §7.16) — HeroUI Modal bridge (kit <Modal>, <ConfirmDialog>)
+   sm 480 / md 640 / lg 720 (media 1240 × 820 is its own size). Radius 20, padding 24, centred,
+   max height 100dvh − 64. Phone: full-screen sheet from the bottom; confirm dialogs: bottom sheet.
+   --------------------------------------------------------------------- */
+.zc-modal {
+  width: 100%;
+  max-height: calc(100dvh - 64px);
+  margin: 0;
+  border: 0;
+  border-radius: var(--zc-radius-overlay);
+  background: var(--zc-surface);
+  box-shadow: var(--zc-shadow-modal);
+}
+.zc-modal--sm { max-width: var(--zc-modal-sm); }
+.zc-modal--md { max-width: var(--zc-modal-md); }
+.zc-modal--lg { max-width: var(--zc-modal-lg); }
+.zc-modal__header {
+  display: flex;
+  padding: 24px 64px 8px 24px;
+  font: 600 18px/26px var(--zc-font-sans);
+  letter-spacing: -0.014em;
+  color: var(--zc-fg);
+}
+.zc-modal__body { padding: 8px 24px; color: var(--zc-fg); font-size: 14px; line-height: 20px; }
+.zc-modal__footer { padding: 16px 24px 24px; }
+/* Layout defaults in the components layer, so a modal's own flex utilities (a header row with a search, a footer
+   with a note on the left) win: title over description, buttons right-aligned. */
+@layer components {
+  .zc-modal__header { flex-direction: column; gap: 4px; }
+  .zc-modal__footer { gap: 8px; justify-content: flex-end; align-items: center; }
+}
+.zc-modal__close {
+  top: 16px;
+  right: 16px;
+  inset-inline-end: 16px;
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--zc-radius-circle);
+  color: var(--zc-fg-muted);
+  background: transparent;
+  outline: none;
+  transition: background-color var(--zc-dur-fast) var(--zc-ease), color var(--zc-dur-fast) var(--zc-ease);
+}
+.zc-modal__close svg { width: 18px; height: 18px; }
+@media (hover: hover) { .zc-modal__close:hover { background: var(--zc-ghost-hover-bg); color: var(--zc-fg); } }
+.zc-modal__close:active { background: var(--zc-ghost-pressed-bg); }
+.zc-modal__close[data-focus-visible="true"], .zc-modal__close:focus-visible { box-shadow: var(--zc-focus-ring-strong); }
+.zc-modal-backdrop { background: var(--zc-overlay); }
+/* The description line under a modal title (`<ModalHeader>Title<p className="zc-modal__desc">…</p>`). */
+.zc-modal__desc { font: 400 14px/20px var(--zc-font-sans); letter-spacing: -0.006em; color: var(--zc-fg-muted); }
+@media (max-width: 767px) {
+  .zc-modal, .zc-modal--sm, .zc-modal--md, .zc-modal--lg {
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: var(--zc-radius-overlay) var(--zc-radius-overlay) 0 0;
+  }
+  .zc-modal__footer { position: sticky; bottom: 0; background: var(--zc-surface); padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .zc-modal__footer > :last-child { flex: 1; }
+  /* Confirm dialogs: a bottom sheet of their own height. */
+  .zc-modal--sheet { height: auto; max-height: calc(100dvh - 32px); }
+}
+
+/* ---------------------------------------------------------------------
+   Tooltip (01 §7.18): ink, white 12/500, padding 6 8, radius 8, max 240px, no arrow.
+   --------------------------------------------------------------------- */
+.zc-tooltip {
+  max-width: 240px;
+  padding: 6px 8px;
+  border-radius: var(--zc-radius-tooltip);
+  background: var(--zc-solid-dark);
+  color: white;
+  font: 500 12px/16px var(--zc-font-sans);
+  box-shadow: none;
+}
+
+/* ---------------------------------------------------------------------
+   Toast (01 §7.19): bottom centre, ink, white 14px. One line: a capsule at least 44px high (padding 0 8 0 16);
+   two lines: radius 16, padding 12 16. Max 560px. Icon colours below; action in light blue.
+   --------------------------------------------------------------------- */
+.zc-toast {
+  width: auto;
+  min-width: 0;
+  max-width: 560px;
+  min-height: 44px;
+  padding: 0 8px 0 16px;
+  gap: 10px;
+  align-items: center;
+  border: 0;
+  border-radius: var(--zc-radius-pill);
+  background: var(--zc-solid-dark);
+  box-shadow: var(--zc-shadow-popover);
+}
+.zc-toast:has([data-slot="description"]) { border-radius: var(--zc-radius-card); padding: 12px 8px 12px 16px; }
+.zc-toast__title { font: 400 14px/20px var(--zc-font-sans); letter-spacing: -0.006em; color: white; }
+.zc-toast__desc { font: 400 13px/18px var(--zc-font-sans); color: var(--zc-nav-text); }
+.zc-toast__icon { width: 16px; height: 16px; flex: none; }
+.zc-toast__close {
+  position: static;
+  transform: none;
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--zc-radius-circle);
+  color: var(--zc-nav-text);
+  opacity: 1;
+}
+@media (hover: hover) { .zc-toast__close:hover { background: var(--zc-nav-hover-bg); color: white; } }
+.zc-toast__action {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--zc-radius-pill);
+  background: transparent;
+  color: var(--zc-toast-action);
+  font: 500 14px/20px var(--zc-font-sans);
+  cursor: pointer;
+  transition: background-color var(--zc-dur-fast) var(--zc-ease);
+}
+@media (hover: hover) { .zc-toast__action:hover { background: rgba(255, 255, 255, 0.08); } }
+.zc-toast__action:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--zc-solid-dark), 0 0 0 4px rgba(255, 255, 255, 0.6); }
+
+/* Keyboard chip (01 §7.5): ⌘K, ⌘J, Esc — 11/500 on the sunken grey, radius 6. Dark: on the black menu. */
+.zc-kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--zc-surface-sunken);
+  color: var(--zc-fg-muted);
+  font: 500 11px/14px var(--zc-font-sans);
+  white-space: nowrap;
+}
+.zc-kbd--dark { background: var(--zc-nav-hover-bg); color: var(--zc-nav-text-muted); }
+
+/* AI ask bar (02 §6): hides while a modal, drawer or phone sheet is open, or while the save bar shows. */
+.zc-askbar-slot { transition: opacity var(--zc-dur-base) var(--zc-ease), visibility var(--zc-dur-base); }
+html[data-zc-savebar] .zc-askbar-slot,
+body:has([aria-modal="true"]) .zc-askbar-slot { opacity: 0; visibility: hidden; }
+
+/* The ask bar capsule (01 §7.23): 1px gradient ring at rest (padding-box/border-box), 1.5px + AI tint on focus. */
+.zc-askbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 48px;
+  padding: 0 6px 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--zc-radius-pill);
+  background:
+    linear-gradient(var(--zc-surface), var(--zc-surface)) padding-box,
+    var(--zc-ai-gradient) border-box;
+  box-shadow: var(--zc-shadow-popover);
+}
+.zc-askbar:focus-within {
+  border-width: 1.5px;
+  padding-left: 15.5px;
+  background:
+    linear-gradient(var(--zc-ai-tint), var(--zc-ai-tint)) padding-box,
+    linear-gradient(var(--zc-surface), var(--zc-surface)) padding-box,
+    var(--zc-ai-gradient) border-box;
+}
+
+/* ---------------------------------------------------------------------
+   Home video banner (01 §7.22) — kit <VideoBanner>
+   --------------------------------------------------------------------- */
+.zc-banner {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 28px;
+  min-height: var(--zc-banner-h);
+  padding: 28px 32px 24px;
+  border-radius: var(--zc-radius-banner);
+  background: var(--zc-solid-dark);
+  color: white;
+}
+@media (max-width: 1023px) { .zc-banner { min-height: var(--zc-banner-h-tablet); padding: 24px; } }
+@media (max-width: 767px) { .zc-banner { min-height: 0; padding: 20px; gap: 20px; } }
+.zc-banner__layer {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+.zc-banner__layer--enter { animation: zc-banner-in var(--zc-dur-video-fade) var(--zc-ease) both; }
+@keyframes zc-banner-in { from { opacity: 0; } to { opacity: 1; } }
+.zc-banner__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity var(--zc-dur-video-fade) var(--zc-ease);
+}
+.zc-banner__video.is-playing { opacity: 1; }
+.zc-banner__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--zc-banner-scrim-bottom), var(--zc-banner-scrim);
+  pointer-events: none;
+}
+.zc-banner__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.zc-banner__eyebrow {
+  font: 600 11px/14px var(--zc-font-sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.86);
+}
+.zc-banner__greeting {
+  margin-top: 6px;
+  font-size: var(--zc-text-display-size);
+  line-height: var(--zc-text-display-line);
+  font-weight: var(--zc-text-display-weight);
+  letter-spacing: var(--zc-text-display-tracking);
+  color: white;
+}
+.zc-banner__subline { margin-top: 4px; font: 400 15px/22px var(--zc-font-sans); letter-spacing: -0.009em; color: rgba(255, 255, 255, 0.88); }
+@media (max-width: 767px) { .zc-banner__subline { font-size: 14px; line-height: 20px; } }
+.zc-banner--plain .zc-banner__greeting { margin-top: 0; }
+.zc-banner__tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 767px) { .zc-banner__tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.zc-banner__tile {
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: var(--zc-radius-glass-tile);
+  background: var(--zc-glass-tile-bg);
+  box-shadow: var(--zc-glass-ring);
+  -webkit-backdrop-filter: var(--zc-glass-blur-tile);
+  backdrop-filter: var(--zc-glass-blur-tile);
+}
+.zc-banner__tile-label { font: 500 12px/16px var(--zc-font-sans); color: rgba(255, 255, 255, 0.86); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zc-banner__tile-value {
+  margin-top: 4px;
+  font-size: var(--zc-text-kpi-banner-size);
+  line-height: var(--zc-text-kpi-banner-line);
+  font-weight: var(--zc-text-kpi-banner-weight);
+  letter-spacing: var(--zc-text-kpi-banner-tracking);
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.zc-banner__tile-sub { margin-top: 2px; font: 400 12px/16px var(--zc-font-sans); color: rgba(255, 255, 255, 0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* AI card (01 §7.13, §7.23): white, radius 16, a 1px AI-gradient ring (padding-box/border-box). */
+.zc-ai-card {
+  border: 1px solid transparent;
+  border-radius: var(--zc-radius-card);
+  background:
+    linear-gradient(var(--zc-surface), var(--zc-surface)) padding-box,
+    var(--zc-ai-gradient) border-box;
+}
+
+/* Attention tiles (layout="row"): 3 across when the card body is ≥760px, else one per row; inside a tile the
+   action sits on the right when the tile is ≥340px wide, else under the text. */
+.zc-attention-body { container-type: inline-size; }
+.zc-attention-tiles { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@container (min-width: 760px) { .zc-attention-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.zc-attention-tile { container-type: inline-size; }
+.zc-attention-tile__inner { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.zc-attention-tile__action { padding-left: 44px; }
+@container (min-width: 340px) {
+  .zc-attention-tile__inner { flex-direction: row; align-items: center; }
+  .zc-attention-tile__action { padding-left: 0; }
+}
+
+/* KPI strip (01 §7.13): 1px dividers from a 1px grid gap over the border colour; cells are white. */
+.zc-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(var(--_cols, 5), minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--zc-border);
+  border-radius: var(--zc-radius-card);
+  background: var(--zc-border);
+}
+.zc-kpi-strip[data-cells="4"] { --_cols: 4; }
+.zc-kpi-strip[data-cells="5"] { --_cols: 5; }
+.zc-kpi-strip[data-cells="6"] { --_cols: 3; }
+@media (max-width: 1023px) {
+  .zc-kpi-strip[data-cells="4"] { --_cols: 2; }
+  .zc-kpi-strip[data-cells="5"] { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .zc-kpi-strip[data-cells="5"] > :nth-child(-n+3) { grid-column: span 2; }
+  .zc-kpi-strip[data-cells="5"] > :nth-child(n+4) { grid-column: span 3; }
+  .zc-kpi-strip[data-cells="6"] { --_cols: 3; }
+}
+@media (max-width: 767px) {
+  .zc-kpi-strip, .zc-kpi-strip[data-cells] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .zc-kpi-strip[data-cells="5"] > * { grid-column: auto; }
+  .zc-kpi-strip > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+.zc-kpi-cell { container-type: inline-size; }
+.zc-kpi-value {
+  font-size: var(--zc-text-kpi-l-size);
+  line-height: var(--zc-text-kpi-l-line);
+  font-weight: var(--zc-text-kpi-l-weight);
+  letter-spacing: var(--zc-text-kpi-l-tracking);
+  white-space: nowrap;
+}
+@container (min-width: 200px) {
+  .zc-kpi-value {
+    font-size: var(--zc-text-kpi-xl-size);
+    line-height: var(--zc-text-kpi-xl-line);
+    font-weight: var(--zc-text-kpi-xl-weight);
+    letter-spacing: var(--zc-text-kpi-xl-tracking);
+  }
+}
+
+/* Settings field grid (01 §6.2): auto-fill columns of at least 280px, 16px gaps; full-row children span. */
+.zc-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  gap: 16px;
+}
+.zc-field-grid > .zc-span-full { grid-column: 1 / -1; }
+
+/* A field picked in the settings search: its label flashes --zc-primary-soft for 1.2s. */
+.zc-flash { animation: zc-flash 1.2s var(--zc-ease); border-radius: 6px; }
+@keyframes zc-flash {
+  0%, 60% { background-color: var(--zc-primary-soft); box-shadow: 0 0 0 4px var(--zc-primary-soft); }
+  100% { background-color: transparent; box-shadow: 0 0 0 4px transparent; }
+}

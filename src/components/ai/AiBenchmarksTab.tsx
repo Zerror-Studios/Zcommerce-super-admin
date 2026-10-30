@@ -1,137 +1,160 @@
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { useState, type ReactNode } from "react";
+import { useCallback, useMemo } from "react";
 import { useAiBenchmarks, useAiConfig } from "../../hooks/use-platform-ai";
+import { useUrlSearch } from "../../hooks/use-url-search";
 import { formatMetricValue, metricKeyLabel } from "../../lib/platform-ai.util";
+import { downloadCsv, rowsToCsv } from "../../lib/report-csv";
 import { matchesText } from "../../lib/text-search.util";
-import type { PlatformAiBenchmarkPeriod } from "../../types/platform-api";
+import type { PlatformAiBenchmark, PlatformAiBenchmarkPeriod } from "../../types/platform-api";
 import { toasts } from "../../copy";
-import { dataTableClassNames } from "../common/dataTableStyles";
-import { PageHeader } from "../common/PageHeader";
-import { FilterEmpty } from "../common/FilterEmpty";
-import { TableToolbar } from "../common/TableToolbar";
 import { IconChartBar } from "../ui/icons";
 import {
-  Card,
+  Button,
+  DataTable,
   EmptyState,
-  ErrorState,
-  Select,
-  SelectItem,
-  Skeleton,
+  SearchInput,
+  SegmentedSwitch,
+  TablePagination,
   formatCount,
   formatDate,
-  tableRowClasses,
+  useTableUrlState,
+  type DataTableColumn,
 } from "../ui";
+import { AiErrorCard, AiToolbar } from "./ai-table";
+import { datedCsvName, useAiExport, type AiTabProps } from "./ai-export";
 
-const PERIODS: { key: PlatformAiBenchmarkPeriod; label: string }[] = [
-  { key: "LAST_30D", label: "Last 30 days" },
-  { key: "ALL_TIME", label: "All time" },
+/** Fixed 570 → Metric 390px at 960px. */
+const columns: DataTableColumn[] = [
+  { key: "metric", label: "Metric" },
+  { key: "section", label: "Section", width: 130 },
+  { key: "stores", label: "Stores", width: 90 },
+  { key: "p25", label: "25th percentile", width: 120 },
+  { key: "median", label: "Median", width: 110 },
+  { key: "p75", label: "75th percentile", width: 120 },
 ];
 
-const right = "block text-right num";
+const PERIODS: { value: PlatformAiBenchmarkPeriod; label: string }[] = [
+  { value: "LAST_30D", label: "Last 30 days" },
+  { value: "ALL_TIME", label: "All time" },
+];
 
 /**
- * AI › Benchmarks (PRD-021 FR-6.6): anonymised medians and quartiles across
- * stores, written nightly by analytics. A metric appears only once enough
- * stores have it (`benchmarkMinStores`); a benchmark never identifies a
- * store.
+ * ZCOM AI › Benchmarks (PRD-021 FR-6.6): anonymised medians and quartiles across stores, written nightly by
+ * analytics. A metric appears only once enough stores have it (`benchmarkMinStores`); a benchmark never
+ * identifies a store. The period is in the URL (`?period=all`).
  */
-/** `tabs`: the ZCOM AI › Usage & data tabs, on the left of the toolbar row. */
-export function AiBenchmarksTab({ tabs }: { tabs?: ReactNode } = {}) {
-  const [period, setPeriod] = useState<PlatformAiBenchmarkPeriod>("LAST_30D");
+export function AiBenchmarksTab({ tabs, exportRef }: AiTabProps) {
+  const table = useTableUrlState();
+  const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
+  const period: PlatformAiBenchmarkPeriod = table.filters.period === "all" ? "ALL_TIME" : "LAST_30D";
   const api = useAiBenchmarks(period);
   // PRD-024 FR-1.5 (P-06): say why the list can be empty (the minimum is an AI setting).
   const config = useAiConfig();
   const minStores = config.data?.benchmarkMinStores ?? null;
-  const [search, setSearch] = useState("");
-  const rows = (api.data ?? []).filter((row) =>
-    matchesText(search, metricKeyLabel(row.metricKey), metricKeyLabel(row.category)),
+  const rows = useMemo(
+    () => api.data.filter((row) => matchesText(table.search, metricKeyLabel(row.metricKey), metricKeyLabel(row.category))),
+    [api.data, table.search],
   );
-  const computedFor = rows[0]?.computedFor;
+  const pageRows = rows.slice(table.offset, table.offset + table.pageSize);
+  const computedFor = api.data[0]?.computedFor;
+
+  const runExport = useCallback(() => {
+    const csv = rowsToCsv(
+      api.data.map((row) => ({
+        metric: metricKeyLabel(row.metricKey),
+        section: metricKeyLabel(row.category),
+        stores: row.stores,
+        p25: formatMetricValue(row.p25, row.unit),
+        median: formatMetricValue(row.median, row.unit),
+        p75: formatMetricValue(row.p75, row.unit),
+      })),
+      columns.map((column) => ({ key: column.key, label: String(column.label) })),
+    );
+    downloadCsv(datedCsvName(`ai-benchmarks-${period === "ALL_TIME" ? "all-time" : "last-30-days"}`), csv);
+  }, [api.data, period]);
+  useAiExport(exportRef, runExport);
+
+  const toolbar = (
+    <AiToolbar tabs={tabs}>
+      <SearchInput placement="toolbar" placeholder="Search metrics" value={search} onValueChange={setSearch} onClear={() => setSearch("")} />
+      <SegmentedSwitch
+        size="sm"
+        ariaLabel="Benchmark period"
+        value={period}
+        onChange={(next) => table.setFilter("period", next === "ALL_TIME" ? "all" : undefined)}
+        items={PERIODS}
+      />
+    </AiToolbar>
+  );
+
+  if (api.error) {
+    return <AiErrorCard tabs={tabs} title="Couldn't load the benchmarks." description={toasts.genericError} onRetry={() => void api.refetch()} />;
+  }
 
   return (
-    <div>
-      <PageHeader
-        type="page"
-        icon={<IconChartBar aria-hidden />}
-        section="pink"
-        title="ZCOM AI benchmarks"
-        description={
-          computedFor
-            ? `Anonymised medians across stores, computed for ${formatDate(computedFor)}.`
-            : "Anonymised medians across stores."
+    <DataTable<PlatformAiBenchmark>
+      aria-label="AI benchmarks"
+      columns={columns}
+      rows={pageRows}
+      getRowKey={(row) => `${row.metricKey}:${row.period}`}
+      isLoading={api.loading}
+      toolbar={toolbar}
+      renderCell={(row, key) => {
+        switch (key) {
+          case "metric":
+            return <span className="block truncate font-medium text-fg">{metricKeyLabel(row.metricKey)}</span>;
+          case "section":
+            return <span className="block truncate">{metricKeyLabel(row.category)}</span>;
+          case "stores":
+            return <span className="num">{formatCount(row.stores)}</span>;
+          case "p25":
+          case "median":
+          case "p75":
+            return <span className="whitespace-nowrap num">{formatMetricValue(row[key], row.unit)}</span>;
+          default:
+            return null;
         }
-        actions={
-          <Select
-            aria-label="Period"
-            size="sm"
-            className="w-44"
-            selectedKeys={new Set([period])}
-            disallowEmptySelection
-            onSelectionChange={(keys) => {
-              const value = Array.from(keys)[0];
-              if (value === "LAST_30D" || value === "ALL_TIME") setPeriod(value);
-            }}
-            items={PERIODS}
-          >
-            {(option) => <SelectItem key={option.key}>{option.label}</SelectItem>}
-          </Select>
-        }
-      />
-
-      {api.error ? (
-        <ErrorState title="Couldn't load the benchmarks." description={toasts.genericError} onRetry={() => void api.refetch()} />
-      ) : null}
-
-      <Card padding="none" className="overflow-hidden">
-        <TableToolbar tabs={tabs} search={search} onSearchChange={setSearch} searchPlaceholder="Search metrics" />
-        {api.loading ? (
-          <div className="space-y-3 p-4">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="h-10 w-full rounded-lg" />
-            ))}
-          </div>
+      }}
+      footer={
+        <>
+          {computedFor ? (
+            <p className="border-t border-line-subtle px-4 pt-3 text-label text-fg-muted">
+              Anonymised across stores, computed for {formatDate(computedFor)}.
+            </p>
+          ) : null}
+          <TablePagination
+            page={table.page}
+            pageSize={table.pageSize}
+            total={rows.length}
+            onPageChange={table.setPage}
+            onPageSizeChange={table.setPageSize}
+          />
+        </>
+      }
+      emptyContent={
+        table.search.trim() ? (
+          <EmptyState
+            kind="no-results"
+            icon={IconChartBar}
+            title="No matching metrics"
+            description="Try another metric or section name."
+            action={
+              <Button variant="secondary" size="sm" onPress={() => setSearch("")}>
+                Clear search
+              </Button>
+            }
+          />
         ) : (
-          <Table aria-label="AI benchmarks" removeWrapper classNames={{ ...dataTableClassNames, tr: tableRowClasses }}>
-            <TableHeader>
-              <TableColumn>Metric</TableColumn>
-              <TableColumn>Section</TableColumn>
-              <TableColumn align="end">Stores</TableColumn>
-              <TableColumn align="end">25th percentile</TableColumn>
-              <TableColumn align="end">Median</TableColumn>
-              <TableColumn align="end">75th percentile</TableColumn>
-            </TableHeader>
-            <TableBody
-              items={rows}
-              emptyContent={
-                search.trim() ? (
-                  <FilterEmpty things="metrics" query={search} onClear={() => setSearch("")} />
-                ) : (
-                <EmptyState
-                  icon={IconChartBar}
-                  title="No benchmarks yet"
-                  description={
-                    minStores != null
-                      ? `A metric appears once at least ${formatCount(minStores)} stores have data for it, so no store can be identified. The minimum is in ZCOM AI › Settings.`
-                      : "A metric appears once enough stores have data for it, so no store can be identified."
-                  }
-                />
-                )
-              }
-            >
-              {(row) => (
-                <TableRow key={`${row.metricKey}:${row.period}`}>
-                  <TableCell className="font-medium">{metricKeyLabel(row.metricKey)}</TableCell>
-                  <TableCell>{metricKeyLabel(row.category)}</TableCell>
-                  <TableCell><span className={right}>{formatCount(row.stores)}</span></TableCell>
-                  <TableCell><span className={right}>{formatMetricValue(row.p25, row.unit)}</span></TableCell>
-                  <TableCell><span className={right}>{formatMetricValue(row.median, row.unit)}</span></TableCell>
-                  <TableCell><span className={right}>{formatMetricValue(row.p75, row.unit)}</span></TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </Card>
-    </div>
+          <EmptyState
+            icon={IconChartBar}
+            title="No benchmarks yet"
+            description={
+              minStores != null
+                ? `A metric appears once at least ${formatCount(minStores)} stores have data for it, so no store can be identified. The minimum is in Settings › ZCOM AI settings.`
+                : "A metric appears once enough stores have data for it, so no store can be identified."
+            }
+          />
+        )
+      }
+    />
   );
 }

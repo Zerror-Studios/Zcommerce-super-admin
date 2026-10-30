@@ -4,9 +4,9 @@ import { IconButton } from "./IconButton";
 import { IconNextPage, IconPrevPage } from "./icons";
 import { formatCount } from "./money";
 
-/** Owner choice (2026-10-26): every table shows at most 10 rows a page, so there is no rows-per-page choice. */
-export const PAGE_SIZES = [10] as const;
-export const DEFAULT_PAGE_SIZE = 10;
+/** v2 (01 §7.14): 30 rows a page by default; 30, 50 or 100, remembered per table (useTableUrlState). */
+export const PAGE_SIZES = [30, 50, 100] as const;
+export const DEFAULT_PAGE_SIZE = 30;
 
 export interface TablePaginationProps {
   /** 1-based page. */
@@ -23,8 +23,9 @@ export interface TablePaginationProps {
 }
 
 /**
- * Table footer (docs/design/09-settings-and-scale.md §3.1): "1–50 of 12,480" left; rows per page and
- * previous/next right; 44px. Hidden when everything fits on one page and the size can't change.
+ * Table footer (01 §7.14): 52px, 1px top divider, padding 0 16. Left: "Rows per page" and a 30 / 50 / 100 select.
+ * Right: "1–30 of 219" and previous / next circle buttons (disabled at the ends). Hidden when there are no rows.
+ * On phone the rows-per-page choice hides and prev/next stay.
  */
 export function TablePagination({
   page,
@@ -36,8 +37,8 @@ export function TablePagination({
   className,
 }: TablePaginationProps) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  const canResize = !!onPageSizeChange && PAGE_SIZES.length > 1;
-  if (total === 0 || (pages <= 1 && !canResize)) return null;
+  const canResize = !!onPageSizeChange;
+  if (total === 0) return null;
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
@@ -45,22 +46,19 @@ export function TablePagination({
     <nav
       aria-label="Pagination"
       className={cx(
-        "flex h-11 shrink-0 items-center justify-between gap-3 border-t border-line bg-surface px-4 text-label text-fg-muted",
+        "flex h-[var(--zc-table-footer-h)] shrink-0 items-center justify-between gap-3 border-t border-line-subtle bg-surface px-4 text-label text-fg-muted",
         className,
       )}
     >
-      <p className="num">
-        {formatCount(from)}–{formatCount(to)} of {formatCount(total)}
-      </p>
-      <div className="flex items-center gap-3">
-        {canResize ? (
-          <label className="hidden items-center gap-2 sm:flex">
-            Rows
+      {canResize ? (
+        <label className="hidden items-center gap-2 md:flex">
+          Rows per page
+          <span className="relative inline-flex">
             <select
               value={pageSize}
               disabled={isDisabled}
               onChange={(event) => onPageSizeChange(Number(event.target.value))}
-              className="h-7 rounded-field border border-line-strong bg-surface px-1.5 text-label text-fg"
+              className="h-8 cursor-pointer appearance-none rounded-[var(--zc-radius-field)] border border-field-line bg-surface pr-8 pl-3 text-label text-fg num transition-colors duration-fast hover:border-field-line-hover focus-visible:border-brand focus-visible:shadow-focus focus-visible:outline-none"
             >
               {PAGE_SIZES.map((size) => (
                 <option key={size} value={size}>
@@ -68,14 +66,22 @@ export function TablePagination({
                 </option>
               ))}
             </select>
-          </label>
-        ) : null}
-        <span className="num">
-          Page {formatCount(page)} of {formatCount(pages)}
-        </span>
-        <div className="flex items-center gap-1">
+            <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 text-fg-muted">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </span>
+        </label>
+      ) : (
+        <span />
+      )}
+      <div className="flex items-center gap-3">
+        <p className="num" aria-live="polite">
+          {formatCount(from)}–{formatCount(to)} of {formatCount(total)}
+        </p>
+        <div className="flex items-center gap-2">
           <IconButton
             aria-label="Previous page"
+            variant="default"
             size="sm"
             isDisabled={isDisabled || page <= 1}
             onPress={() => onPageChange(page - 1)}
@@ -84,6 +90,7 @@ export function TablePagination({
           </IconButton>
           <IconButton
             aria-label="Next page"
+            variant="default"
             size="sm"
             isDisabled={isDisabled || page >= pages}
             onPress={() => onPageChange(page + 1)}

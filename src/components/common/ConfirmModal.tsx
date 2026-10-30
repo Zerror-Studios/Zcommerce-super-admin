@@ -67,11 +67,11 @@ export function ConfirmModal({
           <p className="text-body text-fg-muted">{description}</p>
         </ModalBody>
         <ModalFooter>
-          <Button variant="ghost" onPress={onClose}>
+          <Button variant="secondary" onPress={onClose}>
             {cancelLabel}
           </Button>
           <Button
-            variant={destructive ? "danger" : "primary"}
+            variant={destructive ? "destructive" : "primary"}
             isLoading={isLoading}
             onPress={confirmAndClose}
           >

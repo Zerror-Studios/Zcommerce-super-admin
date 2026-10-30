@@ -5,9 +5,10 @@
  *   &q=kurta&status=paid), so views are shareable and survive refresh. Changing anything but the page goes back
  *   to page 1.
  * - usePersistentColumns: the Columns choice per table, remembered in localStorage.
+ * - Rows per page (30 / 50 / 100, 01 §7.14) is remembered per table in localStorage; the URL wins when it has one.
  */
 import { useCallback, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from "./TablePagination";
 
 export type SortDirection = "asc" | "desc";
@@ -49,6 +50,26 @@ export interface TableUrlOptions {
   prefix?: string;
   /** Params on the page that are not table filters (tabs, drawers) and must be left alone. */
   ignore?: string[];
+  /** Names the table for the remembered rows-per-page; defaults to the route (ids dropped) plus the prefix. */
+  tableId?: string;
+}
+
+const isPageSize = (value: number) => (PAGE_SIZES as readonly number[]).includes(value);
+
+/** The route without segments holding digits (record ids), so every record's sub-list shares one choice. */
+const routeKey = (pathname: string) =>
+  pathname
+    .split("/")
+    .filter((part) => part && !/\d/.test(part))
+    .join("/");
+
+function readStoredSize(key: string): number | undefined {
+  try {
+    const value = Number(window.localStorage.getItem(key));
+    return isPageSize(value) ? value : undefined;
+  } catch {
+    return undefined; /* storage blocked */
+  }
 }
 
 export function useTableUrlState({
@@ -56,15 +77,19 @@ export function useTableUrlState({
   defaultPageSize = DEFAULT_PAGE_SIZE,
   prefix,
   ignore = [],
+  tableId,
 }: TableUrlOptions = {}): TableUrlState {
   const [params, setParams] = useSearchParams();
+  const { pathname } = useLocation();
   const name = useCallback((key: string) => (prefix ? `${prefix}_${key}` : key), [prefix]);
   const ignoreKey = ignore.join(",");
+  const sizeKey = `zc.pageSize.${tableId ?? routeKey(pathname)}${prefix ? `.${prefix}` : ""}`;
+  const [storedSize, setStoredSize] = useState(() => readStoredSize(sizeKey));
 
   const state = useMemo(() => {
     const page = Math.max(1, Number(params.get(name("page"))) || 1);
     const sizeParam = Number(params.get(name("size")));
-    const pageSize = (PAGE_SIZES as readonly number[]).includes(sizeParam) ? sizeParam : defaultPageSize;
+    const pageSize = isPageSize(sizeParam) ? sizeParam : (storedSize ?? defaultPageSize);
     const sortParam = params.get(name("sort"));
     const [column, direction] = sortParam?.split(":") ?? [];
     const sort: TableSort | undefined =
@@ -77,7 +102,7 @@ export function useTableUrlState({
       if (!RESERVED.has(bare) && !ignored.has(key) && value) filters[bare] = value;
     });
     return { page, pageSize, sort, search: params.get(name("q")) ?? "", filters };
-  }, [params, name, prefix, defaultPageSize, defaultSort, ignoreKey]);
+  }, [params, name, prefix, defaultPageSize, defaultSort, ignoreKey, storedSize]);
 
   const update = useCallback(
     (changes: Record<string, string | undefined>, resetPage = true) => {
@@ -101,7 +126,15 @@ export function useTableUrlState({
     ...state,
     offset: (state.page - 1) * state.pageSize,
     setPage: (page) => update({ page: page > 1 ? String(page) : undefined }, false),
-    setPageSize: (pageSize) => update({ size: pageSize === defaultPageSize ? undefined : String(pageSize) }),
+    setPageSize: (pageSize) => {
+      try {
+        window.localStorage.setItem(sizeKey, String(pageSize));
+      } catch {
+        /* storage blocked: the choice lasts while it is in the URL */
+      }
+      setStoredSize(pageSize);
+      update({ size: pageSize === defaultPageSize ? undefined : String(pageSize) });
+    },
     setSort: (sort) => update({ sort: sort ? `${sort.column}:${sort.direction}` : undefined }),
     // Kept as typed (spaces included) so a field bound to it can type "red kurta"; blank removes it.
     setSearch: (search) => update({ q: search.trim() ? search : undefined }),

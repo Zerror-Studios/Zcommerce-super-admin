@@ -120,7 +120,7 @@ function GrantTopUpForm({
           </div>
         </ModalBody>
         <ModalFooter>
-          <UiButton variant="ghost" onPress={onClose} isDisabled={busy}>
+          <UiButton variant="secondary" onPress={onClose} isDisabled={busy}>
             Cancel
           </UiButton>
           <UiButton onPress={() => void run()} isLoading={busy}>

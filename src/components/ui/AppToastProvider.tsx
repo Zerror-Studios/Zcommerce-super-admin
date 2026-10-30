@@ -3,28 +3,28 @@ import { ToastProvider } from "@heroui/react";
 import { IconClose } from "./icons";
 
 /**
- * One toast setup for both dashboards (docs/design/02-components.md §12): bottom-centre, ink background,
- * white 14px, 12px radius, max 420px, 4s. The status colour stays only on the small leading icon.
- * Optional action ("Undo", "View") goes in the toast's endContent.
+ * One toast setup for both dashboards (01 §7.19, `.zc-toast`): bottom centre, 24px above the edge, ink background,
+ * white 14px; a capsule for one line, radius 16 for two; max 560px; 4s (6s with an action, errors stay); the timer
+ * pauses on hover; up to 3 stack. Status colour only on the small leading icon. Use the `toast` helpers in toast.tsx.
  */
 export function AppToastProvider() {
   return (
     <ToastProvider
       placement="bottom-center"
-      toastOffset={16}
+      toastOffset={24}
       maxVisibleToasts={3}
       toastProps={{
         variant: "flat",
-        radius: "lg",
+        radius: "full",
         timeout: 4000,
         shouldShowTimeoutProgress: false,
         classNames: {
-          base: "!bg-fg !border-0 rounded-xl !shadow-popover w-auto max-w-[420px] min-w-0 py-3 pl-4 pr-10",
+          base: "zc-toast",
           wrapper: "gap-0.5",
-          title: "text-sm font-medium !text-brand-on",
-          description: "text-label !text-nav-fg",
-          icon: "size-4 shrink-0",
-          closeButton: "opacity-100 absolute right-2 top-1/2 -translate-y-1/2 text-nav-fg hover:text-brand-on",
+          title: "zc-toast__title",
+          description: "zc-toast__desc",
+          icon: "zc-toast__icon",
+          closeButton: "zc-toast__close",
         },
         closeIcon: <IconClose aria-hidden className="size-4" />,
       }}

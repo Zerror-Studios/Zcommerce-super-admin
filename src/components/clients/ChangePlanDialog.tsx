@@ -301,11 +301,11 @@ export function ChangePlanDialog({ isOpen, onClose, client, subscription, onChan
           </div>
         </ModalBody>
         <ModalFooter>
-          <UiButton variant="ghost" onPress={onClose} isDisabled={busy}>
+          <UiButton variant="secondary" onPress={onClose} isDisabled={busy}>
             Cancel
           </UiButton>
           <UiButton
-            variant={needsOverride ? "danger" : "primary"}
+            variant={needsOverride ? "destructive" : "primary"}
             isLoading={busy}
             isDisabled={
               busy ||

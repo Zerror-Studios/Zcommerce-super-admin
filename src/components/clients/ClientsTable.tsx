@@ -49,6 +49,7 @@ import {
   Select,
   SelectItem,
   Tab,
+  TabLabel,
   Tabs,
   TablePagination,
   cx,
@@ -489,7 +490,7 @@ export function ClientsTable({
           >
             {canImpersonate ? (
               <UiButton
-                variant="ghost"
+                variant="secondary"
                 size="sm"
                 startIcon={<IconLogin aria-hidden />}
                 onPress={() => void logInToStore(client)}
@@ -554,18 +555,16 @@ export function ClientsTable({
       aria-label="Store views"
       selectedKey={tab}
       onSelectionChange={(key) => state.setTab(String(key) as StoreTab)}
-      classNames={{ base: "min-w-0 max-w-full self-stretch overflow-x-auto", tabList: "h-full border-b-0", tab: "h-13 whitespace-nowrap", panel: "hidden" }}
+      classNames={{ base: "min-w-0 max-w-full", panel: "hidden" }}
     >
       {shownTabs.map((item) => (
         <Tab
           key={item.key}
           title={
-            <span className="flex items-center gap-1.5">
-              {item.label}
-              <span className="font-normal text-fg-subtle num">
-                {item.key === storeTabEnum.DELETED ? (deletedCount ?? "") : tabCounts[item.key]}
-              </span>
-            </span>
+            <TabLabel
+              label={item.label}
+              count={item.key === storeTabEnum.DELETED ? deletedCount : tabCounts[item.key]}
+            />
           }
         />
       ))}

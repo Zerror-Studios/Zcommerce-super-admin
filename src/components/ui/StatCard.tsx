@@ -1,10 +1,10 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
-import type { ComponentType, ReactNode } from "react";
+import { Children, type ComponentType, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { cx } from "./cx";
-import { IconTrendDown, IconTrendUp } from "./icons";
 import { formatCount, formatMoney, formatPercent } from "./money";
 import { Skeleton } from "./Skeleton";
+import { Tooltip } from "./Tooltip";
 
 export interface StatCardProps {
   label: ReactNode;
@@ -17,8 +17,8 @@ export interface StatCardProps {
   deltaUnit?: "%" | "pts";
   /** Tertiary context after the delta: "vs previous 30 days", "3 of 7 stores paid". */
   deltaLabel?: ReactNode;
-  /** Shows the value in red (e.g. Outstanding > 0). */
-  valueTone?: "default" | "danger";
+  /** The number in red (overdue) or orange (due, nothing overdue), e.g. Outstanding. */
+  valueTone?: "default" | "warning" | "danger";
   /** LEGACY: ignored. KPIs have no icons (docs/design/02-components.md §5). */
   icon?: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   isLoading?: boolean;
@@ -38,9 +38,9 @@ function formatValue(value: StatCardProps["value"], format: StatCardProps["forma
 }
 
 /**
- * KPI cell (docs/design/02-components.md §5): label 13/500 secondary → value 26/600 tabular →
- * one 12px line: green/red arrow + change, then tertiary context. No icons.
- * Use several inside <KpiStrip> (one card, equal cells, vertical dividers); alone it renders its own card.
+ * KPI cell (01 §7.13): label 13/500 muted → the number (32px when the cell is at least 200px wide, else 24px;
+ * tabular) → the change as a small chip ("↑ 100.7%", green or red) whose tooltip says "vs previous 30 days", or a
+ * muted sub-line when there is no change to show. Use several inside <KpiStrip>; alone it renders its own card.
  */
 export function StatCard({
   label,
@@ -59,25 +59,20 @@ export function StatCard({
 }: StatCardProps) {
   const body = (
     <>
-      <p className="text-label font-medium text-fg-muted">{label}</p>
+      <p className="truncate text-label font-medium text-fg-muted">{label}</p>
       {isLoading ? (
         <>
-          <Skeleton className="mt-2 h-8 w-32" />
-          <Skeleton className="mt-2 h-4 w-40" />
+          <Skeleton className="mt-2 h-7 w-30 rounded-md" />
+          <Skeleton className="mt-2 h-5.5 w-16 rounded-md" />
         </>
       ) : isError ? (
         <>
-          <p className="mt-1 text-display font-semibold text-fg-subtle">—</p>
+          <p className="zc-kpi-value mt-1 text-fg-subtle">—</p>
           <p className="mt-1 text-caption text-fg-muted">Couldn't load</p>
         </>
       ) : (
         <>
-          <p
-            className={cx(
-              "mt-1 text-display font-semibold num",
-              valueTone === "danger" ? "text-tone-danger-text" : "text-fg",
-            )}
-          >
+          <p className={cx("zc-kpi-value mt-1 num", valueTone === "danger" ? "text-tone-danger-text" : valueTone === "warning" ? "text-tone-warning" : "text-fg")}>
             {formatValue(value, format, currency)}
           </p>
           <Delta delta={delta} unit={deltaUnit} label={deltaLabel} />
@@ -85,15 +80,12 @@ export function StatCard({
       )}
     </>
   );
-
   const classes = cx(
-    "block min-w-0 px-5 py-4",
-    !bare && "rounded-card border border-line bg-surface",
-    href &&
-      "transition-colors duration-instant ease-standard hover:bg-surface-muted focus-visible:shadow-focus",
+    "zc-kpi-cell block min-w-0 bg-surface px-5 py-4",
+    !bare && "rounded-[var(--zc-radius-card)] border border-line",
+    href && "transition-colors duration-fast ease-standard hover:bg-row-hover focus-visible:shadow-focus-strong focus-visible:outline-none",
     className,
   );
-
   return href ? (
     <Link to={href} className={classes}>
       {body}
@@ -104,24 +96,31 @@ export function StatCard({
 }
 
 function Delta({ delta: raw, unit, label }: { delta?: number | null; unit: "%" | "pts"; label: ReactNode }) {
-  if (raw == null && !label) return null;
-  // A zero base (Infinity / NaN) has no meaningful change: show "—", never "−100.0%".
-  const known = raw != null && Number.isFinite(raw);
-  const delta = known ? Number(raw) : 0;
-  const shown = Number(Math.abs(delta).toFixed(1));
-  const tone = !known || shown === 0 ? "text-fg-muted" : delta > 0 ? "text-tone-success" : "text-tone-danger-text";
-  const Arrow = !known || shown === 0 ? null : delta > 0 ? IconTrendUp : IconTrendDown;
-  const amount = raw == null ? null : !known ? "—" : unit === "pts" ? `${shown} pts` : formatPercent(Math.abs(delta));
-  return (
-    <p className="mt-1 flex flex-wrap items-center gap-x-1 text-caption">
-      {amount != null ? (
-        <span className={cx("inline-flex items-center gap-0.5 font-medium num", tone)}>
-          {Arrow ? <Arrow aria-hidden className="size-3" /> : null}
-          {amount}
-        </span>
-      ) : null}
-      {label ? <span className="text-fg-subtle">{label}</span> : null}
-    </p>
+  // No change to show: the label (if any) is a muted sub-line ("Connect Google Analytics").
+  if (raw == null || !Number.isFinite(raw)) {
+    return label ? <p className="mt-1 truncate text-caption font-normal text-fg-muted">{label}</p> : null;
+  }
+  const shown = Number(Math.abs(raw).toFixed(1));
+  const up = raw > 0 && shown > 0;
+  const down = raw < 0 && shown > 0;
+  const amount = unit === "pts" ? `${shown} pts` : formatPercent(Math.abs(raw));
+  const chip = (
+    <span
+      className={cx(
+        "mt-1.5 inline-flex h-5.5 items-center rounded-md px-[7px] text-caption-strong num",
+        up ? "bg-tone-success-soft text-tone-success" : down ? "bg-tone-danger-soft text-tone-danger-text" : "bg-tone-neutral-soft text-tone-neutral",
+      )}
+    >
+      {up ? "↑ " : down ? "↓ " : ""}
+      {amount}
+    </span>
+  );
+  return label ? (
+    <Tooltip content={label} placement="bottom-start">
+      {chip}
+    </Tooltip>
+  ) : (
+    chip
   );
 }
 
@@ -130,15 +129,14 @@ export interface KpiStripProps {
   className?: string;
 }
 
-/** KPI strip: one card, equal cells, 1px vertical dividers (stacked with horizontal dividers on phones). Max 4–5 cells. */
+/**
+ * KPI strip (01 §7.13): one card split into equal cells by 1px dividers; 4, 5 or 6 cells. Desktop: one row (6 =
+ * two rows of three). Tablet: 4 → 2 + 2, 5 → 3 + 2, 6 → 3 + 3. Phone: two columns, an odd last cell spans both.
+ */
 export function KpiStrip({ children, className }: KpiStripProps) {
+  const cells = Children.toArray(children).filter(Boolean).length;
   return (
-    <section
-      className={cx(
-        "flex flex-col divide-y divide-line rounded-card border border-line bg-surface sm:flex-row sm:divide-x sm:divide-y-0 [&>*]:flex-1",
-        className,
-      )}
-    >
+    <section data-cells={cells} className={cx("zc-kpi-strip", className)}>
       {children}
     </section>
   );

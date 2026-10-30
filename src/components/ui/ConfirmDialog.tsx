@@ -25,8 +25,9 @@ export interface ConfirmDialogProps {
 }
 
 /**
- * Destructive confirmation (docs/design/02-components.md §11): title, one sentence of consequence,
- * footer with ghost Cancel and a filled red action on the right. Cancel gets initial focus.
+ * Destructive confirmation (01 §7.16): sm (480), the title is a question ("Delete 3 products?"), one sentence of
+ * consequence, secondary Cancel and the red action with the exact verb on the right. Cancel gets initial focus.
+ * On phone it is a bottom sheet.
  */
 export function ConfirmDialog({
   isOpen,
@@ -46,6 +47,7 @@ export function ConfirmDialog({
         if (!open && !isLoading) onClose();
       }}
       width="sm"
+      sheet
       isDismissable={!isLoading}
       isKeyboardDismissDisabled={isLoading}
       hideCloseButton={isLoading}
@@ -58,10 +60,10 @@ export function ConfirmDialog({
           {children != null ? <div className="w-full">{children}</div> : null}
         </ModalBody>
         <ModalFooter>
-          <Button variant="ghost" autoFocus isDisabled={isLoading} onPress={onClose}>
+          <Button variant="secondary" autoFocus isDisabled={isLoading} onPress={onClose}>
             {cancelLabel}
           </Button>
-          <Button variant="danger" isLoading={isLoading} onPress={onConfirm}>
+          <Button variant="destructive" isLoading={isLoading} onPress={onConfirm}>
             {confirmLabel}
           </Button>
         </ModalFooter>

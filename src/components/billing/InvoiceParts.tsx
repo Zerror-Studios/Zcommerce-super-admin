@@ -1,5 +1,5 @@
 /**
- * Invoice pieces shared by Billing › Invoices and the store's Billing
+ * Invoice pieces (04 S-04b Invoice pop-up, size md 640) shared by Subscriptions and the store's Billing
  * section (PRD-016 FR-20, PRD-017 FR-4.3): the status chip (with the
  * derived "Partially paid"), the reason label (period, proration, restart)
  * and the detail dialog with the server's line amounts. Every amount is
@@ -42,7 +42,8 @@ export interface InvoiceDetailModalProps {
 
 export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps) {
   if (!invoice) return null;
-  const money = (amount: number) => formatMoney(amount, { currency: invoice.currency, paise: true });
+  // Whole rupees without ".00"; paise only when there are some (04 S-04b, 01 §4.4).
+  const money = (amount: number) => formatMoney(amount, { currency: invoice.currency });
   const rows: { label: string; value: string; strong?: boolean }[] = [
     { label: "Plan price", value: money(invoice.amount) },
     ...(invoice.discount > 0
@@ -104,7 +105,7 @@ export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps
           <InvoiceHistory invoice={invoice} />
         </ModalBody>
         <ModalFooter>
-          <UiButton variant="primary" onPress={onClose}>
+          <UiButton variant="secondary" onPress={onClose}>
             Close
           </UiButton>
         </ModalFooter>
@@ -167,7 +168,7 @@ function InvoiceHistory({ invoice }: { invoice: PlatformInvoice }) {
               <li key={payment.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                 <div className="min-w-0">
                   <p className="num text-fg">
-                    {formatMoney(payment.amount, { currency: payment.currency, paise: true })}
+                    {formatMoney(payment.amount, { currency: payment.currency })}
                     <span className="text-fg-muted"> · {payment.provider}</span>
                     {payment.type === "REFUND" ? <span className="text-fg-muted"> · refund</span> : null}
                   </p>

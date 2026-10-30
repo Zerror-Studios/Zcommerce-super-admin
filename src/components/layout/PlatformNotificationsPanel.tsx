@@ -5,8 +5,8 @@
  * (`NotificationsPanel.tsx`) takes a static list, while this one reads one
  * tab at a time from `platformNotifications`, pages it with Load more,
  * marks items read on the server and has loading, empty and error states.
- * Same look: a 640px modal near the top, underline tabs, 28px icon tiles,
- * relative time and a blue unread dot.
+ * Same look as the kit panel (02 §10): a 640px modal, a small segmented switch
+ * for the tabs, 64px rows with a 36px circle icon, relative time and a blue dot.
  */
 
 import { ModalBody, ModalContent } from "@heroui/react";
@@ -48,6 +48,7 @@ import {
   IconStoreHealth,
 } from "../ui/icons";
 import { Modal } from "../ui/Modal";
+import { SegmentedSwitch, type SegmentedItem } from "../ui/Tabs";
 import { Skeleton } from "../ui/Skeleton";
 import { toastError } from "../ui/toast";
 import { toneClasses } from "../ui/tones";
@@ -200,26 +201,26 @@ const PlatformNotificationsPanel = ({
                 <button
                   type="button"
                   onClick={() => openItem(item)}
-                  className="flex w-full gap-3 px-4 py-3 text-left transition-colors duration-instant hover:bg-surface-muted"
+                  className="flex min-h-16 w-full items-center gap-3 px-6 py-3 text-left transition-colors duration-fast hover:bg-row-hover focus-visible:shadow-focus-strong focus-visible:outline-none"
                 >
                   <span
                     aria-hidden
                     className={cx(
-                      "flex size-7 shrink-0 items-center justify-center rounded-lg",
+                      "flex size-9 shrink-0 items-center justify-center rounded-full",
                       tone === "neutral" ? "bg-surface-sunken text-fg-muted" : toneClasses[tone],
                     )}
                   >
                     <Icon className="size-4" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-fg">{item.title}</span>
+                    <span className="block text-body font-medium text-fg">{item.title}</span>
                     {detail ? <span className="block truncate text-label text-fg-muted">{detail}</span> : null}
                   </span>
-                  <span className="flex shrink-0 items-start gap-2 pt-0.5">
-                    <span className="text-caption text-fg-subtle num">{relativeTime(item.createdAt)}</span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="text-caption text-fg-muted num">{relativeTime(item.createdAt)}</span>
                     <span
                       aria-label={item.read ? undefined : "Unread"}
-                      className={cx("mt-1 size-1.5 rounded-full", item.read ? "bg-transparent" : "bg-brand")}
+                      className={cx("size-2 rounded-full", item.read ? "bg-transparent" : "bg-brand")}
                     />
                   </span>
                 </button>
@@ -243,64 +244,46 @@ const PlatformNotificationsPanel = ({
   return (
     <div className="flex">
       {opener}
-      <Modal
-        isOpen={isOpen}
-        onOpenChange={setIsOpen}
-        width="md"
-        placement="top"
-        hideCloseButton
-        classNames={{ base: "mt-[12vh]" }}
-      >
+      <Modal isOpen={isOpen} onOpenChange={setIsOpen} width="md" hideCloseButton classNames={{ body: "!p-0" }}>
         <ModalContent>
-          <ModalBody className="p-0">
-            <div className="flex h-12 items-center gap-3 border-b border-line px-4">
-              <IconNotifications aria-hidden className="size-4 shrink-0 text-fg-subtle" />
-              <p className="flex-1 text-body font-semibold text-fg">Notifications</p>
+          <ModalBody className="flex min-h-0 flex-col">
+            <div className="flex shrink-0 items-center gap-2 px-6 pb-3 pt-5">
+              <h2 className="flex-1 text-title-2 text-fg">Notifications</h2>
               {active && hasUnread ? (
                 <Button
-                  variant="link"
+                  variant="tertiary"
                   size="sm"
                   isLoading={isMarkingAll}
                   onPress={() => void markAllRead()}
                 >
-                  Mark all read
+                  Mark all as read
                 </Button>
               ) : null}
-              <IconButton aria-label="Close notifications" size="sm" showTooltip={false} onPress={() => setIsOpen(false)}>
-                <IconClose aria-hidden className="size-4" />
+              <IconButton aria-label="Close notifications" variant="ghost" size="sm" onPress={() => setIsOpen(false)}>
+                <IconClose aria-hidden />
               </IconButton>
             </div>
 
-            {counts.tabs.length > 0 ? (
-              <div role="tablist" aria-label="Notification type" className="flex gap-5 border-b border-line px-4">
-                {counts.tabs.map((tab) => {
-                  const isSelected = tab.category === active?.category;
-                  const unread = counts.unread[tab.category];
-                  return (
-                    <button
-                      key={tab.category}
-                      type="button"
-                      role="tab"
-                      aria-selected={isSelected}
-                      onClick={() => showTab(tab.category)}
-                      className={cx(
-                        "-mb-px flex h-9 items-center gap-1.5 border-b-2 text-sm font-medium transition-colors duration-fast",
-                        isSelected ? "border-fg text-fg" : "border-transparent text-fg-muted hover:text-fg",
-                      )}
-                    >
-                      {tab.label}
-                      {unread > 0 ? (
-                        <span className="num text-caption text-brand" aria-label={`${unread} unread`}>
-                          {unread}
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
+            {counts.tabs.length > 0 && active ? (
+              <div className="shrink-0 border-b border-line-subtle px-6 pb-3">
+                <SegmentedSwitch
+                  size="sm"
+                  ariaLabel="Notification type"
+                  value={active.category}
+                  onChange={(category) => showTab(category as PlatformNotificationCategory)}
+                  items={counts.tabs.map(
+                    (tab): SegmentedItem => ({
+                      value: tab.category,
+                      label: tab.label,
+                      // The count after each tab is its unread count, shown only when there is one.
+                      count: counts.unread[tab.category] > 0 ? counts.unread[tab.category] : undefined,
+                    }),
+                  )}
+                />
               </div>
             ) : null}
 
-            <div role="tabpanel" className="custom-scroll max-h-[min(420px,60vh)] overflow-y-auto">
+            <div role="tabpanel" className="custom-scroll max-h-[560px] min-h-0 overflow-y-auto">
               {renderBody()}
             </div>
           </ModalBody>

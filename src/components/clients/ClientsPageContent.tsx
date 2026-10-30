@@ -3,60 +3,70 @@ import { useNavigate } from "react-router-dom";
 import type { Client } from "../../types";
 import { toasts } from "../../copy";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
-import { isOverdue, isUnpaid } from "../../lib/store-table.util";
-import { storeLifecycleEnum, storeLifecycleKey } from "../../lib/storeStatus";
+import { storeLifecycleEnum, storeLifecycleKey, graceDaysFor } from "../../lib/storeStatus";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
+import { usePlatformSettings } from "../../providers/SettingsProvider";
 import { PageHeader } from "../common/PageHeader";
-import { ClientsTable } from "./ClientsTable";
 import { IconAdd, IconStore } from "../ui/icons";
-import { Button as UiButton, ErrorState, cx, formatCount, toneTextClasses } from "../ui";
+import { Button, ErrorState, cx, formatCount, toneTextClasses } from "../ui";
+import { StoresTable } from "./stores-list/StoresTable";
+import { paymentBadge, paymentKindEnum } from "./stores-list/store-list.util";
 
 export interface ClientsPageContentProps {
   clients: Client[];
 }
 
 /**
- * Stores page (docs/design/04-super-admin.md §3.3, header A in 09 §2): tinted teal header with the count and a
- * live line, primary "Add store", then the shared stores table with its state in the URL.
+ * Stores (04 S-02): blue header tile with the storefront glyph, the count of stores that aren't deleted and a live
+ * line ("2 live · 1 in trial · 1 payment due · 0 overdue"), primary "+ Add store"; then the stores table card.
  */
 export function ClientsPageContent({ clients }: ClientsPageContentProps) {
   const navigate = useNavigate();
   const { loading, loadingMore, incomplete, pageGuardReached, loadRemaining, error, refetch, totalCount, subscriptions } =
     useClients();
+  const { settings } = usePlatformSettings();
   const { can } = useAuth();
 
   const summary = useMemo(() => {
     const byClient = latestSubscriptionByClient(subscriptions);
     let live = 0;
-    let unpaid = 0;
+    let trial = 0;
+    let due = 0;
     let overdue = 0;
     clients.forEach((client) => {
-      const sub = byClient.get(client.id);
-      if (storeLifecycleKey(client) === storeLifecycleEnum.LIVE) live += 1;
-      if (isUnpaid(sub)) unpaid += 1;
-      if (isOverdue(sub)) overdue += 1;
+      const key = storeLifecycleKey(client);
+      if (key === storeLifecycleEnum.LIVE) live += 1;
+      if (key === storeLifecycleEnum.TRIAL) trial += 1;
+      const { kind } = paymentBadge(byClient.get(client.id), graceDaysFor(client, settings.gracePeriodDays));
+      if (kind === paymentKindEnum.DUE) due += 1;
+      if (kind === paymentKindEnum.GRACE || kind === paymentKindEnum.OVERDUE) overdue += 1;
     });
-    const line = `${formatCount(live)} live · ${formatCount(unpaid)} unpaid · ${formatCount(overdue)} overdue`;
-    // PRD-024 FR-1.6 (B-06): these are counted from the loaded rows; say so until every store is loaded.
-    return clients.length < totalCount ? `${line} in ${formatCount(clients.length)} loaded stores` : line;
-  }, [clients, subscriptions, totalCount]);
+    const n = (value: number) => <span className="num">{formatCount(value)}</span>;
+    return (
+      <>
+        {n(live)} live · {n(trial)} in trial · {n(due)} payment due · {n(overdue)} overdue
+        {/* PRD-024 FR-1.6 (B-06): counted from the loaded rows; say so until every store is loaded. */}
+        {clients.length < totalCount ? <> in {n(clients.length)} loaded stores</> : null}
+      </>
+    );
+  }, [clients, settings.gracePeriodDays, subscriptions, totalCount]);
 
   return (
     <div>
       <PageHeader
         type="list"
         icon={<IconStore aria-hidden />}
-        section="teal"
+        section="blue"
         title="Stores"
-        count={totalCount}
-        description={loading ? "Every store on the Zcom platform and its plan" : summary}
+        count={loading ? undefined : formatCount(totalCount)}
+        description={loading ? "Every store on Zcom and its plan" : summary}
         actions={
           can(PLATFORM_PERMISSIONS.TENANTS_MANAGE) ? (
-            <UiButton variant="primary" startIcon={<IconAdd aria-hidden />} onPress={() => navigate("/stores/new")}>
+            <Button variant="primary" startIcon={<IconAdd aria-hidden />} onPress={() => navigate("/stores/new")}>
               Add store
-            </UiButton>
+            </Button>
           ) : undefined
         }
       />
@@ -64,17 +74,16 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
       {/* Pages of 100 load one after another (FE-09); say so while they do, or if one failed. */}
       {!error && loadingMore ? (
         <p role="status" className="mb-3 text-label text-fg-muted">
-          Loading stores… {clients.length} of {totalCount}.
+          Loading stores… {formatCount(clients.length)} of {formatCount(totalCount)}.
         </p>
       ) : null}
       {incomplete ? (
         <p role="status" className={cx("mb-3 text-label", toneTextClasses.warning)}>
-          {/* W2V2-06: at the 5,000-row guard the button reads on instead of retrying nothing. */}
           {pageGuardReached
-            ? `Showing the first ${clients.length} of ${totalCount} stores; the console reads them 5,000 at a time.`
-            : `Showing ${clients.length} of ${totalCount} stores; the rest couldn't be loaded.`}{" "}
+            ? `Showing the first ${formatCount(clients.length)} of ${formatCount(totalCount)} stores.`
+            : `Showing ${formatCount(clients.length)} of ${formatCount(totalCount)} stores; the rest couldn't be loaded.`}{" "}
           <button type="button" className="underline" onClick={loadRemaining}>
-            {pageGuardReached ? "Load the next 5,000" : "Retry"}
+            {pageGuardReached ? "Load the next 5,000" : "Try again"}
           </button>
         </p>
       ) : null}
@@ -82,7 +91,7 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
       {error ? (
         <ErrorState title="Couldn't load the stores." description={toasts.genericError} onRetry={() => void refetch()} />
       ) : (
-        <ClientsTable clients={clients} isLoading={loading} allowColumnChoice syncUrl />
+        <StoresTable clients={clients} isLoading={loading} />
       )}
     </div>
   );

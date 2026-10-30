@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@apollo/client";
-import { DropdownItem, DropdownTrigger, addToast } from "@heroui/react";
+import { addToast } from "@heroui/react";
 import { useEffect, useState, type Key } from "react";
 import type { PlatformList, PlatformRole, PlatformUser } from "../../types/platform-api";
 import { platformRoleEnum } from "../../types/platform-api";
@@ -18,17 +18,13 @@ import {
 import { useAuth } from "../../providers/AuthProvider";
 import { toasts } from "../../copy";
 import { ConfirmModal } from "../common/ConfirmModal";
-import { IconAdd, IconLock, IconMore, IconUser } from "../ui/icons";
+import { IconAdd, IconBlock, IconLock, IconUser } from "../ui/icons";
 import {
   Card,
   Button as UiButton,
-  Chip,
   CopyableId,
-  Dropdown,
-  DropdownMenu,
   EmptyState,
   ErrorState,
-  IconButton,
   Input,
   Modal,
   ModalBody,
@@ -41,25 +37,31 @@ import {
   DataTable,
   TablePagination,
   formatDateTime,
-  menuItemDangerClasses,
   toastError,
   useTableUrlState,
   type DataTableColumn,
+  type RowMenuItem,
 } from "../ui";
+import { RolesMatrixCard } from "./RolesMatrixCard";
+import { SettingsSectionHeader } from "./SettingsSectionHeader";
+import { TableCardHeader } from "./TableCardHeader";
 
 const ROLE_LABELS = PLATFORM_ROLE_LABELS;
 
+/** Fixed 476 → Member 208px in the 684px column (04 S-07b). */
 const columns: DataTableColumn[] = [
   { key: "name", label: "Member" },
-  { key: "role", label: "Role" },
-  { key: "status", label: "Status" },
-  { key: "mfa", label: "Two-step" },
-  { key: "lastLoginAt", label: "Last login" },
-  { key: "actions", label: "Actions", hideLabel: true },
+  { key: "role", label: "Role", width: 140 },
+  { key: "status", label: "Status", width: 130, skeleton: "badge", mobile: "badge" },
+  { key: "lastLoginAt", label: "Last login", width: 150 },
 ];
 
-/** Settings › Team (PRD-005 FR-8.2): platform users, invites with the one-time link, roles, MFA resets. */
-export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: boolean; onCreateOpenChange: (open: boolean) => void }) {
+/**
+ * Settings › Team & roles (04 S-07b, PRD-005 FR-8.2): the members table (invites with the one-time link, roles,
+ * two-step resets, disabling) and the Roles card. The Invite pop-up stays as live (Check first 05 #29).
+ */
+export function TeamSettings() {
+  const [createOpen, onCreateOpenChange] = useState(false);
   const { user: me, can } = useAuth();
   const canManageUsers = can(PLATFORM_PERMISSIONS.USERS_MANAGE);
   // PRD-014 UX-27: `platformUsers` needs users:manage; other roles get an
@@ -156,79 +158,121 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
     switch (key) {
       case "name":
         return (
-          <div className="min-w-0 max-w-64">
-            <p className="truncate font-medium text-fg">{user.name}{user.id === me?.id ? " (you)" : ""}</p>
-            <p className="truncate text-caption text-fg-subtle">{user.email}</p>
+          <div className="min-w-0">
+            <p className="truncate text-body font-medium text-fg">{user.name}{user.id === me?.id ? " (you)" : ""}</p>
+            <p className="truncate text-label text-fg-muted">{user.email}</p>
           </div>
         );
       case "role":
-        return ROLE_LABELS[user.role];
+        return <span className="block truncate">{ROLE_LABELS[user.role]}</span>;
       case "status":
-        return <StatusChip domain="user" status={user.status.toLowerCase()} />;
-      case "mfa":
-        return <Chip tone={user.mfaEnabled ? "success" : "neutral"}>{user.mfaEnabled ? "On" : "Off"}</Chip>;
-      case "lastLoginAt":
-        return user.lastLoginAt ? <span className="num">{formatDateTime(user.lastLoginAt)}</span> : <span className="text-fg-subtle">—</span>;
-      case "actions":
-        // Role changes, MFA resets and disabling need users:manage (review C-M5).
-        return user.id === me?.id || !canManageUsers ? null : (
-          <div className="flex justify-end">
-            <Dropdown placement="bottom-end">
-              <DropdownTrigger>
-                <IconButton aria-label={`Actions for ${user.email}`} showTooltip={false} size="sm">
-                  <IconMore aria-hidden className="size-4" />
-                </IconButton>
-              </DropdownTrigger>
-              <DropdownMenu aria-label="Member actions" onAction={(key) => onAction(user, key)} disabledKeys={user.status === "DISABLED" ? ["disable"] : []}>
-                <DropdownItem key="role">Change role</DropdownItem>
-                <DropdownItem key="mfa">Reset two-step verification</DropdownItem>
-                <DropdownItem key="disable" className={menuItemDangerClasses}>Disable</DropdownItem>
-              </DropdownMenu>
-            </Dropdown>
+        return (
+          <div className="min-w-0">
+            <StatusChip domain="user" status={user.status.toLowerCase()} />
+            <p className="mt-0.5 truncate text-label text-fg-muted">Two-step {user.mfaEnabled ? "on" : "off"}</p>
           </div>
         );
+      case "lastLoginAt":
+        return user.lastLoginAt ? <span className="num">{formatDateTime(user.lastLoginAt)}</span> : <span className="text-fg-subtle">—</span>;
       default:
         return null;
     }
   };
 
+  // Role changes, two-step resets and disabling need users:manage; your own row has no menu (review C-M5).
+  const rowActions = (user: PlatformUser): RowMenuItem[] =>
+    user.id === me?.id
+      ? []
+      : [
+          { key: "role", label: "Change role", icon: IconUser, onSelect: () => onAction(user, "role") },
+          { key: "mfa", label: "Reset two-step", icon: IconLock, onSelect: () => onAction(user, "mfa") },
+          {
+            key: "disable",
+            label: "Disable member",
+            icon: IconBlock,
+            destructive: true,
+            disabled: user.status === "DISABLED",
+            onSelect: () => onAction(user, "disable"),
+          },
+        ];
+
+  const header = (
+    <SettingsSectionHeader
+      section="team"
+      actions={
+        canManageUsers ? (
+          <UiButton variant="primary" startIcon={<IconAdd aria-hidden />} onPress={() => onCreateOpenChange(true)}>
+            Invite member
+          </UiButton>
+        ) : undefined
+      }
+    />
+  );
+
   if (!canManageUsers) {
     return (
-      <Card>
-        <EmptyState
-          icon={IconLock}
-          title="Only the platform owner manages the team"
-          description="Ask the owner to invite someone, change a role or reset two-step verification."
-        />
-      </Card>
+      <div>
+        {header}
+        <div className="flex flex-col gap-4">
+          <Card>
+            <EmptyState
+              icon={IconLock}
+              title="Only the platform owner manages the team"
+              description="Ask the owner to invite someone, change a role or reset two-step verification."
+            />
+          </Card>
+          <RolesMatrixCard />
+        </div>
+      </div>
     );
   }
 
-  if (query.error) {
-    return <ErrorState title="Couldn't load the team." description={toasts.genericError} onRetry={() => void query.refetch()} />;
-  }
-
   return (
-    <>
-      <DataTable
-        aria-label="Platform team"
-        columns={columns}
-        rows={pageRows}
-        getRowKey={(user) => user.id}
-        renderCell={renderCell}
-        isLoading={query.loading && !query.data}
-        stickyFirstColumn
-        footer={
-          <TablePagination
-            page={page}
-            pageSize={table.pageSize}
-            total={filtered.length}
-            onPageChange={table.setPage}
-            onPageSizeChange={table.setPageSize}
-          />
-        }
-        emptyContent={<EmptyState icon={IconUser} title="No team members yet" description="Invite the Zerror team here." action={canManageUsers ? <UiButton variant="secondary" size="sm" startIcon={<IconAdd aria-hidden />} onPress={() => onCreateOpenChange(true)}>Invite member</UiButton> : undefined} />}
-      />
+    <div>
+      {header}
+      <div className="flex flex-col gap-4">
+        {query.error ? (
+          <ErrorState title="Couldn't load the team." description={toasts.genericError} onRetry={() => void query.refetch()} />
+        ) : (
+          <div id="members" data-settings-field>
+            <DataTable
+              aria-label="Platform team"
+              toolbar={<TableCardHeader title="Members" description="Pending invites show as Invited until the link is used." />}
+              columns={columns}
+              rows={pageRows}
+              getRowKey={(user) => user.id}
+              renderCell={renderCell}
+              isLoading={query.loading && !query.data}
+              rowHeight="tall"
+              rowActions={rowActions}
+              rowActionsLabel={(user) => `Actions for ${user.email}`}
+              stickyFirstColumn
+              footer={
+                <TablePagination
+                  page={page}
+                  pageSize={table.pageSize}
+                  total={filtered.length}
+                  onPageChange={table.setPage}
+                  onPageSizeChange={table.setPageSize}
+                />
+              }
+              emptyContent={
+                <EmptyState
+                  icon={IconUser}
+                  title="No team members yet"
+                  description="Invite the Zerror team here."
+                  action={
+                    <UiButton variant="primary" size="sm" startIcon={<IconAdd aria-hidden />} onPress={() => onCreateOpenChange(true)}>
+                      Invite member
+                    </UiButton>
+                  }
+                />
+              }
+            />
+          </div>
+        )}
+        <RolesMatrixCard />
+      </div>
 
       <Modal isOpen={createOpen} onClose={() => { onCreateOpenChange(false); setSetupUrl(null); }} width="sm">
         <ModalContent>
@@ -252,7 +296,7 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
             )}
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={() => { onCreateOpenChange(false); setSetupUrl(null); }}>{setupUrl ? "Done" : "Cancel"}</UiButton>
+            <UiButton variant="secondary" onPress={() => { onCreateOpenChange(false); setSetupUrl(null); }}>{setupUrl ? "Done" : "Cancel"}</UiButton>
             {setupUrl ? null : (
               <UiButton variant="primary" isLoading={inviting} onPress={() => void sendInvite()}>Send invite</UiButton>
             )}
@@ -290,11 +334,11 @@ export function TeamSettings({ createOpen, onCreateOpenChange }: { createOpen: b
             <p className="mt-2 text-caption text-fg-muted">Their open sessions end; they sign in again with the new role.</p>
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={() => setRoleTarget(null)}>Cancel</UiButton>
+            <UiButton variant="secondary" onPress={() => setRoleTarget(null)}>Cancel</UiButton>
             <UiButton variant="primary" onPress={() => { const target = roleTarget; setRoleTarget(null); if (target) void run(() => updateRole({ variables: { id: target.id, role: nextRole } }), toasts.roleChanged); }}>Change role</UiButton>
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </>
+    </div>
   );
 }

@@ -46,7 +46,7 @@ export function ImageControl({ onPress, children, size = "md", destructive, clas
 /** "Cover" on the first image: 10px, white pill. */
 export function CoverTag({ children = "Cover", className }: { children?: ReactNode; className?: string }) {
   return (
-    <span className={cx("rounded-xs bg-image-control px-1.5 py-0.5 text-micro font-semibold text-fg", className)}>
+    <span className={cx("rounded-xs bg-image-control px-1.5 py-0.5 text-caption font-semibold text-fg", className)}>
       {children}
     </span>
   );
@@ -119,12 +119,18 @@ export interface AvatarProps {
   /** Full name: initials and the gradient come from it. */
   name: string;
   src?: string | null;
-  /** sm 24, md 32, lg 40. */
-  size?: "sm" | "md" | "lg";
+  /** sm 24, sm28 28 (the sidebar owner row), md 32, lg 40, xl 64 (profile headers). */
+  size?: "sm" | "sm28" | "md" | "lg" | "xl";
   className?: string;
 }
 
-const avatarSizes = { sm: "size-6 text-micro", md: "size-8 text-caption", lg: "size-10 text-body" };
+const avatarSizes = {
+  sm: "size-6 text-micro normal-case tracking-normal",
+  sm28: "size-7 text-micro normal-case tracking-normal",
+  md: "size-8 text-caption",
+  lg: "size-10 text-body",
+  xl: "size-16 text-title-2",
+};
 
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);

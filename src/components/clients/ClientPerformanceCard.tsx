@@ -106,7 +106,7 @@ export function ClientPerformanceCard({ tenantId }: { tenantId: string }) {
           onRetry={() => void query.refetch()}
         />
       ) : query.loading && !query.data ? (
-        <Skeleton className="h-56 w-full" />
+        <Skeleton className="h-55 w-full" />
       ) : points.length === 0 ? (
         <EmptyState
           compact
@@ -115,7 +115,7 @@ export function ClientPerformanceCard({ tenantId }: { tenantId: string }) {
           description="The nightly usage snapshot fills this in."
         />
       ) : (
-        <div className="h-56 w-full">
+        <div className="h-55 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={points}
@@ -126,10 +126,9 @@ export function ClientPerformanceCard({ tenantId }: { tenantId: string }) {
               <XAxis dataKey="label" {...recharts.axis} />
               <YAxis
                 {...recharts.axis}
-                width={56}
-                tickFormatter={(value: number) =>
-                  formatMoney(value, { compact: true })
-                }
+                width={80}
+                // Full rupees on the axis, never "₹20L" (04 S-03a).
+                tickFormatter={(value: number) => formatMoney(value, { whole: true })}
               />
               <Tooltip
                 content={<PerformanceTooltip />}

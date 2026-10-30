@@ -1,5 +1,5 @@
 import { useQuery } from "@apollo/client";
-import { addToast, type Selection } from "@heroui/react";
+import { addToast } from "@heroui/react";
 import { toastError } from "../ui";
 import { useCallback, useMemo, useState, type Key, type ReactNode } from "react";
 import type { Coupon, PlanName } from "../../types";
@@ -19,7 +19,6 @@ import {
 import { mutationFailureCopy } from "../../lib/mutation-errors";
 import { ConfirmModal } from "../common/ConfirmModal";
 import { getPlanLabel, PLAN_NAMES } from "../../lib/display-labels.util";
-import { selectionToIdSet } from "../../lib/tableSelection";
 import { formatDate } from "../../lib/utils";
 import { joinParam, splitParam } from "../../lib/store-table.util";
 import { useUrlSearch } from "../../hooks/use-url-search";
@@ -32,13 +31,7 @@ import {
 import {
   Button as UiButton,
   Chip,
-  CopyableId,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
   EmptyState,
-  IconButton,
   Input,
   Modal,
   ModalBody,
@@ -47,19 +40,18 @@ import {
   ModalHeader,
   Select,
   SelectItem,
-  SelectionBar,
   Switch,
   formatCount,
   formatMoney,
-  menuItemDangerClasses,
   DataTable,
   TablePagination,
   usePersistentColumns,
   useTableUrlState,
   type DataTableColumn,
+  type RowMenuItem,
 } from "../ui";
 import type { Tone } from "../ui";
-import { IconMore, IconTag } from "../ui/icons";
+import { IconAdd, IconBlock, IconDuplicate, IconEdit, IconSuccess, IconTag } from "../ui/icons";
 
 export interface CouponsTabProps {
   coupons: Coupon[];
@@ -77,20 +69,16 @@ export interface CouponsTabProps {
   footer?: ReactNode;
 }
 
+/** Fixed 476 → Code 208px in the 684px Settings column (04 S-07e). No checkbox column: no bulk actions (06 Q31). */
 const columns = [
   { key: "code", label: "Code" },
-  { key: "discount", label: "Discount" },
-  { key: "appliesTo", label: "Applies to" },
-  { key: "redemptions", label: "Used" },
-  { key: "expiresAt", label: "Expires" },
-  { key: "active", label: "Status" },
-  { key: "actions", label: "" },
-] as const;
+  { key: "discount", label: "Discount", width: 110 },
+  { key: "redemptions", label: "Used", width: 90, hideWhen: "narrow" },
+  { key: "expiresAt", label: "Expires", width: 110 },
+  { key: "active", label: "Status", width: 110, skeleton: "badge", mobile: "badge" },
+] as const satisfies readonly DataTableColumn[];
 
-const tableColumns: DataTableColumn[] = columns.map((column) => ({
-  ...column,
-  align: column.key === "redemptions" ? "end" : undefined,
-}));
+const tableColumns: DataTableColumn[] = [...columns];
 
 const statusOptions = [
   { key: "active", label: "Active" },
@@ -144,7 +132,6 @@ export function CouponsTab({
     "discounts",
     columns.map((column) => column.key),
   );
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   // PRD-017 FR-4.4: every plan version and custom plan, for the picker and
   // the "Applies to" column of coupons limited by plan id.
   const plansQuery = useQuery<{ platformPlans: PlatformPlan[] }>(PLATFORM_PLANS, {
@@ -163,11 +150,7 @@ export function CouponsTab({
   const filtered = coupons;
 
   // Row actions only for roles with coupons:manage and a save handler.
-  const shownColumns = useMemo(() => {
-    const shown = new Set(visibleColumns);
-    if (!(canCreate && onUpdate)) shown.delete("actions");
-    return shown;
-  }, [visibleColumns, canCreate, onUpdate]);
+  const canEdit = canCreate && !!onUpdate;
   const pageCount = Math.max(1, Math.ceil(filtered.length / table.pageSize));
   const page = Math.min(table.page, pageCount);
   const pageRows = filtered.slice((page - 1) * table.pageSize, page * table.pageSize);
@@ -177,23 +160,20 @@ export function CouponsTab({
     table.clearFilters();
   };
 
-  const handleSelectionChange = (keys: Selection) => {
-    setSelected(selectionToIdSet(keys, filtered.map((item) => item.id)));
-  };
-
   const renderCell = (coupon: Coupon, key: string) => {
     switch (key) {
       case "code":
-        return <CopyableId value={coupon.code} />;
+        return (
+          <div className="min-w-0">
+            <p className="truncate font-mono text-body font-medium text-fg">{coupon.code}</p>
+            <p className="truncate text-label text-fg-muted">Applies to {scopeOf(coupon)}</p>
+          </div>
+        );
       case "discount":
-        return coupon.discountType === "percent"
-          ? `${coupon.discountValue}%`
-          : formatMoney(coupon.discountValue);
-      case "appliesTo":
-        return scopeOf(coupon);
+        return coupon.discountType === "percent" ? `${coupon.discountValue}%` : `${formatMoney(coupon.discountValue)} off`;
       case "redemptions":
         return (
-          <span className="block text-right num">
+          <span className="num">
             {formatCount(coupon.redemptions)} / {formatCount(coupon.maxRedemptions)}
           </span>
         );
@@ -203,31 +183,25 @@ export function CouponsTab({
         const status = statusDisplay[couponStatus(coupon)];
         return <Chip tone={status.tone}>{status.label}</Chip>;
       }
-      case "actions":
-        return (
-          <div className="flex justify-end">
-            <Dropdown placement="bottom-end">
-              <DropdownTrigger>
-                <IconButton aria-label={`Actions for ${coupon.code}`} showTooltip={false} size="sm">
-                  <IconMore aria-hidden className="size-4" />
-                </IconButton>
-              </DropdownTrigger>
-              <DropdownMenu
-                aria-label="Discount actions"
-                onAction={(key) => onRowAction(coupon, key)}
-                disabledKeys={coupon.active ? ["activate"] : ["deactivate"]}
-              >
-                <DropdownItem key="edit">Edit</DropdownItem>
-                <DropdownItem key="activate">Activate</DropdownItem>
-                <DropdownItem key="deactivate" className={menuItemDangerClasses}>Deactivate</DropdownItem>
-              </DropdownMenu>
-            </Dropdown>
-          </div>
-        );
       default:
         return <span className="text-fg-subtle">—</span>;
     }
   };
+
+  const copyCode = (coupon: Coupon) => {
+    void navigator.clipboard
+      ?.writeText(coupon.code)
+      .then(() => addToast({ title: `${coupon.code} copied.` }))
+      .catch(() => toastError("Couldn't copy the code."));
+  };
+
+  const rowActions = (coupon: Coupon): RowMenuItem[] => [
+    { key: "edit", label: "Edit", icon: IconEdit, onSelect: () => onRowAction(coupon, "edit") },
+    { key: "copy", label: "Copy code", icon: IconDuplicate, onSelect: () => copyCode(coupon) },
+    ...(coupon.active
+      ? [{ key: "deactivate", label: "Deactivate", icon: IconBlock, destructive: true, onSelect: () => onRowAction(coupon, "deactivate") }]
+      : [{ key: "activate", label: "Activate", icon: IconSuccess, onSelect: () => onRowAction(coupon, "activate") }]),
+  ];
 
   const setField = <K extends keyof CouponDraft>(key: K, value: CouponDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -320,15 +294,14 @@ export function CouponsTab({
       <DataTable
         aria-label="Discounts"
         columns={tableColumns}
-        visibleColumns={shownColumns}
+        visibleColumns={visibleColumns}
         rows={pageRows}
         getRowKey={(coupon) => coupon.id}
         renderCell={renderCell}
-        selectedKeys={selected}
-        onSelectionChange={handleSelectionChange}
+        rowHeight="tall"
+        rowActions={canEdit ? rowActions : undefined}
+        rowActionsLabel={(coupon) => `Actions for ${coupon.code}`}
         stickyFirstColumn
-        scrollClassName="max-h-[70vh]"
-        bulkBar={<SelectionBar count={selected.size} onClear={() => setSelected(new Set())} />}
         toolbar={
           <>
             <TableToolbar
@@ -379,7 +352,7 @@ export function CouponsTab({
               description="Create a code to give stores a discount on their plan."
               action={
                 canCreate ? (
-                  <UiButton variant="secondary" size="sm" onPress={() => onCreateOpenChange(true)}>
+                  <UiButton variant="primary" size="sm" startIcon={<IconAdd aria-hidden />} onPress={() => onCreateOpenChange(true)}>
                     Create discount
                   </UiButton>
                 ) : undefined
@@ -496,7 +469,7 @@ export function CouponsTab({
                 </Switch>
               </ModalBody>
               <ModalFooter>
-                <UiButton variant="ghost" onPress={closeForm} isDisabled={saving}>
+                <UiButton variant="secondary" onPress={closeForm} isDisabled={saving}>
                   Cancel
                 </UiButton>
                 <UiButton variant="primary" isLoading={saving} onPress={() => void handleSave()}>
