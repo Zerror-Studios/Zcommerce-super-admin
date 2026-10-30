@@ -10,10 +10,14 @@ import { IssueCreditDialog, RecordRefundDialog } from "../components/clients/Cli
 import { ClientUsageHistory } from "../components/clients/ClientUsageHistory";
 import { OnboardingCard } from "../components/clients/OnboardingCard";
 import { StoreBillingSection } from "../components/clients/StoreBillingSection";
+import { StoreBillingStateCard } from "../components/clients/StoreBillingStateCard";
 import { InlineNotice } from "../components/clients/StoreDetailParts";
 import { StoreDetailsCard, StoreDetailsDialog } from "../components/clients/StoreDetailsCard";
 import { StoreGoLiveCard } from "../components/clients/StoreGoLiveCard";
+import { StoreHealthCard } from "../components/clients/StoreHealthCard";
+import { StoreHistoryCard } from "../components/clients/StoreHistoryCard";
 import { StoreLifecycleCard } from "../components/clients/StoreLifecycleCard";
+import { StoreProfileCard } from "../components/clients/StoreProfileCard";
 import {
   SubscriptionDialogs,
   subscriptionActionsFor,
@@ -27,7 +31,9 @@ import { ConfirmModal } from "../components/common/ConfirmModal";
 import { PageHeader } from "../components/common/PageHeader";
 import { PlanEditorModal } from "../components/settings/PlanEditorModal";
 import { PLATFORM_TENANT, RESEND_OWNER_INVITE } from "../graphql/tenants";
+import { useTenantProfile } from "../hooks/use-tenant-profile";
 import { subscriptionsOf, toClient } from "../lib/api-adapters";
+import { paymentProviderLabel } from "../lib/store-profile.util";
 import { findLatestSubscription } from "../lib/subscription-lookup.util";
 import { mutationFailureCopy } from "../lib/mutation-errors";
 import { ownerContactGaps } from "../lib/owner-contact.util";
@@ -42,6 +48,7 @@ import {
   IconAnalytics,
   IconBilling,
   IconBolt,
+  IconCalendarDays,
   IconChartBar,
   IconDelete,
   IconEdit,
@@ -55,6 +62,7 @@ import {
   IconPower,
   IconSend,
   IconStore,
+  IconTags,
   IconTime,
 } from "../components/ui/icons";
 import {
@@ -76,7 +84,18 @@ import {
 // ─── Sections ────────────────────────────────────────────────────────────────
 
 /** The store page's sections, one per URL (/stores/:id/:section), in the shared section-menu card (04 S-03). */
-type StoreSection = "overview" | "details" | "go-live" | "billing" | "usage" | "analytics" | "ai" | "activity" | "lifecycle";
+type StoreSection =
+  | "overview"
+  | "details"
+  | "profile"
+  | "go-live"
+  | "billing"
+  | "usage"
+  | "analytics"
+  | "ai"
+  | "activity"
+  | "history"
+  | "lifecycle";
 
 interface StoreSectionMeta {
   title: string;
@@ -95,6 +114,12 @@ const storeSections: Record<StoreSection, StoreSectionMeta> = {
     title: "Store details",
     description: "Name, owner, contacts, GSTIN, time zone and currency. The domain changes in Go live.",
     icon: IconStore,
+  },
+  // PRD-025 FR-6.1
+  profile: {
+    title: "Profile",
+    description: "Category, source, location, account manager, tags and the planned go-live date.",
+    icon: IconTags,
   },
   // PRD-018 FR-4
   "go-live": {
@@ -132,6 +157,12 @@ const storeSections: Record<StoreSection, StoreSectionMeta> = {
     description: "Every change made to this store from the console, newest first.",
     icon: IconTime,
   },
+  // PRD-025 FR-6.2
+  history: {
+    title: "History",
+    description: "The store's lifecycle: created, went live, suspended, reactivated, deleted, restored.",
+    icon: IconCalendarDays,
+  },
   // PRD-018 FR-1, FR-2
   lifecycle: {
     title: "Lifecycle",
@@ -142,9 +173,9 @@ const storeSections: Record<StoreSection, StoreSectionMeta> = {
 
 /** Menu groups (04 S-03): Store · Billing · Insights · Manage. */
 const sectionGroups: { label: string; keys: StoreSection[] }[] = [
-  { label: "Store", keys: ["overview", "details", "go-live"] },
+  { label: "Store", keys: ["overview", "details", "profile", "go-live"] },
   { label: "Billing", keys: ["billing", "usage"] },
-  { label: "Insights", keys: ["analytics", "ai", "activity"] },
+  { label: "Insights", keys: ["analytics", "ai", "activity", "history"] },
   { label: "Manage", keys: ["lifecycle"] },
 ];
 
@@ -244,6 +275,10 @@ export function ClientDetail() {
     skip: !id || !!listedClient || loading,
   });
   const fetchedTenant = listedClient ? undefined : single.data?.platformTenant;
+  // PRD-025 FR-6.3: the payment-app chip; the Profile, History and Billing state cards share this read
+  // through the cache (one extra query per store, kept off the shared tenant fragment).
+  const profileRead = useTenantProfile(id ?? "", { skip: !id });
+  const paymentProvider = paymentProviderLabel(profileRead.tenant?.paymentProvider);
   const client = useMemo(
     () => listedClient ?? (fetchedTenant ? toClient(fetchedTenant) : undefined),
     [fetchedTenant, listedClient],
@@ -311,12 +346,14 @@ export function ClientDetail() {
   const visible: Record<StoreSection, boolean> = {
     overview: true,
     details: true,
+    profile: true,
     "go-live": !isDeleted,
     billing: true,
     usage: true,
     analytics: true,
     ai: canReadAi,
     activity: true,
+    history: true,
     lifecycle: canManage,
   };
   const base = `/stores/${client.id}`;
@@ -467,6 +504,8 @@ export function ClientDetail() {
           <>
             <Chip tone={status.tone}>{status.label}</Chip>
             <Chip tone={payment.tone}>{payment.label}</Chip>
+            {/* PRD-025 FR-6.3: the payment app the store takes payments with; hidden when none is set. */}
+            {paymentProvider ? <Chip tone="neutral">{paymentProvider}</Chip> : null}
           </>
         }
         description={metaLine}
@@ -511,26 +550,42 @@ export function ClientDetail() {
 
             {active === "details" ? <StoreDetailsCard client={client} goLiveHref={hrefOf("go-live")} /> : null}
 
+            {/* PRD-025 FR-6.1: category, source, location, account manager, tags, planned go-live. */}
+            {active === "profile" ? <StoreProfileCard client={client} /> : null}
+
             {active === "go-live" ? <StoreGoLiveCard client={client} /> : null}
 
             {active === "billing" ? (
-              <StoreBillingSection
-                client={client}
-                subscription={subscription}
-                defaultGracePeriodDays={defaultGracePeriodDays}
-                onSaveGracePeriod={onSaveGracePeriod}
-                onCreateCustomPlan={openBilling("customPlan")}
-                lifecycleHref={hrefOf("lifecycle")}
-              />
+              <>
+                {/* PRD-025 FR-6.3: why the store is in its billing state, since when, and its payment app. */}
+                <StoreBillingStateCard tenantId={client.id} subscription={subscription} />
+                <StoreBillingSection
+                  client={client}
+                  subscription={subscription}
+                  defaultGracePeriodDays={defaultGracePeriodDays}
+                  onSaveGracePeriod={onSaveGracePeriod}
+                  onCreateCustomPlan={openBilling("customPlan")}
+                  lifecycleHref={hrefOf("lifecycle")}
+                />
+              </>
             ) : null}
 
             {active === "usage" ? <ClientUsageHistory tenantId={client.id} /> : null}
 
-            {active === "analytics" ? <ClientAnalyticsCard client={client} /> : null}
+            {/* PRD-012 FR-8.3 beside PRD-025 FR-6.3: the nightly snapshot's store-health signals. */}
+            {active === "analytics" ? (
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <ClientAnalyticsCard client={client} />
+                <StoreHealthCard tenantId={client.id} />
+              </div>
+            ) : null}
 
             {active === "ai" ? <ClientAiCard client={client} /> : null}
 
             {active === "activity" ? <ClientActivityCard tenantId={client.id} /> : null}
+
+            {/* PRD-025 FR-6.2: the lifecycle history (created, live, suspended…), newest first. */}
+            {active === "history" ? <StoreHistoryCard tenantId={client.id} /> : null}
 
             {active === "lifecycle" ? <StoreLifecycleCard client={client} onDeleted={() => navigate("/stores")} /> : null}
           </div>

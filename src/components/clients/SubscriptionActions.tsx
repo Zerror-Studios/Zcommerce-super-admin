@@ -4,6 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import type { Client, Subscription } from "../../types";
 import { billingFailureCopy, isUserInputError, mutationFailureCopy } from "../../lib/mutation-errors";
 import { reactivationNeedsOverride, reactivationVariables } from "../../lib/platform-billing.util";
+import {
+  CANCEL_NOTE_MAX_LENGTH,
+  CANCEL_REASON_OPTIONS,
+  cancelSubscriptionVariables,
+  reasonFormFieldOf,
+} from "../../lib/billing-reasons.util";
 import { errorReasonOf } from "../../lib/apollo-client";
 import {
   ACTIVATE_TENANT_SUBSCRIPTION,
@@ -25,6 +31,8 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  Select,
+  SelectItem,
   Switch,
   Textarea,
   toastError,
@@ -75,6 +83,10 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
   const [reactivateReason, setReactivateReason] = useState("");
   const [days, setDays] = useState("7");
   const [immediate, setImmediate] = useState(false);
+  // PRD-025 FR-4.2: staff name why; the note is optional (max 500).
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelNote, setCancelNote] = useState("");
+  const [cancelErrorField, setCancelErrorField] = useState<"reason" | "note" | null>(null);
   const [amount, setAmount] = useState(String(client.mrr || ""));
   const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
   const [reference, setReference] = useState("");
@@ -97,6 +109,11 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
     if (dialog === "reactivate") {
       setReactivateOverride(reactivationNeedsOverride(status));
       setReactivateReason("");
+    }
+    if (dialog === "cancel") {
+      setCancelReason("");
+      setCancelNote("");
+      setCancelErrorField(null);
     }
   }, [dialog, status]);
 
@@ -146,6 +163,30 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
       reactivateOverride ? "Subscription reactivated with an override." : "Subscription reactivated.",
       billingFailureCopy,
     );
+  };
+
+  // PRD-025 FR-4.2 / FR-6.4: the reason is required; it goes on the subscription and its history.
+  const runCancel = () => {
+    const result = cancelSubscriptionVariables(tenantId, {
+      immediate,
+      reason: cancelReason,
+      note: cancelNote,
+    });
+    if (!result.variables) {
+      setCancelErrorField(result.field);
+      setFieldError(result.error);
+      return;
+    }
+    const variables = result.variables;
+    void act(async () => {
+      try {
+        return await cancel({ variables });
+      } catch (error) {
+        // INVALID_CANCEL_REASON and a long note land on their field.
+        setCancelErrorField(reasonFormFieldOf(error));
+        throw error;
+      }
+    }, toasts.subscriptionCancelled);
   };
 
   return (
@@ -235,21 +276,70 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
         </ModalContent>
       </Modal>
 
-      {/* Cancel */}
-      <ConfirmDialog
-        isOpen={dialog === "cancel"}
-        onClose={closeDialog}
-        onConfirm={() => void act(() => cancel({ variables: { tenantId, immediate } }), toasts.subscriptionCancelled)}
-        title={`Cancel ${client.storeName}'s subscription?`}
-        description="By default the subscription ends when the current period does. Immediate cancellation ends it today."
-        confirmLabel="Cancel subscription"
-        cancelLabel="Keep subscription"
-        isLoading={busy}
-      >
-        <Switch isSelected={immediate} onValueChange={setImmediate} className="mt-3">
-          Cancel immediately
-        </Switch>
-      </ConfirmDialog>
+      {/* Cancel (PRD-025 FR-4.2): a form, not a bare confirm, because the reason is required and the
+          action stays disabled until one is chosen; same shape as Reactivate and Activate. */}
+      <Modal isOpen={dialog === "cancel"} onClose={closeDialog} width="sm">
+        <ModalContent>
+          <ModalHeader>Cancel {client.storeName}'s subscription?</ModalHeader>
+          <ModalBody>
+            <p className="text-body text-fg-muted">
+              By default the subscription ends when the current period does. Immediate cancellation ends it today.
+            </p>
+            <Switch isSelected={immediate} onValueChange={setImmediate} className="mt-3">
+              Cancel immediately
+            </Switch>
+            <Select
+              label="Reason"
+              isRequired
+              className="mt-3"
+              selectedKeys={cancelReason ? new Set([cancelReason]) : new Set()}
+              onSelectionChange={(keys) => {
+                const value = Array.from(keys)[0];
+                setCancelReason(typeof value === "string" ? value : "");
+                setCancelErrorField(null);
+                setFieldError(null);
+              }}
+              isInvalid={cancelErrorField === "reason" && !!fieldError}
+              errorMessage={cancelErrorField === "reason" ? (fieldError ?? undefined) : undefined}
+            >
+              {CANCEL_REASON_OPTIONS.map((option) => (
+                <SelectItem key={option.key}>{option.label}</SelectItem>
+              ))}
+            </Select>
+            <Textarea
+              label="Note"
+              description={`Optional, up to ${CANCEL_NOTE_MAX_LENGTH} characters. Kept with the cancellation.`}
+              className="mt-3"
+              value={cancelNote}
+              onValueChange={(value) => {
+                setCancelNote(value);
+                setCancelErrorField(null);
+                setFieldError(null);
+              }}
+              isInvalid={cancelErrorField === "note" && !!fieldError}
+              errorMessage={cancelErrorField === "note" ? (fieldError ?? undefined) : undefined}
+            />
+            {fieldError && cancelErrorField === null ? (
+              <p role="alert" className="mt-3 text-label text-tone-danger-text">
+                {fieldError}
+              </p>
+            ) : null}
+          </ModalBody>
+          <ModalFooter>
+            <UiButton variant="secondary" onPress={closeDialog} isDisabled={busy}>
+              Keep subscription
+            </UiButton>
+            <UiButton
+              variant="destructive"
+              isLoading={busy}
+              isDisabled={busy || !cancelReason}
+              onPress={runCancel}
+            >
+              Cancel subscription
+            </UiButton>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* Mark past due (PRD-014 UX-39: asks first) */}
       <ConfirmDialog

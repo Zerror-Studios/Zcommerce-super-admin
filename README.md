@@ -43,8 +43,8 @@ The backend needs the `platform-admin` service running (see `../zcom-backend/REA
 - `src/components/ui/`: the shared UI kit (see `docs/design/02-components.md`); `src/components/layout/`: shell, sidebar, command palette.
 - `src/components/common/`: older table and modal kits still in use.
 - `src/lib/`: pure, tested domain logic and the API layer (`apollo-client.ts`, `session-store.ts`, `auth-channel.ts`, `api-adapters.ts`).
-- `src/graphql/`: GraphQL operations per domain (`auth`, `tenants`, `plans`, `subscriptions`, `billing`, `reports`, `settings`, `team`, `analytics`); `src/types/platform-api.ts` holds the API shapes.
-- `src/hooks/`: `use-platform-reports.ts` (money rollups) and `use-platform-analytics.ts` (PRD-012: Analytics › Performance, Integration health, Sync monitor, and the store page's Analytics card).
+- `src/graphql/`: GraphQL operations per domain (`auth`, `tenants`, `plans`, `subscriptions`, `billing`, `reports`, `settings`, `team`, `analytics`, `ai`, `notifications`, `store-profile` for the PRD-025 store profile, history, health and at-risk reads); `src/types/platform-api.ts` holds the API shapes.
+- `src/hooks/`: `use-platform-reports.ts` (money rollups), `use-platform-analytics.ts` (PRD-012: Analytics › Performance, Integration health, Sync monitor, and the store page's Analytics card), `use-tenant-profile.ts` (PRD-025: the store page's profile / history / billing-state read, one query per store), `use-at-risk-store-count.ts` (PRD-025: the Stores › At risk tab count).
 - `src/types/`: entity types.
 
 ## Deployment

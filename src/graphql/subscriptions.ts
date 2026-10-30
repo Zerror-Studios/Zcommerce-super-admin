@@ -92,9 +92,21 @@ export const ACTIVATE_TENANT_SUBSCRIPTION = gql`
 
 export const CANCEL_TENANT_SUBSCRIPTION = gql`
   ${PLATFORM_SUBSCRIPTION_FIELDS}
-  mutation CancelTenantSubscription($tenantId: ID!, $immediate: Boolean!) {
-    cancelTenantSubscription(tenantId: $tenantId, immediate: $immediate) {
+  mutation CancelTenantSubscription(
+    $tenantId: ID!
+    $immediate: Boolean!
+    $reason: SubscriptionCancelReason!
+    $note: String
+  ) {
+    cancelTenantSubscription(
+      tenantId: $tenantId
+      immediate: $immediate
+      reason: $reason
+      note: $note
+    ) {
       ...PlatformSubscriptionFields
+      cancelReason
+      cancelNote
     }
   }
 `;

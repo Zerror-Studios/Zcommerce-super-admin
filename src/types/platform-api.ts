@@ -247,7 +247,36 @@ export interface PlatformSubscription {
   /** Null while dunning is off. */
   ordersPauseAt?: string | null;
   suspendsAt?: string | null;
+  // ── PRD-025 FR-1.3, FR-4.5 (selected by the store page's PRD-025 read only) ──
+  trialStartsAt?: string | null;
+  pastDueSince?: string | null;
+  ordersPausedAt?: string | null;
+  cancelReason?: SubscriptionCancelReason | null;
+  cancelNote?: string | null;
 }
+
+// ─── Reasons (PRD-025 FR-4) ───────────────────────────────────────────────
+
+export const subscriptionCancelReasonEnum = {
+  PRICE: "PRICE",
+  CLOSED_BUSINESS: "CLOSED_BUSINESS",
+  MOVED_PLATFORM: "MOVED_PLATFORM",
+  UNHAPPY_WITH_SERVICE: "UNHAPPY_WITH_SERVICE",
+  OTHER: "OTHER",
+} as const;
+
+export type SubscriptionCancelReason =
+  (typeof subscriptionCancelReasonEnum)[keyof typeof subscriptionCancelReasonEnum];
+
+export const invoiceVoidReasonEnum = {
+  WRITTEN_OFF: "WRITTEN_OFF",
+  ISSUED_IN_ERROR: "ISSUED_IN_ERROR",
+  SUPERSEDED: "SUPERSEDED",
+  OTHER: "OTHER",
+} as const;
+
+export type InvoiceVoidReason =
+  (typeof invoiceVoidReasonEnum)[keyof typeof invoiceVoidReasonEnum];
 
 // ─── Tenants ──────────────────────────────────────────────────────────────
 
@@ -299,6 +328,117 @@ export interface TenantUsage {
   partial?: boolean;
   /** PRD-024 FR-3.7: messages sent this month (IST), every channel; null until counted. */
   messagesThisMonth?: number | null;
+  /** PRD-025 FR-5.2: the store-health block; null on snapshots from before PRD-025. */
+  health?: TenantHealth | null;
+}
+
+// ─── Store health (PRD-025 FR-5) ──────────────────────────────────────────
+
+export interface TenantHealthRefunds {
+  count: number;
+  amount: number;
+}
+
+/** Every field is null when its collector didn't run or the store has no such data. */
+export interface TenantHealth {
+  logins30d: number | null;
+  checkoutFailures7d: number | null;
+  paymentFailures7d: number | null;
+  /** Repeat purchase rate, percent. */
+  repeatCustomerRate: number | null;
+  unpaidExpiries30d: number | null;
+  returns30d: number | null;
+  refunds30d: TenantHealthRefunds | null;
+  stockOutVariants: number | null;
+  outboxPending: number | null;
+  dlqDepth: number | null;
+  orders14d: number | null;
+}
+
+export type StoreRiskReason =
+  | "INVOICE_OVERDUE_PAST_GRACE"
+  | "NO_ORDERS_14D"
+  | "CHECKOUT_FAILURES_7D"
+  | "DLQ_DEPTH"
+  | "ORDERS_PAUSED";
+
+export interface PlatformStoreAtRisk {
+  tenantId: string;
+  slug: string;
+  name: string;
+  status: PlatformTenantStatus;
+  reasons: StoreRiskReason[];
+  /** The snapshot day the health figures come from. */
+  snapshotDate: string | null;
+  overdueInvoices: number;
+  checkoutFailures7d: number | null;
+  dlqDepth: number | null;
+  orders14d: number | null;
+  lastActiveAt: string | null;
+}
+
+export interface PlatformStoreAtRiskList {
+  items: PlatformStoreAtRisk[];
+  totalCount: number;
+}
+
+// ─── Store profile and history (PRD-025 FR-2, FR-3) ───────────────────────
+
+export interface StoreAccountManager {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface StoreProfile {
+  /** One of `platformStoreProfileOptions.categories`. */
+  category: string | null;
+  city: string | null;
+  state: string | null;
+  /** One of `platformStoreProfileOptions.sources`. */
+  source: string | null;
+  /** Null when unset or the user was removed. */
+  accountManager: StoreAccountManager | null;
+  tags: string[];
+  plannedLiveAt: string | null;
+}
+
+/** Every field optional; `null` clears it (FR-2.4). */
+export interface StoreProfileInput {
+  category?: string | null;
+  city?: string | null;
+  state?: string | null;
+  source?: string | null;
+  accountManagerId?: string | null;
+  tags?: string[] | null;
+  /** ISO date. */
+  plannedLiveAt?: string | null;
+}
+
+export interface StoreProfileOptions {
+  categories: string[];
+  sources: string[];
+}
+
+export type TenantStatusEventKind =
+  | "CREATED"
+  | "LIVE"
+  | "SUSPENDED"
+  | "REACTIVATED"
+  | "DELETED"
+  | "RESTORED"
+  | "PURGED";
+
+export interface TenantStatusEvent {
+  kind: TenantStatusEventKind;
+  at: string;
+  /** Null = the system (a job, a CLI run) or a removed user. */
+  by: { id: string; name: string } | null;
+  category: string | null;
+  reason: string | null;
+  note: string | null;
+  /** True only on backfilled rows whose date is inferred. */
+  estimated: boolean;
 }
 
 export interface PlatformTenant {
@@ -336,6 +476,14 @@ export interface PlatformTenant {
   liveAt?: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  // ── PRD-025 FR-1.1, FR-1.3, FR-2.5, FR-3.3 (the store page's PRD-025 read) ──
+  /** `integrations.payment.provider` only; null when unset. */
+  paymentProvider?: string | null;
+  billingStateReason?: string | null;
+  billingStateSince?: string | null;
+  profile?: StoreProfile | null;
+  /** Newest first. */
+  statusHistory?: TenantStatusEvent[];
 }
 
 // ─── Tenant data lifecycle (PRD-018 §5.1) ─────────────────────────────────
@@ -447,6 +595,8 @@ export interface UpdateTenantInput {
   gracePeriodDaysOverride?: number | null;
   timezone?: string;
   currency?: string;
+  /** PRD-025 FR-2.4: audited as `tenant.profile_updated` (field names only). */
+  profile?: StoreProfileInput;
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
@@ -543,7 +693,9 @@ export interface PlatformInvoice {
   dueAt: string;
   paidAt: string | null;
   couponCode: string | null;
-  voidReason: string | null;
+  /** PRD-025 FR-4.4: the enum; an invoice voided before it reads OTHER with its text in `voidNote`. */
+  voidReason: InvoiceVoidReason | null;
+  voidNote?: string | null;
   // ── PRD-016 §5.4, FR-5, FR-20, FR-27 ──
   billingReason: "PERIOD" | "PRORATION";
   amountPaid: number;
@@ -563,6 +715,9 @@ export interface PlatformInvoiceStatusChange {
   at: string;
   /** A platform user's email, or "system". */
   actor: string;
+  /** PRD-025 FR-4.4: the void reason and note on the VOID entry. */
+  reason?: string | null;
+  note?: string | null;
 }
 
 export interface PlatformInvoiceFilter {

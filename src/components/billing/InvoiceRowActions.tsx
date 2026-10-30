@@ -4,13 +4,13 @@ import { useRef, useState, type Key } from "react";
 import type { PaymentReportRow } from "../../types/reports";
 import { isUserInputError, mutationFailureCopy } from "../../lib/mutation-errors";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
+import { VOID_REASON_OPTIONS, reasonFormFieldOf, voidInvoiceVariables } from "../../lib/billing-reasons.util";
 import { APPLY_COUPON_TO_INVOICE, RECORD_INVOICE_PAYMENT, VOID_INVOICE } from "../../graphql/billing";
 import { useAuth } from "../../providers/AuthProvider";
 import { toasts } from "../../copy";
 import { IconMore } from "../ui/icons";
 import {
   Button as UiButton,
-  ConfirmDialog,
   Dropdown,
   DropdownItem,
   DropdownMenu,
@@ -22,6 +22,8 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  Select,
+  SelectItem,
   Textarea,
   menuItemDangerClasses,
   toastError,
@@ -54,6 +56,9 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
   const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
   const [reference, setReference] = useState("");
   const [reason, setReason] = useState("");
+  // PRD-025 FR-4.4: the void reason enum is required; `reason` stays the free-text note.
+  const [voidReason, setVoidReason] = useState("");
+  const [voidErrorField, setVoidErrorField] = useState<"reason" | "note" | null>(null);
   const [code, setCode] = useState("");
   const [recordPayment] = useMutation(RECORD_INVOICE_PAYMENT);
   const [voidInvoice] = useMutation(VOID_INVOICE);
@@ -87,6 +92,26 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
   const closeDialog = () => {
     setDialog(null);
     setError(null);
+    setVoidErrorField(null);
+  };
+
+  // PRD-025 FR-4.4 / FR-6.4: why it is voided (required); written off feeds the bad-debt reports.
+  const runVoid = () => {
+    const result = voidInvoiceVariables(row.id, { voidReason, note: reason });
+    if (!result.variables) {
+      setVoidErrorField(result.field);
+      setError(result.error);
+      return;
+    }
+    const variables = result.variables;
+    void run(async () => {
+      try {
+        return await voidInvoice({ variables });
+      } catch (err) {
+        setVoidErrorField(reasonFormFieldOf(err));
+        throw err;
+      }
+    }, toasts.invoiceVoided);
   };
 
   const onAction = (key: Key) => {
@@ -168,17 +193,53 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
         </ModalContent>
       </Modal>
 
-      <ConfirmDialog
-        isOpen={dialog === "void"}
-        onClose={closeDialog}
-        onConfirm={() => void run(() => voidInvoice({ variables: { id: row.id, reason } }), toasts.invoiceVoided)}
-        title={`Void invoice ${row.transactionId}?`}
-        description="The store no longer owes this amount. This can't be undone."
-        confirmLabel="Void invoice"
-        isLoading={busy}
-      >
-        <Textarea label="Reason" value={reason} onValueChange={setReason} isInvalid={!!error} errorMessage={error ?? undefined} className="mt-3" />
-      </ConfirmDialog>
+      {/* Void (PRD-025 FR-4.4): a form like the two above, because the void reason is required and the
+          action stays disabled until one is chosen. */}
+      <Modal isOpen={dialog === "void"} onClose={closeDialog} width="sm">
+        <ModalContent>
+          <ModalHeader>Void invoice {row.transactionId}?</ModalHeader>
+          <ModalBody>
+            <p className="text-body text-fg-muted">The store no longer owes this amount. This can't be undone.</p>
+            <Select
+              label="Void reason"
+              isRequired
+              className="mt-3"
+              selectedKeys={voidReason ? new Set([voidReason]) : new Set()}
+              onSelectionChange={(keys) => {
+                const value = Array.from(keys)[0];
+                setVoidReason(typeof value === "string" ? value : "");
+                setVoidErrorField(null);
+                setError(null);
+              }}
+              isInvalid={voidErrorField === "reason" && !!error}
+              errorMessage={voidErrorField === "reason" ? (error ?? undefined) : undefined}
+            >
+              {VOID_REASON_OPTIONS.map((option) => (
+                <SelectItem key={option.key}>{option.label}</SelectItem>
+              ))}
+            </Select>
+            <Textarea
+              label="Note"
+              description="Optional. Kept on the invoice and in the audit log."
+              value={reason}
+              onValueChange={(value) => {
+                setReason(value);
+                setVoidErrorField(null);
+                setError(null);
+              }}
+              isInvalid={voidErrorField !== "reason" && !!error}
+              errorMessage={voidErrorField !== "reason" ? (error ?? undefined) : undefined}
+              className="mt-3"
+            />
+          </ModalBody>
+          <ModalFooter>
+            <UiButton variant="secondary" onPress={closeDialog} isDisabled={busy}>Cancel</UiButton>
+            <UiButton variant="destructive" isLoading={busy} isDisabled={busy || !voidReason} onPress={runVoid}>
+              Void invoice
+            </UiButton>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </>
   );
 }

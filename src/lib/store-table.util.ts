@@ -27,6 +27,8 @@ export const storeTabEnum = {
   TRIALS_WEEK: "trials-week",
   /** Deleted and purged stores: their own server lists (`RemovedStoresTable`); the store list leaves them out. */
   DELETED: "deleted",
+  /** PRD-025 FR-6.5: a server view (`platformStoresAtRisk`), not a filter over the loaded list. */
+  AT_RISK: "at-risk",
 } as const;
 
 export type StoreTab = (typeof storeTabEnum)[keyof typeof storeTabEnum];
@@ -116,6 +118,9 @@ export function matchesTab(
     case storeTabEnum.TRIALS_WEEK:
       return isTrialEndingThisWeek(client, subscription, now);
     case storeTabEnum.DELETED:
+      return false;
+    // The server judges this view (PRD-025 FR-5.2); no loaded row matches it here.
+    case storeTabEnum.AT_RISK:
       return false;
     default:
       return true;

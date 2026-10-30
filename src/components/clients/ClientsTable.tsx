@@ -29,6 +29,7 @@ import {
   type StoreFilters,
   type StoreTab,
 } from "../../lib/store-table.util";
+import { useAtRiskStoreCount } from "../../hooks/use-at-risk-store-count";
 import { useUrlSearch } from "../../hooks/use-url-search";
 import { AppliedFilters, type AppliedFilterItem } from "../common/AppliedFilters";
 import { FilterEmpty } from "../common/FilterEmpty";
@@ -62,6 +63,7 @@ import {
 } from "../ui";
 import { DEFAULT_PAGE_SIZE } from "../ui/TablePagination";
 import { IconLogin, IconMore, IconStore } from "../ui/icons";
+import { AtRiskStoresTable } from "./AtRiskStoresTable";
 import { RemovedStoresTable, useDeletedStoreCount } from "./RemovedStoresPanel";
 import { StoreActionDialog, type StoreAction } from "./storeActions";
 import { logInToStore } from "./storeLogin";
@@ -128,7 +130,7 @@ const healthLabels: Record<HealthBandKey, string> = {
 /**
  * Status tabs (owner 2026-10-28: only the needed ones). Set up and Overdue are in Filter (Status, Payment
  * overdue); older links to a dropped view (Set up, Overdue, Trials ending this week) still work and show that
- * tab while it is open. Deleted is on the Stores page only.
+ * tab while it is open. At risk (PRD-025 FR-6.5, the server's view) and Deleted are on the Stores page only.
  */
 const tabItems: { key: StoreTab; label: string }[] = [
   { key: storeTabEnum.ALL, label: "All" },
@@ -143,6 +145,9 @@ const legacyTabItems: { key: StoreTab; label: string }[] = [
   { key: storeTabEnum.OVERDUE, label: "Overdue" },
   { key: storeTabEnum.TRIALS_WEEK, label: "Trials ending this week" },
 ];
+
+/** PRD-025 FR-6.5: the server's view (`platformStoresAtRisk`); its count is the API's totalCount. */
+const atRiskTabItem = { key: storeTabEnum.AT_RISK, label: "At risk" };
 
 const deletedTabItem = { key: storeTabEnum.DELETED, label: "Deleted" };
 
@@ -321,17 +326,19 @@ export function ClientsTable({
   const canDelete = canManage && user?.role === "PLATFORM_OWNER";
   const state = useStoresTableState(syncUrl);
   const { filters, sort } = state;
-  // The Deleted tab lives on the Stores page (syncUrl) only.
-  const showDeleted = syncUrl;
-  const tab = !showDeleted && state.tab === storeTabEnum.DELETED ? storeTabEnum.ALL : state.tab;
-  const deletedCount = useDeletedStoreCount(!showDeleted);
+  // The server-list tabs (At risk, Deleted) live on the Stores page (syncUrl) only.
+  const showServerTabs = syncUrl;
+  const isServerTab = state.tab === storeTabEnum.DELETED || state.tab === storeTabEnum.AT_RISK;
+  const tab = !showServerTabs && isServerTab ? storeTabEnum.ALL : state.tab;
+  const deletedCount = useDeletedStoreCount(!showServerTabs);
+  const atRiskCount = useAtRiskStoreCount(!showServerTabs);
   const shownTabs = useMemo(
     () => [
       ...tabItems,
       ...legacyTabItems.filter((item) => item.key === tab),
-      ...(showDeleted ? [deletedTabItem] : []),
+      ...(showServerTabs ? [atRiskTabItem, deletedTabItem] : []),
     ],
-    [showDeleted, tab],
+    [showServerTabs, tab],
   );
   const [searchInput, setSearchInput] = useUrlSearch(state.search, state.setSearch);
   const [savedColumns, setSavedColumns] = usePersistentColumns("stores", defaultColumnKeys);
@@ -563,7 +570,13 @@ export function ClientsTable({
           title={
             <TabLabel
               label={item.label}
-              count={item.key === storeTabEnum.DELETED ? deletedCount : tabCounts[item.key]}
+              count={
+                item.key === storeTabEnum.DELETED
+                  ? deletedCount
+                  : item.key === storeTabEnum.AT_RISK
+                    ? atRiskCount
+                    : tabCounts[item.key]
+              }
             />
           }
         />
@@ -573,6 +586,9 @@ export function ClientsTable({
 
   // PRD-018 FR-2.3, FR-2.5: deleted (restorable) and purged stores, in the same table card.
   if (tab === storeTabEnum.DELETED) return <RemovedStoresTable tabs={tabsNode} />;
+
+  // PRD-025 FR-6.5: the server's at-risk list, paged by `totalCount`, in the same table card.
+  if (tab === storeTabEnum.AT_RISK) return <AtRiskStoresTable tabs={tabsNode} page={state.page} onPageChange={state.setPage} />;
 
   const toolbar = (
     <>

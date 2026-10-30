@@ -28,6 +28,7 @@ export const PLATFORM_INVOICE_FIELDS = gql`
     paidAt
     couponCode
     voidReason
+    voidNote
     billingReason
     amountPaid
     creditApplied
@@ -67,6 +68,8 @@ export const PLATFORM_INVOICE_DETAIL = gql`
           status
           at
           actor
+          reason
+          note
         }
         payments {
           id
@@ -216,10 +219,11 @@ export const RECORD_INVOICE_PAYMENT = gql`
   }
 `;
 
+/** PRD-025 FR-4.4: `reason` stays the free-text note; `voidReason` is the enum. */
 export const VOID_INVOICE = gql`
   ${PLATFORM_INVOICE_FIELDS}
-  mutation VoidInvoice($id: ID!, $reason: String!) {
-    voidInvoice(id: $id, reason: $reason) {
+  mutation VoidInvoice($id: ID!, $reason: String!, $voidReason: InvoiceVoidReason!) {
+    voidInvoice(id: $id, reason: $reason, voidReason: $voidReason) {
       ...PlatformInvoiceFields
     }
   }

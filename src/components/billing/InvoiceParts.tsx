@@ -1,5 +1,5 @@
 /**
- * Invoice pieces (04 S-04b Invoice pop-up, size md 640) shared by Subscriptions and the store's Billing
+ * Invoice pieces shared by Billing › Invoices and the store's Billing
  * section (PRD-016 FR-20, PRD-017 FR-4.3): the status chip (with the
  * derived "Partially paid"), the reason label (period, proration, restart)
  * and the detail dialog with the server's line amounts. Every amount is
@@ -9,6 +9,7 @@
 
 import { useInvoiceDetail } from "../../hooks/use-platform-reports";
 import { invoiceReasonLabel, invoiceStatusView } from "../../lib/platform-billing.util";
+import { voidReasonLabel } from "../../lib/billing-reasons.util";
 import { getPlanLabel } from "../../lib/display-labels.util";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { invoiceActorLabel, invoiceHistoryLabel } from "../../lib/platform-history.util";
@@ -42,8 +43,7 @@ export interface InvoiceDetailModalProps {
 
 export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps) {
   if (!invoice) return null;
-  // Whole rupees without ".00"; paise only when there are some (04 S-04b, 01 §4.4).
-  const money = (amount: number) => formatMoney(amount, { currency: invoice.currency });
+  const money = (amount: number) => formatMoney(amount, { currency: invoice.currency, paise: true });
   const rows: { label: string; value: string; strong?: boolean }[] = [
     { label: "Plan price", value: money(invoice.amount) },
     ...(invoice.discount > 0
@@ -90,7 +90,11 @@ export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps
             {invoice.voidReason ? (
               <>
                 <dt className="text-fg-muted">Void reason</dt>
-                <dd className="text-fg">{invoice.voidReason}</dd>
+                <dd className="text-fg">
+                  {/* PRD-025 FR-4.4: the enum, with the free-text note under it. */}
+                  {voidReasonLabel(invoice.voidReason)}
+                  {invoice.voidNote ? <span className="block text-caption text-fg-muted">{invoice.voidNote}</span> : null}
+                </dd>
               </>
             ) : null}
           </dl>
@@ -105,7 +109,7 @@ export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps
           <InvoiceHistory invoice={invoice} />
         </ModalBody>
         <ModalFooter>
-          <UiButton variant="secondary" onPress={onClose}>
+          <UiButton variant="primary" onPress={onClose}>
             Close
           </UiButton>
         </ModalFooter>
@@ -168,7 +172,7 @@ function InvoiceHistory({ invoice }: { invoice: PlatformInvoice }) {
               <li key={payment.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                 <div className="min-w-0">
                   <p className="num text-fg">
-                    {formatMoney(payment.amount, { currency: payment.currency })}
+                    {formatMoney(payment.amount, { currency: payment.currency, paise: true })}
                     <span className="text-fg-muted"> · {payment.provider}</span>
                     {payment.type === "REFUND" ? <span className="text-fg-muted"> · refund</span> : null}
                   </p>
