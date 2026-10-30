@@ -331,11 +331,11 @@ export function StoreActionDialog({ client, action, onClose, onDeleted }: StoreA
           ) : null}
         </ModalBody>
         <ModalFooter>
-          <UiButton variant="ghost" onPress={onClose} isDisabled={busy}>
+          <UiButton variant="secondary" onPress={onClose} isDisabled={busy}>
             Cancel
           </UiButton>
           <UiButton
-            variant={action === "reactivate" || action === "restore" ? "primary" : "danger"}
+            variant={action === "reactivate" || action === "restore" ? "primary" : "destructive"}
             isLoading={busy}
             isDisabled={confirmDisabled}
             onPress={() => void run()}

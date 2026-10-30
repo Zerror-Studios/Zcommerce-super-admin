@@ -1,59 +1,90 @@
 import { useApolloClient } from "@apollo/client";
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AI_USAGE_CSV } from "../../graphql/ai";
 import { useAiUsageByTenant } from "../../hooks/use-platform-ai";
-import { useDebouncedValue } from "../../hooks/use-debounced-value";
+import { useUrlSearch } from "../../hooks/use-url-search";
 import { getPlanLabel } from "../../lib/display-labels.util";
 import { mutationFailureCopy } from "../../lib/mutation-errors";
-import { aiUsageCsvFile, formatInr, formatRate, formatUsd } from "../../lib/platform-ai.util";
+import { aiUsageCsvFile, formatRate, formatUsdInr } from "../../lib/platform-ai.util";
 import { downloadCsv } from "../../lib/report-csv";
+import type { PlatformAiUsageRow } from "../../types/platform-api";
 import { toasts } from "../../copy";
-import { dataTableClassNames } from "../common/dataTableStyles";
-import { PageHeader } from "../common/PageHeader";
-import { TableToolbar } from "../common/TableToolbar";
-import { IconAi, IconDownload } from "../ui/icons";
+import { IconAi } from "../ui/icons";
 import {
-  Button as UiButton,
-  Card,
+  Button,
   Chip,
+  DataTable,
   EmptyState,
-  ErrorState,
-  Skeleton,
+  FilterButton,
+  FilterDrawer,
+  SearchInput,
+  TablePagination,
+  countActiveFilters,
   cx,
   formatCount,
-  tableRowClasses,
-  toneTextClasses,
   toastError,
+  toneTextClasses,
+  useTableUrlState,
+  type DataTableColumn,
+  type FilterGroup,
+  type FilterValues,
 } from "../ui";
+import { AiErrorCard, AiToolbar, StoreCell } from "./ai-table";
+import { useAiExport, type AiTabProps } from "./ai-export";
 
-const PAGE_SIZE = 25;
+/** Fixed 730 → Store 230px at 960px (04 S-06). */
+const columns: DataTableColumn[] = [
+  { key: "store", label: "Store" },
+  { key: "plan", label: "Plan", width: 130 },
+  { key: "week", label: "This week", width: 120 },
+  { key: "month", label: "This month", width: 120 },
+  { key: "tokens", label: "Tokens · month", width: 130 },
+  { key: "cost", label: "Cost · month", width: 130 },
+  { key: "cache", label: "Cache hits", width: 100 },
+];
 
-const right = "block text-right num";
+const filterGroups: FilterGroup[] = [
+  {
+    key: "ai",
+    label: "AI",
+    type: "single",
+    options: [
+      { value: "on", label: "On" },
+      { value: "off", label: "Off" },
+    ],
+  },
+];
+
+/** The server has no AI on/off filter: with one set, read the largest page it serves and filter here. */
+const FILTERED_READ_LIMIT = 200;
 
 /**
- * AI › Usage by store (PRD-021 FR-6.2): this week's and this month's
- * questions, tokens and cost per store, most expensive first (the server's
- * order), with the CSV export. Each row opens the store page, where the
- * store's AI setting, top-ups and top questions live.
+ * ZCOM AI › Usage by store (PRD-021 FR-6.2, 04 S-06): this week's and this month's questions, tokens and cost per
+ * store, most expensive first (the server's order). Each row opens the store's ZCOM AI section.
  */
-/** `tabs`: the ZCOM AI › Usage & data tabs, on the left of the toolbar row. */
-export function AiUsageTab({ tabs }: { tabs?: ReactNode } = {}) {
+export function AiUsageTab({ tabs, exportRef }: AiTabProps) {
   const navigate = useNavigate();
   const client = useApolloClient();
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(0);
-  const [exporting, setExporting] = useState(false);
-  const debouncedSearch = useDebouncedValue(search.trim());
+  const table = useTableUrlState();
+  const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const aiFilter = table.filters.ai === "on" || table.filters.ai === "off" ? table.filters.ai : "";
 
-  const api = useAiUsageByTenant({ search: debouncedSearch, limit: PAGE_SIZE, offset: page * PAGE_SIZE });
-  const rows = api.data?.items ?? [];
-  const total = api.data?.totalCount ?? 0;
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const api = useAiUsageByTenant({
+    search: table.search.trim(),
+    limit: aiFilter ? FILTERED_READ_LIMIT : table.pageSize,
+    offset: aiFilter ? 0 : table.offset,
+  });
+  const serverRows = useMemo(() => api.data?.items ?? [], [api.data]);
+  const filteredRows = useMemo(
+    () => (aiFilter ? serverRows.filter((row) => row.aiEnabled === (aiFilter === "on")) : serverRows),
+    [aiFilter, serverRows],
+  );
+  const rows = aiFilter ? filteredRows.slice(table.offset, table.offset + table.pageSize) : serverRows;
+  const total = aiFilter ? filteredRows.length : (api.data?.totalCount ?? 0);
 
-  const exportCsv = async () => {
-    setExporting(true);
+  const runExport = useCallback(async () => {
     try {
       const result = await client.query<{ aiUsageCsv: string }>({ query: AI_USAGE_CSV, fetchPolicy: "network-only" });
       const file = aiUsageCsvFile(result.data.aiUsageCsv);
@@ -61,113 +92,122 @@ export function AiUsageTab({ tabs }: { tabs?: ReactNode } = {}) {
     } catch (error) {
       const message = mutationFailureCopy(error);
       if (message) toastError(message);
-    } finally {
-      setExporting(false);
     }
-  };
+  }, [client]);
+  useAiExport(exportRef, runExport);
 
-  const emptyContent = debouncedSearch ? (
-    <EmptyState
-      icon={IconAi}
-      title={`No stores match "${debouncedSearch}"`}
-      description="Search by store name or slug."
-      action={<UiButton variant="secondary" onPress={() => setSearch("")}>Clear search</UiButton>}
-    />
-  ) : (
-    <EmptyState icon={IconAi} title="No AI use yet" description="Stores appear here once they ask Ask ZCOM a question." />
-  );
+  const filterValues: FilterValues = { ai: aiFilter };
+  const filtered = !!table.search.trim() || !!aiFilter;
+
+  if (api.error) {
+    return (
+      <AiErrorCard tabs={tabs} title="Couldn't load AI usage." description={toasts.genericError} onRetry={() => void api.refetch()} />
+    );
+  }
 
   return (
-    <div>
-      <PageHeader
-        type="list"
-        icon={<IconAi aria-hidden />}
-        section="pink"
-        title="ZCOM AI usage by store"
-        count={total || undefined}
-        description="This week and this month, most expensive first."
-        actions={
-          <UiButton variant="secondary" startIcon={<IconDownload aria-hidden />} isLoading={exporting} onPress={() => void exportCsv()}>
-            Download CSV
-          </UiButton>
+    <>
+      <DataTable<PlatformAiUsageRow>
+        aria-label="AI usage by store"
+        columns={columns}
+        rows={rows}
+        getRowKey={(row) => row.tenantId}
+        isLoading={api.loading}
+        rowHeight="tall"
+        onRowAction={(row) => navigate(`/stores/${row.tenantId}/ai`)}
+        toolbar={
+          <AiToolbar tabs={tabs}>
+            <SearchInput
+              placement="toolbar"
+              placeholder="Search stores"
+              value={search}
+              onValueChange={setSearch}
+              onClear={() => setSearch("")}
+            />
+            <FilterButton count={countActiveFilters(filterValues)} onPress={() => setFiltersOpen(true)} />
+          </AiToolbar>
+        }
+        renderCell={(row, key) => {
+          switch (key) {
+            case "store":
+              return <StoreCell name={row.name} slug={row.slug} />;
+            case "plan":
+              return (
+                <div className="flex min-w-0 flex-col items-start gap-0.5">
+                  <span className="truncate">{row.planName ? getPlanLabel(row.planName) : "—"}</span>
+                  {!row.aiEnabled ? <Chip tone="neutral">AI off</Chip> : row.paused ? <Chip tone="warning">Paused</Chip> : null}
+                </div>
+              );
+            case "week":
+              return (
+                <span className={cx("whitespace-nowrap num", row.percentOfLimit >= 100 && toneTextClasses.danger)}>
+                  {formatCount(row.questionsThisWeek)}
+                  {row.questionsPerWeek > 0 ? ` / ${formatCount(row.questionsPerWeek)}` : ""}
+                </span>
+              );
+            case "month":
+              return <span className="num">{formatCount(row.questionsThisMonth)}</span>;
+            case "tokens":
+              return <span className="whitespace-nowrap num">{formatCount(row.tokensThisMonth)}</span>;
+            case "cost":
+              return <span className="whitespace-nowrap num">{formatUsdInr(row.costUsdThisMonth, row.costInrThisMonth)}</span>;
+            case "cache":
+              return <span className="num">{formatRate(row.cacheHitRate)}</span>;
+            default:
+              return null;
+          }
+        }}
+        mobileRow={(row) => (
+          <div className="min-w-0">
+            <p className="truncate font-medium text-fg">{row.name}</p>
+            <p className="truncate text-label text-fg-muted num">
+              {formatCount(row.questionsThisMonth)} questions · {formatUsdInr(row.costUsdThisMonth, row.costInrThisMonth)}
+              {!row.aiEnabled ? " · AI off" : ""}
+            </p>
+          </div>
+        )}
+        footer={
+          <TablePagination
+            page={table.page}
+            pageSize={table.pageSize}
+            total={total}
+            onPageChange={table.setPage}
+            onPageSizeChange={table.setPageSize}
+          />
+        }
+        emptyContent={
+          filtered ? (
+            <EmptyState
+              kind="no-results"
+              icon={IconAi}
+              title="No matching stores"
+              description="Search by store name or slug, or change the filter."
+              action={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onPress={() => {
+                    setSearch("");
+                    table.setParams({ q: undefined, ai: undefined });
+                  }}
+                >
+                  Clear search and filters
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState icon={IconAi} title="No AI use yet" description="Stores appear here once they ask Ask ZCOM a question." />
+          )
         }
       />
-
-      {api.error ? (
-        <ErrorState title="Couldn't load AI usage." description={toasts.genericError} onRetry={() => void api.refetch()} />
-      ) : null}
-
-      <Card padding="none" className="overflow-hidden">
-        <TableToolbar
-          tabs={tabs}
-          search={search}
-          onSearchChange={(value) => {
-            setSearch(value);
-            setPage(0);
-          }}
-          searchPlaceholder="Search stores"
-        />
-        {api.loading ? (
-          <div className="space-y-3 p-4">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="h-10 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : (
-          <Table aria-label="AI usage by store" removeWrapper classNames={{ ...dataTableClassNames, tr: tableRowClasses }}>
-            <TableHeader>
-              <TableColumn>Store</TableColumn>
-              <TableColumn>Plan</TableColumn>
-              <TableColumn align="end">This week</TableColumn>
-              <TableColumn align="end">This month</TableColumn>
-              <TableColumn align="end">Tokens · month</TableColumn>
-              <TableColumn align="end">Cost · month</TableColumn>
-              <TableColumn align="end">Cache hits</TableColumn>
-            </TableHeader>
-            <TableBody items={rows} emptyContent={emptyContent}>
-              {(row) => (
-                <TableRow key={row.tenantId} className="cursor-pointer" onClick={() => navigate(`/stores/${row.tenantId}`)}>
-                  <TableCell>
-                    <div className="min-w-0">
-                      <p className="truncate whitespace-nowrap font-medium text-fg">{row.name}</p>
-                      <p className="truncate text-caption text-fg-subtle">{row.slug}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="whitespace-nowrap">{row.planName ? getPlanLabel(row.planName) : "—"}</span>
-                      {row.paused ? <Chip tone="warning">Paused</Chip> : null}
-                      {!row.aiEnabled ? <Chip tone="neutral">AI off</Chip> : null}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className={cx(right, row.percentOfLimit >= 100 && toneTextClasses.danger)}>
-                      {formatCount(row.questionsThisWeek)}
-                      {row.questionsPerWeek > 0 ? ` / ${formatCount(row.questionsPerWeek)}` : ""}
-                    </span>
-                  </TableCell>
-                  <TableCell><span className={right}>{formatCount(row.questionsThisMonth)}</span></TableCell>
-                  <TableCell><span className={right}>{formatCount(row.tokensThisMonth, true)}</span></TableCell>
-                  <TableCell>
-                    <span className={right}>{formatUsd(row.costUsdThisMonth)}</span>
-                    <span className="block text-right text-caption text-fg-subtle num">{formatInr(row.costInrThisMonth)}</span>
-                  </TableCell>
-                  <TableCell><span className={right}>{formatRate(row.cacheHitRate)}</span></TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
-        {pages > 1 ? (
-          <div className="flex items-center justify-between border-t border-line px-4 py-3 text-caption text-fg-muted">
-            <span>Page {page + 1} of {pages} · {formatCount(total)} stores</span>
-            <div className="flex gap-2">
-              <UiButton variant="ghost" size="sm" isDisabled={page === 0} onPress={() => setPage((value) => value - 1)}>Previous</UiButton>
-              <UiButton variant="ghost" size="sm" isDisabled={page + 1 >= pages} onPress={() => setPage((value) => value + 1)}>Next</UiButton>
-            </div>
-          </div>
-        ) : null}
-      </Card>
-    </div>
+      <FilterDrawer
+        isOpen={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        groups={filterGroups}
+        value={filterValues}
+        onApply={(values) => table.setFilter("ai", typeof values.ai === "string" ? values.ai : undefined)}
+        onClear={() => table.setFilter("ai", undefined)}
+      />
+    </>
   );
 }

@@ -147,6 +147,27 @@ export function formatInr(amount: number | null | undefined): string {
   return formatMoney(amount, { whole: true });
 }
 
+/**
+ * A US-dollar AI cost with its rupee value (04 S-00b): "$0.093 (₹8)". Under a rupee the paise show
+ * ("$0.0038 (₹0.32)"); without a rate (`inr` null) only the dollars.
+ */
+export function formatUsdInr(usd: number | null | undefined, inr: number | null | undefined): string {
+  const dollars = formatUsd(usd);
+  if (inr == null || !Number.isFinite(inr)) return dollars;
+  const rupees = inr > 0 && inr < 1 ? formatMoney(inr, { paise: true }) : formatInr(inr);
+  return `${dollars} (${rupees})`;
+}
+
+/**
+ * Rupees per dollar for the AI screens: the rate in Settings › ZCOM AI settings, else the one implied by this
+ * month's spend; null when neither is known.
+ */
+export function aiInrRate(configRate: number | null | undefined, spendUsd?: number | null, spendInr?: number | null): number | null {
+  if (configRate != null && Number.isFinite(configRate) && configRate > 0) return configRate;
+  if (spendUsd && spendInr && spendUsd > 0) return spendInr / spendUsd;
+  return null;
+}
+
 /** A 0–1 rate as "42.5%". */
 export function formatRate(rate: number | null | undefined): string {
   if (rate == null || !Number.isFinite(rate)) return "—";

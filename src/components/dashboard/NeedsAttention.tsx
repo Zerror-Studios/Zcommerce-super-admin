@@ -1,11 +1,12 @@
-import { useMemo, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { DrawerBody, DrawerContent, DrawerHeader } from "@heroui/react";
 import type { Client, Subscription } from "../../types";
 import { getStoreHealth, isCriticalHealth } from "../../lib/storeHealth";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { paymentState } from "../../lib/storeStatus";
 import { formatDate } from "../../lib/utils";
-import { Card, Skeleton, cx, toneDotClasses, type Tone } from "../ui";
+import { AttentionList, ButtonLink, Drawer, cx, type AttentionItem } from "../ui";
+import { IconError, IconBlock, IconTime, IconWarning } from "../ui/icons";
 
 export interface NeedsAttentionProps {
   clients: Client[];
@@ -14,16 +15,8 @@ export interface NeedsAttentionProps {
   isLoading?: boolean;
 }
 
-interface AttentionItem {
-  key: string;
-  tone: Tone;
-  title: ReactNode;
-  detail: ReactNode;
-  href: string;
-}
-
 function names(list: Client[]): string {
-  return list.map((client) => client.storeName).join(", ");
+  return list.map((client) => client.storeName).join(" · ");
 }
 
 function plural(n: number, one: string, many: string): string {
@@ -31,15 +24,15 @@ function plural(n: number, one: string, many: string): string {
 }
 
 /**
- * "Needs attention" (docs/design/04-super-admin.md §3.1), ordered by urgency: overdue stores, payments due
- * soon, health drops (Critical band), suspended stores. Every row opens the related store or list.
+ * The console's attention items (04 S-01), newest rules first within each colour: red = overdue stores, orange =
+ * payments due soon and stores at risk, blue = suspended stores. Each has one action that opens the place to act.
  */
 function buildItems({ clients, subscriptions }: Pick<NeedsAttentionProps, "clients" | "subscriptions">): AttentionItem[] {
   const subByClient = latestSubscriptionByClient(subscriptions);
   const items: AttentionItem[] = [];
   const active = clients.filter((client) => client.status !== "suspended");
 
-  // 1. Overdue stores, most overdue first.
+  // Red: overdue stores, most overdue first.
   active
     .map((client) => {
       const sub = subByClient.get(client.id);
@@ -52,19 +45,16 @@ function buildItems({ clients, subscriptions }: Pick<NeedsAttentionProps, "clien
     .sort((a, b) => b.days - a.days)
     .forEach(({ client, state, days }) => {
       items.push({
-        key: `overdue-${client.id}`,
-        tone: "danger",
-        title: (
-          <>
-            <span className="font-medium">{client.storeName}</span> is overdue by {plural(days, "day", "days")}
-          </>
-        ),
-        detail: state.detail ?? "Payment overdue",
-        href: `/stores/${client.id}`,
+        id: `overdue-${client.id}`,
+        urgency: "red",
+        icon: IconError,
+        title: `${client.storeName} is overdue`,
+        text: [plural(days, "day", "days") + " overdue", state.detail].filter(Boolean).join(" · "),
+        action: { label: "View", href: `/stores/${client.id}` },
       });
     });
 
-  // 2. Payments due soon, grouped by due date.
+  // Orange: payments due soon, one tile per due date.
   const dueByDate = new Map<string, Client[]>();
   active.forEach((client) => {
     const sub = subByClient.get(client.id);
@@ -79,87 +69,97 @@ function buildItems({ clients, subscriptions }: Pick<NeedsAttentionProps, "clien
     .sort(([a], [b]) => a.localeCompare(b))
     .forEach(([date, due]) => {
       items.push({
-        key: `due-${date}`,
-        tone: "warning",
-        title: `${plural(due.length, "payment", "payments")} due on ${formatDate(date)}`,
-        detail: names(due),
-        href: due.length === 1 ? `/stores/${due[0].id}` : "/stores?tab=unpaid",
+        id: `due-${date}`,
+        urgency: "orange",
+        icon: IconTime,
+        title: due.length === 1 ? `${due[0].storeName} pays on ${formatDate(date)}` : `${due.length} payments due on ${formatDate(date)}`,
+        text: due.length === 1 ? "Payment due soon" : names(due),
+        action: { label: "View", href: due.length === 1 ? `/stores/${due[0].id}` : "/stores?tab=unpaid" },
       });
     });
 
-  // 3. Health drops: stores in the Critical band.
-  active
-    .map((client) => ({ client, health: getStoreHealth(client) }))
-    // PRD-024 FR-1.11: the one critical-health rule, shared with the Summary.
-    .filter(({ client }) => isCriticalHealth(client))
-    .sort((a, b) => a.health.score - b.health.score)
-    .forEach(({ client, health }) => {
-      items.push({
-        key: `health-${client.id}`,
-        tone: "warning",
-        title: (
-          <>
-            <span className="font-medium">{client.storeName}</span> health is {health.score}
-          </>
-        ),
-        detail: health.factors.slice(1, 3).join(" · "),
-        href: `/stores/${client.id}`,
-      });
+  // Orange: stores in the Critical health band, as one tile.
+  const atRisk = active
+    .filter((client) => isCriticalHealth(client))
+    .map((client) => ({ client, score: getStoreHealth(client).score }))
+    .sort((a, b) => a.score - b.score);
+  if (atRisk.length > 0) {
+    items.push({
+      id: "at-risk",
+      urgency: "orange",
+      icon: IconWarning,
+      title: atRisk.length === 1 ? `${atRisk[0].client.storeName} is at risk` : `${atRisk.length} stores at risk`,
+      text: `Health: ${atRisk.map(({ client, score }) => `${client.storeName} ${score}`).join(" · ")}`,
+      action: { label: atRisk.length === 1 ? "View store" : "View stores", href: atRisk.length === 1 ? `/stores/${atRisk[0].client.id}` : "/stores" },
     });
+  }
 
-  // 4. Suspended stores.
+  // Blue: suspended stores.
   const suspended = clients.filter((client) => client.status === "suspended");
   if (suspended.length > 0) {
     items.push({
-      key: "suspended",
-      tone: "neutral",
+      id: "suspended",
+      urgency: "blue",
+      icon: IconBlock,
       title: `${plural(suspended.length, "store is", "stores are")} suspended`,
-      detail: names(suspended),
-      href: suspended.length === 1 ? `/stores/${suspended[0].id}` : "/stores?tab=suspended",
+      text: names(suspended),
+      action: { label: "Review", href: suspended.length === 1 ? `/stores/${suspended[0].id}` : "/stores?tab=suspended" },
     });
   }
 
   return items;
 }
 
+const toneSoft = { red: "bg-tone-danger-soft", orange: "bg-tone-warning-soft", blue: "bg-tone-info-soft" } as const;
+const toneText = { red: "text-tone-danger-text", orange: "text-tone-warning", blue: "text-tone-info" } as const;
+
+/**
+ * Needs your attention on Home (04 S-01): the full-width AttentionList with at most 3 tiles (red, orange, blue),
+ * each with one secondary action; "See all (n) ›" opens a 400px drawer with every item as 64px rows.
+ */
 export function NeedsAttention(props: NeedsAttentionProps) {
-  const navigate = useNavigate();
   const { clients, subscriptions, isLoading } = props;
-  const items = useMemo(
-    () => buildItems({ clients, subscriptions }),
-    [clients, subscriptions],
-  );
+  const items = useMemo(() => buildItems({ clients, subscriptions }), [clients, subscriptions]);
+  const [allOpen, setAllOpen] = useState(false);
 
   return (
-    <Card title="Needs attention" padding="none" className="h-full">
-      {isLoading ? (
-        <div className="space-y-3 px-5 pb-5">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
-          ))}
-        </div>
-      ) : (
-        <ul className="border-t border-line-subtle">
-          {items.map((item) => (
-            <li key={item.key} className="border-b border-line-subtle">
-              <button
-                type="button"
-                onClick={() => navigate(item.href)}
-                className="flex w-full items-start gap-3 px-5 py-3 text-left transition-colors duration-instant ease-standard hover:bg-surface-muted focus-visible:shadow-focus"
-              >
-                <span aria-hidden className={cx("mt-2 size-1.5 shrink-0 rounded-full", toneDotClasses[item.tone])} />
-                <span className="min-w-0">
-                  <span className="block text-body text-fg wrap-anywhere">{item.title}</span>
-                  {item.detail ? <span className="block truncate text-label text-fg-muted">{item.detail}</span> : null}
-                </span>
-              </button>
-            </li>
-          ))}
-          <li className="px-5 py-3 text-label text-fg-muted">
-            {items.length > 0 ? "You're caught up on everything else." : "You're all caught up."}
-          </li>
-        </ul>
-      )}
-    </Card>
+    <>
+      <AttentionList
+        layout="row"
+        items={items}
+        loading={isLoading}
+        checkedLabel="Zcom AI suggestions · checked just now"
+        emptyText="Nothing needs you right now."
+        seeAll={items.length > 3 ? { label: `See all (${items.length})`, onPress: () => setAllOpen(true) } : undefined}
+      />
+      <Drawer isOpen={allOpen} onOpenChange={setAllOpen} size="sm">
+        <DrawerContent>
+          <DrawerHeader>Needs your attention</DrawerHeader>
+          <DrawerBody>
+            <ul className="flex flex-col gap-2">
+              {items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <li key={item.id} className={cx("flex min-h-16 items-center gap-3 rounded-xl px-4 py-3", toneSoft[item.urgency])}>
+                    <span aria-hidden className={cx("flex size-8 shrink-0 items-center justify-center rounded-full bg-surface", toneText[item.urgency])}>
+                      {Icon ? <Icon aria-hidden className="size-4" /> : null}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className={cx("block text-body-strong", toneText[item.urgency])}>{item.title}</span>
+                      {item.text ? <span className="block truncate text-label text-fg-muted">{item.text}</span> : null}
+                    </span>
+                    {item.action?.href ? (
+                      <ButtonLink variant="secondary" size="sm" to={item.action.href} onClick={() => setAllOpen(false)}>
+                        {item.action.label}
+                      </ButtonLink>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </DrawerBody>
+        </DrawerContent>
+      </Drawer>
+    </>
   );
 }

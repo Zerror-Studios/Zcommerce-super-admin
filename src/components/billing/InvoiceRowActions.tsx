@@ -123,7 +123,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
             </div>
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={closeDialog}>Cancel</UiButton>
+            <UiButton variant="secondary" onPress={closeDialog}>Cancel</UiButton>
             <UiButton
               variant="primary"
               isLoading={busy}
@@ -156,7 +156,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
             <Input label="Code" placeholder="LAUNCH25" value={code} onValueChange={(value) => setCode(value.toUpperCase())} isInvalid={!!error} errorMessage={error ?? undefined} />
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={closeDialog}>Cancel</UiButton>
+            <UiButton variant="secondary" onPress={closeDialog}>Cancel</UiButton>
             <UiButton
               variant="primary"
               isLoading={busy}

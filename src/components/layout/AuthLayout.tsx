@@ -38,7 +38,7 @@ export function AuthLayout({ title, documentTitle, subtitle, productLabel, below
 
       <main className="relative flex flex-1 items-center justify-center px-4 py-12">
         <div className="w-full max-w-[380px]">
-          {/* Text-only logotype: heavy Geist with tight tracking, no "Z" tile. */}
+          {/* Text-only logotype: heavy Inter with tight tracking, no "Z" tile. */}
           <div className="mb-[22px] flex items-baseline justify-center gap-2.5">
             <span className="text-[28px] font-extrabold leading-none tracking-[-0.045em] text-brand-on">Zcom</span>
             {productLabel ? <span className="text-label font-medium text-auth-muted">{productLabel}</span> : null}
@@ -46,7 +46,7 @@ export function AuthLayout({ title, documentTitle, subtitle, productLabel, below
 
           <section className="auth-edge">
             <div className="auth-edge-body p-7">
-              <h1 className="text-login font-semibold text-brand-on">{title}</h1>
+              <h1 className="text-title-2 font-semibold text-brand-on">{title}</h1>
               {subtitle ? <p className="mt-1 text-body text-auth-muted">{subtitle}</p> : null}
               <div className="mt-6">{children}</div>
             </div>

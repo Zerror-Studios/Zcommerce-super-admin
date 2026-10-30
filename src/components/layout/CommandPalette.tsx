@@ -9,7 +9,6 @@ import { ModalBody, ModalContent } from "@heroui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Spinner } from "../ui/Spinner";
 import { useNavigate } from "react-router-dom";
-import { Button } from "../ui/Button";
 import { cx } from "../ui/cx";
 import { IconSearch } from "../ui/icons";
 import { Modal } from "../ui/Modal";
@@ -136,7 +135,7 @@ export function CommandPalette({
     if (onAskAi && asked) {
       found.push({
         title: "Assistant",
-        items: [{ id: "ask-ai", label: `Ask AI: ${asked}`, icon: AskIcon, onSelect: () => onAskAi(asked) }],
+        items: [{ id: "ask-ai", label: `Ask Zcom AI: ${asked}`, icon: AskIcon, onSelect: () => onAskAi(asked) }],
       });
     }
     return found;
@@ -173,12 +172,12 @@ export function CommandPalette({
       width="md"
       placement="top"
       hideCloseButton
-      classNames={{ base: "mt-[12vh]" }}
+      classNames={{ base: "!mt-6 md:!mt-16 md:!max-h-[480px] overflow-hidden", body: "!p-0" }}
     >
       <ModalContent>
-        <ModalBody className="p-0">
-          <div className="flex h-12 items-center gap-3 border-b border-line px-4">
-            <IconSearch aria-hidden className="size-4 shrink-0 text-fg-subtle" />
+        <ModalBody className="flex min-h-0 flex-col">
+          <div className="flex h-13 shrink-0 items-center gap-3 border-b border-line-subtle px-4">
+            <IconSearch aria-hidden className="size-4.5 shrink-0 text-fg-subtle" />
             <input
               autoFocus
               value={query}
@@ -204,31 +203,17 @@ export function CommandPalette({
               aria-expanded
               aria-controls="command-palette-list"
               aria-activedescendant={flat[cursor] ? `command-${flat[cursor].id}` : undefined}
-              className="h-full flex-1 bg-transparent text-base text-fg outline-hidden placeholder:text-fg-placeholder"
+              className="h-full min-w-0 flex-1 bg-transparent text-body text-fg outline-hidden placeholder:text-fg-placeholder max-md:text-base"
               style={{ boxShadow: "none" }}
             />
             {searching ? <Spinner size="sm" aria-label="Searching" /> : null}
             <Kbd>Esc</Kbd>
           </div>
 
-          <div id="command-palette-list" ref={listRef} role="listbox" className="custom-scroll max-h-[min(420px,60vh)] overflow-y-auto p-2">
+          <div id="command-palette-list" ref={listRef} role="listbox" className="custom-scroll min-h-0 flex-1 overflow-y-auto p-2 md:max-h-[396px]">
             {visible.length === 0 ? (
               query.trim() && !searching ? (
-              <div className="flex flex-col items-center px-3 py-8 text-center">
-                <p className="text-body font-semibold text-fg">No results for "{query.trim()}"</p>
-                <p className="mt-1 text-body text-fg-muted">Check the spelling or clear the search.</p>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="mt-4"
-                  onPress={() => {
-                    setQuery("");
-                    setCursor(0);
-                  }}
-                >
-                  Clear search
-                </Button>
-              </div>
+              <p className="px-3 py-6 text-center text-label text-fg-muted">No matches for "{query.trim()}"</p>
               ) : null
             ) : (
               visible.map((group) => (
@@ -248,13 +233,13 @@ export function CommandPalette({
                         onMouseMove={() => setCursor(current)}
                         onClick={() => run(item)}
                         className={cx(
-                          "flex h-9 cursor-pointer items-center gap-3 rounded-lg px-3 text-body text-fg",
+                          "flex h-10 cursor-pointer items-center gap-3 rounded-lg px-3 text-body text-fg",
                           current === cursor && "bg-surface-sunken",
                         )}
                       >
                         {Icon ? <Icon aria-hidden className="size-4 shrink-0 text-fg-muted" /> : null}
                         <span className="flex-1 truncate">{item.label}</span>
-                        {item.hint ? <span className="shrink-0 truncate text-label text-fg-subtle">{item.hint}</span> : null}
+                        {item.hint ? <span className="shrink-0 truncate text-caption text-fg-subtle">{item.hint}</span> : null}
                       </div>
                     );
                   })}
@@ -262,6 +247,9 @@ export function CommandPalette({
               ))
             )}
           </div>
+          <p aria-hidden className="flex h-8 shrink-0 items-center border-t border-line-subtle px-4 text-caption text-fg-muted">
+            ↑↓ to move · ↵ to open · Esc to close
+          </p>
         </ModalBody>
       </ModalContent>
     </Modal>

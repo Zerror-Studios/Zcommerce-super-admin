@@ -10,7 +10,7 @@ export type DropdownMenuProps<T extends object = object> = HeroDropdownMenuProps
 /**
  * Dropdown popover (component-specs §6). Keyboard handling and focus return come from HeroUI.
  * HeroUI dims and shrinks the trigger while open (opacity 70%, scale .97); that is turned off so it doesn't flash.
- * HeroUI's 200px minimum width is 160px here (owner 2026-10-29: menus were too wide); longer items still widen it.
+ * Menus are 200–320px wide (01 §7.17).
  */
 export function Dropdown({ classNames, motionProps, ...rest }: DropdownProps) {
   return (
@@ -19,7 +19,7 @@ export function Dropdown({ classNames, motionProps, ...rest }: DropdownProps) {
       classNames={{
         ...classNames,
         trigger: cx("aria-expanded:scale-100 aria-expanded:opacity-100", classNames?.trigger),
-        content: cx(menuPopoverClasses, "min-w-40", classNames?.content),
+        content: cx(menuPopoverClasses, "min-w-50 max-w-80", classNames?.content),
       }}
       {...rest}
     />

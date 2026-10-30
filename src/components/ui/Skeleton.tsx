@@ -1,19 +1,14 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
-import { Skeleton as HeroSkeleton } from "@heroui/react";
-import type { SkeletonProps as HeroSkeletonProps } from "@heroui/react";
+import type { HTMLAttributes } from "react";
 import { cx } from "./cx";
 
-export type SkeletonProps = HeroSkeletonProps;
+export type SkeletonProps = HTMLAttributes<HTMLDivElement>;
 
-/** Loading placeholder (docs/design/02-components.md §15): shaped like the real content, muted grey, soft sheen. */
+/**
+ * Loading block (01 §7.21, `.zc-skel` in src/styles/components.css): sunken grey with one shimmer that sweeps every
+ * block on the page together (1.2s); no shimmer with reduced motion. Size and shape it like the real content:
+ * text 12px high at 40–80% width, avatar = circle, thumbnail 40×40 rounded-lg, badge 22×64, chart 180px.
+ */
 export function Skeleton({ className, ...rest }: SkeletonProps) {
-  return (
-    <HeroSkeleton
-      className={cx(
-        "rounded-lg bg-surface-sunken before:via-surface-muted before:[animation-duration:1.6s] after:bg-surface-sunken",
-        className,
-      )}
-      {...rest}
-    />
-  );
+  return <div aria-hidden className={cx("zc-skel", className)} {...rest} />;
 }

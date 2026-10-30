@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { MonthlyPlanRevenue } from "../../types/reports";
 import { monthTotal } from "../../lib/api-report-adapters";
-import { Card, Skeleton, chartColors, formatMoney, recharts } from "../ui";
+import { ButtonLink, Card, Skeleton, chartColors, formatMoney, recharts } from "../ui";
+import { IconExpand } from "../ui/icons";
 
 export interface EarningsChartProps {
   /** The year's plan revenue by month from `platformRevenueOverview` (PRD-005 FR-5.3). */
@@ -73,7 +74,7 @@ function ProjectedBar(props: { x?: number; y?: number; width?: number; height?: 
       y={y + 0.5}
       width={Math.max(width - 1, 0)}
       height={Math.max(height - 1, 0)}
-      rx={3}
+      rx={4}
       fill="none"
       strokeDasharray="3 3"
       style={{ stroke: "var(--zc-chart-projected)" }}
@@ -81,41 +82,57 @@ function ProjectedBar(props: { x?: number; y?: number; width?: number; height?: 
   );
 }
 
-/** "Earnings · {year}" (docs/design/04-super-admin.md §3.1). */
+/**
+ * "Earnings · {year}" (04 S-01): billed bars and dashed projected bars, 220px, y axis in full rupees (01 §7.25);
+ * legend dots and "View full report ›" in the header. All zero → a flat baseline with "No earnings yet this year".
+ */
 export function EarningsChart({ monthly, monthlyBilling, now = new Date(), isLoading }: EarningsChartProps) {
   const data = useMemo(() => buildEarnings(monthly, monthlyBilling, now), [monthly, monthlyBilling, now]);
   const hasProjected = data.some((point) => point.projected != null);
+  const allZero = data.every((point) => !point.collected && !point.projected);
 
   return (
     <Card
       title={`Earnings · ${now.getFullYear()}`}
       className="h-full"
       actions={
-        <div className="flex items-center gap-3 text-caption text-fg-muted">
-          <span className="inline-flex items-center gap-1.5">
-            <span aria-hidden className="size-2.5 rounded-xs bg-chart-1" />
-            Billed
-          </span>
-          {hasProjected ? (
-            <span className="inline-flex items-center gap-1.5">
-              <span aria-hidden className="size-2.5 rounded-xs border border-dashed border-chart-projected" />
-              Projected
-            </span>
-          ) : null}
+        <div className="flex items-center gap-4">
+          {allZero ? null : (
+            <div className="flex items-center gap-3 text-caption text-fg-muted">
+              <span className="inline-flex items-center gap-1.5">
+                <span aria-hidden className="size-2 rounded-full bg-chart-1" />
+                Billed
+              </span>
+              {hasProjected ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <span aria-hidden className="size-2 rounded-full border border-dashed border-chart-projected" />
+                  Projected
+                </span>
+              ) : null}
+            </div>
+          )}
+          <ButtonLink variant="tertiary" size="sm" to="/analytics/revenue" endIcon={<IconExpand aria-hidden />}>
+            View full report
+          </ButtonLink>
         </div>
       }
     >
       {isLoading ? (
-        <Skeleton className="h-70 w-full" />
+        <Skeleton className="h-55 w-full rounded-xl" />
+      ) : allZero ? (
+        <div className="flex h-55 w-full flex-col justify-end">
+          <p className="mb-auto mt-auto text-center text-label text-fg-subtle">No earnings yet this year</p>
+          <div aria-hidden className="h-px w-full bg-chart-baseline" />
+        </div>
       ) : (
-        <div className="h-70 w-full">
+        <div className="h-55 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 8, right: 0, left: 0, bottom: 0 }} barCategoryGap="28%">
               <CartesianGrid {...recharts.grid} />
               <XAxis dataKey="month" {...recharts.axis} />
-              <YAxis {...recharts.axis} width={56} tickFormatter={(v: number) => formatMoney(v, { compact: true })} />
+              <YAxis {...recharts.axis} width={72} tickFormatter={(v: number) => formatMoney(v, { whole: true })} />
               <Tooltip content={<EarningsTooltip />} cursor={{ fill: chartColors.grid, opacity: 0.4 }} />
-              <Bar dataKey="collected" stackId="earnings" fill={chartColors.series[0]} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="collected" stackId="earnings" fill={chartColors.series[0]} radius={[4, 4, 0, 0]} isAnimationActive={false} />
               <Bar dataKey="projected" stackId="earnings" shape={<ProjectedBar />} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>

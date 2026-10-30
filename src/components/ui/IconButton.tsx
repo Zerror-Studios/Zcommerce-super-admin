@@ -5,8 +5,18 @@ import { forwardRef } from "react";
 import { cx } from "./cx";
 import { Tooltip } from "./Tooltip";
 
-export type IconButtonVariant = "outline" | "ghost" | "danger" | "topbar";
-export type IconButtonSize = "sm" | "md" | "lg";
+/**
+ * Circle icon button (01 §7.2, styles in src/styles/components.css `.zc-icon-btn`). Never a rounded square.
+ * - default: white, 1px border (row ⋯ menus, pagination arrows, back button, carousel arrows)
+ * - ghost: transparent (modal and drawer close, in-card actions)
+ * - danger: transparent, red on hover (remove / delete in rows and cards)
+ * - on-dark: black menu and top bar
+ * - glass: on the banner and on media
+ * - solid-dark: the AI ask bar's send button
+ */
+export type IconButtonVariant = "default" | "ghost" | "danger" | "on-dark" | "glass" | "solid-dark";
+/** md 36 (default), sm 32, xs 28 (inside chips and dense rows), lg 40 (top bar). sm and md are 40 on phone. */
+export type IconButtonSize = "xs" | "sm" | "md" | "lg";
 
 export interface IconButtonProps
   extends Omit<HeroButtonProps, "variant" | "color" | "size" | "radius" | "isIconOnly" | "aria-label"> {
@@ -19,29 +29,6 @@ export interface IconButtonProps
   /** LEGACY alias for isDisabled, accepted during migration. */
   disabled?: boolean;
 }
-
-/**
- * Icon-only buttons (docs/design/02-components.md §3): 8px radius, 16px icon, tooltip from aria-label.
- * outline = secondary look (white, strong border); ghost = transparent, muted icon (row "···", close);
- * danger = trash/remove: light grey fill, muted icon, light red with a red icon on hover (owner 2026-10-29).
- * Square size = control height: sm 32, md 36, lg 40.
- */
-const variantClasses: Record<IconButtonVariant, string> = {
-  outline:
-    "rounded-lg border border-line-strong bg-surface text-fg data-[hover=true]:!opacity-100 data-[hover=true]:!bg-surface-muted data-[pressed=true]:!bg-surface-sunken",
-  ghost:
-    "rounded-lg bg-transparent text-fg-muted data-[hover=true]:!opacity-100 data-[hover=true]:!bg-surface-sunken data-[hover=true]:text-fg data-[pressed=true]:!bg-line",
-  danger:
-    "rounded-lg bg-surface-sunken text-fg-muted data-[hover=true]:!opacity-100 data-[hover=true]:!bg-tone-danger-soft data-[hover=true]:!text-tone-danger-text data-[pressed=true]:!bg-tone-danger-soft data-[pressed=true]:!text-tone-danger-text",
-  topbar:
-    "rounded-lg bg-topbar-control text-topbar-fg data-[hover=true]:!opacity-100 data-[hover=true]:bg-topbar-control-hover",
-};
-
-const sizeClasses: Record<IconButtonSize, string> = {
-  sm: "size-8 min-w-8",
-  md: "size-9 min-w-9",
-  lg: "size-10 min-w-10",
-};
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
   {
@@ -59,13 +46,14 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
     <HeroButton
       ref={ref}
       isIconOnly
-      variant={variant === "outline" ? "bordered" : "light"}
-      size={size}
+      variant="light"
+      disableAnimation
+      disableRipple
       isDisabled={isDisabled ?? disabled}
       className={cx(
-        "shadow-none transition-colors duration-instant ease-standard",
-        sizeClasses[size],
-        variantClasses[variant],
+        "zc-icon-btn",
+        variant !== "default" && `zc-icon-btn--${variant}`,
+        size !== "md" && `zc-icon-btn--${size}`,
         className,
       )}
       {...rest}

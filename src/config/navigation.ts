@@ -1,70 +1,33 @@
 import type { NavItem } from "../components/layout/types";
 import { PLATFORM_PERMISSIONS, type PlatformPermission } from "../lib/permissions";
-import { IconAnalytics, IconBilling, IconAi, IconHome, IconSend, IconSettings, IconStore } from "../components/ui/icons";
+import { IconAnalytics, IconAi, IconHome, IconPayments, IconSettings, IconStore } from "../components/ui/icons";
 
 /**
- * Super Admin navigation (docs/design/04-super-admin.md §1, sections renamed by the owner 2026-10-16:
- * Billing → Subscriptions, Revenue → Platform revenue + Store sales). /billing/* and settings URLs are unchanged;
- * Stores live at /stores (old /clients URLs redirect, see App.tsx).
+ * The black menu (04 S-00): six items, no sub-items. Subscriptions, Analytics and ZCOM AI are single pages with
+ * tabs inside; Payment reminders merged into Subscriptions (its rules are in Settings › Payments & billing rules).
+ * Counts: Stores a plain grey total, Subscriptions an orange pill (owed now or due within 7 days), ZCOM AI a blue
+ * pill (open top-up requests); DashboardLayout fills them in.
  */
 export const mainNavItems: NavItem[] = [
   { key: "home", label: "Home", to: "/", end: true, icon: IconHome },
-  { key: "stores", label: "Stores", to: "/stores", icon: IconStore },
-  {
-    key: "billing",
-    label: "Subscriptions",
-    to: "/billing",
-    icon: IconBilling,
-    children: [
-      { label: "Collections", to: "/billing/subscriptions" },
-      { label: "Invoices", to: "/billing/invoices" },
-      // Flagged payments (PRD-016 FR-19) and stuck store payments (PRD-018 FR-1.8) are tabs inside Transactions.
-      { label: "Transactions", to: "/billing/transactions" },
-    ],
-  },
-  // Owner 2026-10-29: its own entry, not under Subscriptions.
-  { key: "reminders", label: "Payment reminders", to: "/reminders", icon: IconSend },
-  {
-    key: "analytics",
-    label: "Analytics",
-    to: "/analytics",
-    icon: IconAnalytics,
-    children: [
-      // What stores pay Zcom, and what stores sell to their own customers.
-      { label: "Platform revenue", to: "/analytics/revenue" },
-      { label: "Store sales", to: "/analytics/store-sales" },
-      // PRD-012 FR-8.3: traffic and GMV across stores, app health, analytics sync runs.
-      { label: "Performance", to: "/analytics/performance" },
-      { label: "Integration health", to: "/analytics/integrations" },
-      { label: "Sync monitor", to: "/analytics/sync" },
-    ],
-  },
-  {
-    key: "ai",
-    label: "ZCOM AI",
-    to: "/ai",
-    icon: IconAi,
-    // PRD-021 FR-6: shown only with platform:ai:read (`visibleNavItems`).
-    children: [
-      { label: "Overview", to: "/ai/overview" },
-      // Usage by store, Top-up requests, Data health and Benchmarks are its tabs (owner 2026-10-29).
-      { label: "Usage & data", to: "/ai/usage" },
-      { label: "Settings", to: "/ai/settings" },
-    ],
-  },
-  // A single link: /settings is the two-pane settings card (pages/Settings.tsx), like Merchant Admin.
-  { key: "settings", label: "Settings", to: "/settings", icon: IconSettings },
+  { key: "stores", label: "Stores", to: "/stores", icon: IconStore, countTone: "plain" },
+  { key: "subscriptions", label: "Subscriptions", to: "/subscriptions", icon: IconPayments, countTone: "orange" },
+  { key: "analytics", label: "Analytics", to: "/analytics/revenue", icon: IconAnalytics },
+  // PRD-021 FR-6: shown only with platform:ai:read (`visibleNavItems`).
+  { key: "ai", label: "ZCOM AI", to: "/ai", icon: IconAi, countTone: "blue" },
+  // A single link: /settings is the settings shell (pages/Settings.tsx), like the store admin.
+  { key: "settings", label: "Settings", to: "/settings/profile", icon: IconSettings },
 ];
 
-/** Sections of the Settings two-pane card (pages/Settings.tsx). */
+/** Settings sections in menu order (04 S-07), for page titles and the command palette. */
 export const settingsPages = [
-  { label: "Payment gateway", to: "/settings/payment-gateway" },
-  { label: "Grace period and reminders", to: "/settings/billing-rules" },
-  { label: "Health thresholds", to: "/settings/health" },
-  { label: "Plans", to: "/settings/plans" },
-  { label: "Discounts", to: "/settings/discounts" },
-  { label: "Admins", to: "/settings/team" },
   { label: "Profile & security", to: "/settings/profile" },
+  { label: "Team & roles", to: "/settings/team" },
+  { label: "General", to: "/settings/general" },
+  { label: "Plans & pricing", to: "/settings/plans" },
+  { label: "Discounts", to: "/settings/discounts" },
+  { label: "Payments & billing rules", to: "/settings/billing" },
+  { label: "ZCOM AI settings", to: "/settings/ai" },
   { label: "Audit log", to: "/settings/audit" },
 ];
 

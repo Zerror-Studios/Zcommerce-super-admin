@@ -1,8 +1,9 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
- * Notifications panel (docs/design/02-components.md §12, ref 05): opens like the command palette, a centred
- * 640px modal near the top of the screen, from the bell row or the mobile header. Header with "Mark all as read", underline tabs, "Today" / "Earlier" groups,
- * items with a 28px icon tile, title, one-line detail, relative time and a blue unread dot.
+ * Notifications pop-up (02 §10): a 640px modal from the bell row or the top bar. Header "Notifications" with
+ * "Mark all as read" and a ghost circle close; a small segmented switch for the tabs; "Today" / "Earlier" groups
+ * of 64px rows: a 36px circle icon in the event's tone, the text, the time and an 8px blue dot when unread.
+ * A row opens its page, closes the pop-up and marks itself read.
  */
 import { ModalBody, ModalContent } from "@heroui/react";
 import { cloneElement, isValidElement, useMemo, useState, type MouseEvent, type ReactElement, type ReactNode } from "react";
@@ -10,9 +11,10 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "../ui/Button";
 import { cx } from "../ui/cx";
 import { EmptyState } from "../ui/EmptyState";
-import { IconNotifications } from "../ui/icons";
+import { IconButton } from "../ui/IconButton";
+import { IconClose, IconNotifications } from "../ui/icons";
 import { Modal } from "../ui/Modal";
-import { Kbd } from "../ui/Primitives";
+import { SegmentedSwitch } from "../ui/Tabs";
 import { isSameDay, relativeTime } from "./shell-utils";
 import type { NotificationEntry } from "./types";
 
@@ -66,48 +68,38 @@ export function NotificationsPanel({
   return (
     <div className="flex">
       {opener}
-      <Modal isOpen={isOpen} onOpenChange={setIsOpen} width="md" placement="top" hideCloseButton classNames={{ base: "mt-[12vh]" }}>
+      <Modal isOpen={isOpen} onOpenChange={setIsOpen} width="md" hideCloseButton classNames={{ body: "!p-0" }}>
         <ModalContent>
-          <ModalBody className="p-0">
-            <div className="flex h-12 items-center gap-3 border-b border-line px-4">
-              <IconNotifications aria-hidden className="size-4 shrink-0 text-fg-subtle" />
-              <p className="flex-1 text-body font-semibold text-fg">Notifications</p>
+          <ModalBody className="flex min-h-0 flex-col">
+            {/* Header (02 §10): title, "Mark all as read", ghost circle close. */}
+            <div className="flex shrink-0 items-center gap-2 px-6 pb-3 pt-5">
+              <h2 className="flex-1 text-title-2 text-fg">Notifications</h2>
               {hasUnread ? (
-                <Button variant="link" size="sm" onPress={onMarkAllRead}>
+                <Button variant="tertiary" size="sm" onPress={onMarkAllRead}>
                   Mark all as read
                 </Button>
               ) : null}
-              <Kbd>Esc</Kbd>
+              <IconButton aria-label="Close notifications" variant="ghost" size="sm" onPress={() => setIsOpen(false)}>
+                <IconClose aria-hidden />
+              </IconButton>
+            </div>
+            <div className="shrink-0 border-b border-line-subtle px-6 pb-3">
+              <SegmentedSwitch
+                size="sm"
+                ariaLabel="Notification type"
+                value={tab}
+                onChange={setTab}
+                items={[{ value: "all", label: "All" }, ...tabs.map((option) => ({ value: option.key, label: option.label }))]}
+              />
             </div>
 
-            <div role="tablist" aria-label="Notification type" className="flex gap-5 border-b border-line px-4">
-              {[{ key: "all", label: "All" }, ...tabs].map((option) => {
-                const selected = option.key === tab;
-                return (
-                  <button
-                    key={option.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={selected}
-                    onClick={() => setTab(option.key)}
-                    className={cx(
-                      "-mb-px h-9 border-b-2 text-sm font-medium transition-colors duration-fast",
-                      selected ? "border-fg text-fg" : "border-transparent text-fg-muted hover:text-fg",
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="custom-scroll max-h-[min(420px,60vh)] overflow-y-auto">
+            <div className="custom-scroll max-h-[560px] min-h-0 overflow-y-auto">
               {groups.length === 0 ? (
-                <EmptyState icon={IconNotifications} title="You're all caught up" description="New activity will show up here." className="py-10" />
+                <EmptyState icon={IconNotifications} title="You're all caught up" description="New activity will show up here." />
               ) : (
                 groups.map((group) => (
                   <div key={group.title}>
-                    <p className="px-4 pb-1 pt-3 text-caption font-medium text-fg-subtle">{group.title}</p>
+                    <p className="px-6 pb-1 pt-3 text-caption font-medium text-fg-subtle">{group.title}</p>
                     <ul>
                       {group.items.map((item) => {
                         const Icon = item.icon ?? IconNotifications;
@@ -120,26 +112,26 @@ export function NotificationsPanel({
                                 setIsOpen(false);
                                 if (item.href) navigate(item.href);
                               }}
-                              className="flex w-full gap-3 px-4 py-3 text-left transition-colors duration-instant hover:bg-surface-muted"
+                              className="flex min-h-16 w-full items-center gap-3 px-6 py-3 text-left transition-colors duration-fast hover:bg-row-hover focus-visible:shadow-focus-strong focus-visible:outline-none"
                             >
                               <span
                                 aria-hidden
                                 className={cx(
-                                  "flex size-7 shrink-0 items-center justify-center rounded-lg",
-                                  item.critical ? "bg-tone-danger-soft text-tone-danger-text" : "bg-surface-sunken text-fg-muted",
+                                  "flex size-9 shrink-0 items-center justify-center rounded-full",
+                                  item.critical ? "bg-tone-danger-soft text-tone-danger-text" : "bg-tone-info-soft text-tone-info",
                                 )}
                               >
-                                <Icon className="size-[15px]" />
+                                <Icon className="size-4" />
                               </span>
                               <span className="min-w-0 flex-1">
-                                <span className="block text-sm font-medium text-fg">{item.title}</span>
+                                <span className="block text-body font-medium text-fg">{item.title}</span>
                                 {item.detail ? <span className="block truncate text-label text-fg-muted">{item.detail}</span> : null}
                               </span>
-                              <span className="flex shrink-0 items-start gap-2 pt-0.5">
-                                <span className="text-caption text-fg-subtle num">{relativeTime(item.time)}</span>
+                              <span className="flex shrink-0 items-center gap-2">
+                                <span className="text-caption text-fg-muted num">{relativeTime(item.time)}</span>
                                 <span
                                   aria-label={item.unread ? "Unread" : undefined}
-                                  className={cx("mt-1 size-1.5 rounded-full", item.unread ? "bg-brand" : "bg-transparent")}
+                                  className={cx("size-2 rounded-full", item.unread ? "bg-brand" : "bg-transparent")}
                                 />
                               </span>
                             </button>

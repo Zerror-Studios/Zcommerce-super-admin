@@ -1,72 +1,122 @@
 import { useMutation } from "@apollo/client";
-import { addToast, Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
-import { useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { addToast } from "@heroui/react";
+import { useCallback, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DISMISS_AI_TOP_UP_REQUEST } from "../../graphql/ai";
 import { useAiTopUpRequests } from "../../hooks/use-platform-ai";
+import { useUrlSearch } from "../../hooks/use-url-search";
 import { mutationFailureCopy } from "../../lib/mutation-errors";
-import { TOP_UP_STATUS_OPTIONS, topUpEmptyCopy, topUpStatusOf } from "../../lib/platform-ai.util";
+import { TOP_UP_STATUS_OPTIONS, topUpEmptyCopy } from "../../lib/platform-ai.util";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
+import { downloadCsv, rowsToCsv } from "../../lib/report-csv";
 import { matchesText } from "../../lib/text-search.util";
 import { useAuth } from "../../providers/AuthProvider";
 import type { PlatformAiTopUpRequest, PlatformAiTopUpRequestStatus } from "../../types/platform-api";
 import { toasts } from "../../copy";
 import { ConfirmModal } from "../common/ConfirmModal";
-import { dataTableClassNames } from "../common/dataTableStyles";
-import { PageHeader } from "../common/PageHeader";
-import { FilterEmpty } from "../common/FilterEmpty";
-import { TableToolbar } from "../common/TableToolbar";
-import { IconGift } from "../ui/icons";
+import { IconClose, IconGift } from "../ui/icons";
 import {
-  Button as UiButton,
-  Card,
+  Button,
+  DataTable,
   EmptyState,
-  ErrorState,
-  Select,
-  SelectItem,
-  Skeleton,
-  formatCount,
+  SearchInput,
+  SegmentedSwitch,
+  TablePagination,
   formatDate,
   formatDateTime,
-  tableRowClasses,
   toastError,
+  useTableUrlState,
+  type DataTableColumn,
 } from "../ui";
+import { AiErrorCard, AiToolbar } from "./ai-table";
+import { datedCsvName, useAiExport, type AiTabProps } from "./ai-export";
 import { GrantTopUpDialog } from "./GrantTopUpDialog";
 
-const PAGE_SIZE = 25;
+const openColumns: DataTableColumn[] = [
+  { key: "store", label: "Store" },
+  { key: "week", label: "Week of", width: 130 },
+  { key: "requested", label: "Requested", width: 130 },
+  { key: "action", label: "Quick action", width: 110, hideLabel: true, mobile: "hide" },
+];
+
+const handledColumns: DataTableColumn[] = [
+  { key: "store", label: "Store" },
+  { key: "week", label: "Week of", width: 130 },
+  { key: "requested", label: "Requested", width: 130 },
+  { key: "handled", label: "Handled", width: 150 },
+];
+
+/** The status in the URL (`?status=granted`); Open by default. */
+function statusFromParam(value: string | undefined): PlatformAiTopUpRequestStatus {
+  const match = TOP_UP_STATUS_OPTIONS.find((option) => option.key.toLowerCase() === value);
+  return match?.key ?? "OPEN";
+}
 
 /**
- * AI › Top-up requests (PRD-021 FR-6.4): stores that ran out of questions
- * and asked for more (one request per store per week). Grant adds questions
- * until the end of the store's month and closes its open requests; Dismiss
- * closes one without granting. Both need `platform:ai:manage`.
+ * ZCOM AI › Top-up requests (PRD-021 FR-6.4): stores that ran out of questions and asked for more (one request per
+ * store per week). Grant adds questions until the end of the store's month and closes its open requests; Dismiss
+ * closes one without granting. Both need `platform:ai:manage`. Search matches the stores on this page (the
+ * requests have no server search).
  */
-/** `tabs`: the ZCOM AI › Usage & data tabs, on the left of the toolbar row. */
-export function AiTopUpsTab({ tabs }: { tabs?: ReactNode } = {}) {
+export function AiTopUpsTab({ tabs, exportRef }: AiTabProps) {
+  const navigate = useNavigate();
   const { can } = useAuth();
   const canManage = can(PLATFORM_PERMISSIONS.AI_MANAGE);
-  const [page, setPage] = useState(0);
-  // PRD-024 FR-1.10 (B-11): open, granted or dismissed requests.
-  const [status, setStatus] = useState<PlatformAiTopUpRequestStatus>("OPEN");
+  const table = useTableUrlState();
+  const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
+  const status = statusFromParam(table.filters.status);
+  const isOpen = status === "OPEN";
   const [granting, setGranting] = useState<{ tenantId: string; name: string } | null>(null);
   const [dismissing, setDismissing] = useState<PlatformAiTopUpRequest | null>(null);
   const [busy, setBusy] = useState(false);
   const [dismiss] = useMutation(DISMISS_AI_TOP_UP_REQUEST);
 
-  const api = useAiTopUpRequests({ status, limit: PAGE_SIZE, offset: page * PAGE_SIZE });
-  const isOpen = status === "OPEN";
-  // Searches this page's rows (the requests have no server search).
-  const [search, setSearch] = useState("");
-  const rows = (api.data?.items ?? []).filter((row) => matchesText(search, row.storeName));
+  const api = useAiTopUpRequests({ status, limit: table.pageSize, offset: table.offset });
+  // The switch's counts: one row per status is enough to read each total.
+  const open = useAiTopUpRequests({ status: "OPEN", limit: 1, offset: 0 });
+  const granted = useAiTopUpRequests({ status: "GRANTED", limit: 1, offset: 0 });
+  const dismissed = useAiTopUpRequests({ status: "DISMISSED", limit: 1, offset: 0 });
+  const counts: Record<PlatformAiTopUpRequestStatus, number | null> = {
+    OPEN: open.data?.totalCount ?? null,
+    GRANTED: granted.data?.totalCount ?? null,
+    DISMISSED: dismissed.data?.totalCount ?? null,
+  };
+  const loaded = useMemo(() => api.data?.items ?? [], [api.data]);
+  const rows = loaded.filter((row) => matchesText(table.search, row.storeName));
   const total = api.data?.totalCount ?? 0;
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const refetchAll = useCallback(
+    () => Promise.all([api.refetch(), open.refetch(), granted.refetch(), dismissed.refetch()]).catch(() => undefined),
+    [api, open, granted, dismissed],
+  );
+
+  const runExport = useCallback(() => {
+    const csv = rowsToCsv(
+      loaded.map((row) => ({
+        store: row.storeName,
+        week: formatDate(row.week),
+        requested: row.createdAt ? formatDateTime(row.createdAt) : "",
+        status: TOP_UP_STATUS_OPTIONS.find((option) => option.key === row.status)?.label ?? row.status,
+        handled: row.handledAt ? formatDateTime(row.handledAt) : "",
+      })),
+      [
+        { key: "store", label: "Store" },
+        { key: "week", label: "Week of" },
+        { key: "requested", label: "Requested" },
+        { key: "status", label: "Status" },
+        { key: "handled", label: "Handled" },
+      ],
+    );
+    downloadCsv(datedCsvName("ai-top-up-requests"), csv);
+  }, [loaded]);
+  useAiExport(exportRef, runExport);
 
   const runDismiss = async () => {
     if (!dismissing || busy) return;
     setBusy(true);
     try {
       const response = await dismiss({ variables: { requestId: dismissing.id } });
-      await api.refetch().catch(() => undefined);
+      await refetchAll();
       addToast({
         title: response.data?.dismissAiTopUpRequest
           ? `Request from ${dismissing.storeName} dismissed.`
@@ -81,111 +131,90 @@ export function AiTopUpsTab({ tabs }: { tabs?: ReactNode } = {}) {
     }
   };
 
+  const toolbarControls = (
+    <>
+      <SearchInput placement="toolbar" placeholder="Search stores" value={search} onValueChange={setSearch} onClear={() => setSearch("")} />
+      <SegmentedSwitch
+        size="sm"
+        ariaLabel="Request status"
+        value={status}
+        onChange={(next) => table.setParams({ status: next === "OPEN" ? undefined : next.toLowerCase() })}
+        items={TOP_UP_STATUS_OPTIONS.map((option) => ({ value: option.key, label: option.label, count: counts[option.key] }))}
+      />
+    </>
+  );
+
+  if (api.error) {
+    return <AiErrorCard tabs={tabs} title="Couldn't load the top-up requests." description={toasts.genericError} onRetry={() => void api.refetch()} />;
+  }
+
   return (
-    <div>
-      <PageHeader
-        type="list"
-        icon={<IconGift aria-hidden />}
-        section="pink"
-        title="ZCOM AI top-up requests"
-        count={total || undefined}
-        description="Stores that used up this week's AI questions and asked for more."
-        actions={
-          <Select
-            aria-label="Request status"
-            size="sm"
-            className="w-40"
-            selectedKeys={new Set([status])}
-            disallowEmptySelection
-            onSelectionChange={(keys) => {
-              setStatus(topUpStatusOf(Array.from(keys)[0]));
-              setPage(0);
-            }}
-            items={TOP_UP_STATUS_OPTIONS}
-          >
-            {(option) => <SelectItem key={option.key}>{option.label}</SelectItem>}
-          </Select>
+    <>
+      <DataTable<PlatformAiTopUpRequest>
+        aria-label="AI top-up requests"
+        columns={isOpen ? openColumns : handledColumns}
+        rows={rows}
+        getRowKey={(row) => row.id}
+        isLoading={api.loading}
+        onRowAction={(row) => navigate(`/stores/${row.tenantId}/ai`)}
+        rowActions={
+          isOpen && canManage
+            ? (row) => [{ key: "dismiss", label: "Dismiss", icon: IconClose, onSelect: () => setDismissing(row) }]
+            : undefined
+        }
+        rowActionsLabel={(row) => `Actions for ${row.storeName}`}
+        toolbar={<AiToolbar tabs={tabs}>{toolbarControls}</AiToolbar>}
+        renderCell={(row, key) => {
+          switch (key) {
+            case "store":
+              return <span className="block truncate font-medium text-fg">{row.storeName}</span>;
+            case "week":
+              return <span className="whitespace-nowrap num">{formatDate(row.week)}</span>;
+            case "requested":
+              return <span className="whitespace-nowrap num">{row.createdAt ? formatDateTime(row.createdAt) : "—"}</span>;
+            case "handled":
+              return <span className="whitespace-nowrap num">{row.handledAt ? formatDateTime(row.handledAt) : "—"}</span>;
+            case "action":
+              return canManage ? (
+                <Button size="xs" variant="secondary" onPress={() => setGranting({ tenantId: row.tenantId, name: row.storeName })}>
+                  Grant
+                </Button>
+              ) : (
+                <span className="text-label text-fg-muted">View only</span>
+              );
+            default:
+              return null;
+          }
+        }}
+        footer={
+          <TablePagination
+            page={table.page}
+            pageSize={table.pageSize}
+            total={total}
+            onPageChange={table.setPage}
+            onPageSizeChange={table.setPageSize}
+          />
+        }
+        emptyContent={
+          table.search.trim() ? (
+            <EmptyState
+              kind="no-results"
+              icon={IconGift}
+              title="No matching requests"
+              description="No store on this page matches that search."
+              action={
+                <Button variant="secondary" size="sm" onPress={() => setSearch("")}>
+                  Clear search
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState icon={IconGift} title={topUpEmptyCopy(status)} description="Requests from stores appear here." />
+          )
         }
       />
 
-      {api.error ? (
-        <ErrorState title="Couldn't load the top-up requests." description={toasts.genericError} onRetry={() => void api.refetch()} />
-      ) : null}
-
-      <Card padding="none" className="overflow-hidden">
-        <TableToolbar tabs={tabs} search={search} onSearchChange={setSearch} searchPlaceholder="Search stores on this page" />
-        {api.loading ? (
-          <div className="space-y-3 p-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-10 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : (
-          <Table aria-label="AI top-up requests" removeWrapper classNames={{ ...dataTableClassNames, tr: tableRowClasses }}>
-            <TableHeader>
-              <TableColumn>Store</TableColumn>
-              <TableColumn>Week of</TableColumn>
-              <TableColumn>Requested</TableColumn>
-              <TableColumn align="end">{isOpen ? "Actions" : "Handled"}</TableColumn>
-            </TableHeader>
-            <TableBody
-              items={rows}
-              emptyContent={
-                search.trim() ? (
-                  <FilterEmpty things="requests" query={search} onClear={() => setSearch("")} />
-                ) : (
-                  <EmptyState icon={IconGift} title={topUpEmptyCopy(status)} description="Requests from stores appear here." />
-                )
-              }
-            >
-              {(row) => (
-                <TableRow key={row.id}>
-                  <TableCell>
-                    <Link to={`/stores/${row.tenantId}`} className="font-medium text-fg hover:underline">
-                      {row.storeName}
-                    </Link>
-                  </TableCell>
-                  <TableCell><span className="whitespace-nowrap num">{formatDate(row.week)}</span></TableCell>
-                  <TableCell><span className="whitespace-nowrap num">{formatDateTime(row.createdAt)}</span></TableCell>
-                  <TableCell>
-                    {!isOpen ? (
-                      <span className="block whitespace-nowrap text-right text-caption text-fg-muted num">
-                        {row.handledAt ? formatDateTime(row.handledAt) : "—"}
-                      </span>
-                    ) : canManage ? (
-                      <div className="flex justify-end gap-2">
-                        <UiButton size="sm" variant="ghost" onPress={() => setDismissing(row)}>
-                          Dismiss
-                        </UiButton>
-                        <UiButton
-                          size="sm"
-                          variant="secondary"
-                          onPress={() => setGranting({ tenantId: row.tenantId, name: row.storeName })}
-                        >
-                          Grant
-                        </UiButton>
-                      </div>
-                    ) : (
-                      <span className="block text-right text-caption text-fg-subtle">View only</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
-        {pages > 1 ? (
-          <div className="flex items-center justify-between border-t border-line px-4 py-3 text-caption text-fg-muted">
-            <span>Page {page + 1} of {pages} · {formatCount(total)} requests</span>
-            <div className="flex gap-2">
-              <UiButton variant="ghost" size="sm" isDisabled={page === 0} onPress={() => setPage((value) => value - 1)}>Previous</UiButton>
-              <UiButton variant="ghost" size="sm" isDisabled={page + 1 >= pages} onPress={() => setPage((value) => value + 1)}>Next</UiButton>
-            </div>
-          </div>
-        ) : null}
-      </Card>
-
-      <GrantTopUpDialog store={granting} onClose={() => setGranting(null)} onGranted={api.refetch} />
+      <GrantTopUpDialog store={granting} onClose={() => setGranting(null)} onGranted={refetchAll} />
 
       <ConfirmModal
         isOpen={!!dismissing}
@@ -197,6 +226,6 @@ export function AiTopUpsTab({ tabs }: { tabs?: ReactNode } = {}) {
         confirmColor="primary"
         isLoading={busy}
       />
-    </div>
+    </>
   );
 }

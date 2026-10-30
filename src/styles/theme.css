@@ -5,7 +5,8 @@
 @theme inline {
   --font-sans: var(--zc-font-sans);
   --font-mono: var(--zc-font-mono);
-  /* Spec: never weight 700. Tailwind's font-bold reads this, so every existing font-bold renders semibold. */
+  /* Spec: never weight 700 (only text-display sets it, through its own token). Tailwind's font-bold reads this,
+     so a stray font-bold renders semibold. */
   --font-weight-bold: 600;
 
   --color-page: var(--zc-bg);
@@ -142,22 +143,63 @@
   --color-letterbox: var(--zc-letterbox);
   --font-google: var(--zc-google-font);
 
-  /* The only text sizes in the app (spec 01 §5, plus 08/09): 10 / 12 / 13 / 14 / 15 / 16 / 17 / 18 / 20 / 22 / 26 / 30 / 36. */
-  --text-caption: 0.75rem;  --text-caption--line-height: 1rem;      /* 12: meta, helper text, badges */
-  --text-label: 0.8125rem;  --text-label--line-height: 1.25rem;     /* 13: sidebar, table header, secondary rows */
-  --text-body: 0.875rem;    --text-body--line-height: 1.25rem;      /* 14: default body, cells, inputs, buttons */
-  --text-subtitle: 1rem;    --text-subtitle--line-height: 1.5rem;   /* 16: modal + settings group titles */
-  --text-login: 1.125rem;   --text-login--line-height: 1.5rem;      /* 18: login card title only */
-  --text-title: 1.375rem;   --text-title--line-height: 1.875rem;    /* 22: page H1 */
-  --text-title--letter-spacing: -0.01em;
-  --text-display: 1.625rem; --text-display--line-height: 2.125rem;  /* 26: KPI values */
-  --text-display--letter-spacing: -0.02em;
-  /* v1.4 additions (08/09). */
-  --text-micro: 0.625rem;    --text-micro--line-height: 0.875rem;   /* 10: cover tag on images */
-  --text-lead: 0.9375rem;    --text-lead--line-height: 1.4375rem;   /* 15/23: AI suggestion text, Today's brief */
-  --text-heading: 1.125rem;  --text-heading--line-height: 1.625rem; /* 18: H2 in settings/two-pane right pane */
-  --text-hero: 1.875rem;     --text-hero--line-height: 2.375rem;    /* 30/38: Home greeting, stat values on the banner */
-  --text-hero--letter-spacing: -0.02em;
+  /* v2 type scale (01 §4.2): the only UI text styles. Values live in tokens.css (phone sizes switch there).
+     The spec's `text-small` / `text-small-strong` are `text-label` / `text-label-strong` here: HeroUI owns
+     text-tiny / text-small / text-medium / text-large for its own components. `text-micro` is a utility below
+     (it is uppercase). Body, label and caption leave the weight to the caller (400 meta, font-medium labels). */
+  --text-display: var(--zc-text-display-size);
+  --text-display--line-height: var(--zc-text-display-line);
+  --text-display--font-weight: var(--zc-text-display-weight);
+  --text-display--letter-spacing: var(--zc-text-display-tracking);
+  --text-title-1: var(--zc-text-title-1-size);
+  --text-title-1--line-height: var(--zc-text-title-1-line);
+  --text-title-1--font-weight: var(--zc-text-title-1-weight);
+  --text-title-1--letter-spacing: var(--zc-text-title-1-tracking);
+  --text-title-2: var(--zc-text-title-2-size);
+  --text-title-2--line-height: var(--zc-text-title-2-line);
+  --text-title-2--font-weight: var(--zc-text-title-2-weight);
+  --text-title-2--letter-spacing: var(--zc-text-title-2-tracking);
+  --text-title-3: var(--zc-text-title-3-size);
+  --text-title-3--line-height: var(--zc-text-title-3-line);
+  --text-title-3--font-weight: var(--zc-text-title-3-weight);
+  --text-title-3--letter-spacing: var(--zc-text-title-3-tracking);
+  --text-body-l: var(--zc-text-body-l-size);
+  --text-body-l--line-height: var(--zc-text-body-l-line);
+  --text-body-l--letter-spacing: var(--zc-text-body-l-tracking);
+  --text-body: var(--zc-text-body-size);
+  --text-body--line-height: var(--zc-text-body-line);
+  --text-body--letter-spacing: var(--zc-text-body-tracking);
+  --text-body-strong: var(--zc-text-body-strong-size);
+  --text-body-strong--line-height: var(--zc-text-body-strong-line);
+  --text-body-strong--font-weight: var(--zc-text-body-strong-weight);
+  --text-body-strong--letter-spacing: var(--zc-text-body-strong-tracking);
+  --text-label: var(--zc-text-small-size);
+  --text-label--line-height: var(--zc-text-small-line);
+  --text-label--letter-spacing: var(--zc-text-small-tracking);
+  --text-label-strong: var(--zc-text-small-strong-size);
+  --text-label-strong--line-height: var(--zc-text-small-strong-line);
+  --text-label-strong--font-weight: var(--zc-text-small-strong-weight);
+  --text-label-strong--letter-spacing: var(--zc-text-small-strong-tracking);
+  --text-caption: var(--zc-text-caption-size);
+  --text-caption--line-height: var(--zc-text-caption-line);
+  --text-caption--letter-spacing: var(--zc-text-caption-tracking);
+  --text-caption-strong: var(--zc-text-caption-strong-size);
+  --text-caption-strong--line-height: var(--zc-text-caption-strong-line);
+  --text-caption-strong--font-weight: var(--zc-text-caption-strong-weight);
+  --text-caption-strong--letter-spacing: var(--zc-text-caption-strong-tracking);
+  --text-kpi-xl: var(--zc-text-kpi-xl-size);
+  --text-kpi-xl--line-height: var(--zc-text-kpi-xl-line);
+  --text-kpi-xl--font-weight: var(--zc-text-kpi-xl-weight);
+  --text-kpi-xl--letter-spacing: var(--zc-text-kpi-xl-tracking);
+  --text-kpi-banner: var(--zc-text-kpi-banner-size);
+  --text-kpi-banner--line-height: var(--zc-text-kpi-banner-line);
+  --text-kpi-banner--font-weight: var(--zc-text-kpi-banner-weight);
+  --text-kpi-banner--letter-spacing: var(--zc-text-kpi-banner-tracking);
+  --text-kpi-l: var(--zc-text-kpi-l-size);
+  --text-kpi-l--line-height: var(--zc-text-kpi-l-line);
+  --text-kpi-l--font-weight: var(--zc-text-kpi-l-weight);
+  --text-kpi-l--letter-spacing: var(--zc-text-kpi-l-tracking);
+  /* Content sizes outside the UI scale: the blog editor's article and the Google result preview. */
   --text-article: 1.0625rem; --text-article--line-height: 1.8125rem; /* 17/29: blog body in the editor */
   --text-article-title: 2.25rem; --text-article-title--line-height: 2.75rem; /* 36: blog title in the editor */
   --text-google-title: 1.25rem; --text-google-title--line-height: 1.625rem; /* 20/26: Google preview title only */
@@ -168,12 +210,23 @@
   --radius-tile: 12px;  /* cards, tables, popovers, toasts */
   --radius-card: 12px;
   --radius-modal: 16px; /* modals, login card */
-  --radius-pane-item: 9px; /* settings / two-pane rows */
+  --radius-pane-item: 10px; /* settings menu rows (01 §6.2) */
   --radius-thumb: 10px;     /* image tiles, ask input */
   --radius-panel: 14px;     /* two-pane card, AI chat card */
   --radius-banner: 20px;    /* Home welcome banner */
+  /* v2 (01 §6.5). field / card / thumb keep their v1 values until the Phase 2 components move to 10 / 16 / 8. */
+  --radius-pill: var(--zc-radius-pill);
+  --radius-checkbox: var(--zc-radius-checkbox);
+  --radius-badge: var(--zc-radius-badge);
+  --radius-tooltip: var(--zc-radius-tooltip);
+  --radius-menu-item: var(--zc-radius-menu-item);
+  --radius-menu: var(--zc-radius-menu);
+  --radius-glass-tile: var(--zc-radius-glass-tile);
+  --radius-overlay: var(--zc-radius-overlay);
 
   --shadow-card: var(--zc-shadow-card);
+  --shadow-seg: var(--zc-shadow-seg-thumb);
+  --shadow-focus-strong: var(--zc-focus-ring-strong);
   --shadow-sticky: var(--zc-shadow-sm);
   --shadow-focus: var(--zc-focus-ring);
   --shadow-auth-focus: var(--zc-auth-focus-ring);
@@ -183,6 +236,50 @@
   --ease-standard: var(--zc-ease);
   --ease-enter: var(--zc-ease-enter);
   --ease-exit: var(--zc-ease-exit);
+  --ease-press: var(--zc-ease-press);
+
+  /* v2 colours (01 §3.4). */
+  --color-sec-ink-solid: var(--zc-sec-ink-solid);
+  --color-sec-blue-solid: var(--zc-sec-blue-solid);
+  --color-sec-green-solid: var(--zc-sec-green-solid);
+  --color-sec-violet-solid: var(--zc-sec-violet-solid);
+  --color-sec-teal-solid: var(--zc-sec-teal-solid);
+  --color-sec-coral-solid: var(--zc-sec-coral-solid);
+  --color-sec-amber-solid: var(--zc-sec-amber-solid);
+  --color-sec-pink-solid: var(--zc-sec-pink-solid);
+  --color-sec-slate-solid: var(--zc-sec-slate-solid);
+  --color-control-hover: var(--zc-control-hover-bg);
+  --color-control-hover-line: var(--zc-control-hover-border);
+  --color-control-pressed: var(--zc-control-pressed-bg);
+  --color-ghost-hover: var(--zc-ghost-hover-bg);
+  --color-ghost-pressed: var(--zc-ghost-pressed-bg);
+  --color-field-line-hover: var(--zc-field-border-hover);
+  --color-check-line: var(--zc-check-border);
+  --color-switch-off: var(--zc-switch-off);
+  --color-tone-danger-pressed: var(--zc-danger-pressed);
+  --color-tone-danger-soft-pressed: var(--zc-danger-soft-pressed);
+  --color-tone-neutral-dot: var(--zc-neutral-dot);
+  --color-solid-dark: var(--zc-solid-dark);
+  --color-solid-dark-hover: var(--zc-solid-dark-hover);
+  --color-glass: var(--zc-glass-bg);
+  --color-glass-hover: var(--zc-glass-bg-hover);
+  --color-glass-pressed: var(--zc-glass-bg-pressed);
+  --color-glass-tile: var(--zc-glass-tile-bg);
+  --color-chart-baseline: var(--zc-chart-baseline);
+  --color-chart-crosshair: var(--zc-chart-crosshair);
+  --color-ai-label: var(--zc-ai-label);
+  --color-row-hover: var(--zc-table-row-hover);
+  --color-row-selected: var(--zc-table-row-selected);
+  --color-rating: var(--zc-rating);
+}
+
+/* Group labels: banner eyebrow, section-menu groups, filter-drawer groups, "Folders" in Choose media (01 §4.2). */
+@utility text-micro {
+  font-size: var(--zc-text-micro-size);
+  line-height: var(--zc-text-micro-line);
+  font-weight: var(--zc-text-micro-weight);
+  letter-spacing: var(--zc-text-micro-tracking);
+  text-transform: uppercase;
 }
 
 /* Element defaults for both products: a bare "border" uses the border token, placeholders are muted,
@@ -269,11 +366,28 @@
   --spacing-assistant: var(--zc-assistant-w);
   --spacing-media-folders: var(--zc-media-folders-w);
   --spacing-drawer-image: var(--zc-drawer-image);
+  /* v2 (tokens/theme.tailwind.css). `drawer` above stays the 280px menu drawer until the Phase 5 shell; the
+     filter drawer sizes are drawer-sm / -md / -lg here. */
+  --spacing-control: var(--zc-control-h);
+  --spacing-control-sm: var(--zc-control-h-sm);
+  --spacing-control-lg: var(--zc-control-h-lg);
+  --spacing-control-xs: var(--zc-control-h-xs);
+  --spacing-row: var(--zc-table-row-h);
+  --spacing-row-tall: var(--zc-table-row-h-tall);
+  --spacing-drawer-sm: var(--zc-drawer-w);
+  --spacing-drawer-md: var(--zc-drawer-w-md);
+  --spacing-drawer-lg: var(--zc-drawer-w-lg);
+  --spacing-side-col: var(--zc-side-col);
+  --spacing-banner: var(--zc-banner-h);
+
+  --animate-shimmer: zc-shimmer var(--zc-dur-shimmer) linear infinite;
+  --animate-spin-slow: zc-spin 0.8s linear infinite;
+  --animate-rise-in: zc-rise-in var(--zc-dur-base) var(--zc-ease-enter) both;
 
   /* Modal widths (component-specs §11): max-w-modal-sm / -md / -lg. */
-  --container-modal-sm: 480px;
-  --container-modal-md: 640px;
-  --container-modal-lg: 720px;
+  --container-modal-sm: var(--zc-modal-sm);
+  --container-modal-md: var(--zc-modal-md);
+  --container-modal-lg: var(--zc-modal-lg);
   --container-content: 1200px;
   --container-content-wide: 1440px;
   --container-content-form: 720px;
@@ -281,18 +395,29 @@
   --container-media-dialog: var(--zc-media-dialog-w);
 }
 
-/* Named durations (spec 01 §7): 80 hover/press, 140 menus/tooltips/tabs, 220 drawers/modals, 320 AI reveal. */
+/* Skeleton sweep (shared by every block with background-attachment: fixed), button spinner, page rise-in. */
+@keyframes zc-shimmer {
+  0% { background-position: -480px 0; }
+  100% { background-position: calc(100vw + 480px) 0; }
+}
+@keyframes zc-spin { to { transform: rotate(360deg); } }
+@keyframes zc-rise-in {
+  from { opacity: 0; transform: translateY(var(--zc-rise)); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Named durations (01 §8): 80 press, 140 hover/menus/tooltips, 220 segmented/modals, 320 drawers. */
 @utility duration-instant {
-  transition-duration: 80ms;
+  transition-duration: var(--zc-dur-instant);
 }
 @utility duration-fast {
-  transition-duration: 140ms;
+  transition-duration: var(--zc-dur-fast);
 }
 @utility duration-base {
-  transition-duration: 220ms;
+  transition-duration: var(--zc-dur-base);
 }
 @utility duration-slow {
-  transition-duration: 320ms;
+  transition-duration: var(--zc-dur-slow);
 }
 
 /* Tabular figures for every number in tables, KPIs, charts and prices. */
@@ -317,20 +442,20 @@
   --font-size-h5: 13px;
   --font-size-h4: 14px;
   --font-size-h3: 14px;
-  --font-size-h2: 16px;
-  --font-size-h1: 22px;
+  --font-size-h2: 15px; /* v2 title-3 (was 16) */
+  --font-size-h1: var(--zc-text-title-1-size); /* v2 title-1 (was 22; 20 on phone) */
 
   --line-height-extra-tiny: 16px;
   --line-height-tiny: 20px;
   --line-height-h4: 20px;
-  --line-height-h2: 24px;
-  --line-height-h1: 30px;
+  --line-height-h2: 22px;
+  --line-height-h1: var(--zc-text-title-1-line);
 }
 
 @layer base {
-  /* h1 = page title 22/600, h2 = modal/settings group 16/600, h3 = card/section title 14/600. */
-  h1 { font-size: var(--font-size-h1); line-height: var(--line-height-h1); font-weight: var(--font-weight-semibold); letter-spacing: -0.01em; }
-  h2 { font-size: var(--font-size-h2); line-height: var(--line-height-h2); font-weight: var(--font-weight-semibold); }
+  /* h1 = page title (v2 title-1), h2 = card / group title (v2 title-3), h3 = card/section title 14/600. */
+  h1 { font-size: var(--font-size-h1); line-height: var(--line-height-h1); font-weight: var(--font-weight-semibold); letter-spacing: var(--zc-text-title-1-tracking); }
+  h2 { font-size: var(--font-size-h2); line-height: var(--line-height-h2); font-weight: var(--font-weight-semibold); letter-spacing: var(--zc-text-title-3-tracking); }
   h3 { font-size: var(--font-size-h3); line-height: var(--line-height-h4); font-weight: var(--font-weight-semibold); }
   h4 { font-size: var(--font-size-h4); line-height: var(--line-height-h4); font-weight: var(--font-weight-medium); }
   h5 { font-size: var(--font-size-h5); line-height: var(--line-height-h4); font-weight: var(--font-weight-medium); }
@@ -361,15 +486,9 @@ button.font-normal.min-w-max.tap-highlight-transparent {
   backdrop-filter: none;
 }
 
-/* Menus (kit Dropdown/Select): the 4px slide from the anchor of "fade + 4px slide, 140ms" (02-components). Framer
-   does the fade (menuMotionProps); HeroUI's resolved placement picks the direction. Reduced motion cuts it to 1ms. */
-.zc-menu { animation: zc-menu-in var(--zc-dur-fast) var(--zc-ease) both; }
-.zc-menu[data-placement^="top"] { --zc-menu-from: 4px; }
-.zc-menu[data-placement^="bottom"] { --zc-menu-from: -4px; }
-/* Menu sections (DropdownSection): HeroUI puts 8px under each section and 8px above its divider, 16px around
-   one line plus 8px under the last section. 4px each here, none after the last (owner 2026-10-29). HeroUI
-   sections can't be wrapped (collection nodes), so this is CSS on the menu popover. */
-.zc-menu li[role="presentation"][data-slot="base"] { margin-bottom: 4px; }
-.zc-menu li[role="presentation"][data-slot="base"]:last-child { margin-bottom: 0; }
-.zc-menu li[role="presentation"][data-slot="base"] [role="separator"] { margin-top: 4px; }
-@keyframes zc-menu-in { from { translate: 0 var(--zc-menu-from, 0); } to { translate: 0 0; } }
+/* Menus (kit Dropdown/Select): v2 motion is opacity + scale(.98 → 1) only (menuMotionProps, 01 §7.17); no slide.
+   Menu sections (DropdownSection): HeroUI puts 8px under each section and 8px above its divider; the spec's
+   divider has 6px above and below, none after the last section. HeroUI sections can't be wrapped (collection
+   nodes), so this is CSS on the menu popover. */
+.zc-menu li[role="presentation"][data-slot="base"] { margin-bottom: 0; }
+.zc-menu li[role="presentation"][data-slot="base"] [role="separator"] { margin-top: 6px; margin-bottom: 6px; }

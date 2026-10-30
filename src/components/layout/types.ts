@@ -23,6 +23,11 @@ export interface NavItem {
   children?: NavChild[];
   /** Right-aligned count of things that need action (e.g. orders to fulfil). Hidden when 0. */
   count?: number;
+  /**
+   * How the count shows (02 §3.4): "blue" pill (unread or waiting), "orange" pill with dark text (money owed),
+   * or "plain" grey number for totals that need no action (default).
+   */
+  countTone?: "blue" | "orange" | "plain";
 }
 
 export interface Crumb {

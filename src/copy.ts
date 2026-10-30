@@ -100,7 +100,7 @@ export interface ConfirmCopy {
 export const confirms = {
   suspendStore: (name: string): ConfirmCopy => ({
     title: `Suspend ${name}?`,
-    description: "The storefront goes offline and the owner can't log in until you reactivate it.",
+    description: "The storefront goes offline. Payments already started still settle; orders and data are kept.",
     confirmLabel: "Suspend store",
   }),
   reactivateStore: (name: string): ConfirmCopy => ({
@@ -111,8 +111,7 @@ export const confirms = {
   deleteStore: (name: string): ConfirmCopy => ({
     title: `Delete ${name}?`,
     // PRD-018 FR-2.3: data is kept for the grace period, then purged.
-    description:
-      "The store goes offline at once. Its data is kept for the grace period (30 days by default), when you can still restore it, then purged for good.",
+    description: "The store goes offline at once. Its data is kept for the grace period, then purged.",
     confirmLabel: "Delete store",
   }),
 } as const;

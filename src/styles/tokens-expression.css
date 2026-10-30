@@ -45,6 +45,7 @@
   /* ---------- Settings / two-pane list (09 §1.3, §2B) ---------- */
   --zc-pane-bg: #FAFAFB;
   --zc-pane-w: 260px;
+  --zc-pane-w-sm: 220px; /* console Store detail section menu (04 S-03) */
   --zc-pane-label: #6F747E;
   --zc-pane-item: #454A54;
   --zc-pane-icon: #8D919A;
@@ -55,7 +56,7 @@
 
   /* ---------- AI chat card (09 §2A) ---------- */
   --zc-ai-send: #111318;        /* dark square send button */
-  --zc-user-bubble: #F2F3F5;    /* user messages in the Ask AI panel */
+  --zc-user-bubble: var(--zc-primary-soft); /* v2 (02 §6): user messages in the assistant panel */
 
   /* ---------- Gradient avatars (initials; pick by hash of the name) ---------- */
   --zc-avatar-1: linear-gradient(135deg, #5B8CFF, #9D7BFF);
@@ -75,7 +76,7 @@
   --zc-step-failed: #D92D20;
   --zc-card-footer: #FAFAFB;
 
-  /* ---------- Google result preview (08 §2.3): the one place that isn't Geist ---------- */
+  /* ---------- Google result preview (08 §2.3): the one place that isn't Inter ---------- */
   --zc-google-font: Arial, "Helvetica Neue", Helvetica, sans-serif;
   --zc-google-site: #202124;
   --zc-google-url: #4D5156;
@@ -98,7 +99,7 @@
   --zc-drawer-image: 560px;
   --zc-media-dialog-w: 1240px;   /* owner 2026-10-29: was 1180; the bar above the grid fits one row with details open */
   --zc-media-dialog-h: 820px;
-  --zc-media-folders-w: 220px;
+  --zc-media-folders-w: 240px; /* v2 (03 A-11) */
   --zc-blog-tools-w: 232px;
   --zc-blog-panel-w: 300px;
   --zc-assistant-w: 420px;     /* Ask AI / Ask Zcom right drawer */

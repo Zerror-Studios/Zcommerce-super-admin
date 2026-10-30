@@ -419,7 +419,7 @@ export function PlanEditorModal({ isOpen, onClose, plan, tenantId = null, tenant
           </div>
         </ModalBody>
         <ModalFooter>
-          <UiButton variant="ghost" onPress={onClose} isDisabled={busy}>
+          <UiButton variant="secondary" onPress={onClose} isDisabled={busy}>
             Cancel
           </UiButton>
           <UiButton variant="primary" isLoading={busy} isDisabled={busy} onPress={() => void save()}>

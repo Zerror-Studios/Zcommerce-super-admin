@@ -18,7 +18,7 @@ export function FilterEmpty({ things, query, onClear }: FilterEmptyProps) {
   return (
     <p className="py-8 text-center text-body text-fg-muted">
       {copy.title} ·{" "}
-      <UiButton variant="link" size="sm" onPress={onClear}>
+      <UiButton variant="tertiary" size="sm" onPress={onClear}>
         {copy.action}
       </UiButton>
     </p>

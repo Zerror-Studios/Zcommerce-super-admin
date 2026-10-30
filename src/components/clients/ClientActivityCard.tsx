@@ -72,11 +72,8 @@ export function ClientActivityCard({ tenantId }: { tenantId: string }) {
   }
 
   return (
-    <Card
-      title="Activity"
-      description="Platform changes to this store, newest first."
-      padding="none"
-    >
+    // The section title says "Activity" once; the card has none of its own (04 S-03h).
+    <Card padding="none" className="overflow-clip">
       {query.error && !data ? (
         <ErrorState
           inline
@@ -84,9 +81,9 @@ export function ClientActivityCard({ tenantId }: { tenantId: string }) {
           onRetry={() => void query.refetch()}
         />
       ) : query.loading && !data ? (
-        <div className="space-y-3 p-4">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <Skeleton key={index} className="h-8 w-full rounded-lg" />
+        <div className="space-y-3 p-5" role="status" aria-label="Loading the activity">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-10 w-full rounded-lg" />
           ))}
         </div>
       ) : rows.length === 0 ? (
@@ -98,33 +95,26 @@ export function ClientActivityCard({ tenantId }: { tenantId: string }) {
         />
       ) : (
         <>
-          <ul className="border-t border-line-subtle">
+          {/* 64px rows: action and actor on the left, time on the right. Readable action names wait for Check
+              first 05 #19, so the action line is the live event code. */}
+          <ul className="divide-y divide-line-subtle">
             {rows.map((row) => (
-              <li
-                key={row.id}
-                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line-subtle px-5 py-2.5"
-              >
+              <li key={row.id} className="flex min-h-16 items-center justify-between gap-x-4 px-5 py-2.5">
                 <span className="min-w-0">
-                  <span className="block font-mono text-label text-fg">
-                    {row.action}
-                  </span>
-                  <span className="block truncate text-caption text-fg-muted">
-                    {row.actorEmail}
-                  </span>
+                  <span className="block truncate text-body font-medium text-fg">{row.action}</span>
+                  <span className="block truncate text-label text-fg-muted">{row.actorEmail}</span>
                 </span>
-                <span className="whitespace-nowrap text-caption text-fg-muted num">
-                  {formatDateTime(row.at)}
-                </span>
+                <span className="shrink-0 whitespace-nowrap text-label text-fg-muted num">{formatDateTime(row.at)}</span>
               </li>
             ))}
           </ul>
-          <div className="flex items-center justify-between px-5 py-3 text-caption text-fg-muted">
+          <div className="flex items-center justify-between gap-3 border-t border-line-subtle px-5 py-3 text-label text-fg-muted">
             <span className="num">
               Showing {rows.length} of {total}
             </span>
             {canLoadMore ? (
               <UiButton
-                variant="ghost"
+                variant="secondary"
                 size="sm"
                 isLoading={query.loading}
                 onPress={() => setLimit((current) => nextActivityLimit(current))}

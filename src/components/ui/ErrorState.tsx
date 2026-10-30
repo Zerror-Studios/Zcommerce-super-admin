@@ -34,7 +34,7 @@ export function ErrorState({
         <IconError aria-hidden className="size-4 shrink-0 text-tone-danger-text" />
         <span>{title}</span>
         {onRetry ? (
-          <Button variant="link" size="sm" onPress={onRetry}>
+          <Button variant="tertiary" size="sm" onPress={onRetry}>
             {retryLabel}
           </Button>
         ) : null}

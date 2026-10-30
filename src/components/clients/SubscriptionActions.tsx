@@ -1,11 +1,7 @@
 import { useMutation } from "@apollo/client";
 import { addToast } from "@heroui/react";
-import { useRef, useState } from "react";
-import type { Client, Plan, Subscription } from "../../types";
-import { scheduledPlanChangeOf } from "../../lib/api-adapters";
-import { PLAN_LABELS } from "../../lib/display-labels.util";
-import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
-import { formatDate } from "../../lib/utils";
+import { useEffect, useRef, useState } from "react";
+import type { Client, Subscription } from "../../types";
 import { billingFailureCopy, isUserInputError, mutationFailureCopy } from "../../lib/mutation-errors";
 import { reactivationNeedsOverride, reactivationVariables } from "../../lib/platform-billing.util";
 import { errorReasonOf } from "../../lib/apollo-client";
@@ -17,13 +13,11 @@ import {
   REACTIVATE_TENANT_SUBSCRIPTION,
   RECORD_SUBSCRIPTION_PAYMENT,
 } from "../../graphql/subscriptions";
-import { useAuth } from "../../providers/AuthProvider";
-import { useClients } from "../../providers/ClientsProvider";
 import { toasts } from "../../copy";
 import { ChangePlanDialog } from "./ChangePlanDialog";
+import { useStoreBillingRefresh } from "./useStoreBillingRefresh";
 import {
   Button as UiButton,
-  Card,
   ConfirmDialog,
   Input,
   Modal,
@@ -36,24 +30,40 @@ import {
   toastError,
 } from "../ui";
 
-export interface SubscriptionActionsProps {
-  client: Client;
-  subscription?: Subscription;
-  plans: Plan[];
+export type SubscriptionDialog = "plan" | "trial" | "cancel" | "payment" | "activate" | "pastDue" | "reactivate";
+
+/**
+ * Which subscription actions fit the subscription today (PRD-005 FR-4.3, PRD-014 SEC-04, PRD-016 FR-18), as the
+ * live Subscription section offered them. Billing & plan puts them in its header (04 S-03d).
+ */
+export function subscriptionActionsFor(
+  subscription: Subscription | undefined,
+  canManageBilling: boolean,
+): Record<SubscriptionDialog, boolean> {
+  const status = subscription?.status;
+  const stopped = status === "CANCELLED" || status === "SUSPENDED" || !!subscription?.canceledAt;
+  return {
+    plan: !!subscription && status !== "CANCELLED",
+    trial: status === "TRIAL",
+    payment: status === "ACTIVE" || status === "TRIAL" || status === "PAST_DUE",
+    activate: canManageBilling && (status === "TRIAL" || status === "PAST_DUE"),
+    pastDue: status === "ACTIVE",
+    reactivate: stopped,
+    cancel: !!status && !stopped,
+  };
 }
 
-type Dialog = "plan" | "trial" | "cancel" | "payment" | "activate" | "pastDue" | "reactivate" | null;
+export interface SubscriptionDialogsProps {
+  client: Client;
+  subscription?: Subscription;
+  /** The open pop-up; the page's header menu sets it. */
+  dialog: SubscriptionDialog | null;
+  onClose: () => void;
+}
 
-// ─── Constants ────────────────────────────────────────────────────────────
-
-const CYCLE_LABELS = { MONTHLY: "monthly", YEARLY: "yearly" } as const;
-
-/** Store detail › Subscription (PRD-005 FR-4.3): the console's subscription actions. */
-export function SubscriptionActions({ client, subscription, plans }: SubscriptionActionsProps) {
-  const { refetch } = useClients();
-  const { can } = useAuth();
-  const canManageBilling = can(PLATFORM_PERMISSIONS.BILLING_MANAGE);
-  const [dialog, setDialog] = useState<Dialog>(null);
+/** The live subscription pop-ups (Rohit: pop-ups are fine), opened from the Billing & plan header. */
+export function SubscriptionDialogs({ client, subscription, dialog, onClose }: SubscriptionDialogsProps) {
+  const refresh = useStoreBillingRefresh();
   const [busy, setBusy] = useState(false);
   // Blocks a second submit before the `busy` re-render lands (a double
   // click would otherwise send the mutation twice).
@@ -79,7 +89,16 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
 
   const status = subscription?.status;
   const tenantId = client.id;
-  const scheduled = scheduledPlanChangeOf(subscription, plans);
+
+  // Each opening starts clean (the pop-ups stay mounted with the page).
+  useEffect(() => {
+    setFieldError(null);
+    if (dialog === "activate") setActivationReason("");
+    if (dialog === "reactivate") {
+      setReactivateOverride(reactivationNeedsOverride(status));
+      setReactivateReason("");
+    }
+  }, [dialog, status]);
 
   const act = async (
     work: () => Promise<unknown>,
@@ -94,10 +113,10 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
       await work();
       // These mutations return the subscription only; the tenant's derived
       // fields (payment badge, health, fee) live on the tenant, so the list
-      // is re-read (review C-M7).
-      await refetch();
+      // is re-read (review C-M7), with the page's billing reads.
+      await refresh();
       addToast({ title: done });
-      setDialog(null);
+      onClose();
     } catch (error) {
       const message = failureCopy(error);
       // A business-rule refusal (PAYMENT_REQUIRED, NOTE_REQUIRED) belongs in the dialog too.
@@ -111,15 +130,8 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
 
   // Cancel, X, Escape and an outside click all close here, so a stale error doesn't reappear.
   const closeDialog = () => {
-    setDialog(null);
     setFieldError(null);
-  };
-
-  const openReactivate = () => {
-    setReactivateOverride(reactivationNeedsOverride(status));
-    setReactivateReason("");
-    setFieldError(null);
-    setDialog("reactivate");
+    onClose();
   };
 
   const runReactivate = () => {
@@ -138,72 +150,13 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
 
   return (
     <>
-      <Card title="Subscription actions" description="Every change is recorded in the audit log and the subscription history.">
-        {scheduled ? (
-          <p className="mb-3 text-body text-fg-muted">
-            Scheduled change: moves to{" "}
-            <span className="font-medium text-fg">
-              {scheduled.plan ? PLAN_LABELS[scheduled.plan.name] : "another plan"}
-              {scheduled.billingCycle ? `, billed ${CYCLE_LABELS[scheduled.billingCycle]}` : ""}
-            </span>{" "}
-            on {formatDate(scheduled.effectiveAt)}, the next renewal.
-          </p>
-        ) : null}
-        <div className="flex flex-wrap gap-2">
-          <UiButton
-            variant="secondary"
-            onPress={() => setDialog("plan")}
-            isDisabled={!subscription || status === "CANCELLED"}
-          >
-            Change plan
-          </UiButton>
-          {status === "TRIAL" ? (
-            <UiButton variant="secondary" onPress={() => setDialog("trial")}>
-              Extend trial
-            </UiButton>
-          ) : null}
-          {status === "ACTIVE" || status === "TRIAL" || status === "PAST_DUE" ? (
-            <UiButton variant="secondary" onPress={() => setDialog("payment")}>
-              Record payment
-            </UiButton>
-          ) : null}
-          {canManageBilling && (status === "TRIAL" || status === "PAST_DUE") ? (
-            <UiButton
-              variant="secondary"
-              onPress={() => {
-                setActivationReason("");
-                setFieldError(null);
-                setDialog("activate");
-              }}
-            >
-              Activate without payment
-            </UiButton>
-          ) : null}
-          {status === "ACTIVE" ? (
-            <UiButton variant="secondary" onPress={() => setDialog("pastDue")}>
-              Mark past due
-            </UiButton>
-          ) : null}
-          {status === "CANCELLED" || status === "SUSPENDED" || subscription?.canceledAt ? (
-            <UiButton variant="primary" onPress={openReactivate}>
-              Reactivate subscription
-            </UiButton>
-          ) : null}
-          {status && status !== "CANCELLED" && status !== "SUSPENDED" && !subscription?.canceledAt ? (
-            <UiButton variant="destructive" onPress={() => setDialog("cancel")}>
-              Cancel subscription
-            </UiButton>
-          ) : null}
-        </div>
-      </Card>
-
       {/* Change plan: PRD-016 preview, eligible plans only (PRD-017 FR-4.2) */}
       <ChangePlanDialog
         isOpen={dialog === "plan"}
         onClose={closeDialog}
         client={client}
         subscription={subscription}
-        onChanged={refetch}
+        onChanged={refresh}
       />
 
       {/* Reactivate (PRD-016 FR-18): a payment, or an audited override with a reason */}
@@ -234,11 +187,11 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
             />
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={closeDialog} isDisabled={busy}>
+            <UiButton variant="secondary" onPress={closeDialog} isDisabled={busy}>
               Cancel
             </UiButton>
             <UiButton
-              variant={reactivateOverride ? "danger" : "primary"}
+              variant={reactivateOverride ? "destructive" : "primary"}
               isLoading={busy}
               isDisabled={busy || (reactivateOverride && !reactivateReason.trim())}
               onPress={runReactivate}
@@ -266,7 +219,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
             />
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={closeDialog}>
+            <UiButton variant="secondary" onPress={closeDialog}>
               Cancel
             </UiButton>
             <UiButton
@@ -330,11 +283,11 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
             />
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={closeDialog}>
+            <UiButton variant="secondary" onPress={closeDialog}>
               Cancel
             </UiButton>
             <UiButton
-              variant="danger"
+              variant="destructive"
               isLoading={busy}
               isDisabled={busy || !activationReason.trim()}
               onPress={() =>
@@ -372,7 +325,7 @@ export function SubscriptionActions({ client, subscription, plans }: Subscriptio
             </div>
           </ModalBody>
           <ModalFooter>
-            <UiButton variant="ghost" onPress={closeDialog}>
+            <UiButton variant="secondary" onPress={closeDialog}>
               Cancel
             </UiButton>
             <UiButton

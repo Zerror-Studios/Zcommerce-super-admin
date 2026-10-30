@@ -4,13 +4,13 @@ import type { InputProps as HeroInputProps } from "@heroui/react";
 import { cx } from "./cx";
 import { getSearchInputClasses, tableSearchIconClass } from "./field-styles";
 import type { FieldSize } from "./field-styles";
-import { IconSearch } from "./icons";
+import { IconClose, IconSearch } from "./icons";
 
 export interface SearchInputProps extends Omit<HeroInputProps, "size" | "variant" | "radius" | "type"> {
   size?: FieldSize;
   /**
    * Where it sits (docs/design/09-settings-and-scale.md §2): "field" fills its container (dialogs, panels);
-   * "toolbar" is the table toolbar search, 34px × 240px; "header" sits in a page header, 36px × 260px.
+   * "toolbar" is the table toolbar search, 32px × 240px; "header" sits in a page header, 36px × 260px.
    * Phones always get the full width.
    */
   placement?: "field" | "toolbar" | "header";
@@ -23,8 +23,8 @@ const placementBase = {
 };
 
 /**
- * The one search field (docs/design/02-components.md §7, 08 §1.5): 34px (36px in headers), 8px radius,
- * 15px leading magnifier, clear button when it has a value. Always pass a page-specific placeholder
+ * The one search field (01 §7.5): a capsule, 36px (32px in table toolbars),
+ * 16px leading magnifier, a 20px circle clear button when it has a value. Always pass a page-specific placeholder
  * ("Search orders"). Every search in both apps is this component.
  */
 export function SearchInput({
@@ -33,6 +33,7 @@ export function SearchInput({
   classNames,
   startContent,
   isClearable = true,
+  endContent,
   "aria-label": ariaLabel,
   placeholder = "Search",
   ...rest
@@ -50,15 +51,22 @@ export function SearchInput({
       classNames={{
         ...classNames,
         base: cx(placementBase[placement], classNames?.base),
-        input: cx(styles.input, classNames?.input),
         inputWrapper: cx(
           styles.inputWrapper,
-          size === "sm" && "h-8 min-h-8",
-          placement === "header" && "h-9 min-h-9",
+          (size === "sm" || placement === "toolbar") && "h-[var(--zc-control-h-sm)] min-h-[var(--zc-control-h-sm)]",
           classNames?.inputWrapper,
         ),
-        clearButton: cx("text-fg-muted", classNames?.clearButton),
+        input: cx(styles.input, (size === "sm" || placement === "toolbar") && "md:text-[13px]", classNames?.input),
+        // HeroUI shows the button as `block`, so its icon sat on the text baseline: centre it as a flex box in the
+        // middle of the field, with our 12px × in a 20px sunken circle (01 §7.5).
+        clearButton: cx(
+          "m-0 top-1/2 -translate-y-1/2 size-5 min-w-5 items-center justify-center rounded-full bg-surface-sunken p-0 text-fg-muted",
+          "peer-data-[filled=true]:flex hover:text-fg [&_svg]:size-3",
+          classNames?.clearButton,
+        ),
       }}
+      // Inside a clearable input HeroUI renders endContent as the clear button's icon.
+      endContent={endContent ?? (isClearable ? <IconClose aria-hidden /> : undefined)}
       {...rest}
     />
   );

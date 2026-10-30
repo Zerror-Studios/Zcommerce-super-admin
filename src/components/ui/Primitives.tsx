@@ -38,40 +38,78 @@ export function BackLink({ to, children, className }: BackLinkProps) {
 // ─── SaveBar ─────────────────────────────────────────────────────────────────
 
 export interface SaveBarProps {
-  /** Show only when the form is dirty. */
+  /** Show only when something differs from the saved values. */
   isVisible: boolean;
   onDiscard: () => void;
   onSave: () => void;
   isSaving?: boolean;
+  /** How many fields changed: the second line reads "3 changes". */
+  dirtyCount?: number;
+  /** Fields with errors: the bar reads "Fix 2 fields to save" in red. */
+  errorCount?: number;
+  /** Replaces the first line ("Unsaved changes"). */
   message?: ReactNode;
   saveLabel?: string;
   discardLabel?: string;
 }
 
-/** Sticky bar for forms and settings: "Unsaved changes · Discard · Save". Slides away after saving. */
+/**
+ * Floating save bar (02 §7.1): at the bottom of the content column, 16px up; white, radius 16, 1px border, popover
+ * shadow, 64px, padding 12 16; rises 12px and fades in (220ms). Left "Unsaved changes" + "3 changes"; right
+ * secondary "Discard" and primary "Save changes". The AI bar hides while it shows. One save bar per page.
+ */
 export function SaveBar({
   isVisible,
   onDiscard,
   onSave,
   isSaving = false,
-  message = "Unsaved changes",
-  saveLabel = "Save",
+  dirtyCount,
+  errorCount = 0,
+  message,
+  saveLabel = "Save changes",
   discardLabel = "Discard",
 }: SaveBarProps) {
+  // Tells the shell to hide the AI bar (components.css: html[data-zc-savebar]).
+  useEffect(() => {
+    if (!isVisible) return undefined;
+    document.documentElement.dataset.zcSavebar = "open";
+    return () => {
+      delete document.documentElement.dataset.zcSavebar;
+    };
+  }, [isVisible]);
+
+  const hasErrors = errorCount > 0;
   return (
     <div
       aria-hidden={!isVisible}
+      role="region"
+      aria-label="Unsaved changes"
       className={cx(
-        "sticky bottom-4 z-[var(--zc-z-sticky)] mt-6 flex w-full items-center justify-between gap-3 rounded-card border border-line bg-surface px-4 py-2.5 shadow-popover transition-all duration-base ease-standard",
-        isVisible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0",
+        "sticky bottom-4 z-[var(--zc-z-sticky)] mt-6 flex min-h-16 w-full items-center justify-between gap-3 rounded-[var(--zc-radius-card)] border border-line bg-surface px-4 py-3 shadow-popover transition-[opacity,transform] duration-base ease-enter",
+        isVisible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0",
       )}
     >
-      <span className="text-body font-medium text-fg">{message}</span>
-      <span className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" isDisabled={isSaving || !isVisible} onPress={onDiscard}>
+      <span className="min-w-0">
+        {hasErrors ? (
+          <span className="block text-body font-medium text-tone-danger-text" role="alert">
+            Fix {errorCount} {errorCount === 1 ? "field" : "fields"} to save
+          </span>
+        ) : (
+          <>
+            <span className="block truncate text-body font-medium text-fg">{message ?? "Unsaved changes"}</span>
+            {dirtyCount ? (
+              <span className="block text-label text-fg-muted num">
+                {dirtyCount} {dirtyCount === 1 ? "change" : "changes"}
+              </span>
+            ) : null}
+          </>
+        )}
+      </span>
+      <span className="flex shrink-0 items-center gap-2">
+        <Button variant="secondary" isDisabled={isSaving || !isVisible} onPress={onDiscard}>
           {discardLabel}
         </Button>
-        <Button variant="primary" size="sm" isLoading={isSaving} isDisabled={!isVisible} onPress={onSave}>
+        <Button variant="primary" isLoading={isSaving} isDisabled={!isVisible} onPress={onSave}>
           {saveLabel}
         </Button>
       </span>
@@ -126,8 +164,8 @@ export function Kbd({ children, dark = false, className }: { children: ReactNode
   return (
     <kbd
       className={cx(
-        "inline-flex h-5 items-center rounded-xs border px-1.5 font-mono text-caption",
-        dark ? "border-nav-border text-nav-fg-muted" : "border-line bg-surface-muted text-fg-muted",
+        "zc-kbd",
+        dark && "zc-kbd--dark",
         className,
       )}
     >

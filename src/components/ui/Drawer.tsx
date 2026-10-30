@@ -4,41 +4,55 @@ import type { DrawerProps as HeroDrawerProps } from "@heroui/react";
 import { cx } from "./cx";
 import { IconClose } from "./icons";
 
+export type DrawerSize = "sm" | "md" | "lg";
+
 export interface DrawerProps extends Omit<HeroDrawerProps, "size"> {
-  /**
-   * md 480px (default: forms, details, the assistant); lg 560px (tables, image settings, variant editing).
-   * Full width on phones.
-   */
+  /** sm 400 (filters, small forms), md 560 (message, review, restock), lg 640 (history, tables). Full width on phone. */
+  size?: DrawerSize;
+  /** LEGACY (v1 widths): md → size md, lg → size lg. Use `size`. */
   width?: "md" | "lg";
 }
 
-const widthClasses = {
-  md: "w-full max-w-modal-sm",
-  lg: "w-full max-w-drawer-image",
-} as const;
+/** Enter: slide from the right in 320ms; exit 220ms (01 §7.15). Reduced motion keeps only the fade. */
+const drawerMotionProps = {
+  variants: {
+    enter: { x: 0, opacity: 1, transition: { x: { duration: 0.32, ease: [0, 0, 0.2, 1] as const }, opacity: { duration: 0.22 } } },
+    exit: { x: "100%", opacity: 1, transition: { x: { duration: 0.22, ease: [0.4, 0, 1, 1] as const }, opacity: { duration: 0.22 } } },
+  },
+};
 
 /**
- * Right drawer (docs/design/02-components.md §11, owner 2026-10-29: every drawer the same): square corners,
- * full height, 40% ink backdrop, title 16/600 with a bottom border, ghost close button, 220ms slide from
- * HeroUI. Use with DrawerContent / DrawerHeader / DrawerBody / DrawerFooter from @heroui/react.
+ * Right-hand drawer (01 §7.15b, `.zc-drawer` in src/styles/components.css): full height, 20px radius on the left
+ * corners, 64px header (title 18/600, optional meta line under it), ghost circle close, body padding 20 24,
+ * optional sticky 72px footer with the buttons on the right (at most one primary). Escape and the overlay close
+ * it; focus is trapped and returns to the trigger (HeroUI). Use with DrawerContent / DrawerHeader / DrawerBody /
+ * DrawerFooter from @heroui/react. Menus, selects and tooltips inside render in its layer.
  */
-export function Drawer({ classNames, placement = "right", backdrop = "opaque", closeButton, width = "md", ...rest }: DrawerProps) {
+export function Drawer({
+  classNames,
+  placement = "right",
+  backdrop = "opaque",
+  closeButton,
+  size,
+  width,
+  motionProps,
+  ...rest
+}: DrawerProps) {
+  const resolved: DrawerSize = size ?? width ?? "md";
   return (
     <HeroDrawer
       placement={placement}
       backdrop={backdrop}
-      closeButton={closeButton ?? <IconClose aria-hidden className="size-4" />}
+      motionProps={motionProps ?? drawerMotionProps}
+      closeButton={closeButton ?? <IconClose aria-hidden />}
       classNames={{
         ...classNames,
-        backdrop: cx("bg-overlay/40", classNames?.backdrop),
-        base: cx("h-dvh max-h-dvh rounded-none bg-surface", widthClasses[width], classNames?.base),
-        header: cx("border-b border-line px-5 py-4 pr-14 text-base font-semibold text-fg", classNames?.header),
-        body: cx("custom-scroll px-5 py-4 text-sm text-fg", classNames?.body),
-        footer: cx("gap-2 border-t border-line px-5 py-3", classNames?.footer),
-        closeButton: cx(
-          "top-4 end-4 size-8 rounded-lg text-fg-muted transition-colors duration-instant ease-standard hover:bg-surface-sunken hover:text-fg",
-          classNames?.closeButton,
-        ),
+        backdrop: cx("zc-drawer-backdrop", classNames?.backdrop),
+        base: cx("zc-drawer", `zc-drawer--${resolved}`, classNames?.base),
+        header: cx("zc-drawer__header", classNames?.header),
+        body: cx("zc-drawer__body custom-scroll", classNames?.body),
+        footer: cx("zc-drawer__footer", classNames?.footer),
+        closeButton: cx("zc-drawer__close", classNames?.closeButton),
       }}
       {...rest}
     />

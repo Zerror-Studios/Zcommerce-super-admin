@@ -1,10 +1,8 @@
 import type { ReactNode } from "react";
-import { Button as UiButton } from "../ui";
-import { IconClose } from "../ui/icons";
+import { Button as UiButton, FilterChip } from "../ui";
 
 /**
- * Active filters as chips under the table toolbar, with "Clear all" at the end
- * (docs/design/09-settings-and-scale.md §3.1). Renders nothing without chips.
+ * Applied filters as blue capsule chips under the table toolbar, with "Clear all" at the end (01 §7.12). Renders nothing without chips.
  */
 export interface AppliedFilterItem {
   key: string;
@@ -13,19 +11,7 @@ export interface AppliedFilterItem {
 }
 
 export function AppliedFilter({ children, onRemove }: { children: ReactNode; onRemove: () => void }) {
-  return (
-    <span className="inline-flex h-7 items-center gap-1 rounded-lg border border-line bg-surface pl-2.5 pr-1 text-label text-fg">
-      {children}
-      <button
-        type="button"
-        aria-label="Remove filter"
-        onClick={onRemove}
-        className="inline-flex size-5 items-center justify-center rounded-sm text-fg-muted transition-colors duration-instant hover:bg-surface-sunken hover:text-fg"
-      >
-        <IconClose aria-hidden className="size-3.5" />
-      </button>
-    </span>
-  );
+  return <FilterChip onRemove={onRemove}>{children}</FilterChip>;
 }
 
 export function AppliedFilters({ items, onClearAll }: { items: AppliedFilterItem[]; onClearAll: () => void }) {
@@ -37,7 +23,7 @@ export function AppliedFilters({ items, onClearAll }: { items: AppliedFilterItem
           {item.label}
         </AppliedFilter>
       ))}
-      <UiButton variant="link" size="sm" onPress={onClearAll}>
+      <UiButton variant="tertiary" size="sm" onPress={onClearAll}>
         Clear all
       </UiButton>
     </div>

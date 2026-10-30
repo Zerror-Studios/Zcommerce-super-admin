@@ -188,7 +188,7 @@ export function PaneHeader({ title, description, badges, actions, className }: P
     <div className={cx("mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between", className)}>
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-heading font-semibold text-fg">{title}</h2>
+          <h2 className="text-title-2 font-semibold text-fg">{title}</h2>
           {badges}
         </div>
         {description != null ? <p className="mt-0.5 text-body text-fg-muted">{description}</p> : null}

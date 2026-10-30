@@ -59,8 +59,10 @@ export const STATUS_MAP: Record<StatusDomain, Record<string, StatusInfo>> = {
     scheduled: s("Upcoming", "info"),
     processing: s("Processing", "info"),
     authorized: s("Processing", "info"),
-    pending: s("Due", "warning"),
-    unpaid: s("Due", "warning"),
+    // v2 status words (03 "Status words"): Awaiting payment replaces "Un paid"; Pending is info.
+    pending: s("Pending", "info"),
+    unpaid: s("Awaiting payment", "warning"),
+    un_paid: s("Awaiting payment", "warning"),
     due: s("Due", "warning"),
     partially_paid: s("Partially paid", "warning"),
     overdue: s("Overdue", "danger"),
@@ -68,7 +70,7 @@ export const STATUS_MAP: Record<StatusDomain, Record<string, StatusInfo>> = {
     failed: s("Failed", "danger"),
     declined: s("Failed", "danger"),
     refunded: s("Refunded", "neutral"),
-    partially_refunded: s("Refunded", "neutral"),
+    partially_refunded: s("Partially refunded", "neutral"),
     void: s("Void", "neutral"),
     cancelled: s("Void", "neutral"),
   },
@@ -92,8 +94,11 @@ export const STATUS_MAP: Record<StatusDomain, Record<string, StatusInfo>> = {
     // added: Store SMS / email campaigns
     draft: s("Draft", "neutral"),
     scheduled: s("Scheduled", "info"),
-    running: s("Running", "info"),
-    completed: s("Completed", "success"),
+    // v2 status words (03): Draft · Scheduled · Sending · Sent · Failed.
+    running: s("Sending", "info"),
+    sending: s("Sending", "info"),
+    completed: s("Sent", "success"),
+    sent: s("Sent", "success"),
     paused: s("Paused", "neutral"),
     cancelled: s("Cancelled", "danger"),
     failed: s("Failed", "danger"),
@@ -163,7 +168,9 @@ export const STATUS_MAP: Record<StatusDomain, Record<string, StatusInfo>> = {
     // added: Store customer reviews
     approved: s("Approved", "success"),
     pending: s("Pending", "warning"),
-    rejected: s("Rejected", "danger"),
+    // v2: a hidden review is not an error (03 "Status words": Review Pending / Approved / Hidden).
+    rejected: s("Hidden", "neutral"),
+    hidden: s("Hidden", "neutral"),
   },
   subscriber: {
     // added: Store newsletter subscribers

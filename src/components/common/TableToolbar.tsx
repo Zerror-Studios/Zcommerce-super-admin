@@ -1,8 +1,14 @@
-import { Checkbox, CheckboxGroup, DropdownItem, DropdownTrigger, Popover, PopoverContent, PopoverTrigger } from "@heroui/react";
-import type { ReactNode } from "react";
+import { Checkbox, CheckboxGroup, DropdownItem, DropdownTrigger } from "@heroui/react";
+import { useState, type ReactNode } from "react";
 import { SearchInput } from "../ui/SearchInput";
-import { IconColumns, IconFilters } from "../ui/icons";
-import { Button as UiButton, Dropdown as UiDropdown, DropdownMenu as UiDropdownMenu } from "../ui";
+import { IconColumns } from "../ui/icons";
+import {
+  FilterButton,
+  FilterDrawer,
+  IconButton as UiIconButton,
+  Dropdown as UiDropdown,
+  DropdownMenu as UiDropdownMenu,
+} from "../ui";
 import { tableCheckboxClassNames } from "../ui/table-styles";
 
 export interface TableColumnOption {
@@ -17,7 +23,12 @@ export interface TableToolbarProps {
   columns?: TableColumnOption[];
   visibleColumns?: string[];
   onVisibleColumnsChange?: (keys: string[]) => void;
+  /** The filter fields; they open in the filter drawer from the right (01 §7.15) and apply as they change. */
   filterContent?: ReactNode;
+  /** Applied filters: the button reads "Filter · 2". */
+  filterCount?: number;
+  /** "Clear all" in the filter drawer: clears every filter at once. */
+  onClearFilters?: () => void;
   endContent?: ReactNode;
   /** Status tabs on the left of the same row (docs/design/02-components.md §6). */
   tabs?: ReactNode;
@@ -31,9 +42,12 @@ export function TableToolbar({
   visibleColumns,
   onVisibleColumnsChange,
   filterContent,
+  filterCount = 0,
+  onClearFilters,
   endContent,
   tabs,
 }: TableToolbarProps) {
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const searchField = (
     <SearchInput
       placement="toolbar"
@@ -44,32 +58,29 @@ export function TableToolbar({
     />
   );
 
-  /* Row 1 of the table card: tabs left; search, Filter, Columns right. Without tabs the search sits left. */
+  /* Row 1 of the table card (01 §7.14): 52px, the segmented status switch left; search (32px × 240), Filter and
+     the Columns circle right, 8px apart. Without tabs the search sits left. Wraps to a second row when it can't fit. */
   return (
-    <div className="flex min-h-[52px] flex-col gap-2 border-b border-line bg-surface px-4 py-2 lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:py-0">
-      {tabs ? <div className="flex min-w-0 self-stretch">{tabs}</div> : searchField}
+    <div className="flex min-h-[var(--zc-table-toolbar-h)] flex-col gap-2 border-b border-line-subtle bg-surface px-4 py-2 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+      {tabs ? <div className="flex min-w-0 items-center">{tabs}</div> : searchField}
 
-      <div className="flex flex-wrap items-center gap-1 lg:justify-end">
-        {tabs ? <div className="mr-1">{searchField}</div> : null}
+      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+        {tabs ? searchField : null}
         {filterContent ? (
-          <Popover placement="bottom-end">
-            <PopoverTrigger>
-              <UiButton variant="ghost" size="sm" startIcon={<IconFilters aria-hidden />}>
-                Filter
-              </UiButton>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 rounded-xl border border-line p-4 shadow-popover">
-              <div className="flex w-full flex-col gap-3">{filterContent}</div>
-            </PopoverContent>
-          </Popover>
+          <>
+            <FilterButton count={filterCount} onPress={() => setFiltersOpen(true)} />
+            <FilterDrawer isOpen={filtersOpen} onClose={() => setFiltersOpen(false)} onClear={onClearFilters}>
+              {filterContent}
+            </FilterDrawer>
+          </>
         ) : null}
 
         {columns && visibleColumns && onVisibleColumnsChange ? (
           <UiDropdown placement="bottom-end">
             <DropdownTrigger>
-              <UiButton variant="ghost" size="sm" startIcon={<IconColumns aria-hidden />}>
-                Columns
-              </UiButton>
+              <UiIconButton aria-label="Choose columns" variant="default" size="sm" showTooltip={false}>
+                <IconColumns aria-hidden />
+              </UiIconButton>
             </DropdownTrigger>
             <UiDropdownMenu
               aria-label="Toggle columns"
@@ -157,8 +168,8 @@ export function FilterCheckboxGroup({
   onChange,
 }: FilterCheckboxGroupProps) {
   return (
-    <div className="space-y-2">
-      <p className="text-label font-medium text-fg-muted">{label}</p>
+    <section className="zc-filter-group" aria-label={label}>
+      <span className="zc-filter-group__label">{label}</span>
       <CheckboxGroup
         value={value}
         onValueChange={onChange}
@@ -171,6 +182,6 @@ export function FilterCheckboxGroup({
           </Checkbox>
         ))}
       </CheckboxGroup>
-    </div>
+    </section>
   );
 }
