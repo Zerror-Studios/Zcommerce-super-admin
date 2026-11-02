@@ -2,13 +2,20 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ClientsTable } from "../components/clients/ClientsTable";
 import { EarningsChart } from "../components/dashboard/EarningsChart";
-import { NeedsAttention } from "../components/dashboard/NeedsAttention";
-import { Button, ErrorState, KpiStrip, StatCard, VideoBanner } from "../components/ui";
+import { AttentionSummaryCard } from "../components/insights/home/AttentionSummaryCard";
+import { MoneyDueCard } from "../components/insights/home/MoneyDueCard";
+import { AtRiskCard, DevelopmentCard } from "../components/insights/home/StoreListCard";
+import { MetricCard } from "../components/insights/MetricCard";
+import { SnapshotHeader } from "../components/insights/SnapshotHeader";
+import { Button, ErrorState, KpiStrip, VideoBanner } from "../components/ui";
 import { IconAdd } from "../components/ui/icons";
 import { toasts } from "../copy";
+import { knownStoreNames, thisMonthCells } from "../lib/home-attention.util";
+import { FIRST_SNAPSHOT_COPY } from "../lib/platform-insights.util";
 import { PLATFORM_PERMISSIONS } from "../lib/permissions";
 import { useAuth } from "../providers/AuthProvider";
 import { useClients } from "../providers/ClientsProvider";
+import { usePlatformAttention } from "../hooks/use-platform-insights";
 import { useRevenueOverview } from "../hooks/use-platform-reports";
 
 const monthYear = new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" });
@@ -18,32 +25,36 @@ function plural(n: number, one: string, many: string): string {
 }
 
 /**
- * Home (04 S-01): the video banner (no tiles: "OCTOBER 2026 · 3 STORES", the greeting at the bottom left, one glass
- * "+ Add store") → "This month" with Rohit's four figures → Needs your attention (full width) → Earnings → Stores.
- * Every number comes from the server rollup.
+ * Home (backend PRD-026 FR-7.1, console guide §3): the video banner, then
+ * "Last updated · Refresh now" and the blocks in this order: money due this
+ * week (read live; hidden without billing:read), stores at risk, this month
+ * in one row (each a snapshot metric, so small samples show names and
+ * missing ones their reason), new and in development, and What needs
+ * attention (the daily summary). Ask ZCOM is the floating ask bar. Below
+ * them the earnings chart and the stores preview stay as before. Every
+ * number is the server's; the page computes none.
  */
 export function Home() {
-  const { clients, subscriptions, loading: clientsLoading, error: clientsError, refetch, totalCount } = useClients();
+  const { clients, loading: clientsLoading, error: clientsError, refetch, totalCount } = useClients();
   const navigate = useNavigate();
   const { can } = useAuth();
   const now = useMemo(() => new Date(), []);
+  const attention = usePlatformAttention();
+  const data = attention.data;
+  const loading = attention.loading;
+  const firstRun = !loading && !attention.error && data != null && !data.computedAt;
+  const cells = thisMonthCells(data?.thisMonth);
+  const storeNames = useMemo(() => knownStoreNames(data), [data]);
 
-  // PRD-005 FR-5.3: money comes from the server rollup (root CLAUDE.md §4).
+  // PRD-005 FR-5.3: the earnings chart reads the server rollup.
   const yearRange = useMemo(() => ({ startDate: new Date(now.getFullYear(), 0, 1), endDate: now }), [now]);
-  const api = useRevenueOverview(yearRange);
-  const loading = api.loading;
-  const summary = api.data.summary;
-  const open = {
-    amount: summary.outstandingAmount,
-    unpaidStores: summary.unpaidStores,
-    overdueStores: summary.overdueStores,
-  };
+  const revenue = useRevenueOverview(yearRange);
 
   return (
     <div className="mx-auto flex w-full max-w-[1136px] flex-col gap-6">
       <VideoBanner
         eyebrow={`${monthYear.format(now)} · ${plural(totalCount, "store", "stores")}`}
-        subline="Here's how the Zcom business is doing this month."
+        subline="Here's what needs your attention today."
         action={
           can(PLATFORM_PERMISSIONS.TENANTS_MANAGE) ? (
             <Button variant="glass" startIcon={<IconAdd aria-hidden />} onPress={() => navigate("/stores/new")}>
@@ -53,63 +64,60 @@ export function Home() {
         }
       />
 
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-title-2 text-fg">This month</h2>
-          <span className="text-body text-fg-muted">{monthYear.format(now)}</span>
-        </div>
-        {api.error ? (
-          <ErrorState title="Couldn't load the platform numbers." description={toasts.genericError} onRetry={() => void api.refetch()} />
-        ) : (
-          <KpiStrip>
-            <StatCard
-              bare
-              label="Earned this month"
-              value={summary.earnedMonth}
-              format="money"
-              deltaLabel={`${summary.paidStoresMonth} of ${plural(summary.billableStores, "store", "stores")} paid`}
-              href="/analytics/revenue"
-              isLoading={loading}
-            />
-            <StatCard
-              bare
-              label="Earned this year"
-              value={summary.earnedYear}
-              format="money"
-              deltaLabel="Since 1 Jan"
-              href="/analytics/revenue"
-              isLoading={loading}
-            />
-            <StatCard
-              bare
-              label={`Projected for ${now.getFullYear()}`}
-              value={summary.projectedYear}
-              format="money"
-              deltaLabel="At current monthly billing"
-              href="/analytics/revenue"
-              isLoading={loading}
-            />
-            <StatCard
-              bare
-              label="Outstanding"
-              value={open.amount}
-              format="money"
-              valueTone={open.amount > 0 && open.overdueStores > 0 ? "danger" : open.amount > 0 ? "warning" : "default"}
-              deltaLabel={
-                open.unpaidStores > 0
-                  ? `${plural(open.unpaidStores, "store", "stores")} unpaid · ${open.overdueStores} overdue`
-                  : "Nothing unpaid"
-              }
-              href="/subscriptions"
-              isLoading={loading}
-            />
-          </KpiStrip>
-        )}
-      </div>
+      {attention.error ? (
+        <ErrorState
+          title="Couldn't load the platform numbers."
+          description={toasts.genericError}
+          onRetry={() => void attention.refetch()}
+        />
+      ) : (
+        <>
+          <SnapshotHeader computedAt={data?.computedAt ?? null} stale={data?.stale ?? false} />
+          {firstRun ? <p className="text-body text-fg-muted">{FIRST_SNAPSHOT_COPY}. Money due below is live.</p> : null}
 
-      <NeedsAttention clients={clients} subscriptions={subscriptions} now={now} isLoading={clientsLoading} />
+          {loading || data?.moneyDue ? (
+            <MoneyDueCard moneyDue={data?.moneyDue ?? null} isLoading={loading} />
+          ) : null}
 
-      <EarningsChart monthly={api.data.monthly} monthlyBilling={api.data.billing} now={now} isLoading={loading} />
+          <AtRiskCard list={data?.atRisk ?? null} isLoading={loading} />
+
+          {loading || cells.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              <h2 className="text-title-2 text-fg">This month</h2>
+              <KpiStrip>
+                {loading
+                  ? ["mrr", "collected", "outstanding", "new", "lost", "ai"].map((key) => (
+                      <MetricCard key={key} metric={null} label=" " bare isLoading />
+                    ))
+                  : cells.map((cell) => (
+                      <MetricCard
+                        key={cell.key}
+                        metric={cell.metric}
+                        label={cell.label}
+                        smallSampleThreshold={data?.smallSampleThreshold}
+                        bare
+                      />
+                    ))}
+              </KpiStrip>
+            </div>
+          ) : null}
+
+          <DevelopmentCard list={data?.development ?? null} isLoading={loading} />
+
+          <AttentionSummaryCard
+            summary={data?.whatNeedsAttention ?? null}
+            storeNames={storeNames}
+            isLoading={loading}
+          />
+        </>
+      )}
+
+      <EarningsChart
+        monthly={revenue.data.monthly}
+        monthlyBilling={revenue.data.billing}
+        now={now}
+        isLoading={revenue.loading}
+      />
 
       {clientsError ? (
         <ErrorState title="Couldn't load the stores." description={toasts.genericError} onRetry={() => void refetch()} />

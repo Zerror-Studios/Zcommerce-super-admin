@@ -108,6 +108,47 @@ export const PLATFORM_TENANTS = gql`
   }
 `;
 
+/**
+ * PRD-026 FR-3.4 (guide §6): the Stores page's server-side filters and
+ * signals. A light list (no `PlatformTenantFields`, which sits near the
+ * cost limit): the derived lifecycle status, the risk score with its
+ * reasons, and the profile fields the new filters offer. Read 100 at a
+ * time with the same `filter` the table and the CSV export use.
+ */
+export const PLATFORM_TENANT_SIGNALS = gql`
+  query PlatformTenantSignals(
+    $filter: PlatformTenantFilter
+    $limit: Int
+    $offset: Int
+  ) {
+    platformTenants(
+      filter: $filter
+      sort: NAME_ASC
+      limit: $limit
+      offset: $offset
+    ) {
+      items {
+        id
+        lifecycleStatus
+        riskScore
+        riskReasons
+        profile {
+          category
+          source
+          city
+          state
+          tags
+          accountManager {
+            id
+            name
+          }
+        }
+      }
+      totalCount
+    }
+  }
+`;
+
 /** One store by id: deep links to a store not (yet) in the list (PRD-014 FE-09). */
 export const PLATFORM_TENANT = gql`
   ${PLATFORM_TENANT_FIELDS}

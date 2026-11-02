@@ -1,6 +1,7 @@
 /**
- * Settings › ZCOM AI settings (04 S-07g, PRD-021 FR-6.4): the master `ai_config` as five cards on one page —
- * Assistant, Spend, Limits, Night window, Model prices (anchors #assistant … #prices) — and one save bar.
+ * Settings › ZCOM AI settings (04 S-07g, PRD-021 FR-6.4): the master `ai_config` as six cards on one page —
+ * Assistant, Spend, Limits, Night window, Model prices, Super Admin AI (PRD-026 FR-6, anchors #assistant …
+ * #superadmin) — and one save bar.
  * Anyone with `platform:ai:read` sees it; changing it needs `platform:ai:manage` (and two-step for manage roles,
  * handled by the Apollo link). Only the fields that changed are sent; every service picks the change up within
  * 60 seconds.
@@ -15,12 +16,14 @@ import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import {
   AI_CONFIG_FORM_FIELDS,
   AI_CONFIG_PROPAGATION_COPY,
+  SUPERADMIN_APPLIES_COPY,
   aiConfigDraft,
   aiConfigPatch,
   aiFieldErrorsFromServer,
   aiKnownModels,
   type AiConfigDraft,
   type FieldErrors,
+  type SuperadminField,
 } from "../../lib/platform-ai.util";
 import { useAuth } from "../../providers/AuthProvider";
 import type { PlatformAiConfig } from "../../types/platform-api";
@@ -207,6 +210,29 @@ function AiConfigForm({ config, canManage }: { config: PlatformAiConfig; canMana
       onValueChange={setText(field)}
       description={options.description}
       startContent={options.prefix ? <span className="text-label text-fg-subtle">{options.prefix}</span> : undefined}
+      classNames={{ input: "num" }}
+      isReadOnly={readOnly}
+      isInvalid={!!errors[field]}
+      errorMessage={errors[field]}
+    />
+  );
+
+  // PRD-026 guide §8: the Super Admin AI fields (whole numbers)
+  const superInput = (field: SuperadminField, label: string, options: { description?: string; suffix?: string } = {}) => (
+    <Input
+      id={`ai-${field.replace(/\./g, "-")}`}
+      label={label}
+      type="number"
+      inputMode="numeric"
+      min={0}
+      step="1"
+      value={draft.superadmin[field] ?? ""}
+      onValueChange={(value) => {
+        setDraft((current) => ({ ...current, superadmin: { ...current.superadmin, [field]: value } }));
+        clearError(field);
+      }}
+      description={options.description}
+      endContent={options.suffix ? <span className="text-label text-fg-subtle">{options.suffix}</span> : undefined}
       classNames={{ input: "num" }}
       isReadOnly={readOnly}
       isInvalid={!!errors[field]}
@@ -437,6 +463,34 @@ function AiConfigForm({ config, canManage }: { config: PlatformAiConfig; canMana
         </ul>
         {errors.pricing ? <p className="border-t border-line-subtle px-5 py-3 text-caption text-tone-danger-text">{errors.pricing}</p> : null}
       </Card>
+
+      {config.superadmin ? (
+        <Card
+          id="superadmin"
+          data-settings-field
+          title="Super Admin AI"
+          description="The nightly platform snapshot, Refresh now and Ask ZCOM for Zerror staff."
+        >
+          <FieldGrid>
+            {superInput("superadmin.manualRefreshCooldownMin", "Refresh now cooldown", {
+              suffix: "min",
+              description: "Minutes between two manual refreshes.",
+            })}
+            {superInput("superadmin.smallSampleThreshold", "Small-sample threshold", {
+              suffix: "stores",
+              description: "Below this many active stores, rates show as counts and names.",
+            })}
+            {superInput("superadmin.zerrorMonthlyTokenBudget", "Internal monthly token budget", {
+              suffix: "tokens",
+              description: "Zerror's own budget for the staff chat and the daily summary.",
+            })}
+            {superInput("superadmin.rateLimitPerMinute", "Staff questions per minute")}
+            {superInput("superadmin.atRisk.daysNoLogin", "At risk: no login for", { suffix: "days" })}
+            {superInput("superadmin.atRisk.gmvDropPct", "At risk: sales down by", { suffix: "%" })}
+            <p className={cx(fieldSpanFull, "text-caption text-fg-muted")}>{SUPERADMIN_APPLIES_COPY}</p>
+          </FieldGrid>
+        </Card>
+      ) : null}
 
       {canManage ? (
         <SettingsSaveBar

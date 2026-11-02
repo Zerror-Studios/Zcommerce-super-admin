@@ -1177,10 +1177,38 @@ export interface PlatformAiConfig {
   perQuestionTokenCeiling: number;
   rateLimitPerMinute: number;
   benchmarkMinStores: number;
+  /** PRD-026 FR-6: the Super Admin AI (snapshot and staff chat). */
+  superadmin: PlatformAiSuperadminConfig;
+}
+
+/** PRD-026 FR-6 / guide §8. */
+export interface PlatformAiSuperadminConfig {
+  /** Minutes between two "Refresh now" runs. */
+  manualRefreshCooldownMin: number;
+  /** Zerror's own monthly token budget for the staff chat and summary. */
+  zerrorMonthlyTokenBudget: number;
+  /** Below this many active stores, rates show as counts and names. */
+  smallSampleThreshold: number;
+  /** Staff chat questions per minute. */
+  rateLimitPerMinute: number;
+  atRisk: {
+    daysNoLogin: number;
+    gmvDropPct: number;
+  };
+}
+
+export interface PlatformAiSuperadminConfigInput {
+  manualRefreshCooldownMin?: number;
+  zerrorMonthlyTokenBudget?: number;
+  smallSampleThreshold?: number;
+  rateLimitPerMinute?: number;
+  atRisk?: { daysNoLogin?: number; gmvDropPct?: number };
 }
 
 /** Only the fields that change (the server keeps the rest). */
-export type PlatformAiConfigInput = Partial<PlatformAiConfig>;
+export type PlatformAiConfigInput = Partial<Omit<PlatformAiConfig, "superadmin">> & {
+  superadmin?: PlatformAiSuperadminConfigInput;
+};
 
 /** Per-store overrides; null = the plan's value. */
 export interface PlatformAiTenantSetting {

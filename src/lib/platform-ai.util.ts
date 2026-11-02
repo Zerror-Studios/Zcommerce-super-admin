@@ -17,6 +17,7 @@ import type {
   PlatformAiDataHealthRow,
   PlatformAiModelPrice,
   PlatformAiOverrideInput,
+  PlatformAiSuperadminConfigInput,
   PlatformAiTenantSetting,
   PlatformAiTopUpRequestStatus,
 } from "../types/platform-api";
@@ -65,6 +66,47 @@ const CONFIG_LIMITS = {
 
 type NumericConfigField = keyof typeof CONFIG_LIMITS;
 
+/**
+ * PRD-026 FR-6 (guide §8): the Super Admin AI fields, keyed by their path
+ * under `superadmin` (the server's `field` for an INVALID_AI_CONFIG), with
+ * the server's limits (`AiConfigPatchSchema.superadmin`). Whole numbers.
+ */
+export const SUPERADMIN_LIMITS = {
+  "superadmin.manualRefreshCooldownMin": { min: 0, max: 24 * 60 },
+  "superadmin.zerrorMonthlyTokenBudget": { min: 0, max: 1_000_000_000 },
+  "superadmin.smallSampleThreshold": { min: 1, max: 1000 },
+  "superadmin.rateLimitPerMinute": { min: 1, max: 1000 },
+  "superadmin.atRisk.daysNoLogin": { min: 1, max: 365 },
+  "superadmin.atRisk.gmvDropPct": { min: 1, max: 100 },
+} as const;
+
+export type SuperadminField = keyof typeof SUPERADMIN_LIMITS;
+
+export const SUPERADMIN_FIELDS = Object.keys(SUPERADMIN_LIMITS) as SuperadminField[];
+
+/** Guide §8: when a Super Admin AI change takes effect. */
+export const SUPERADMIN_APPLIES_COPY =
+  "Changes apply within about a minute, to the numbers from the next snapshot or Refresh now.";
+
+/** The current value of a Super Admin AI field. */
+function superadminValue(config: PlatformAiConfig, field: SuperadminField): number {
+  const sa = config.superadmin;
+  switch (field) {
+    case "superadmin.manualRefreshCooldownMin":
+      return sa.manualRefreshCooldownMin;
+    case "superadmin.zerrorMonthlyTokenBudget":
+      return sa.zerrorMonthlyTokenBudget;
+    case "superadmin.smallSampleThreshold":
+      return sa.smallSampleThreshold;
+    case "superadmin.rateLimitPerMinute":
+      return sa.rateLimitPerMinute;
+    case "superadmin.atRisk.daysNoLogin":
+      return sa.atRisk.daysNoLogin;
+    case "superadmin.atRisk.gmvDropPct":
+      return sa.atRisk.gmvDropPct;
+  }
+}
+
 const NUMERIC_CONFIG_FIELDS = Object.keys(CONFIG_LIMITS) as NumericConfigField[];
 
 const PRICE_FIELDS = [
@@ -96,6 +138,8 @@ export interface AiConfigDraft {
   perQuestionTokenCeiling: string;
   rateLimitPerMinute: string;
   benchmarkMinStores: string;
+  /** PRD-026: the Super Admin AI fields, as typed (absent on older servers). */
+  superadmin: Partial<Record<SuperadminField, string>>;
 }
 
 /** Field → message; `form` for an error that names no known field. */
@@ -236,6 +280,11 @@ export function aiConfigDraft(config: PlatformAiConfig): AiConfigDraft {
     perQuestionTokenCeiling: String(config.perQuestionTokenCeiling),
     rateLimitPerMinute: String(config.rateLimitPerMinute),
     benchmarkMinStores: String(config.benchmarkMinStores),
+    superadmin: config.superadmin
+      ? Object.fromEntries(
+          SUPERADMIN_FIELDS.map((field) => [field, String(superadminValue(config, field))]),
+        )
+      : {},
   };
 }
 
@@ -367,7 +416,43 @@ export function aiConfigPatch(
   }
   if (!errors.pricing && changedPrices.length > 0) input.pricing = changedPrices;
 
+  const superadmin = superadminPatch(config, draft, errors);
+  if (superadmin) input.superadmin = superadmin;
+
   return { input: Object.keys(errors).length > 0 ? {} : input, errors };
+}
+
+/**
+ * Guide §8: the changed Super Admin AI fields only, nested as the server
+ * takes them (`{ atRisk: { daysNoLogin } }`); null when nothing changed.
+ */
+function superadminPatch(
+  config: PlatformAiConfig,
+  draft: AiConfigDraft,
+  errors: FieldErrors,
+): PlatformAiSuperadminConfigInput | null {
+  if (!config.superadmin) return null;
+  const patch: PlatformAiSuperadminConfigInput = {};
+  const atRisk: NonNullable<PlatformAiSuperadminConfigInput["atRisk"]> = {};
+  for (const field of SUPERADMIN_FIELDS) {
+    const typed = draft.superadmin?.[field];
+    if (typed === undefined) continue;
+    const limits = SUPERADMIN_LIMITS[field];
+    const value = parseNumber(typed);
+    if (value === null || !Number.isInteger(value) || value < limits.min || value > limits.max) {
+      errors[field] = `Enter a whole number from ${formatCount(limits.min)} to ${formatCount(limits.max)}.`;
+      continue;
+    }
+    if (value === superadminValue(config, field)) continue;
+    const key = field.split(".").pop() as string;
+    if (field.startsWith("superadmin.atRisk.")) {
+      (atRisk as Record<string, number>)[key] = value;
+    } else {
+      (patch as Record<string, number>)[key] = value;
+    }
+  }
+  if (Object.keys(atRisk).length > 0) patch.atRisk = atRisk;
+  return Object.keys(patch).length > 0 ? patch : null;
 }
 
 // ─── Per-store overrides ──────────────────────────────────────────────────
@@ -469,7 +554,10 @@ export function aiFieldErrorsFromServer(
   const first = firstError(error);
   if (String(first?.extensions?.code ?? "") !== "BAD_USER_INPUT") return null;
   if (!reasons.includes(String(first?.extensions?.reason ?? ""))) return null;
-  const field = String(first?.extensions?.field ?? "").split(".")[0];
+  // A nested field the form shows on its own (PRD-026 `superadmin.…`)
+  // keeps its path; others show on their top-level field
+  const path = String(first?.extensions?.field ?? "");
+  const field = fields.includes(path) ? path : path.split(".")[0];
   const key = fields.includes(field) ? field : "form";
   return { [key]: first?.message || "Check this value." };
 }
@@ -485,7 +573,8 @@ export const AI_CONFIG_FORM_FIELDS = [
   "nightCoolingStart",
   "nightCoolingEnd",
   ...NUMERIC_CONFIG_FIELDS,
-] as const;
+  ...SUPERADMIN_FIELDS,
+];
 
 /** Every field of the override form. */
 export const AI_OVERRIDE_FORM_FIELDS = [

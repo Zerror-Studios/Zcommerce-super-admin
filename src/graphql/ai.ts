@@ -105,6 +105,16 @@ export const AI_CONFIG = gql`
       perQuestionTokenCeiling
       rateLimitPerMinute
       benchmarkMinStores
+      superadmin {
+        manualRefreshCooldownMin
+        zerrorMonthlyTokenBudget
+        smallSampleThreshold
+        rateLimitPerMinute
+        atRisk {
+          daysNoLogin
+          gmvDropPct
+        }
+      }
     }
   }
 `;
@@ -209,6 +219,16 @@ export const UPDATE_AI_CONFIG = gql`
       perQuestionTokenCeiling
       rateLimitPerMinute
       benchmarkMinStores
+      superadmin {
+        manualRefreshCooldownMin
+        zerrorMonthlyTokenBudget
+        smallSampleThreshold
+        rateLimitPerMinute
+        atRisk {
+          daysNoLogin
+          gmvDropPct
+        }
+      }
     }
   }
 `;

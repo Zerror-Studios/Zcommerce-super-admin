@@ -55,6 +55,13 @@ const config: PlatformAiConfig = {
   perQuestionTokenCeiling: 40000,
   rateLimitPerMinute: 6,
   benchmarkMinStores: 5,
+  superadmin: {
+    manualRefreshCooldownMin: 60,
+    zerrorMonthlyTokenBudget: 3_000_000,
+    smallSampleThreshold: 20,
+    rateLimitPerMinute: 20,
+    atRisk: { daysNoLogin: 14, gmvDropPct: 40 },
+  },
 };
 
 const gqlError = (extensions: Record<string, unknown>, message = "Bad value") => ({
@@ -274,5 +281,29 @@ describe("formatUsdInr / aiInrRate (04 S-00b)", () => {
     expect(aiInrRate(84, 1, 90)).toBe(84);
     expect(aiInrRate(null, 2, 170)).toBe(85);
     expect(aiInrRate(null, 0, 0)).toBeNull();
+  });
+
+  it("PRD-026 §8: sends only the changed Super Admin AI fields, nested", () => {
+    const draft = aiConfigDraft(config);
+    expect(aiConfigPatch(config, draft).input).toEqual({});
+    draft.superadmin["superadmin.smallSampleThreshold"] = "25";
+    draft.superadmin["superadmin.atRisk.daysNoLogin"] = "21";
+    expect(aiConfigPatch(config, draft).input).toEqual({
+      superadmin: { smallSampleThreshold: 25, atRisk: { daysNoLogin: 21 } },
+    });
+  });
+
+  it("PRD-026 §8: checks the Super Admin AI limits and keeps the server's nested field", () => {
+    const draft = aiConfigDraft(config);
+    draft.superadmin["superadmin.atRisk.gmvDropPct"] = "150";
+    const result = aiConfigPatch(config, draft);
+    expect(result.input).toEqual({});
+    expect(result.errors["superadmin.atRisk.gmvDropPct"]).toMatch(/1 to 100/);
+    const server = aiFieldErrorsFromServer(
+      gqlError({ code: "BAD_USER_INPUT", reason: "INVALID_AI_CONFIG", field: "superadmin.atRisk.daysNoLogin" }),
+      ["INVALID_AI_CONFIG"],
+      AI_CONFIG_FORM_FIELDS,
+    );
+    expect(server).toEqual({ "superadmin.atRisk.daysNoLogin": "Bad value" });
   });
 });

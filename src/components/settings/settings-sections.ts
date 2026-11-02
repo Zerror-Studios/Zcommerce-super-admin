@@ -133,6 +133,7 @@ export const SETTINGS_FIELDS: Partial<Record<SettingsSectionKey, FieldEntry[]>> 
     { id: "ai-benchmark-min", label: "Stores per benchmark" },
     { id: "night", label: "Night window", keywords: ["insights", "time"] },
     { id: "prices", label: "Model prices", keywords: ["tokens", "cache"] },
+    { id: "superadmin", label: "Super Admin AI", keywords: ["snapshot", "refresh", "at risk", "small sample", "staff chat"] },
   ],
 };
 

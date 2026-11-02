@@ -2,13 +2,8 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { allNavItems, mainNavItems, visibleNavItems } from "../../config/navigation";
 import { APP_VERSION } from "../../config/data-source";
-import { ASSISTANT_SUGGESTIONS, sampleAssistantAnswer } from "../../lib/aiSamples";
-import { client as apollo } from "../../lib/apollo-client";
-import { toPickerDay } from "../../lib/api-report-adapters";
 import { getPlatformRoleLabel } from "../../lib/display-labels.util";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
-import { PLATFORM_REVENUE_OVERVIEW } from "../../graphql/reports";
-import type { PlatformRevenueOverview } from "../../types/platform-api";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import { useNotificationCounts } from "../../hooks/use-platform-notifications";
@@ -18,7 +13,8 @@ import { usePlatformSettings } from "../../providers/SettingsProvider";
 import { subscriptionsNeedingAction } from "../billing/subscription-rows";
 import { IconAdd, IconNotifications, IconStore } from "../ui/icons";
 import { AppShell } from "./AppShell";
-import { AskBar, AssistantPanel } from "./Assistant";
+import { AskBar } from "./Assistant";
+import { AskZcomPlatformPanel } from "../assistant/AskZcomPlatformPanel";
 import { readStoredFlag, storeFlag, useShellHotkeys } from "./shell-utils";
 import { CommandPalette } from "./CommandPalette";
 import { PlatformNotificationsPanel } from "./PlatformNotificationsPanel";
@@ -76,33 +72,20 @@ export function DashboardLayout() {
   }, []);
   const openPalette = useCallback(() => setPaletteOpen(true), []);
 
-  // AI layer: Ask bar, assistant panel, ⌘J and "Ask AI" in ⌘K (same as the Merchant dashboard).
+  // AI layer (backend PRD-026 FR-7.2): Ask bar, the staff chat, ⌘J and "Ask AI" in ⌘K, only with
+  // platform:ai:ask (Owner and Admin); without it no entry point shows.
+  const canAsk = can(PLATFORM_PERMISSIONS.AI_ASK);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [pendingQuestion, setPendingQuestion] = useState<string | undefined>();
-  const openAssistant = useCallback((question?: string) => {
-    setPendingQuestion(question);
-    setIsAssistantOpen(true);
-  }, []);
-  const askHotkey = useCallback(() => openAssistant(), [openAssistant]);
-  const askAssistant = useCallback(
-    (question: string) =>
-      sampleAssistantAnswer(question, {
-        clients,
-        subscriptions,
-        // Money comes from the server rollup, fetched only when asked (root CLAUDE.md §4).
-        loadMonthSummary: async () => {
-          const now = new Date();
-          const { data } = await apollo.query<{ platformRevenueOverview: PlatformRevenueOverview }>({
-            query: PLATFORM_REVENUE_OVERVIEW,
-            variables: { range: { start: toPickerDay(new Date(now.getFullYear(), now.getMonth(), 1)), end: toPickerDay(now) } },
-            fetchPolicy: "network-only",
-          });
-          const summary = data.platformRevenueOverview.summary;
-          return { earnedMonth: summary.earnedMonth, paidStoresMonth: summary.paidStoresMonth };
-        },
-      }),
-    [clients, subscriptions],
+  const openAssistant = useCallback(
+    (question?: string) => {
+      if (!canAsk) return;
+      setPendingQuestion(question);
+      setIsAssistantOpen(true);
+    },
+    [canAsk],
   );
+  const askHotkey = useCallback(() => openAssistant(), [openAssistant]);
   useShellHotkeys({ onSearch: openPalette, onToggleSidebar: toggleSidebar, onAsk: askHotkey });
 
   const pageLabel = pageLabelFor(location.pathname);
@@ -200,7 +183,11 @@ export function DashboardLayout() {
         topBarTitle="Zcom"
         topBarSubtitle="Super admin"
         onOpenSearch={openPalette}
-        floating={(hidden) => <AskBar placeholder="Ask anything about your stores…" hidden={hidden} onOpen={openAssistant} />}
+        floating={
+          canAsk
+            ? (hidden) => <AskBar placeholder="Ask anything about your stores…" hidden={hidden} onOpen={openAssistant} />
+            : undefined
+        }
         mobileActions={panel(
           // Top bar bell (02 §4): circle on-dark 40px, an 8px blue dot when unread.
           <button
@@ -241,18 +228,17 @@ export function DashboardLayout() {
         onClose={() => setPaletteOpen(false)}
         groups={commandGroups}
         placeholder="Search stores, pages and actions"
-        onAskAi={openAssistant}
+        onAskAi={canAsk ? openAssistant : undefined}
       />
       <AiSpectrumDefs />
-      <AssistantPanel
-        isOpen={isAssistantOpen}
-        onClose={() => setIsAssistantOpen(false)}
-        pendingQuestion={pendingQuestion}
-        onPendingConsumed={() => setPendingQuestion(undefined)}
-        onAsk={askAssistant}
-        suggestions={ASSISTANT_SUGGESTIONS}
-        thinkingLabel="Looking at your stores…"
-      />
+      {canAsk ? (
+        <AskZcomPlatformPanel
+          isOpen={isAssistantOpen}
+          onClose={() => setIsAssistantOpen(false)}
+          pendingQuestion={pendingQuestion}
+          onPendingConsumed={() => setPendingQuestion(undefined)}
+        />
+      ) : null}
     </>
   );
 }
