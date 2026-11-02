@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **Implemented (console)** 2026-11-02: FR-7 built from the integration guide on `main` (working tree, not committed, deployed or run in a browser); deploy the PRD-026 backend first |
+| Status | **Implemented (console)** 2026-11-02: FR-7 built from the integration guide on `main`, committed and pushed (`cb174f4`); not run in a browser yet; deploy the PRD-026 backend first |
 | Source-of-truth PRD | [`../../../zcom-backend/docs/prd/PRD-026-super-admin-ai.md`](../../../zcom-backend/docs/prd/PRD-026-super-admin-ai.md) |
 | Guide | [`../../../zcom-backend/docs/architecture/super-admin-ai-console-integration.md`](../../../zcom-backend/docs/architecture/super-admin-ai-console-integration.md) |
 | Created / Updated | 2026-11-02 / 2026-11-02 |
@@ -27,7 +27,7 @@ Checked against the composed supergraph (`zcom-backend/services/gateway/dist/sup
 
 ## Implementation log (this repo)
 
-### FR-7 — 2026-11-02 (working tree on `main`)
+### FR-7 — 2026-11-02 (`main`, `cb174f4`)
 
 | FR | Console | Files |
 |---|---|---|
