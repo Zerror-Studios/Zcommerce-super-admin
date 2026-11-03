@@ -6,6 +6,7 @@ import { isUserInputError, mutationFailureCopy } from "../../lib/mutation-errors
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { VOID_REASON_OPTIONS, reasonFormFieldOf, voidInvoiceVariables } from "../../lib/billing-reasons.util";
 import { APPLY_COUPON_TO_INVOICE, RECORD_INVOICE_PAYMENT, VOID_INVOICE } from "../../graphql/billing";
+import { useInvoicePdf } from "../../hooks/use-invoice-pdf";
 import { useAuth } from "../../providers/AuthProvider";
 import { toasts } from "../../copy";
 import { IconMore } from "../ui/icons";
@@ -63,6 +64,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
   const [recordPayment] = useMutation(RECORD_INVOICE_PAYMENT);
   const [voidInvoice] = useMutation(VOID_INVOICE);
   const [applyCoupon] = useMutation(APPLY_COUPON_TO_INVOICE);
+  const pdf = useInvoicePdf();
 
   const open = row.status === "pending" || row.status === "overdue";
   // Every action here needs billing:manage (review C-M5).
@@ -116,6 +118,8 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
 
   const onAction = (key: Key) => {
     if (key === "payment" || key === "void" || key === "coupon") setDialog(key);
+    // PRD-030 FR-10: the interim PDF
+    if (key === "pdf") void pdf.download(row.id);
   };
 
   return (
@@ -130,6 +134,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
           <DropdownMenu aria-label="Invoice actions" onAction={onAction}>
             <DropdownItem key="payment">Record payment</DropdownItem>
             <DropdownItem key="coupon">Apply discount code</DropdownItem>
+            <DropdownItem key="pdf">{pdf.downloadingId === row.id ? "Creating PDF…" : "Download PDF"}</DropdownItem>
             <DropdownItem key="void" className={menuItemDangerClasses}>
               Void invoice
             </DropdownItem>

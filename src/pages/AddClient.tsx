@@ -10,9 +10,19 @@ import {
   planPriceHint,
 } from "../lib/plan-identity.util";
 import { errorCodeOf } from "../lib/apollo-client";
+import {
+  EMPTY_BUSINESS_DETAILS,
+  businessDetailsErrorsFromServer,
+  businessDetailsInput,
+  hasBusinessDetailsErrors,
+  validateBusinessDetails,
+  type BusinessDetailsDraft,
+  type BusinessDetailsErrors,
+} from "../lib/store-setup.util";
 import { mutationFailureCopy } from "../lib/mutation-errors";
 import { PageHeader } from "../components/common/PageHeader";
 import { OwnerCredentialsDialog } from "../components/clients/OwnerCredentialsDialog";
+import { BusinessDetailsSection } from "../components/clients/add-store/BusinessDetailsSection";
 import { FormFooter } from "../components/clients/add-store/FormFooter";
 import { useClients, type CreateStoreResult } from "../providers/ClientsProvider";
 import { toasts } from "../copy";
@@ -102,6 +112,9 @@ export function AddClient() {
   const [touched, setTouched] = useState<Set<Field>>(new Set());
   const [serverErrors, setServerErrors] = useState<Partial<Record<Field, string>>>({});
   const [created, setCreated] = useState<CreateStoreResult | null>(null);
+  // PRD-031 FR-B1: the optional business details (collapsed section)
+  const [business, setBusiness] = useState<BusinessDetailsDraft>(EMPTY_BUSINESS_DETAILS);
+  const [businessErrors, setBusinessErrors] = useState<BusinessDetailsErrors>({ profile: {} });
   const formRef = useRef<HTMLFormElement>(null);
 
   const effectiveSlug = slugTouched ? slug : slugify(storeName);
@@ -160,6 +173,11 @@ export function AddClient() {
       focusFirstError(errors);
       return;
     }
+    const localBusinessErrors = validateBusinessDetails(business);
+    if (hasBusinessDetailsErrors(localBusinessErrors)) {
+      setBusinessErrors(localBusinessErrors);
+      return;
+    }
     setSubmitting(true);
     try {
       const result = await createStore({
@@ -175,6 +193,7 @@ export function AddClient() {
         startActive,
         timezone: timezone.trim(),
         currency: normaliseCurrency(currency) ?? DEFAULT_STORE_CURRENCY,
+        ...businessDetailsInput(business),
       });
       const name = result.client.storeName;
       if (result.client.onboarding?.status !== "READY") {
@@ -188,6 +207,11 @@ export function AddClient() {
       if (result.ownerTemporaryPassword) setCreated(result);
       else navigate(`/stores/${result.client.id}/overview`);
     } catch (error) {
+      const businessError = businessDetailsErrorsFromServer(error);
+      if (businessError) {
+        setBusinessErrors(businessError);
+        return;
+      }
       const code = errorCodeOf(error);
       const field = (error as { graphQLErrors?: Array<{ extensions?: { field?: string } }> })?.graphQLErrors?.[0]
         ?.extensions?.field;
@@ -316,6 +340,19 @@ export function AddClient() {
             />
           </FieldGrid>
         </Card>
+
+        <BusinessDetailsSection
+          value={business}
+          onChange={setBusiness}
+          errors={businessErrors}
+          onClearError={(field) =>
+            setBusinessErrors((current) =>
+              field === "billingContactEmail" || field === "gstin" || field === "businessName"
+                ? { ...current, [field]: undefined }
+                : { ...current, profile: { ...current.profile, [field]: undefined } },
+            )
+          }
+        />
 
         <Card title="Subscription">
           <FieldGrid>

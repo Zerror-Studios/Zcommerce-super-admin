@@ -582,6 +582,20 @@ export interface CreateTenantInput {
   startActive: boolean;
   timezone?: string | null;
   currency?: string | null;
+  /** PRD-031 FR-B1: optional business details at creation. */
+  billingContactEmail?: string | null;
+  gstin?: string | null;
+  /** The PRD-025 profile fields, validated like `updateTenant.profile`. */
+  profile?: StoreProfileInput | null;
+  /** Seeds the store's invoice business name (else the store name). */
+  businessName?: string | null;
+}
+
+/** PRD-031 FR-D1: one store setup check (`platformStoreSetup`). */
+export interface PlatformStoreSetupCheck {
+  key: string;
+  status: "OK" | "MISSING" | "WARNING";
+  detail: string;
 }
 
 export interface UpdateTenantInput {
@@ -612,6 +626,8 @@ export interface PlatformSettingsApi {
     /** PRD-017 FR-3.2: shown on the store's Billing page; null or "" clears it. */
     bankTransferInstructions?: string | null;
     supportContact?: string | null;
+    /** PRD-030 FR-8: printed on the interim invoice PDF; null until set. */
+    issuer?: PlatformInvoiceIssuer | null;
   };
   reminders: {
     daysBeforeDue: number[];
@@ -637,7 +653,27 @@ export interface PlatformDunningSettings {
  * A partial `updatePlatformSettings` input: the server merges what is sent
  * (dunning and the entitlement mode are saved on their own, audited).
  */
+/** PRD-030 FR-8: who issues Zerror's invoices (PRD-019 FR-B1 replaces it). */
+export interface PlatformInvoiceIssuer {
+  legalName: string;
+  addressLines: string[];
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+}
+
+/** PRD-030: the interim invoice PDF from `platformInvoicePdf`. */
+export interface PlatformInvoicePdf {
+  filename: string;
+  contentType: string;
+  base64: string;
+  sha256: string;
+  bytes: number;
+}
+
 export interface PlatformSettingsPatch {
+  /** PRD-030 FR-8: the issuer only (needs billing:manage too); null clears it. */
+  billing?: { issuer: PlatformInvoiceIssuer | null };
   dunning?: Partial<PlatformDunningSettings>;
   entitlementsMode?: EntitlementsMode;
   /** Why this change; kept on the audit row only (max 500). */

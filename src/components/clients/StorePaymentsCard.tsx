@@ -11,6 +11,7 @@
 import { useQuery } from "@apollo/client";
 import { useMemo, useState, type ReactNode } from "react";
 import { PLATFORM_PAYMENTS } from "../../graphql/billing";
+import { useInvoicePdf } from "../../hooks/use-invoice-pdf";
 import { useInvoices, useReminderLog } from "../../hooks/use-platform-reports";
 import { getPaymentGatewayLabel } from "../../lib/display-labels.util";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
@@ -45,7 +46,7 @@ import {
   type DataTableColumn,
   type Tone,
 } from "../ui";
-import { IconDuplicate, IconInvoice, IconPayments, IconSend, IconView } from "../ui/icons";
+import { IconDownload, IconDuplicate, IconInvoice, IconPayments, IconSend, IconView } from "../ui/icons";
 import { SendReminderDialog } from "./stores-list/SendReminderDialog";
 import { isPaymentOwed, paymentBadge } from "./stores-list/store-list.util";
 import { ExpandableCard, InlineNotice, KeyValue, KeyValueGrid } from "./StoreDetailParts";
@@ -447,6 +448,7 @@ function InvoicesTab({
   const { can } = useAuth();
   const canManage = can(PLATFORM_PERMISSIONS.BILLING_MANAGE);
   const refresh = useStoreBillingRefresh();
+  const pdf = useInvoicePdf();
   const money = (amount: number, currency: string) => formatMoney(amount, { currency });
 
   if (invoices.error && invoices.data.length === 0) {
@@ -511,6 +513,13 @@ function InvoicesTab({
                 label={`Actions for ${invoice.number}`}
                 items={[
                   { key: "view", label: "View invoice", icon: IconView, onSelect: () => onOpenInvoice(invoice) },
+                  {
+                    key: "pdf",
+                    label: pdf.downloadingId === invoice.id ? "Creating PDF…" : "Download PDF",
+                    icon: IconDownload,
+                    disabled: pdf.downloadingId !== null,
+                    onSelect: () => void pdf.download(invoice.id),
+                  },
                   {
                     key: "copy",
                     label: "Copy invoice number",

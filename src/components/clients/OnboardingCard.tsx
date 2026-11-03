@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Client } from "../../types";
 import { mutationFailureCopy } from "../../lib/mutation-errors";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
+import { provisioningStepLabel } from "../../lib/store-setup.util";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients, type CreateStoreResult } from "../../providers/ClientsProvider";
 import { toasts } from "../../copy";
@@ -12,12 +13,6 @@ export interface OnboardingCardProps {
   client: Client;
 }
 
-const STEP_LABELS: Record<string, string> = {
-  database: "Store database",
-  ownerAdmin: "Owner login",
-  channels: "Default apps (Nimbbl, Shiprocket, MSG91)",
-  subscription: "Subscription",
-};
 
 /** Provisioning progress for a store that isn't READY yet (PRD-005 FR-3.3); hidden once it is. */
 export function OnboardingCard({ client }: OnboardingCardProps) {
@@ -62,7 +57,7 @@ export function OnboardingCard({ client }: OnboardingCardProps) {
         <ul className="flex flex-col gap-2">
           {onboarding.steps.map((step) => (
             <li key={step.key} className="flex items-center justify-between gap-3">
-              <span className="text-body text-fg">{STEP_LABELS[step.key] ?? step.key}</span>
+              <span className="text-body text-fg">{provisioningStepLabel(step.key)}</span>
               <Chip tone={step.status === "DONE" ? "success" : step.status === "FAILED" ? "danger" : "neutral"}>
                 {step.status === "DONE" ? "Done" : step.status === "FAILED" ? "Failed" : "Pending"}
               </Chip>

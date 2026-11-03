@@ -37,6 +37,19 @@ export const PLATFORM_INVOICE_FIELDS = gql`
   }
 `;
 
+/** PRD-030 FR-10 (billing:read, audited): the interim invoice PDF, base64. */
+export const PLATFORM_INVOICE_PDF = gql`
+  query PlatformInvoicePdf($id: ID!) {
+    platformInvoicePdf(id: $id) {
+      filename
+      contentType
+      base64
+      sha256
+      bytes
+    }
+  }
+`;
+
 /** PRD-017 FR-4.3: server-paged invoices (status, store, due-date, search). */
 export const PLATFORM_INVOICES = gql`
   ${PLATFORM_INVOICE_FIELDS}

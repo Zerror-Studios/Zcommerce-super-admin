@@ -281,6 +281,7 @@ export function toPlatformSettings(api: PlatformSettingsApi): PlatformSettings {
       checkoutAvailable: api.billing.checkoutAvailable === true,
       bankTransferInstructions: api.billing.bankTransferInstructions ?? "",
       supportContact: api.billing.supportContact ?? "",
+      issuer: api.billing.issuer ?? null,
     },
     reminders: {
       daysBeforeDue: [...api.reminders.daysBeforeDue],

@@ -14,6 +14,7 @@ import { StoreBillingStateCard } from "../components/clients/StoreBillingStateCa
 import { InlineNotice } from "../components/clients/StoreDetailParts";
 import { StoreDetailsCard, StoreDetailsDialog } from "../components/clients/StoreDetailsCard";
 import { StoreGoLiveCard } from "../components/clients/StoreGoLiveCard";
+import { StoreSetupCard } from "../components/clients/StoreSetupCard";
 import { StoreHealthCard } from "../components/clients/StoreHealthCard";
 import { StoreHistoryCard } from "../components/clients/StoreHistoryCard";
 import { StoreLifecycleCard } from "../components/clients/StoreLifecycleCard";
@@ -544,6 +545,8 @@ export function ClientDetail() {
             {active === "overview" ? (
               <>
                 <OnboardingCard client={client} />
+                {/* PRD-031 FR-D3: what the store still needs (a new store lands here after Add store). */}
+                <StoreSetupCard tenantId={client.id} />
                 <ClientOverviewTab client={client} subscription={subscription} />
               </>
             ) : null}
@@ -553,7 +556,12 @@ export function ClientDetail() {
             {/* PRD-025 FR-6.1: category, source, location, account manager, tags, planned go-live. */}
             {active === "profile" ? <StoreProfileCard client={client} /> : null}
 
-            {active === "go-live" ? <StoreGoLiveCard client={client} /> : null}
+            {active === "go-live" ? (
+              <>
+                <StoreSetupCard tenantId={client.id} />
+                <StoreGoLiveCard client={client} />
+              </>
+            ) : null}
 
             {active === "billing" ? (
               <>

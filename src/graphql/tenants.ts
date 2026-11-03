@@ -405,3 +405,14 @@ export const MARK_TENANT_LIVE = gql`
     }
   }
 `;
+
+/** PRD-031 FR-D2 (tenants:read): the store's setup checks, read live. */
+export const PLATFORM_STORE_SETUP = gql`
+  query PlatformStoreSetup($tenantId: ID!) {
+    platformStoreSetup(tenantId: $tenantId) {
+      key
+      status
+      detail
+    }
+  }
+`;

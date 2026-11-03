@@ -1,7 +1,7 @@
 // PRD-002 SA-7: plan, subscription-status and gateway values mirror the
 // backend enums (plan.model.ts, subscription.model.ts, billing.model.ts).
 // Human-readable strings live in lib/display-labels.util.ts.
-import type { TenantDomainStatus, TenantSuspendCategory } from "./platform-api";
+import type { PlatformInvoiceIssuer, TenantDomainStatus, TenantSuspendCategory } from "./platform-api";
 
 export const planNameEnum = {
   STARTER: "STARTER",
@@ -272,6 +272,8 @@ export interface PlatformSettings {
     /** PRD-017 FR-3.2: shown on the store's Billing page. */
     bankTransferInstructions?: string;
     supportContact?: string;
+    /** PRD-030 FR-8: printed on the interim invoice PDF; null until set. */
+    issuer?: PlatformInvoiceIssuer | null;
   };
   reminders: {
     daysBeforeDue: number[];

@@ -4,9 +4,11 @@
  * derived "Partially paid"), the reason label (period, proration, restart)
  * and the detail dialog with the server's line amounts. Every amount is
  * the server's. Since PRD-024 FR-3.8 the dialog also reads the invoice's
- * status history and linked payments when it opens.
+ * status history and linked payments when it opens, and since PRD-030
+ * FR-10 "Download PDF" (the interim PDF, billing:read).
  */
 
+import { useInvoicePdf } from "../../hooks/use-invoice-pdf";
 import { useInvoiceDetail } from "../../hooks/use-platform-reports";
 import { invoiceReasonLabel, invoiceStatusView } from "../../lib/platform-billing.util";
 import { voidReasonLabel } from "../../lib/billing-reasons.util";
@@ -42,6 +44,7 @@ export interface InvoiceDetailModalProps {
 }
 
 export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps) {
+  const pdf = useInvoicePdf();
   if (!invoice) return null;
   const money = (amount: number) => formatMoney(amount, { currency: invoice.currency, paise: true });
   const rows: { label: string; value: string; strong?: boolean }[] = [
@@ -109,6 +112,16 @@ export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps
           <InvoiceHistory invoice={invoice} />
         </ModalBody>
         <ModalFooter>
+          {pdf.canDownload ? (
+            <UiButton
+              variant="secondary"
+              isLoading={pdf.downloadingId === invoice.id}
+              isDisabled={pdf.downloadingId !== null}
+              onPress={() => void pdf.download(invoice.id)}
+            >
+              Download PDF
+            </UiButton>
+          ) : null}
           <UiButton variant="primary" onPress={onClose}>
             Close
           </UiButton>

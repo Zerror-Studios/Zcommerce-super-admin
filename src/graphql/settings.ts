@@ -18,6 +18,13 @@ export const PLATFORM_SETTINGS_FIELDS = gql`
       checkoutAvailable
       bankTransferInstructions
       supportContact
+      issuer {
+        legalName
+        addressLines
+        email
+        phone
+        website
+      }
     }
     reminders {
       daysBeforeDue

@@ -44,6 +44,7 @@ import {
   toastError,
 } from "../ui";
 import { IconAdd, IconClose, IconEdit, IconMessages, IconPhone, IconWhatsApp } from "../ui/icons";
+import { InvoiceIssuerCard } from "./InvoiceIssuerCard";
 import { PlatformJobsCard } from "./PlatformJobsCard";
 import { ReminderTextModal } from "./ReminderTextModal";
 import { SentRemindersCard } from "./SentRemindersCard";
@@ -336,6 +337,9 @@ export function BillingRulesSettings() {
             />
           </FieldGrid>
         </Card>
+
+        {/* ── Invoice issuer (PRD-030 FR-8; its own Save) ── */}
+        <InvoiceIssuerCard />
 
         {/* ── Grace period ── */}
         <Card title="Grace period">
