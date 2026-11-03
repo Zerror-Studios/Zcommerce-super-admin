@@ -6,6 +6,9 @@
  *   cleaned answer) replaces what streamed.
  * - `turnsFromConversation`: a stored conversation (USER / ASSISTANT
  *   messages) as turns.
+ * - `askQuestionText`, `pollOutcome`, `canRetrySameId`: the send and
+ *   poll rules from the 2026-11-03 console review (backend
+ *   `docs/reviews/2026-11-03-super-admin-chat-fe-fixes.md`, FE-1..FE-4).
  * - `consolePath`: only console paths become links in answers.
  * - `splitStoreNames`: store names in answer text, matched against the
  *   loaded stores, become links to Store detail.
@@ -57,10 +60,70 @@ export type AnswerSegment =
 /** Store names shorter than this are never linked (too many false hits). */
 const STORE_NAME_MIN_LENGTH = 3;
 
+/** FE-2: the client's safety net; the backend ends a run after 90 s. */
+export const ASK_POLL_TIMEOUT_MS = 2 * 60 * 1000;
+
+/** FE-2: polls that fail in a row before the console gives up. */
+export const ASK_MAX_POLL_FAILURES = 3;
+
+/** Pairs of quotes that wrap a pasted question. */
+const WRAPPING_QUOTES: ReadonlyArray<readonly [string, string]> = [
+  ['"', '"'],
+  ["\u201c", "\u201d"],
+  ["'", "'"],
+];
+
+export type PollOutcome = "CONTINUE" | "ENDED" | "TIMED_OUT" | "UNREACHABLE";
+
 // ─── Turns ────────────────────────────────────────────────────────────────
 
 export function isTurnBusy(turn: Pick<AskTurn, "status">): boolean {
   return turn.status === "RUNNING" || turn.status === "SENDING";
+}
+
+/**
+ * FE-3: the question as typed, trimmed. One pair of quotes around the
+ * whole question (a pasted, quoted question) is dropped, so the model
+ * never sees `"\"…\""`; quotes inside the question stay.
+ */
+export function askQuestionText(raw: string): string {
+  const text = String(raw ?? "").trim();
+  for (const [open, close] of WRAPPING_QUOTES) {
+    if (text.length > 2 && text.startsWith(open) && text.endsWith(close)) {
+      const inner = text.slice(open.length, -close.length).trim();
+      if (inner && !inner.includes(open) && !inner.includes(close)) return inner;
+    }
+  }
+  return text;
+}
+
+/**
+ * FE-2: whether to poll again. A run that isn't RUNNING has ended; past
+ * `ASK_POLL_TIMEOUT_MS` or after `ASK_MAX_POLL_FAILURES` failed polls in a
+ * row the console stops.
+ */
+export function pollOutcome(input: {
+  status: string | null;
+  failures: number;
+  startedAt: number;
+  now: number;
+}): PollOutcome {
+  // COMPLETED, COMPLETED_PARTIAL, CANCELLED, FAILED: only RUNNING continues
+  if (input.status && input.status !== "RUNNING") return "ENDED";
+  if (input.failures >= ASK_MAX_POLL_FAILURES) return "UNREACHABLE";
+  if (input.now - input.startedAt > ASK_POLL_TIMEOUT_MS) return "TIMED_OUT";
+  return "CONTINUE";
+}
+
+/**
+ * FE-4: a send that never got an answer (network error, 5xx) is retried
+ * with the same `clientMessageId`, so the backend returns the same run; an
+ * answered error never is.
+ */
+export function canRetrySameId(error: unknown): boolean {
+  const e = error as { networkError?: unknown; graphQLErrors?: unknown[] } | null;
+  if (e?.graphQLErrors?.length) return false;
+  return Boolean(e?.networkError);
 }
 
 /** A polled run applied to its turn. */

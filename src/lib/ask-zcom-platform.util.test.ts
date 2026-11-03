@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { PlatformAssistantRun } from "../types/platform-insights";
 import {
+  ASK_MAX_POLL_FAILURES,
+  ASK_POLL_TIMEOUT_MS,
   applyRun,
+  askQuestionText,
+  canRetrySameId,
   consolePath,
+  pollOutcome,
   formatSources,
   splitStoreNames,
   turnsFromConversation,
@@ -87,5 +92,38 @@ describe("Ask ZCOM for staff (PRD-026 §12)", () => {
   it("names the sources", () => {
     expect(formatSources(["Money", "Money", "Stores"])).toBe("Used: Money, Stores");
     expect(formatSources([])).toBe("");
+  });
+
+  // Backend docs/reviews/2026-11-03-super-admin-chat-fe-fixes.md
+  it("FE-3: sends the question as typed, without wrapping quotes", () => {
+    expect(askQuestionText("  Which stores are at risk and why?  ")).toBe("Which stores are at risk and why?");
+    expect(askQuestionText('"Show me stores in the Fashion category in Mumbai."')).toBe(
+      "Show me stores in the Fashion category in Mumbai.",
+    );
+    expect(askQuestionText("\u201cWho is late?\u201d")).toBe("Who is late?");
+    // Quotes inside the question stay
+    expect(askQuestionText('Is "Kesar & Kin" paid up?')).toBe('Is "Kesar & Kin" paid up?');
+    expect(askQuestionText('"Kesar" or "Nahara"')).toBe('"Kesar" or "Nahara"');
+    expect(askQuestionText('""')).toBe('""');
+  });
+
+  it("FE-2: polls only while RUNNING, for 2 minutes and 3 failures at most", () => {
+    const at = { failures: 0, startedAt: 0, now: 1000 };
+    expect(pollOutcome({ ...at, status: "RUNNING" })).toBe("CONTINUE");
+    for (const status of ["COMPLETED", "COMPLETED_PARTIAL", "CANCELLED", "FAILED"]) {
+      expect(pollOutcome({ ...at, status })).toBe("ENDED");
+    }
+    expect(pollOutcome({ ...at, status: null, failures: ASK_MAX_POLL_FAILURES - 1 })).toBe("CONTINUE");
+    expect(pollOutcome({ ...at, status: null, failures: ASK_MAX_POLL_FAILURES })).toBe("UNREACHABLE");
+    expect(pollOutcome({ ...at, status: "RUNNING", now: ASK_POLL_TIMEOUT_MS + 1 })).toBe("TIMED_OUT");
+  });
+
+  it("FE-4: retries with the same id only when the send got no answer", () => {
+    expect(canRetrySameId({ networkError: new Error("offline") })).toBe(true);
+    expect(canRetrySameId({ networkError: { statusCode: 502 } })).toBe(true);
+    expect(
+      canRetrySameId({ graphQLErrors: [{ extensions: { code: "CONFLICT", reason: "RUN_IN_PROGRESS" } }] }),
+    ).toBe(false);
+    expect(canRetrySameId(new Error("boom"))).toBe(false);
   });
 });

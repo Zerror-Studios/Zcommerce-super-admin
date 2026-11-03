@@ -439,6 +439,10 @@ export function runStatusNote(
   }
   if (status === "CANCELLED") return "Stopped";
   if (status === "FAILED") {
+    // The console stopped waiting (2 minutes, or 3 failed polls in a row)
+    if (errorReason === "POLL_TIMEOUT" || errorReason === "POLL_UNREACHABLE") {
+      return "Couldn't reach Ask ZCOM, try again";
+    }
     return errorReason === "RUN_INTERRUPTED"
       ? "Something interrupted the answer, try again"
       : "Ask ZCOM couldn't answer, try again";

@@ -1,14 +1,17 @@
 /**
  * Ask ZCOM for staff: conversation state (backend PRD-026 FR-7.2, guide §12)
  *
- * `ask` sends `askZcomPlatform` with a fresh `clientMessageId` (kept for a
- * retry after a network error, so a repeat returns the same run), then
- * polls `platformAssistantRun` about once a second with `afterSeq`,
- * appending each `delta` until the run stops being RUNNING; the final
- * `message.text` then replaces the streamed text. Polling stops while the
- * panel is closed (the run continues on the server) and resumes on open.
- * One question at a time per conversation. Mirrors the dashboard's
- * merchant chat (`useAskZcom`) on the platform operations.
+ * `ask` sends `askZcomPlatform` **once** per question with a fresh
+ * `clientMessageId` (kept for a retry after a network error, so a repeat
+ * returns the same run), then polls the query `platformAssistantRun` about
+ * once a second with `afterSeq`, appending each `delta` until the run stops
+ * being RUNNING; the final `message.text` then replaces the streamed text.
+ * Polling stops on every end state, on unmount, after a cancel, after
+ * 2 minutes and after 3 failed polls in a row; it pauses while the panel is
+ * closed (the run continues on the server) and resumes on open. One
+ * question at a time: a second send before the first is answered is
+ * dropped. Rules: backend `docs/reviews/2026-11-03-super-admin-chat-fe-fixes.md`
+ * (FE-1..FE-4). Mirrors the dashboard's merchant chat (`useAskZcom`).
  */
 
 import { useApolloClient } from "@apollo/client";
@@ -23,7 +26,10 @@ import {
 } from "../graphql/platform-insights";
 import {
   applyRun,
+  askQuestionText,
+  canRetrySameId,
   isTurnBusy,
+  pollOutcome,
   turnsFromConversation,
   type AskTurn,
 } from "../lib/ask-zcom-platform.util";
@@ -55,7 +61,7 @@ function toSendError(error: unknown): NonNullable<AskTurn["sendError"]> {
     message: askErrorMessage(error),
     reason: typeof ext.reason === "string" ? ext.reason : null,
     code: typeof ext.code === "string" ? ext.code : null,
-    canRetrySame: Boolean((error as { networkError?: unknown } | null)?.networkError),
+    canRetrySame: canRetrySameId(error),
   };
 }
 
@@ -69,6 +75,14 @@ export function useAskZcomPlatform({ isActive, onSettled }: UseAskZcomPlatformOp
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeRef = useRef(isActive);
   const seqRef = useRef<Record<string, number>>({});
+  // Per run: when polling (re)started and the failed polls in a row
+  const pollStateRef = useRef<Record<string, { startedAt: number; failures: number }>>({});
+  // FE-1: set from the press until the mutation answers, so a double press
+  // (or a re-run effect) can't send the question twice
+  const sendingRef = useRef(false);
+  const mountedRef = useRef(true);
+  // Bumped by every stop, so a poll already in flight doesn't schedule more
+  const pollGeneration = useRef(0);
   const onSettledRef = useRef(onSettled);
   onSettledRef.current = onSettled;
 
@@ -81,6 +95,7 @@ export function useAskZcomPlatform({ isActive, onSettled }: UseAskZcomPlatformOp
   }, []);
 
   const stopPolling = useCallback(() => {
+    pollGeneration.current += 1;
     if (pollTimer.current) clearTimeout(pollTimer.current);
     pollTimer.current = null;
   }, []);
@@ -94,28 +109,50 @@ export function useAskZcomPlatform({ isActive, onSettled }: UseAskZcomPlatformOp
     [updateTurn],
   );
 
+  /** FE-2: the console stopped waiting; the turn ends with a retry. */
+  const giveUp = useCallback(
+    (clientMessageId: string, reason: "POLL_TIMEOUT" | "POLL_UNREACHABLE") => {
+      stopPolling();
+      updateTurn(clientMessageId, (turn) => ({ ...turn, status: "FAILED", runErrorReason: reason }));
+      onSettledRef.current?.();
+    },
+    [stopPolling, updateTurn],
+  );
+
   const poll = useCallback(
     (clientMessageId: string, runId: string) => {
       stopPolling();
-      if (!activeRef.current) return;
+      if (!activeRef.current || !mountedRef.current) return;
+      const state = (pollStateRef.current[runId] ??= { startedAt: Date.now(), failures: 0 });
+      const generation = pollGeneration.current;
+      const isCurrent = () => mountedRef.current && activeRef.current && pollGeneration.current === generation;
       pollTimer.current = setTimeout(async () => {
+        let status: string | null = null;
         try {
           const { data } = await apolloClient.query<{ platformAssistantRun: PlatformAssistantRun }>({
             query: PLATFORM_ASSISTANT_RUN,
             variables: { runId, afterSeq: seqRef.current[runId] ?? 0 },
             fetchPolicy: "no-cache",
           });
+          if (!isCurrent()) return;
           const run = data.platformAssistantRun;
+          state.failures = 0;
+          status = run.status;
           apply(clientMessageId, run);
-          if (run.status === "RUNNING") poll(clientMessageId, runId);
-          else onSettledRef.current?.();
         } catch {
+          if (!isCurrent()) return;
           // A dropped poll is retried; the run keeps going on the server
-          poll(clientMessageId, runId);
+          state.failures += 1;
         }
+        const outcome = pollOutcome({ status, failures: state.failures, startedAt: state.startedAt, now: Date.now() });
+        if (outcome === "CONTINUE") poll(clientMessageId, runId);
+        else if (outcome === "ENDED") {
+          delete pollStateRef.current[runId];
+          onSettledRef.current?.();
+        } else giveUp(clientMessageId, outcome === "TIMED_OUT" ? "POLL_TIMEOUT" : "POLL_UNREACHABLE");
       }, ASK_POLL_MS);
     },
-    [apolloClient, apply, stopPolling],
+    [apolloClient, apply, giveUp, stopPolling],
   );
 
   // ─── Effects ───
@@ -126,19 +163,29 @@ export function useAskZcomPlatform({ isActive, onSettled }: UseAskZcomPlatformOp
       stopPolling();
       return;
     }
-    // Reopened: pick up a run that was still answering
+    // Reopened: pick up a run that was still answering, with a fresh clock
     const running = turns.find((turn) => turn.status === "RUNNING" && turn.runId);
-    if (running?.runId && !pollTimer.current) poll(running.clientMessageId, running.runId);
+    if (running?.runId && !pollTimer.current) {
+      delete pollStateRef.current[running.runId];
+      poll(running.clientMessageId, running.runId);
+    }
     // Only when the panel opens or closes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
-  useEffect(() => stopPolling, [stopPolling]);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      stopPolling();
+    };
+  }, [stopPolling]);
 
   // ─── Actions ───
 
   const send = useCallback(
     async (question: string, clientMessageId: string) => {
+      sendingRef.current = true;
       try {
         const { data } = await apolloClient.mutate<{ askZcomPlatform: PlatformAssistantRun }>({
           mutation: ASK_ZCOM_PLATFORM,
@@ -153,6 +200,7 @@ export function useAskZcomPlatform({ isActive, onSettled }: UseAskZcomPlatformOp
         const run = data!.askZcomPlatform;
         // A repeat of the same id returns the same run: start from 0
         seqRef.current[run.id] = 0;
+        delete pollStateRef.current[run.id];
         updateTurn(clientMessageId, (turn) => ({ ...turn, text: "" }));
         apply(clientMessageId, run);
         if (run.status === "RUNNING") poll(clientMessageId, run.id);
@@ -160,6 +208,8 @@ export function useAskZcomPlatform({ isActive, onSettled }: UseAskZcomPlatformOp
       } catch (error) {
         updateTurn(clientMessageId, (turn) => ({ ...turn, status: "FAILED", sendError: toSendError(error) }));
         onSettledRef.current?.();
+      } finally {
+        sendingRef.current = false;
       }
     },
     [apolloClient, apply, conversationId, poll, updateTurn],
@@ -167,8 +217,8 @@ export function useAskZcomPlatform({ isActive, onSettled }: UseAskZcomPlatformOp
 
   const ask = useCallback(
     async (text: string) => {
-      const question = text.trim();
-      if (!question || isBusy) return;
+      const question = askQuestionText(text);
+      if (!question || isBusy || sendingRef.current) return;
       const clientMessageId = newClientMessageId();
       setTurns((list) => [
         ...list,
@@ -182,7 +232,7 @@ export function useAskZcomPlatform({ isActive, onSettled }: UseAskZcomPlatformOp
   /** The same `clientMessageId` after a network error, a new one otherwise. */
   const retry = useCallback(
     async (turn: AskTurn) => {
-      if (isBusy) return;
+      if (isBusy || sendingRef.current) return;
       const clientMessageId = turn.sendError?.canRetrySame ? turn.clientMessageId : newClientMessageId();
       setTurns((list) =>
         list.map((item) =>
@@ -208,13 +258,26 @@ export function useAskZcomPlatform({ isActive, onSettled }: UseAskZcomPlatformOp
   const cancel = useCallback(
     async (turn: AskTurn) => {
       if (!turn.runId) return;
+      const runId = turn.runId;
       try {
-        await apolloClient.mutate({ mutation: PLATFORM_ASSISTANT_CANCEL_RUN, variables: { runId: turn.runId } });
+        const { data } = await apolloClient.mutate<{ platformAssistantCancelRun: { id: string; status: string } }>({
+          mutation: PLATFORM_ASSISTANT_CANCEL_RUN,
+          variables: { runId },
+        });
+        // FE-2: cancelled once, then no more polls
+        stopPolling();
+        delete pollStateRef.current[runId];
+        const status = data?.platformAssistantCancelRun?.status ?? "CANCELLED";
+        updateTurn(turn.clientMessageId, (item) => ({
+          ...item,
+          status: status === "RUNNING" ? "CANCELLED" : status,
+        }));
+        onSettledRef.current?.();
       } catch {
-        // The poll reports whatever state the run reached
+        // Not cancelled: the poll keeps reporting the run
       }
     },
-    [apolloClient],
+    [apolloClient, stopPolling, updateTurn],
   );
 
   const rate = useCallback(

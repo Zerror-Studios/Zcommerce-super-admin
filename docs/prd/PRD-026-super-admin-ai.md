@@ -43,3 +43,14 @@ Shared layer: see UX notes. `platform:ai:ask` added to `lib/permissions.ts`.
 **Checks (2026-11-02):** `tsc -b` and `tsc -p tsconfig.app.json` clean (note: `tsc --noEmit -p .` checks nothing here, the root tsconfig only lists references); vitest **318 in 50 files** (+31 new); `vite build` passes; `check:synced` 61 files, 0 differ; `validate:ops` 0 invalid; `lint:hex` 0, `lint:px` 29/36; oxlint no new findings (pre-existing warnings in untouched files).
 
 **Not done / open:** nothing has run in a browser or against the deployed backend; `lib/aiSamples.ts` still holds `platformBrief` (now used only by its own test) and `storeInsight` (the store page's insight card, outside FR-7); the states to test on staging per guide §10.3 (first run, stale, small sample, unavailable, a viewer without billing or AI permissions).
+
+### Chat fixes from the first live test — 2026-11-04
+
+Source: backend `docs/reviews/2026-11-03-super-admin-chat-fe-fixes.md` (FE-1..FE-4). `hooks/use-ask-zcom-platform.ts` and `lib/ask-zcom-platform.util.ts`:
+- **FE-1:** `askZcomPlatform` is sent once per question; a send in flight blocks a second one (double press, a re-run effect), and everything after it is the `platformAssistantRun` query.
+- **FE-2:** polling stops on every end state, on unmount, on close (resumes on open with a fresh clock), after a successful cancel (one `platformAssistantCancelRun`, the turn shows Stopped), after 2 minutes and after 3 failed polls in a row ("Couldn't reach Ask ZCOM, try again", Retry); a poll in flight when polling stops schedules nothing more.
+- **FE-3:** the question is sent as typed, trimmed; one pair of quotes wrapping the whole question (straight or curly) is dropped. No code path in `cb174f4` stringified the question, so the live test's quotes most likely came from a pasted, quoted question.
+- **FE-4:** the same `clientMessageId` is reused only for a send that got no answer (network error, 5xx); `RUN_IN_PROGRESS` and other answered errors keep their copy and get a new id on Retry.
+
+**Checks:** vitest **329 in 52 files** (+3), `tsc -b`, `vite build`, `check:synced` (61, 0 differ), `validate:ops` clean; no new lint warnings. Not run in a browser: the review's network-tab checklist (its "How to check the fix") is the UAT step.
+
