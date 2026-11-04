@@ -4,7 +4,8 @@
  * Your account (platformMe, read-only: the API has no mutation for the name yet), two-step verification with
  * "Set up again" through /mfa, Change password (`platformChangePassword`: the server re-checks the current
  * password and signs out every other session; keeps its own button) and Sessions (`platformMySessions`, one
- * revoked at a time with `revokePlatformSession`; "Sign out everywhere" in the card header).
+ * revoked at a time with `revokePlatformSession`; "Sign out everywhere" in the card header). Since PRD-033
+ * FR-2.8 also Browser notifications (`BrowserNotificationsCard`, hidden until the platform has push keys).
  */
 
 import { useMutation, useQuery } from "@apollo/client";
@@ -22,6 +23,7 @@ import { useAuth } from "../../providers/AuthProvider";
 import type { PlatformSessionInfo } from "../../types/platform-api";
 import { toasts } from "../../copy";
 import { ConfirmModal } from "../common/ConfirmModal";
+import { BrowserNotificationsCard } from "./BrowserNotificationsCard";
 import {
   Button,
   Card,
@@ -239,6 +241,8 @@ export function ProfileSecuritySettings() {
             </div>
           </form>
         </Card>
+
+        <BrowserNotificationsCard />
 
         <div id="sessions" data-settings-field>
           {sessions.error && !sessions.data ? (

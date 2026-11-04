@@ -7,6 +7,7 @@ import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import { useNotificationCounts } from "../../hooks/use-platform-notifications";
+import { useWebPushRefresh } from "../../hooks/use-web-push";
 import { useAiTopUpRequests } from "../../hooks/use-platform-ai";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { usePlatformSettings } from "../../providers/SettingsProvider";
@@ -62,6 +63,8 @@ export function DashboardLayout() {
   const [signOutOpen, setSignOutOpen] = useState(false);
   // PRD-024 FR-4.1.5: the server feed; the bell's count is polled while the browser tab is visible.
   const notificationCounts = useNotificationCounts();
+  // PRD-033 FR-2.2: keep this browser's push row fresh (silent, once per load).
+  useWebPushRefresh();
 
   const toggleSidebar = useCallback(() => {
     setCollapsed((prev) => {

@@ -22,7 +22,7 @@ export const SETTINGS_SECTIONS: Record<SettingsSectionKey, SettingsSectionMeta> 
     label: "Profile & security",
     description: "Your account, password, two-step verification and signed-in devices.",
     icon: IconUser,
-    keywords: ["account", "password", "sessions", "devices", "sign out everywhere"],
+    keywords: ["account", "password", "sessions", "devices", "sign out everywhere", "notifications", "push"],
   },
   team: {
     label: "Team & roles",
@@ -87,6 +87,8 @@ export const SETTINGS_FIELDS: Partial<Record<SettingsSectionKey, FieldEntry[]>> 
     { id: "account", label: "Your account", keywords: ["name", "email", "role"] },
     { id: "two-step", label: "Two-step verification", keywords: ["mfa", "authenticator"] },
     { id: "password-current", label: "Change password", keywords: ["current password", "new password"] },
+    // PRD-033 FR-2.8: shown only while the platform has push keys.
+    { id: "browser-notifications", label: "Browser notifications", keywords: ["push", "alerts", "notifications"] },
     { id: "sessions", label: "Sessions", keywords: ["devices", "revoke"] },
     { id: "sign-out-everywhere", label: "Sign out everywhere", keywords: ["logout", "sessions"] },
   ],

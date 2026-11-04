@@ -78,3 +78,53 @@ export const MARK_ALL_PLATFORM_NOTIFICATIONS_READ = gql`
     markAllPlatformNotificationsRead(category: $category)
   }
 `;
+
+// ─── Browser push (PRD-033 FR-2.6–FR-2.9) ─────────────────────────────────
+
+/** Whether push is offered (false until the platform sets its keys). */
+export const PLATFORM_WEB_PUSH_CONFIG = gql`
+  query PlatformWebPushConfig {
+    platformWebPushConfig {
+      enabled
+      publicKey
+    }
+  }
+`;
+
+/** The caller's preference and how many browsers are registered. */
+export const PLATFORM_MY_PUSH_SETTINGS = gql`
+  query PlatformMyPushSettings {
+    platformMyPushSettings {
+      minSeverity
+      deviceCount
+    }
+  }
+`;
+
+/** Saves this browser's subscription for the caller. */
+export const PLATFORM_REGISTER_PUSH_SUBSCRIPTION = gql`
+  mutation PlatformRegisterPushSubscription(
+    $input: PlatformPushSubscriptionInput!
+  ) {
+    platformRegisterPushSubscription(input: $input)
+  }
+`;
+
+export const PLATFORM_REMOVE_PUSH_SUBSCRIPTION = gql`
+  mutation PlatformRemovePushSubscription($endpoint: String!) {
+    platformRemovePushSubscription(endpoint: $endpoint)
+  }
+`;
+
+export const PLATFORM_SET_PUSH_PREFERENCE = gql`
+  mutation PlatformSetPushPreference($minSeverity: PlatformPushMinSeverity!) {
+    platformSetPushPreference(minSeverity: $minSeverity)
+  }
+`;
+
+/** Returns how many browsers it reached (5 an hour). */
+export const PLATFORM_SEND_TEST_PUSH = gql`
+  mutation PlatformSendTestPush {
+    platformSendTestPush
+  }
+`;

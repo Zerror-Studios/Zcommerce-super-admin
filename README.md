@@ -2,7 +2,7 @@
 
 This is Zerror Studios' internal console for running the ZCommerce platform. It covers **client stores** (tenants), plans and subscriptions, billing and transactions, revenue analytics, coupons, and renewal automation. Tenant store staff use `../zcom-frontend` instead.
 
-> **Status: API-only (PRD-005 Phases 0–4, 2026-10-17).** Sign-in is real (platform account, optional TOTP); stores, plans, subscriptions, the store lifecycle, subscription actions, billing rules, invoices, payments, discounts, reminders, every revenue and collections figure, Team, the audit log and "Log in to store" come from the backend `platform-admin` subgraph. The mock prototype was removed; notifications have no feed yet. Not yet run against a live gateway in a browser.
+> **Status: API-only (PRD-005 Phases 0–4, 2026-10-17).** Sign-in is real (platform account, optional TOTP); stores, plans, subscriptions, the store lifecycle, subscription actions, billing rules, invoices, payments, discounts, reminders, every revenue and collections figure, Team, the audit log and "Log in to store" come from the backend `platform-admin` subgraph. The mock prototype was removed. Notifications come from the server feed (PRD-024 Phase D), and staff can opt in to browser push for urgent ones in Settings › Profile & security (PRD-033; `public/push-sw.js`). Not yet run against a live gateway in a browser.
 
 > Working here with Claude Code or as a new engineer? Read [`CLAUDE.md`](CLAUDE.md) first, then [`docs/README.md`](docs/README.md). UI work follows the design spec in [`docs/design/`](docs/design/README.md).
 

@@ -46,4 +46,18 @@ describe("vercel.json CSP", () => {
     expect(cspDirective("connect-src")).not.toContain("*");
     expect(cspDirective("connect-src")).not.toContain("https:");
   });
+
+  // PRD-033 FR-2.7: `/push-sw.js` is a same-origin worker. With no
+  // `worker-src`, browsers fall back to `child-src`, then `script-src`.
+  it("allows the same-origin push service worker", () => {
+    const workerSrc = cspDirective("worker-src");
+    const childSrc = cspDirective("child-src");
+    const effective =
+      workerSrc.length > 0
+        ? workerSrc
+        : childSrc.length > 0
+          ? childSrc
+          : cspDirective("script-src");
+    expect(effective).toContain("'self'");
+  });
 });

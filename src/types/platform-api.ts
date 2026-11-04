@@ -1488,3 +1488,27 @@ export interface PlatformSessionInfo {
   /** The session this browser holds. */
   current: boolean;
 }
+
+// ─── Browser push (PRD-033 FR-2.6–FR-2.9) ─────────────────────────────────
+
+/** The lowest severity that pushes to the user's browsers. */
+export type PlatformPushMinSeverity = "CRITICAL" | "WARNING" | "OFF";
+
+/** Whether the platform offers push, and its VAPID public key. */
+export interface PlatformWebPushConfig {
+  enabled: boolean;
+  publicKey: string | null;
+}
+
+/** The signed-in user's push preference and registered browsers. */
+export interface PlatformPushSettings {
+  minSeverity: PlatformPushMinSeverity;
+  deviceCount: number;
+}
+
+export interface PlatformPushSubscriptionInput {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  userAgent: string | null;
+}
