@@ -299,7 +299,7 @@ export function ClientDetail() {
   // Deep links land here before `platformTenants` has answered: wait, don't say "not found".
   if (!client && (loading || single.loading)) {
     return (
-      <div className="mx-auto max-w-content">
+      <div className="w-full">
         <PageHeader type="detail" back={back} title="Loading store…" />
       </div>
     );
@@ -308,7 +308,7 @@ export function ClientDetail() {
   // The list failed to load: say so, don't claim the store doesn't exist.
   if (!client && error) {
     return (
-      <div className="mx-auto max-w-content">
+      <div className="w-full">
         <PageHeader type="detail" back={back} title="Store" />
         <ErrorState title="Couldn't load the store." description={toasts.genericError} onRetry={() => void refetch()} />
       </div>
@@ -317,7 +317,7 @@ export function ClientDetail() {
 
   if (!client) {
     return (
-      <div className="mx-auto max-w-content">
+      <div className="w-full">
         <PageHeader type="detail" back={back} title="Store not found" />
         <Card>
           <EmptyState
@@ -496,7 +496,7 @@ export function ClientDetail() {
   );
 
   return (
-    <div className="mx-auto max-w-content" style={stickyTopStyle}>
+    <div className="w-full" style={stickyTopStyle}>
       <PageHeader
         type="detail"
         back={back}

@@ -67,6 +67,8 @@ export function AuthLayout({ title, documentTitle, subtitle, productLabel, below
 
 export interface AuthFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
   label: string;
+  /** Keep the label for screen readers only (the login helper asks the question); `labelAction` moves under the field. */
+  hideLabel?: boolean;
   /** Shown under the field in red; the border turns red too. */
   error?: string;
   /** Right side of the label row (e.g. a "Forgot?" link). */
@@ -77,7 +79,7 @@ export interface AuthFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
 
 /** Dark login field: 40px, 8px radius, white text; soft blue focus ring; autofill stays dark. No asterisks. */
 export const AuthField = forwardRef<HTMLInputElement, AuthFieldProps>(function AuthField(
-  { label, error, labelAction, endContent, className, id, ...rest },
+  { label, hideLabel = false, error, labelAction, endContent, className, id, ...rest },
   ref,
 ) {
   const autoId = useId();
@@ -85,12 +87,18 @@ export const AuthField = forwardRef<HTMLInputElement, AuthFieldProps>(function A
   const errorId = `${inputId}-error`;
   return (
     <div className={cx("flex flex-col gap-1.5", className)}>
-      <div className="flex items-center justify-between">
-        <label htmlFor={inputId} className="text-label font-medium text-auth-muted">
+      {hideLabel ? (
+        <label htmlFor={inputId} className="sr-only">
           {label}
         </label>
-        {labelAction}
-      </div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <label htmlFor={inputId} className="text-label font-medium text-auth-muted">
+            {label}
+          </label>
+          {labelAction}
+        </div>
+      )}
       <div className="relative">
         <input
           ref={ref}
@@ -112,6 +120,7 @@ export const AuthField = forwardRef<HTMLInputElement, AuthFieldProps>(function A
           {error}
         </p>
       ) : null}
+      {hideLabel && labelAction ? <div className="flex justify-end">{labelAction}</div> : null}
     </div>
   );
 });

@@ -67,6 +67,9 @@ export interface SettingsShellProps {
   children: ReactNode;
 }
 
+/** "Sign out": red text and icon, red hover (owner, 2026-11-04), like the account menu's Sign out. */
+const destructiveRowClass = "!text-tone-danger-text [&_svg]:!text-tone-danger-text hover:!bg-tone-danger-soft";
+
 const menuRowClass = (active: boolean) =>
   cx(
     "flex h-[var(--zc-pane-row-h)] w-full items-center gap-2.5 rounded-pane-item px-2.5 text-left text-body transition-colors duration-instant",
@@ -196,7 +199,7 @@ function MenuRows({ groups, activeKey, footer }: { groups: SettingsMenuGroup[]; 
                     type="button"
                     data-pane-row
                     onClick={action.onSelect}
-                    className={cx(menuRowClass(false), action.destructive && "text-tone-danger-text [&_svg]:!text-tone-danger-text")}
+                    className={cx(menuRowClass(false), action.destructive && destructiveRowClass)}
                   >
                     {Icon ? <Icon aria-hidden /> : null}
                     <span className="min-w-0 flex-1 truncate">{action.label}</span>
@@ -327,7 +330,7 @@ function SettingsSectionList({
                 <button
                   type="button"
                   onClick={action.onSelect}
-                  className={cx(rowClass, action.destructive && "text-tone-danger-text")}
+                  className={cx(rowClass, action.destructive && destructiveRowClass)}
                 >
                   {Icon ? <Icon aria-hidden /> : null}
                   <span className="min-w-0 flex-1 truncate">{action.label}</span>

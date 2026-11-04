@@ -200,7 +200,7 @@ export function Analytics() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-content">
+    <div className="w-full">
       {header}
       {content}
     </div>

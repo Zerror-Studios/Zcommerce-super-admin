@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { allNavItems, mainNavItems, visibleNavItems } from "../../config/navigation";
 import { APP_VERSION } from "../../config/data-source";
 import { getPlatformRoleLabel } from "../../lib/display-labels.util";
@@ -60,7 +60,6 @@ export function DashboardLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   // Sign out asks first (04 S-07i).
   const [signOutOpen, setSignOutOpen] = useState(false);
-  const navigate = useNavigate();
   // PRD-024 FR-4.1.5: the server feed; the bell's count is polled while the browser tab is visible.
   const notificationCounts = useNotificationCounts();
 
@@ -163,9 +162,9 @@ export function DashboardLayout() {
     renderNotifications: (row: ReactNode) => panel(row),
     // PRD-024 FR-1.5 (P-06): the signed-in platform user (platformMe) and their role.
     user: user ? { name: user.name || user.email, email: user.email, subtitle: getPlatformRoleLabel(user.role) } : undefined,
-    // Account menu (02 §3.6): Profile & security, then Sign out (red, after a divider, confirms first).
+    // Account menu: name, email and version in its header, then only Sign out (red, confirms first; owner,
+    // 2026-11-04, like the store dashboard). Profile & security is in Settings.
     userMenu: [
-      { key: "profile", label: "Profile & security", onAction: () => navigate("/settings/profile") },
       { key: "logout", label: "Sign out", onAction: () => setSignOutOpen(true), danger: true },
     ],
     onLogout: handleLogout,

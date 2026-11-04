@@ -100,7 +100,7 @@ export function Settings() {
         aria-label="Settings sections"
         groups={groups}
         activeKey={active}
-        footer={[{ key: "sign-out", label: "Sign out", icon: IconLogout, onSelect: () => setSignOutOpen(true) }]}
+        footer={[{ key: "sign-out", label: "Sign out", icon: IconLogout, onSelect: () => setSignOutOpen(true), destructive: true }]}
         showList={!active}
         back={{ href: "/settings", label: "Settings" }}
       >
@@ -114,7 +114,6 @@ export function Settings() {
         title="Sign out?"
         description="You'll need to sign in again to use the console."
         confirmLabel="Sign out"
-        confirmColor="primary"
       />
     </div>
   );

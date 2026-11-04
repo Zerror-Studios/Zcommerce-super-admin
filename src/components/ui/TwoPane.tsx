@@ -179,21 +179,27 @@ export interface PaneHeaderProps {
   badges?: ReactNode;
   /** At most one primary button ("+ Add shipping profile"), plus ghost extras before it. */
   actions?: ReactNode;
+  /** A row under the title inside the same card (a section's tabs). */
+  children?: ReactNode;
   className?: string;
 }
 
-/** H2 18/600 → one muted line → actions right; 16px above the first card. */
-export function PaneHeader({ title, description, badges, actions, className }: PaneHeaderProps) {
+/** Its own card: H2 18/600 → one muted line → actions right → optional row below; 16px above the first card. */
+export function PaneHeader({ title, description, badges, actions, children, className }: PaneHeaderProps) {
   return (
-    <div className={cx("mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between", className)}>
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-title-2 font-semibold text-fg">{title}</h2>
-          {badges}
+    // Its own card, like the cards below it (owner, 2026-11-04); 20px sides as a card header
+    <div className={cx("mb-4 rounded-card border border-line bg-surface px-5 py-4", className)}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-title-2 font-semibold text-fg">{title}</h2>
+            {badges}
+          </div>
+          {description != null ? <p className="mt-0.5 text-body text-fg-muted">{description}</p> : null}
         </div>
-        {description != null ? <p className="mt-0.5 text-body text-fg-muted">{description}</p> : null}
+        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+      {children ? <div className="mt-4">{children}</div> : null}
     </div>
   );
 }

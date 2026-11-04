@@ -51,7 +51,7 @@ export function Home() {
   const revenue = useRevenueOverview(yearRange);
 
   return (
-    <div className="mx-auto flex w-full max-w-[1136px] flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <VideoBanner
         eyebrow={`${monthYear.format(now)} · ${plural(totalCount, "store", "stores")}`}
         subline="Here's what needs your attention today."

@@ -35,9 +35,9 @@ export const menuItemClasses = {
   selectedIcon: "text-brand-text",
 };
 
-/** Add to a destructive item ("Delete"): last in the menu, after a divider, red text and icon. */
+/** Add to a destructive item ("Delete", "Sign out"): last, after a divider, red text and icon, red hover (wins over the grey). */
 export const menuItemDangerClasses =
-  "text-tone-danger-text [&>svg]:!text-tone-danger-text data-[hover=true]:bg-tone-danger-soft data-[hover=true]:text-tone-danger-text";
+  "!text-tone-danger-text [&>svg]:!text-tone-danger-text data-[hover=true]:!bg-tone-danger-soft data-[hover=true]:!text-tone-danger-text data-[focus-visible=true]:!bg-tone-danger-soft";
 
 /** Section label inside a menu: 12/500 subtle, padding 8 10 4. */
 export const menuSectionClasses = {
