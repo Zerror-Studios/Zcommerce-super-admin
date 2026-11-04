@@ -45,4 +45,4 @@ Requirements, contract and decisions live in the source-of-truth PRD. This repo 
 - zcom-backend `validate:clients --all --write`: zcom-super-admin **127/127**, 0 failures (manifest regenerated).
 - Not run in a browser; no push has been received end to end.
 
-**Open:** the console has no web app manifest, so on iPhone and iPad "Add to Home Screen" may not open it as a standalone web app, which iOS needs for push (owner decision: add a minimal `manifest.webmanifest` with `display: standalone`).
+**Web app manifest (owner decision, 2026-11-05):** `public/manifest.json` (Zcom Console, `display: standalone`, `start_url` `/`, black theme), the icons in `public/icons/` (192, 512, maskable 512, 180 apple-touch) and the `index.html` tags, so on iPhone and iPad (iOS 16.4+) "Add to Home Screen" opens a standalone web app that can receive push. Check after the deploy that `/manifest.json` returns JSON.
