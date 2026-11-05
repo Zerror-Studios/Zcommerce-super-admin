@@ -1,15 +1,16 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
- * AI layer (docs/design/02-components.md §16, 08 §1.3, 09 §2A). One visual language: the sparkle, the spectrum
- * avatar and the spectrum edge, reserved for AI. People know how Claude and ChatGPT look, so AI writing is one
+ * AI layer (docs/design/02-components.md §16, 08 §1.3, 09 §2A; design v2 §3.4). One visual language reserved for AI:
+ * the animated orb (Sparkle and AiAvatar now render it) and the blue edge. People know how Claude and ChatGPT look, so AI writing is one
  * chat card under the field (AiSuggestion): never inside the field, never auto-applied until "Use this".
  * While a request runs the card edge rotates (.ai-live).
  */
 import { useState, type ReactNode } from "react";
 import { Button } from "./Button";
 import { cx } from "./cx";
-import { IconArrowRight, IconSend, IconCheck, IconClose, IconEdit, IconUndo } from "./icons";
+import { IconSend, IconCheck, IconClose, IconEdit, IconUndo } from "./icons";
 import { IconButton } from "./IconButton";
+import { Orb } from "./Orb";
 
 // ─── Sparkle ─────────────────────────────────────────────────────────────────
 
@@ -28,32 +29,16 @@ export function AiSpectrumDefs() {
   );
 }
 
-/** The AI sparkle (16px default). Decorative: the surrounding text says what it is. */
+/** LEGACY name: v2 §3.4 replaces the static sparkle with the animated orb (18px) in front of every AI suggestion. */
 export function Sparkle({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden className={cx("size-4 shrink-0", className)} style={{ strokeWidth: 0 }}>
-      <path fill="url(#ai-spectrum)" d="M12 2.5l2.1 5.6 5.6 2.1-5.6 2.1L12 17.9l-2.1-5.6-5.6-2.1 5.6-2.1z" />
-      <path fill="url(#ai-spectrum)" d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z" />
-    </svg>
-  );
+  return <Orb className={className} />;
 }
 
 // ─── Avatar ──────────────────────────────────────────────────────────────────
 
-/** 28px spectrum circle with a white sparkle: who is speaking in every AI card (09 §2A). */
+/** Who is speaking in every AI card: the 28px orb (v2 §3.4). */
 export function AiAvatar({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden
-      className={cx("inline-flex size-7 shrink-0 items-center justify-center rounded-full", className)}
-      style={{ background: "var(--zc-ai-gradient)" }}
-    >
-      <svg viewBox="0 0 24 24" className="size-3.5" style={{ strokeWidth: 0 }}>
-        <path fill="var(--zc-surface)" d="M12 2.5l2.1 5.6 5.6 2.1-5.6 2.1L12 17.9l-2.1-5.6-5.6-2.1 5.6-2.1z" />
-        <path fill="var(--zc-surface)" d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z" />
-      </svg>
-    </span>
-  );
+  return <Orb size="lg" className={className} />;
 }
 
 // ─── Today's brief ───────────────────────────────────────────────────────────
@@ -70,7 +55,7 @@ export interface TodaysBriefProps {
   lines?: BriefLine[];
   /** One blue action, then up to two secondary. */
   actions?: { label: string; onPress: () => void }[];
-  /** "Ask AI →" in the header; opens the assistant panel. */
+  /** LEGACY: ignored. v2 §3.3: the Zcom AI bar is the only place to ask. */
   onAskAi?: () => void;
   /** LEGACY one-sentence brief (shown as a single line). Hidden when null. */
   message?: ReactNode | null;
@@ -81,10 +66,10 @@ export interface TodaysBriefProps {
 }
 
 /**
- * Today's brief (08 §2.1, 09 §2A): the AI card without the ask input. Spectrum avatar · "Today's brief" ·
- * Ask AI →; at most three lines at 15/23, each "**what to do** — why"; actions at the bottom.
+ * Today's brief (08 §2.1, 09 §2A): the AI card without the ask input. The orb · "Today's brief"; at most three
+ * lines at 15/23, each "**what to do** — why"; actions at the bottom. No "Ask AI" button (v2 §3.3).
  */
-export function TodaysBrief({ lines, actions, onAskAi, message, action, onDismiss, className }: TodaysBriefProps) {
+export function TodaysBrief({ lines, actions, message, action, onDismiss, className }: TodaysBriefProps) {
   const shown = (lines?.length ? lines : message ? [{ what: message }] : []).slice(0, 3);
   if (!shown.length) return null;
   const buttons = (actions ?? (action ? [action] : [])).slice(0, 3);
@@ -94,11 +79,6 @@ export function TodaysBrief({ lines, actions, onAskAi, message, action, onDismis
       <div className="flex items-center gap-2.5">
         <AiAvatar />
         <h2 className="flex-1 text-body font-semibold text-fg">Today&apos;s brief</h2>
-        {onAskAi ? (
-          <Button variant="tertiary" size="sm" onPress={onAskAi} endIcon={<IconArrowRight aria-hidden />}>
-            Ask AI
-          </Button>
-        ) : null}
         {onDismiss ? (
           <IconButton aria-label="Dismiss brief" size="sm" onPress={onDismiss}>
             <IconClose />
@@ -292,7 +272,7 @@ export function AiAskInput({
         disabled={isDisabled}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="min-w-0 flex-1 bg-transparent text-body text-fg outline-none focus-visible:shadow-none"
+        className="min-w-0 flex-1 bg-transparent text-body text-fg outline-none focus-visible:shadow-none max-md:text-base"
       />
       <button
         type="button"

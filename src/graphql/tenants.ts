@@ -416,3 +416,24 @@ export const PLATFORM_STORE_SETUP = gql`
     }
   }
 `;
+
+/**
+ * Store › Team (PRD-035 item 4, board 62): the store's staff, owner first then by name; the same people the
+ * store's Settings › Team lists. Needs `platform:tenants:read`; each read is audit-logged (`tenant.staff_viewed`).
+ * Errors: NOT_FOUND (unknown or deleted store), CONFLICT reason STORE_DB_UNAVAILABLE. `twoFactorEnabled` is left
+ * out on purpose: store staff have no two-step login yet (always false).
+ */
+export const PLATFORM_TENANT_STAFF = gql`
+  query PlatformTenantStaff($tenantId: ID!) {
+    platformTenantStaff(tenantId: $tenantId) {
+      id
+      name
+      email
+      role
+      status
+      isOwner
+      invitePending
+      lastActiveAt
+    }
+  }
+`;

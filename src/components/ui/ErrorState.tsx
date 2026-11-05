@@ -24,7 +24,7 @@ export function ErrorState({
   title = "Couldn't load this.",
   description,
   onRetry,
-  retryLabel = "Retry",
+  retryLabel = "Try again",
   inline = false,
   className,
 }: ErrorStateProps) {
@@ -43,7 +43,7 @@ export function ErrorState({
   }
   return (
     <div role="alert" className={cx("flex flex-col items-center justify-center px-4 py-12 text-center", className)}>
-      <span aria-hidden className="flex size-10 items-center justify-center rounded-tile bg-tone-danger-soft text-tone-danger-text">
+      <span aria-hidden className="flex size-[var(--zc-title-tile)] items-center justify-center rounded-tile bg-tone-danger-soft text-tone-danger-text">
         <IconError className="size-5" />
       </span>
       <p className="mt-3 text-body font-semibold text-fg">{title}</p>

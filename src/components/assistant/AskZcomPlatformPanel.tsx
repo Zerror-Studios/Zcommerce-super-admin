@@ -1,7 +1,7 @@
 /**
  * Ask ZCOM for staff (backend PRD-026 FR-7.2, guide §12)
  *
- * Right drawer opened from the Ask bar, ⌘J or "Ask AI" in ⌘K; the layout
+ * Opened from the Zcom AI bar or ⌘J (the one AI entry point, v2 §3.3); the layout
  * shows it only with `platform:ai:ask` (Owner and Admin). Header with
  * conversations and new chat, the internal budget bar, the conversation
  * (streamed answers with tool chips, the final answer rendered by
@@ -13,7 +13,7 @@
  * single request/answer shape shared with the dashboard.
  */
 
-import { DrawerBody, DrawerContent, DrawerFooter, DrawerHeader } from "@heroui/react";
+import { DrawerBody, DrawerContent, DrawerFooter } from "@heroui/react";
 import { useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -22,17 +22,16 @@ import {
   AiThinking,
   Button,
   ConfirmDialog,
-  Drawer,
   EmptyState,
   ErrorState,
   IconButton,
   Skeleton,
-  Sparkle,
   formatRelative,
   toastError,
 } from "../ui";
 import { cx } from "../ui/cx";
-import { IconAdd, IconArrowRight, IconBack, IconChat, IconClose, IconDelete, IconTime } from "../ui/icons";
+import { IconAdd, IconBack, IconChat, IconDelete, IconTime } from "../ui/icons";
+import { AiComposer, AiSheet, AiSheetHeader, AiSheetHistory, AiSheetWelcome } from "../layout/AiSheet";
 import { AiUsageBar } from "./AiUsageBar";
 import { AssistantMarkdown } from "./AssistantMarkdown";
 import {
@@ -71,6 +70,10 @@ const NO_RETRY_REASONS = new Set([
 export interface AskZcomPlatformPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  /** The current page, for "Zcom AI · sees Stores". */
+  pageLabel?: string;
+  /** Three suggestions for the current page (config/ask-suggestions.ts). */
+  suggestions?: readonly string[];
   /** Question to ask as soon as the panel opens (Ask bar or ⌘K). */
   pendingQuestion?: string;
   onPendingConsumed?: () => void;
@@ -125,10 +128,18 @@ function RatingButtons({ turn, onRate }: { turn: AskTurn; onRate: (rating: "UP" 
 
 // ─── Component ────────────────────────────────────────────────────────────
 
-export function AskZcomPlatformPanel({ isOpen, onClose, pendingQuestion, onPendingConsumed }: AskZcomPlatformPanelProps) {
+export function AskZcomPlatformPanel({
+  isOpen,
+  onClose,
+  pendingQuestion,
+  onPendingConsumed,
+  pageLabel,
+  suggestions = ASK_SUGGESTIONS,
+}: AskZcomPlatformPanelProps) {
   const { can } = useAuth();
   const { clients } = useClients();
   const [view, setView] = useState<"chat" | "history">("chat");
+  const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
   const [deleting, setDeleting] = useState<PlatformAssistantConversationSummary | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -272,193 +283,184 @@ export function AskZcomPlatformPanel({ isOpen, onClose, pendingQuestion, onPendi
   };
 
   const runningTurn = chat.turns.find((turn) => turn.status === "RUNNING");
+  const showHistoryView = !expanded && view === "history";
+
+  /** Full view (v2 §3.3): the history sits on the left, so load it when the sheet expands. */
+  const changeExpanded = (next: boolean) => {
+    setExpanded(next);
+    if (next) {
+      void loadConversations({ variables: { limit: HISTORY_PAGE_SIZE, offset: 0 } });
+      setView("chat");
+    }
+  };
+
+  const historyList =
+    history.error && !history.data ? (
+      <ErrorState title="Couldn't load conversations." onRetry={() => void history.refetch?.()} />
+    ) : history.loading && !history.data ? (
+      <div className="space-y-2">
+        {Array.from({ length: 4 }, (_, index) => (
+          <Skeleton key={index} className="h-12 w-full rounded-field" />
+        ))}
+      </div>
+    ) : conversations.length === 0 ? (
+      <EmptyState icon={IconChat} title="No conversations yet" description="Your questions are kept here, private to you, for 90 days." />
+    ) : (
+      <ul className="flex flex-col divide-y divide-line-subtle">
+        {conversations.map((conversation) => (
+          <li key={conversation.id} className="flex items-center gap-2 py-2">
+            <button
+              type="button"
+              onClick={() => void openConversation(conversation.id)}
+              className={cx(
+                "min-w-0 flex-1 rounded-field px-2 py-1 text-left hover:bg-surface-sunken",
+                conversation.id === chat.conversationId && "bg-surface-sunken",
+              )}
+            >
+              <p className="truncate text-body text-fg">{conversation.title}</p>
+              <p className="text-caption text-fg-subtle">
+                {conversation.turnCount} question{conversation.turnCount === 1 ? "" : "s"} ·{" "}
+                {formatRelative(conversation.lastMessageAt)}
+              </p>
+            </button>
+            <IconButton
+              variant="danger"
+              aria-label={`Delete conversation ${conversation.title}`}
+              size="sm"
+              onPress={() => setDeleting(conversation)}
+            >
+              <IconDelete />
+            </IconButton>
+          </li>
+        ))}
+      </ul>
+    );
+
+  const chatList = chat.isLoadingConversation ? (
+    <div className="space-y-3">
+      <Skeleton className="h-10 w-2/3 self-end rounded-xl" />
+      <Skeleton className="h-24 w-full rounded-xl" />
+    </div>
+  ) : chat.turns.length === 0 ? (
+    <AiSheetWelcome
+      suggestions={suggestions}
+      onAsk={(question) => void chat.ask(question)}
+      disabled={chat.isBusy || !canAsk || needsMfa}
+      note="Answers come from last night's platform snapshot and show only what your role may see."
+    />
+  ) : (
+    chat.turns.map((turn) => (
+      <div key={turn.clientMessageId} className="flex flex-col gap-3">
+        <p className="self-end whitespace-pre-line rounded-xl bg-surface-sunken px-3 py-2 text-body text-fg">{turn.question}</p>
+        {renderAnswer(turn)}
+      </div>
+    ))
+  );
 
   return (
     <>
-      <Drawer
-        isOpen={isOpen}
-        onOpenChange={(open) => !open && onClose()}
-        hideCloseButton
-        classNames={{ base: "zc-drawer--assistant" }}
-      >
+      <AiSheet isOpen={isOpen} onClose={onClose} expanded={expanded} onExpandedChange={changeExpanded}>
         <DrawerContent>
-          <DrawerHeader className="zc-drawer__header--bar">
-            {view === "history" ? (
-              <IconButton aria-label="Back to chat" size="sm" onPress={() => setView("chat")}>
-                <IconBack />
-              </IconButton>
-            ) : (
-              <Sparkle />
-            )}
-            <h2 className="flex-1 text-body font-semibold text-fg">
-              {view === "history" ? "Conversations" : "Ask ZCOM"}
-            </h2>
-            {view === "chat" ? (
-              <IconButton aria-label="Conversation history" size="sm" onPress={openHistory}>
-                <IconTime />
-              </IconButton>
-            ) : null}
-            <IconButton
-              aria-label="New conversation"
-              size="sm"
-              onPress={() => {
-                chat.startNew();
-                setView("chat");
-              }}
-            >
-              <IconAdd />
-            </IconButton>
-            <IconButton aria-label="Close Ask ZCOM" size="sm" onPress={onClose}>
-              <IconClose />
-            </IconButton>
-          </DrawerHeader>
-
-          {usage && view === "chat" ? (
-            <AiUsageBar usage={usage} canManageAi={can(PLATFORM_PERMISSIONS.AI_MANAGE)} onNavigate={onClose} />
-          ) : null}
-
-          <DrawerBody className="custom-scroll gap-5 px-4 py-4">
-            {view === "history" ? (
-              history.error && !history.data ? (
-                <ErrorState title="Couldn't load conversations." onRetry={() => void history.refetch?.()} />
-              ) : history.loading && !history.data ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 4 }, (_, index) => (
-                    <Skeleton key={index} className="h-12 w-full rounded-field" />
-                  ))}
-                </div>
-              ) : conversations.length === 0 ? (
-                <EmptyState
-                  icon={IconChat}
-                  title="No conversations yet"
-                  description="Your questions are kept here, private to you, for 90 days."
-                />
-              ) : (
-                <ul className="flex flex-col divide-y divide-line-subtle">
-                  {conversations.map((conversation) => (
-                    <li key={conversation.id} className="flex items-center gap-2 py-2">
-                      <button
-                        type="button"
-                        onClick={() => void openConversation(conversation.id)}
-                        className="min-w-0 flex-1 rounded-field px-2 py-1 text-left hover:bg-surface-sunken"
-                      >
-                        <p className="truncate text-body text-fg">{conversation.title}</p>
-                        <p className="text-caption text-fg-subtle">
-                          {conversation.turnCount} question{conversation.turnCount === 1 ? "" : "s"} ·{" "}
-                          {formatRelative(conversation.lastMessageAt)}
-                        </p>
-                      </button>
-                      <IconButton
-                        variant="danger"
-                        aria-label={`Delete conversation ${conversation.title}`}
-                        size="sm"
-                        onPress={() => setDeleting(conversation)}
-                      >
-                        <IconDelete />
-                      </IconButton>
-                    </li>
-                  ))}
-                </ul>
-              )
-            ) : chat.isLoadingConversation ? (
-              <div className="space-y-3">
-                <Skeleton className="h-10 w-2/3 self-end rounded-xl" />
-                <Skeleton className="h-24 w-full rounded-xl" />
-              </div>
-            ) : chat.turns.length === 0 ? (
-              <p className="text-body text-fg-muted">
-                Ask about stores, payments, MRR, risk, sales or AI cost. Answers come from last night's platform
-                snapshot and show only what your role may see.
-              </p>
-            ) : (
-              chat.turns.map((turn) => (
-                <div key={turn.clientMessageId} className="flex flex-col gap-3">
-                  <p className="self-end whitespace-pre-line rounded-xl bg-surface-sunken px-3 py-2 text-body text-fg">
-                    {turn.question}
-                  </p>
-                  {renderAnswer(turn)}
-                </div>
-              ))
-            )}
-            <div ref={endRef} />
-          </DrawerBody>
-
-          {view === "chat" ? (
-            <DrawerFooter className="zc-drawer__footer--stack">
-              {chat.turns.length === 0 && canAsk ? (
-                <div className="flex flex-wrap gap-2">
-                  {ASK_SUGGESTIONS.map((suggestion) => (
-                    <Button
-                      key={suggestion}
-                      variant="secondary"
-                      size="sm"
-                      onPress={() => void chat.ask(suggestion)}
-                      isDisabled={chat.isBusy}
-                    >
-                      {suggestion}
-                    </Button>
-                  ))}
-                </div>
-              ) : null}
-              {runningTurn ? (
-                <div>
-                  <Button variant="secondary" size="sm" onPress={() => void chat.cancel(runningTurn)}>
-                    Stop answering
-                  </Button>
-                </div>
-              ) : null}
-              {needsMfa ? null : (
-                <form
-                  className="ai-edge flex items-end gap-2 p-2"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    submit();
+          <AiSheetHeader
+            context={pageLabel}
+            title={showHistoryView ? "Conversations" : undefined}
+            fullTitle={conversations.find((item) => item.id === chat.conversationId)?.title || undefined}
+            leading={
+              showHistoryView ? (
+                <IconButton aria-label="Back to chat" size="sm" onPress={() => setView("chat")}>
+                  <IconBack />
+                </IconButton>
+              ) : undefined
+            }
+            actions={
+              <>
+                {!expanded && view === "chat" ? (
+                  <IconButton aria-label="Conversation history" size="sm" onPress={openHistory}>
+                    <IconTime />
+                  </IconButton>
+                ) : null}
+                <IconButton
+                  aria-label="New conversation"
+                  size="sm"
+                  onPress={() => {
+                    chat.startNew();
+                    setView("chat");
                   }}
                 >
-                  <textarea
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        submit();
-                      }
-                    }}
-                    rows={2}
-                    maxLength={ASK_MAX_LENGTH}
-                    disabled={!canAsk}
-                    placeholder={chat.turns.length ? "Ask a follow-up…" : "Ask about the platform…"}
-                    aria-label="Ask ZCOM a question"
-                    className="min-h-10 flex-1 resize-none bg-transparent px-1 text-body text-fg outline-hidden placeholder:text-fg-placeholder disabled:opacity-50"
-                    style={{ boxShadow: "none" }}
-                  />
-                  <button
-                    type="submit"
-                    aria-label="Send"
-                    disabled={chat.isBusy || !draft.trim() || tooLong || !canAsk}
-                    className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-fg text-brand-on disabled:opacity-50"
-                  >
-                    <IconArrowRight aria-hidden className="size-4 -rotate-90" />
-                  </button>
-                </form>
-              )}
-              {needsMfa ? null : (
-                <p
-                  className={cx(
-                    "self-end text-caption num",
-                    draft.length >= ASK_MAX_LENGTH ? "text-tone-danger-text" : "text-fg-subtle",
-                  )}
-                >
-                  {draft.length}/{ASK_MAX_LENGTH}
-                </p>
-              )}
-              <p className="text-center text-caption text-fg-subtle">
-                Answers come from AI and can be wrong. Check important figures in the console.
-              </p>
-            </DrawerFooter>
+                  <IconAdd />
+                </IconButton>
+              </>
+            }
+            expanded={expanded}
+            onExpandedChange={changeExpanded}
+            onClose={onClose}
+            thinking={chat.isBusy}
+          />
+
+          {usage && !showHistoryView ? (
+            // Full view: the usage line moves to the bottom of the history column (board 46); phone keeps it here.
+            <div className={expanded ? "md:hidden" : undefined}>
+              <AiUsageBar usage={usage} canManageAi={can(PLATFORM_PERMISSIONS.AI_MANAGE)} onNavigate={onClose} />
+            </div>
           ) : null}
+
+          <div className="zc-ai-sheet__body">
+            {expanded ? (
+              <AiSheetHistory
+                onNewChat={() => {
+                  chat.startNew();
+                  setView("chat");
+                }}
+                footer={
+                  usage ? (
+                    <AiUsageBar usage={usage} canManageAi={can(PLATFORM_PERMISSIONS.AI_MANAGE)} onNavigate={onClose} />
+                  ) : undefined
+                }
+              >
+                {historyList}
+              </AiSheetHistory>
+            ) : null}
+            <div className="zc-ai-sheet__main">
+              <DrawerBody className="custom-scroll gap-5 px-5 py-4">
+                {showHistoryView ? historyList : chatList}
+                <div ref={endRef} />
+              </DrawerBody>
+
+              {showHistoryView ? null : (
+                <DrawerFooter className="zc-drawer__footer--stack">
+                  <AiComposer
+                    value={draft}
+                    onValueChange={setDraft}
+                    onSubmit={submit}
+                    hideField={needsMfa}
+                    isDisabled={!canAsk}
+                    canSend={!chat.isBusy && !!draft.trim() && !tooLong}
+                    maxLength={ASK_MAX_LENGTH}
+                    autoFocus
+                    placeholder={chat.turns.length ? "Ask a follow-up…" : "Ask Zcom AI about any store…"}
+                    before={
+                      runningTurn ? (
+                        <div>
+                          <Button variant="secondary" size="sm" onPress={() => void chat.cancel(runningTurn)}>
+                            Stop answering
+                          </Button>
+                        </div>
+                      ) : null
+                    }
+                    meta={
+                      needsMfa ? null : (
+                        <span className={cx(draft.length >= ASK_MAX_LENGTH && "text-tone-danger-text")}>
+                          {draft.length}/{ASK_MAX_LENGTH}
+                        </span>
+                      )
+                    }
+                  />
+                </DrawerFooter>
+              )}
+            </div>
+          </div>
         </DrawerContent>
-      </Drawer>
+      </AiSheet>
 
       <ConfirmDialog
         isOpen={Boolean(deleting)}

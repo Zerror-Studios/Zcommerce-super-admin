@@ -13,7 +13,8 @@ import {
   aiOverrideDraft,
   aiOverrideInput,
   aiOverrideLabel,
-  formatUsdInr,
+  formatInr,
+  formatUsd,
   type AiOverrideDraft,
   type FieldErrors,
 } from "../../lib/platform-ai.util";
@@ -31,16 +32,24 @@ import {
   Input,
   Modal,
   ModalBody,
+  Orb,
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconAi,
+  IconPause,
+  IconPlay,
   Skeleton,
+  SummaryPanel,
   Textarea,
   cx,
   formatCount,
   formatDateTime,
+  formatMoney,
   toastError,
   toneTextClasses,
+  type SummaryCell,
 } from "../ui";
 
 export interface ClientAiCardProps {
@@ -48,11 +57,12 @@ export interface ClientAiCardProps {
 }
 
 /**
- * Store detail › ZCOM AI (PRD-021 FR-6.4, 04 S-03g): the store's AI pause and its limit
- * overrides (empty = the plan's value), Grant questions, and the store's
- * most-asked questions. Reading the questions is audit-logged by the
- * server, so they load only when the operator asks. Changes need
- * `platform:ai:manage`.
+ * Store detail › AI usage (PRD-021 FR-6.4, 04 S-03g; design v2 board 64-SA-Store-AI): the summary panel (this
+ * month's questions, this week against the weekly limit, the cost to Zcom, tokens), then "What they asked" (the
+ * store's most-asked questions) beside the AI pause and its limit overrides (empty = the plan's value) with Grant
+ * questions. Reading the questions is audit-logged by the server, so they load only when the operator asks.
+ * Changes need `platform:ai:manage`. Not shown (no data): actions done by AI, answers marked helpful, and where
+ * in the store admin they ask.
  */
 export function ClientAiCard({ client }: ClientAiCardProps) {
   const { can } = useAuth();
@@ -65,65 +75,67 @@ export function ClientAiCard({ client }: ClientAiCardProps) {
   const [showQuestions, setShowQuestions] = useState(false);
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card
-        title={
-          <span className="flex flex-wrap items-center gap-2">
-            Status and limits
-            {setting ? setting.paused ? <Chip tone="warning">Paused</Chip> : <Chip tone="success">AI on</Chip> : null}
-          </span>
-        }
-        description={
-          setting?.paused && setting.pausedReason
-            ? setting.pausedReason
-            : "Ask ZCOM limits for this store. Empty limits use the plan's values."
-        }
-        actions={
-          canManage && setting ? (
-            <div className="flex flex-wrap gap-2">
-              <UiButton size="sm" variant="secondary" onPress={() => setGranting(true)}>
-                Grant questions
-              </UiButton>
-              <UiButton size="sm" variant="secondary" onPress={() => setEditing(true)}>
-                Edit limits
-              </UiButton>
-              <UiButton size="sm" variant="secondary" onPress={() => setPausing(true)}>
-                {setting.paused ? "Resume AI" : "Pause AI"}
-              </UiButton>
-            </div>
-          ) : null
-        }
-      >
-        {api.error ? (
-          <ErrorState inline title="Couldn't load this store's AI setting." onRetry={() => void api.refetch()} />
-        ) : api.loading || !setting ? (
-          <Skeleton className="h-12 w-full rounded-lg" />
-        ) : (
-          <KeyValueGrid columns={3}>
-            <KeyValue label="Questions per week">{aiOverrideLabel(setting.questionsPerWeek, "questions")}</KeyValue>
-            <KeyValue label="Claude connector calls per week">
-              {aiOverrideLabel(setting.connectorCallsPerWeek, "calls")}
-            </KeyValue>
-            <KeyValue label="Monthly token budget">{aiOverrideLabel(setting.monthlyTokenBudget, "tokens")}</KeyValue>
-          </KeyValueGrid>
-        )}
-      </Card>
+    <div className="@container flex flex-col gap-4">
+      <MonthUsage tenantId={client.id} weeklyLimit={setting?.questionsPerWeek ?? null} />
 
-      <MonthUsage tenantId={client.id} />
+      <div className="grid grid-cols-1 items-start gap-4 @min-[64rem]:grid-cols-[minmax(0,1fr)_24rem]">
+        <Card
+          title="What they asked"
+          description="Masked excerpts from the last 30 days. Viewing them is recorded in the audit log."
+          actions={
+            !showQuestions ? (
+              <UiButton size="sm" variant="secondary" onPress={() => setShowQuestions(true)}>
+                Show questions
+              </UiButton>
+            ) : undefined
+          }
+        >
+          {showQuestions ? <TopQuestions tenantId={client.id} /> : null}
+        </Card>
 
-      <Card
-        title="Most-asked questions"
-        description="Masked excerpts from the last 30 days. Viewing them is recorded in the audit log."
-        actions={
-          !showQuestions ? (
-            <UiButton size="sm" variant="secondary" onPress={() => setShowQuestions(true)}>
-              Show questions
-            </UiButton>
-          ) : undefined
-        }
-      >
-        {showQuestions ? <TopQuestions tenantId={client.id} /> : null}
-      </Card>
+        <Card
+          title={
+            <span className="flex flex-wrap items-center gap-2">
+              Status and limits
+              {setting ? setting.paused ? <Chip tone="warning">Paused</Chip> : <Chip tone="success">AI on</Chip> : null}
+            </span>
+          }
+          description={
+            setting?.paused && setting.pausedReason
+              ? setting.pausedReason
+              : "Ask ZCOM limits for this store. Empty limits use the plan's values."
+          }
+          actions={
+            canManage && setting ? (
+              <div className="flex flex-wrap gap-2">
+                <UiButton size="sm" variant="secondary" onPress={() => setGranting(true)}>
+                  Grant questions
+                </UiButton>
+                <UiButton size="sm" variant="secondary" onPress={() => setEditing(true)}>
+                  Edit limits
+                </UiButton>
+                <UiButton size="sm" variant="secondary" onPress={() => setPausing(true)}>
+                  {setting.paused ? "Resume AI" : "Pause AI"}
+                </UiButton>
+              </div>
+            ) : null
+          }
+        >
+          {api.error ? (
+            <ErrorState inline title="Couldn't load this store's AI setting." onRetry={() => void api.refetch()} />
+          ) : api.loading || !setting ? (
+            <Skeleton className="h-12 w-full rounded-lg" />
+          ) : (
+            <KeyValueGrid columns={1}>
+              <KeyValue label="Questions per week">{aiOverrideLabel(setting.questionsPerWeek, "questions")}</KeyValue>
+              <KeyValue label="Claude connector calls per week">
+                {aiOverrideLabel(setting.connectorCallsPerWeek, "calls")}
+              </KeyValue>
+              <KeyValue label="Monthly token budget">{aiOverrideLabel(setting.monthlyTokenBudget, "tokens")}</KeyValue>
+            </KeyValueGrid>
+          )}
+        </Card>
+      </div>
 
       {/* Mounted only while open, so each opening starts from the saved values. */}
       {setting && pausing ? (
@@ -142,35 +154,56 @@ export function ClientAiCard({ client }: ClientAiCardProps) {
 
 // ─── This month (PRD-024 FR-3.6) ──────────────────────────────────────────
 
-/** This store's AI use this month, from its own `aiUsageByTenant` row. */
-function MonthUsage({ tenantId }: { tenantId: string }) {
+/**
+ * This store's AI use this month, from its own `aiUsageByTenant` row, as the summary panel (board 64). The week's
+ * questions read against the store's weekly limit when it has a number of its own.
+ */
+function MonthUsage({ tenantId, weeklyLimit }: { tenantId: string; weeklyLimit: number | null }) {
   const api = useAiUsageByTenant({ limit: 1, offset: 0, search: "", tenantId });
   const row = api.data?.items.find((item) => item.tenantId === tenantId) ?? null;
-  return (
-    <Card title="This month">
-      {api.error ? (
-        <ErrorState inline title="Couldn't load this store's AI usage." onRetry={() => void api.refetch()} />
-      ) : api.loading ? (
-        <Skeleton className="h-12 w-full rounded-lg" />
-      ) : !row ? (
-        <p className="text-body text-fg-muted">No AI usage recorded for this store.</p>
+  if (api.error) {
+    return <ErrorState inline title="Couldn't load this store's AI usage." onRetry={() => void api.refetch()} />;
+  }
+  const none = !api.loading && !row;
+  const limited = weeklyLimit != null && weeklyLimit > 0 && Number.isFinite(weeklyLimit);
+  const week = row?.questionsThisWeek ?? 0;
+  const cells: SummaryCell[] = [
+    {
+      key: "month",
+      label: "Questions this month",
+      value: row ? formatCount(row.questionsThisMonth) : "—",
+      note: none ? "No AI usage recorded yet" : undefined,
+    },
+    {
+      key: "week",
+      label: "This week",
+      value: row ? (
+        <>
+          {formatCount(week)}
+          {limited ? <span className="text-body font-normal opacity-70"> of {formatCount(weeklyLimit)}</span> : null}
+        </>
       ) : (
-        <KeyValueGrid columns={3}>
-          <KeyValue label="Questions">
-            <span className="num">
-              {formatCount(row.questionsThisMonth)} · {formatCount(row.questionsThisWeek)} this week
-            </span>
-          </KeyValue>
-          <KeyValue label="Tokens">
-            <span className="num">{formatCount(row.tokensThisMonth)} tokens</span>
-          </KeyValue>
-          <KeyValue label="Cost">
-            <span className="num">{formatUsdInr(row.costUsdThisMonth, row.costInrThisMonth)}</span>
-          </KeyValue>
-        </KeyValueGrid>
-      )}
-    </Card>
-  );
+        "—"
+      ),
+      note: limited ? "This store's weekly limit" : "Against the plan's weekly limit",
+      tone: row && limited && week >= weeklyLimit ? "warning" : "default",
+      chart: row && limited ? { kind: "segments", filled: Math.min(10, Math.round((week / weeklyLimit) * 10)) } : undefined,
+    },
+    {
+      key: "cost",
+      label: "Cost to Zcom",
+      value: row ? formatUsd(row.costUsdThisMonth) : "—",
+      // Under ₹1 shows paise, as everywhere else on the AI screens.
+      note: row ? `About ${row.costInrThisMonth > 0 && row.costInrThisMonth < 1 ? formatMoney(row.costInrThisMonth, { paise: true }) : formatInr(row.costInrThisMonth)}` : undefined,
+    },
+    {
+      key: "tokens",
+      label: "Tokens this month",
+      value: row ? formatCount(row.tokensThisMonth) : "—",
+      chart: row && row.tokensThisMonth > 0 ? { kind: "dots" } : undefined,
+    },
+  ];
+  return <SummaryPanel cells={cells} isLoading={api.loading} storageKey="store:ai" aria-label="AI usage this month" />;
 }
 
 // ─── Top questions ────────────────────────────────────────────────────────
@@ -188,7 +221,10 @@ function TopQuestions({ tenantId }: { tenantId: string }) {
     <ol className="flex flex-col divide-y divide-line-subtle border-t border-line-subtle">
       {api.data.map((row, index) => (
         <li key={`${index}:${row.excerpt}`} className="flex items-start justify-between gap-3 py-2.5">
-          <span className="min-w-0 wrap-break-word text-body text-fg">{row.excerpt}</span>
+          <span className="flex min-w-0 items-start gap-3">
+            <Orb className="mt-0.5 shrink-0" />
+            <span className="min-w-0 wrap-break-word text-body text-fg">{row.excerpt}</span>
+          </span>
           <span className="shrink-0 text-label text-fg-muted num">
             {formatCount(row.count)}× · {formatDateTime(row.lastAskedAt)}
           </span>
@@ -242,7 +278,9 @@ function PauseDialog({ onClose, storeName, setting }: SettingDialogProps) {
   return (
     <Modal isOpen onClose={onClose} width="sm">
       <ModalContent>
-        <ModalHeader>{pausing ? `Pause AI for ${storeName}?` : `Resume AI for ${storeName}?`}</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={pausing ? <IconPause aria-hidden /> : <IconPlay aria-hidden />}>{pausing ? `Pause AI for ${storeName}?` : `Resume AI for ${storeName}?`}</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           {pausing ? (
             <>
@@ -320,7 +358,9 @@ function OverrideDialog({ onClose, storeName, setting }: SettingDialogProps) {
   return (
     <Modal isOpen onClose={onClose} width="md">
       <ModalContent>
-        <ModalHeader>AI limits for {storeName}</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={<IconAi aria-hidden />}>AI limits for {storeName}</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           <p className="text-body text-fg-muted">Leave a field empty to use the store's plan value.</p>
           {errors.form ? <p className={cx("text-body", toneTextClasses.danger)}>{errors.form}</p> : null}

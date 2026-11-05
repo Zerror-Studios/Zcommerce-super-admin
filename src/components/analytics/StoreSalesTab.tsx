@@ -11,20 +11,21 @@ import {
   type StoreSalesTotal,
 } from "../../lib/store-sales";
 import { toasts } from "../../copy";
+import { useSummaryKey } from "../../hooks/use-summary-key";
 import {
   EmptyState,
   ErrorState,
-  KpiStrip,
-  StatCard,
+  SummaryPanel,
   formatCount,
   formatDate,
+  formatDelta,
   formatMoney,
   type DataTableColumn,
+  type SummaryCell,
   type TableSort,
 } from "../ui";
 import {
   ChangeCell,
-  DaysSwitch,
   TableCard,
   TwoLine,
   NoDataEmpty,
@@ -33,17 +34,17 @@ import {
 import { storeHref, useRegisterExport } from "./analytics-tab.util";
 
 const totalsColumns: DataTableColumn[] = [
-  { key: "currency", label: "Currency" },
-  { key: "sales", label: "Net sales", width: 130 },
-  { key: "change", label: "Change", width: 90 },
-  { key: "orders", label: "Orders", width: 90 },
-  { key: "stores", label: "Stores", width: 80 },
+  { key: "currency", label: "Currency", mobile: "primary" },
+  { key: "sales", label: "Net sales", width: 130, mobile: "value" },
+  { key: "change", label: "Change", width: 90, mobile: "meta" },
+  { key: "orders", label: "Orders", width: 90, mobile: "hide" },
+  { key: "stores", label: "Stores", width: 80, mobile: "hide" },
 ];
 
 const needsLookColumns: DataTableColumn[] = [
-  { key: "store", label: "Store" },
-  { key: "sales", label: "Net sales", width: 120 },
-  { key: "change", label: "Change", width: 90 },
+  { key: "store", label: "Store", mobile: "primary" },
+  { key: "sales", label: "Net sales", width: 120, mobile: "value" },
+  { key: "change", label: "Change", width: 90, mobile: "meta" },
 ];
 
 type SalesSortKey = "sales" | "previous" | "change" | "orders" | "average";
@@ -61,8 +62,8 @@ const isSortKey = (value: string): value is SalesSortKey => value in SORT_VALUE;
 const salesMoney = (value: number, currency: string) => formatMoney(value, { currency, whole: true });
 
 export interface StoreSalesTabProps extends AnalyticsTabProps {
+  /** The window; its 7 · 30 · 90 days switch sits in the Analytics title row. */
   days: PerformanceRangeDays;
-  onDaysChange: (days: PerformanceRangeDays) => void;
 }
 
 /**
@@ -71,8 +72,9 @@ export interface StoreSalesTabProps extends AnalyticsTabProps {
  * `platformStoreSales` for the chosen window (net of cancellations and refunds), compared with the window
  * before it; totals are per currency and never added across currencies.
  */
-export function StoreSalesTab({ tabRow, registerExport, days, onDaysChange }: StoreSalesTabProps) {
+export function StoreSalesTab({ tabRow, registerExport, days }: StoreSalesTabProps) {
   const navigate = useNavigate();
+  const summaryKey = useSummaryKey("analytics-store-sales");
   const range = useMemo(() => lastDaysRange(days), [days]);
   const api = useStoreSales(range);
   const view = api.data;
@@ -115,15 +117,38 @@ export function StoreSalesTab({ tabRow, registerExport, days, onDaysChange }: St
   useRegisterExport(registerExport, rows.length > 0 && !api.error ? exportCsv : null);
 
   const salesColumns: DataTableColumn[] = [
-    { key: "store", label: "Store" },
-    { key: "sales", label: `Net sales · ${days}d`, width: 130, sortable: true },
-    { key: "previous", label: `Previous ${days} days`, width: 130, sortable: true },
-    { key: "change", label: "Change", width: 90, sortable: true },
-    { key: "orders", label: `Orders · ${days}d`, width: 100, sortable: true },
-    { key: "average", label: "Average order", width: 120, sortable: true },
+    { key: "store", label: "Store", mobile: "primary" },
+    { key: "sales", label: `Net sales · ${days}d`, width: 130, sortable: true, mobile: "value" },
+    { key: "previous", label: `Previous ${days} days`, width: 130, sortable: true, hideWhen: "narrow", mobile: "hide" },
+    { key: "change", label: "Change", width: 90, sortable: true, mobile: "meta" },
+    { key: "orders", label: `Orders · ${days}d`, width: 100, sortable: true, mobile: "hide" },
+    { key: "average", label: "Average order", width: 120, sortable: true, hideWhen: "narrow", mobile: "hide" },
   ];
 
-  const row = tabRow(<DaysSwitch value={days} onChange={onDaysChange} />);
+  const row = tabRow();
+
+  // Design v2 §4.2: one currency → the summary panel; several → the per-currency table carries the totals.
+  const summaryCells: SummaryCell[] = [
+    {
+      key: "sales",
+      label: `Net store sales · ${days}d`,
+      value: primary ? salesMoney(primary.sales, primary.currency) : "—",
+      note: primary?.changePercent == null ? NO_PREVIOUS_SALES_COPY : `${formatDelta(primary.changePercent)} ${previousLabel}`,
+    },
+    {
+      key: "orders",
+      label: `Orders · ${days}d`,
+      value: formatCount(primary?.orders ?? 0),
+      note: `${formatCount(primary?.previousOrders ?? 0)} in the ${days} days before`,
+    },
+    {
+      key: "average",
+      label: "Average order value",
+      value: primary?.averageOrder == null ? "—" : salesMoney(primary.averageOrder, primary.currency),
+      note: "Net sales ÷ orders",
+    },
+    { key: "stores", label: "Stores", value: formatCount(primary?.stores ?? 0), note: "Every store not deleted" },
+  ];
 
   if (api.error) {
     return (
@@ -139,31 +164,7 @@ export function StoreSalesTab({ tabRow, registerExport, days, onDaysChange }: St
       {row}
       <div className="space-y-4">
         {loading || primary ? (
-          <KpiStrip>
-            <StatCard
-              bare
-              isLoading={loading}
-              label={`Net store sales · ${days}d`}
-              value={primary ? salesMoney(primary.sales, primary.currency) : "—"}
-              delta={primary?.changePercent}
-              deltaLabel={primary?.changePercent == null ? NO_PREVIOUS_SALES_COPY : previousLabel}
-            />
-            <StatCard
-              bare
-              isLoading={loading}
-              label={`Orders · ${days}d`}
-              value={formatCount(primary?.orders ?? 0)}
-              deltaLabel={`${formatCount(primary?.previousOrders ?? 0)} in the ${days} days before`}
-            />
-            <StatCard
-              bare
-              isLoading={loading}
-              label="Average order value"
-              value={primary?.averageOrder == null ? "—" : salesMoney(primary.averageOrder, primary.currency)}
-              deltaLabel="Net sales ÷ orders"
-            />
-            <StatCard bare isLoading={loading} label="Stores" value={formatCount(primary?.stores ?? 0)} deltaLabel="Every store not deleted" />
-          </KpiStrip>
+          <SummaryPanel cells={summaryCells} isLoading={loading} storageKey={summaryKey} aria-label="Store sales summary" />
         ) : null}
 
         <div className="@container">

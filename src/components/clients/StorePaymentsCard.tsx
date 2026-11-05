@@ -427,7 +427,7 @@ function AmountRow({ label, value, strong = false }: { label: string; value: str
 /** Fixed 516 (+ the 56px ⋯) → Invoice 208px at 724px. */
 const invoiceColumns: DataTableColumn[] = [
   { key: "number", label: "Invoice", mobile: "primary" },
-  { key: "period", label: "Period", width: 140 },
+  { key: "period", label: "Period", width: 140, hideWhen: "narrow" },
   { key: "total", label: "Total", width: 100 },
   { key: "due", label: "Still owed", width: 100 },
   { key: "status", label: "Status", width: 120, mobile: "badge", skeleton: "badge" },

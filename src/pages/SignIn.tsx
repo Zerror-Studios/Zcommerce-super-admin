@@ -23,8 +23,8 @@ const FAILURE_COPY: Record<Exclude<SignInFailure, "MFA_REQUIRED">, string> = {
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Log in (docs/design/04-super-admin.md §4.8): one card, the login helper above the fields, and each field opening
- * after the one before it. The two-step code (PRD-005 FR-1.4) opens in the same card when the server asks for it.
+ * Sign in (docs/design-v2/README.md §5): the black screen with the "Platform" wordmark; the orb character asks one
+ * question at a time and each field opens after the one before it. The two-step code (PRD-005 FR-1.4) opens in the same card when the server asks for it.
  */
 export function SignIn() {
   const { isAuthenticated, signIn } = useAuth();
@@ -115,33 +115,49 @@ export function SignIn() {
     setErrors({});
   };
 
-  // What the helper says, step by step.
+  // What the orb says, one question at a time (v2 §5). A wrong sign-in never says whether the email or the
+  // password was wrong.
   const failed = errors.email || errors.password || errors.totp;
+  const wrongLogin = errors.password === FAILURE_COPY.INVALID;
+  const localPart = email.trim().split("@")[0]?.split(/[._+\-\d]/).find(Boolean) ?? "";
+  const thanks = localPart ? `Thanks, ${localPart[0].toUpperCase()}${localPart.slice(1).toLowerCase()}. ` : "";
   const buddy: { message: string; mood: AuthBuddyMood } = submitting
-    ? { message: "Checking…", mood: "thinking" }
+    ? { message: "Getting the platform ready", mood: "thinking" }
     : failed
-      ? { message: step === "email" ? "That email doesn't look right." : "Hmm, that didn't work.", mood: "sad" }
+      ? {
+          message:
+            step === "email" ? "That email doesn't look right." : wrongLogin ? "That didn't match. Let's try again." : (failed ?? ""),
+          mood: "sad",
+        }
       : step === "email"
-        ? EMAIL_PATTERN.test(email.trim())
-          ? { message: "That looks right.", mood: "happy" }
-          : { message: "Hi! What's your email?", mood: "idle" }
+        ? { message: "Hi. What's your email?", mood: "idle" }
         : step === "password"
           ? focused === "password" && !showPassword
-            ? { message: "I'm not looking.", mood: "shy" }
-            : { message: "Now your password.", mood: "idle" }
+            ? { message: `${thanks}Now your password. I'm not looking.`, mood: "shy" }
+            : { message: `${thanks}Now your password.`, mood: "idle" }
           : useRecoveryCode
             ? { message: "Type a recovery code.", mood: "idle" }
             : { message: "Now the 6-digit code.", mood: "idle" };
+  const follow = step === "email" && email ? Math.min(1, email.length / 32) : undefined;
 
   return (
     <AuthLayout
-      title="Log in"
-      documentTitle={step === "totp" ? "Verify · Zcom Super admin" : "Log in · Zcom Super admin"}
+      title="Sign in"
+      hideTitle
+      documentTitle={step === "totp" ? "Verify · Zcom Platform" : "Sign in · Zcom Platform"}
       subtitle="Zerror team access only."
-      productLabel="Super admin"
+      productLabel="Platform"
+      belowCard={
+        step === "password" ? (
+          // PRD-014 FR-1.10: staff reset their own password by email.
+          <Link to="/forgot-password" className="hover:text-brand-on hover:underline">
+            Forgot password?
+          </Link>
+        ) : undefined
+      }
     >
       <form noValidate className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        <AuthBuddy message={buddy.message} mood={buddy.mood} className="mb-1" />
+        <AuthBuddy message={buddy.message} mood={buddy.mood} follow={follow} className="mb-3" />
 
         <AuthField
           id="signin-email"
@@ -180,17 +196,11 @@ export function SignIn() {
             onFocus={() => setFocused("password")}
             onBlur={() => setFocused(null)}
             aria-required
-            error={errors.password}
+            // A red field edge on a wrong sign-in; the orb says what happened (v2 §5).
+            error={wrongLogin ? undefined : errors.password}
+            aria-invalid={errors.password ? true : undefined}
+            className={wrongLogin ? "[&_input]:!border-auth-error" : undefined}
             autoComplete="current-password"
-            labelAction={
-              // PRD-014 FR-1.10: staff reset their own password by email.
-              <Link
-                to="/forgot-password"
-                className="text-caption text-auth-muted underline-offset-2 hover:underline"
-              >
-                Forgot password?
-              </Link>
-            }
             endContent={
               <button
                 type="button"
@@ -262,7 +272,7 @@ export function SignIn() {
           isLoading={submitting}
           className="mt-1 w-full border-0 !bg-surface font-semibold !text-fg data-[hover=true]:!bg-surface-sunken"
         >
-          {step === "email" ? "Continue" : step === "password" ? "Log in" : "Verify"}
+          {step === "email" ? "Continue" : step === "password" ? "Sign in" : "Verify"}
         </UiButton>
 
         {step === "totp" ? (

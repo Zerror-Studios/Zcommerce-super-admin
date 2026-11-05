@@ -78,7 +78,7 @@ export function ClientUsageTab({ client, className }: ClientUsageTabProps) {
 
   return (
     <Card
-      title="Plan usage"
+      title="Plan limits"
       description={`Against the ${clientPlanLabel(client)} plan limits${asOf}`}
       className={className}
     >

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { allNavItems, mainNavItems, visibleNavItems } from "../../config/navigation";
+import { allNavItems, mainNavItems, settingsNavItem, visibleNavItems } from "../../config/navigation";
+import { askSuggestionsFor } from "../../config/ask-suggestions";
 import { APP_VERSION } from "../../config/data-source";
 import { getPlatformRoleLabel } from "../../lib/display-labels.util";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
@@ -12,29 +13,41 @@ import { useAiTopUpRequests } from "../../hooks/use-platform-ai";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { usePlatformSettings } from "../../providers/SettingsProvider";
 import { subscriptionsNeedingAction } from "../billing/subscription-rows";
-import { IconAdd, IconNotifications, IconStore } from "../ui/icons";
+import { IconAdd, IconLogout, IconNotifications, IconStore } from "../ui/icons";
 import { AppShell } from "./AppShell";
 import { AskBar } from "./Assistant";
 import { AskZcomPlatformPanel } from "../assistant/AskZcomPlatformPanel";
 import { readStoredFlag, storeFlag, useShellHotkeys } from "./shell-utils";
 import { CommandPalette } from "./CommandPalette";
+import { AskZcomAiContext } from "./ask-context";
 import { PlatformNotificationsPanel } from "./PlatformNotificationsPanel";
 import { Sidebar } from "./Sidebar";
 import { AiSpectrumDefs } from "../ui/Ai";
+import { RouteSkeleton } from "../ui/RouteSkeleton";
 import { ConfirmDialog, cx, toneTextClasses } from "../ui";
 import type { CommandGroup } from "./types";
 
 const COLLAPSE_KEY = "zcommerce-sidebar-collapsed";
 
-/** Menu items that open a page's first tab or section stay lit on its other tabs ("/analytics/revenue" → "/analytics"). */
+/** Settings opens its first section and stays lit on the others ("/settings/profile" → "/settings"). */
 function sectionRoot(href: string): string {
-  if (href.startsWith("/analytics/")) return "/analytics";
   if (href.startsWith("/settings/")) return "/settings";
   return href;
 }
 
+/**
+ * Analytics ▸ Revenue, Stores and System each open a group of views (pages/Analytics.tsx GROUPS); the menu item stays
+ * lit on every view of its group, and only that item.
+ */
+const NAV_GROUP_ALIASES: Record<string, string[]> = {
+  "/analytics/revenue": ["/analytics/money", "/analytics/ai-cost"],
+  "/analytics/store-sales": ["/analytics/merchant-sales", "/analytics/retention", "/analytics/usage"],
+  "/analytics/performance": ["/analytics/integrations", "/analytics/sync", "/analytics/health"],
+};
+
 function pathMatches(pathname: string, href: string, end = false): boolean {
   if (end) return pathname === href;
+  if ((NAV_GROUP_ALIASES[href] ?? []).some((alias) => pathname === alias || pathname.startsWith(`${alias}/`))) return true;
   href = sectionRoot(href);
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -59,7 +72,7 @@ export function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(() => readStoredFlag(COLLAPSE_KEY));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  // Sign out asks first (04 S-07i).
+  // Log out asks first (04 S-07i).
   const [signOutOpen, setSignOutOpen] = useState(false);
   // PRD-024 FR-4.1.5: the server feed; the bell's count is polled while the browser tab is visible.
   const notificationCounts = useNotificationCounts();
@@ -74,8 +87,8 @@ export function DashboardLayout() {
   }, []);
   const openPalette = useCallback(() => setPaletteOpen(true), []);
 
-  // AI layer (backend PRD-026 FR-7.2): Ask bar, the staff chat, ⌘J and "Ask AI" in ⌘K, only with
-  // platform:ai:ask (Owner and Admin); without it no entry point shows.
+  // AI layer (backend PRD-026 FR-7.2; v2 §3.3): the Zcom AI bar and its sheet (click or ⌘J), the only AI entry
+  // point, only with platform:ai:ask (Owner and Admin); without it no entry point shows.
   const canAsk = can(PLATFORM_PERMISSIONS.AI_ASK);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [pendingQuestion, setPendingQuestion] = useState<string | undefined>();
@@ -91,6 +104,7 @@ export function DashboardLayout() {
   useShellHotkeys({ onSearch: openPalette, onToggleSidebar: toggleSidebar, onAsk: askHotkey });
 
   const pageLabel = pageLabelFor(location.pathname);
+  const askSuggestions = askSuggestionsFor(location.pathname);
   useEffect(() => {
     document.title = pageLabel ? `${pageLabel} · Zcom Super admin` : "Zcom Super admin";
   }, [pageLabel]);
@@ -117,7 +131,7 @@ export function DashboardLayout() {
         // PRD-024 FR-1.6 (B-06): the server's store count, not the loaded rows.
         if (item.key === "stores") return { ...item, count: totalCount };
         if (item.key === "subscriptions") return { ...item, count: subscriptionCount };
-        if (item.key === "ai") return { ...item, count: openTopUps };
+        if (item.key === "analytics") return { ...item, count: openTopUps };
         return item;
       }),
     [can, totalCount, subscriptionCount, openTopUps],
@@ -145,7 +159,7 @@ export function DashboardLayout() {
         })),
       },
       ...(canAddStore
-        ? [{ title: "Actions", items: [{ id: "add-store", label: "Add store", icon: IconAdd, href: "/stores/new" }] }]
+        ? [{ title: "Actions", items: [{ id: "add-store", label: "Create store", icon: IconAdd, href: "/stores/new" }] }]
         : []),
     ],
     [can, canAddStore, clients],
@@ -157,7 +171,8 @@ export function DashboardLayout() {
   const isActive = (to: string, end?: boolean) => pathMatches(location.pathname, to, end);
   const sidebarProps = {
     items,
-    productLabel: "Super admin",
+    settingsItem: settingsNavItem,
+    productLabel: "Platform",
     productVersion: APP_VERSION,
     searchPlaceholder: "Search stores",
     onOpenSearch: openPalette,
@@ -165,10 +180,10 @@ export function DashboardLayout() {
     renderNotifications: (row: ReactNode) => panel(row),
     // PRD-024 FR-1.5 (P-06): the signed-in platform user (platformMe) and their role.
     user: user ? { name: user.name || user.email, email: user.email, subtitle: getPlatformRoleLabel(user.role) } : undefined,
-    // Account menu: name, email and version in its header, then only Sign out (red, confirms first; owner,
+    // Account menu: name, email and version in its header, then only Log out (red, confirms first; owner,
     // 2026-11-04, like the store dashboard). Profile & security is in Settings.
     userMenu: [
-      { key: "logout", label: "Sign out", onAction: () => setSignOutOpen(true), danger: true },
+      { key: "logout", label: "Log out", onAction: () => setSignOutOpen(true), danger: true },
     ],
     onLogout: handleLogout,
     isActive,
@@ -187,7 +202,9 @@ export function DashboardLayout() {
         onOpenSearch={openPalette}
         floating={
           canAsk
-            ? (hidden) => <AskBar placeholder="Ask anything about your stores…" hidden={hidden} onOpen={openAssistant} />
+            ? (hidden) => (
+                <AskBar placeholder="Ask Zcom AI about any store…" hidden={hidden} onOpen={openAssistant} suggestion={askSuggestions[0]} />
+              )
             : undefined
         }
         mobileActions={panel(
@@ -211,7 +228,12 @@ export function DashboardLayout() {
             </button>
           </p>
         ) : null}
-        <Outlet />
+        <AskZcomAiContext.Provider value={canAsk ? openAssistant : null}>
+          {/* Page chunks load inside the shell (board 47): the menu stays, the page frame shows at once. */}
+          <Suspense fallback={<RouteSkeleton />}>
+            <Outlet />
+          </Suspense>
+        </AskZcomAiContext.Provider>
       </AppShell>
 
       <ConfirmDialog
@@ -221,16 +243,17 @@ export function DashboardLayout() {
           setSignOutOpen(false);
           handleLogout();
         }}
-        title="Sign out of Zcom?"
-        description="You'll need to sign in again to use the console."
-        confirmLabel="Sign out"
+        tone="neutral"
+        icon={<IconLogout aria-hidden />}
+        title="Log out of Zcom?"
+        description="You'll need your password to come back in."
+        confirmLabel="Log out"
       />
       <CommandPalette
         isOpen={paletteOpen}
         onClose={() => setPaletteOpen(false)}
         groups={commandGroups}
         placeholder="Search stores, pages and actions"
-        onAskAi={canAsk ? openAssistant : undefined}
       />
       <AiSpectrumDefs />
       {canAsk ? (
@@ -239,6 +262,8 @@ export function DashboardLayout() {
           onClose={() => setIsAssistantOpen(false)}
           pendingQuestion={pendingQuestion}
           onPendingConsumed={() => setPendingQuestion(undefined)}
+          pageLabel={pageLabel}
+          suggestions={askSuggestions}
         />
       ) : null}
     </>

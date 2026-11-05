@@ -8,12 +8,14 @@ export { CommandPalette } from "./CommandPalette";
 export type { CommandPaletteProps } from "./CommandPalette";
 export { NotificationsPanel } from "./NotificationsPanel";
 export type { NotificationsPanelProps } from "./NotificationsPanel";
-export { PageHeader } from "./PageHeader";
-export type { PageHeaderProps } from "./PageHeader";
+export { PageHeader, TitleActions } from "./PageHeader";
+export type { PageHeaderProps, TitleActionsProps } from "./PageHeader";
+export { PhoneActionBar } from "./PhoneActionBar";
+export type { PhoneActionBarProps } from "./PhoneActionBar";
 export { SupportBanner } from "./SupportBanner";
 export type { SupportBannerProps } from "./SupportBanner";
-export { Sidebar } from "./Sidebar";
-export type { SidebarProps, SidebarUser } from "./Sidebar";
+export { Sidebar, StoreSwitcher } from "./Sidebar";
+export type { SidebarProps, SidebarStore, SidebarUser } from "./Sidebar";
 export type {
   CommandGroup,
   CommandItem,
@@ -26,3 +28,5 @@ export type {
 } from "./types";
 export { AuthField, AuthLayout } from "./AuthLayout";
 export type { AuthFieldProps, AuthLayoutProps } from "./AuthLayout";
+export { AskZcomAiContext, useAskZcomAi } from "./ask-context";
+export type { AskZcomAi } from "./ask-context";

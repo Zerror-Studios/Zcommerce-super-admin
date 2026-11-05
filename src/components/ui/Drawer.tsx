@@ -1,8 +1,9 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 import { Drawer as HeroDrawer } from "@heroui/react";
 import type { DrawerProps as HeroDrawerProps } from "@heroui/react";
+import { ButtonShortLabelContext } from "./short-label";
 import { cx } from "./cx";
-import { IconClose } from "./icons";
+import { IconBack, IconClose } from "./icons";
 
 export type DrawerSize = "sm" | "md" | "lg";
 
@@ -27,6 +28,8 @@ const drawerMotionProps = {
  * optional sticky 72px footer with the buttons on the right (at most one primary). Escape and the overlay close
  * it; focus is trapped and returns to the trigger (HeroUI). Use with DrawerContent / DrawerHeader / DrawerBody /
  * DrawerFooter from @heroui/react. Menus, selects and tooltips inside render in its layer.
+ * Responsive (v2 §10): 420px on tablet (md too; lg never covers the rail); full screen on phone, where the close
+ * button becomes a back arrow on the left of the header.
  */
 export function Drawer({
   classNames,
@@ -39,22 +42,32 @@ export function Drawer({
   ...rest
 }: DrawerProps) {
   const resolved: DrawerSize = size ?? width ?? "md";
+  // A drawer opened from the title row's primary keeps its own button labels (ButtonShortLabelContext).
   return (
-    <HeroDrawer
-      placement={placement}
-      backdrop={backdrop}
-      motionProps={motionProps ?? drawerMotionProps}
-      closeButton={closeButton ?? <IconClose aria-hidden />}
-      classNames={{
-        ...classNames,
-        backdrop: cx("zc-drawer-backdrop", classNames?.backdrop),
-        base: cx("zc-drawer", `zc-drawer--${resolved}`, classNames?.base),
-        header: cx("zc-drawer__header", classNames?.header),
-        body: cx("zc-drawer__body custom-scroll", classNames?.body),
-        footer: cx("zc-drawer__footer", classNames?.footer),
-        closeButton: cx("zc-drawer__close", classNames?.closeButton),
-      }}
-      {...rest}
-    />
+    <ButtonShortLabelContext.Provider value={undefined}>
+      <HeroDrawer
+        placement={placement}
+        backdrop={backdrop}
+        motionProps={motionProps ?? drawerMotionProps}
+        closeButton={
+          closeButton ?? (
+            <>
+              <IconClose aria-hidden className="zc-drawer__x" />
+              <IconBack aria-hidden className="zc-drawer__back" />
+            </>
+          )
+        }
+        classNames={{
+          ...classNames,
+          backdrop: cx("zc-drawer-backdrop", classNames?.backdrop),
+          base: cx("zc-drawer", `zc-drawer--${resolved}`, classNames?.base),
+          header: cx("zc-drawer__header", classNames?.header),
+          body: cx("zc-drawer__body custom-scroll", classNames?.body),
+          footer: cx("zc-drawer__footer", classNames?.footer),
+          closeButton: cx("zc-drawer__close", classNames?.closeButton),
+        }}
+        {...rest}
+      />
+    </ButtonShortLabelContext.Provider>
   );
 }

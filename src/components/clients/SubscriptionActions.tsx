@@ -31,6 +31,12 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconCalendar,
+  IconPayments,
+  IconPower,
+  IconRepeat,
+  IconXCircle,
   Select,
   SelectItem,
   Switch,
@@ -203,7 +209,9 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
       {/* Reactivate (PRD-016 FR-18): a payment, or an audited override with a reason */}
       <Modal isOpen={dialog === "reactivate"} onClose={closeDialog} width="sm">
         <ModalContent>
-          <ModalHeader>Reactivate {client.storeName}'s subscription?</ModalHeader>
+          <ModalHeader>
+            <PopupTitle icon={<IconRepeat aria-hidden />}>Reactivate {client.storeName}'s subscription?</PopupTitle>
+          </ModalHeader>
           <ModalBody>
             <p className="text-body text-fg-muted">
               Without an override this only undoes a scheduled cancellation while the current period is paid and no
@@ -246,7 +254,9 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
       {/* Extend trial */}
       <Modal isOpen={dialog === "trial"} onClose={closeDialog} width="sm">
         <ModalContent>
-          <ModalHeader>Extend trial</ModalHeader>
+          <ModalHeader>
+            <PopupTitle icon={<IconCalendar aria-hidden />}>Extend trial</PopupTitle>
+          </ModalHeader>
           <ModalBody>
             <Input
               label="Days to add"
@@ -280,7 +290,9 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
           action stays disabled until one is chosen; same shape as Reactivate and Activate. */}
       <Modal isOpen={dialog === "cancel"} onClose={closeDialog} width="sm">
         <ModalContent>
-          <ModalHeader>Cancel {client.storeName}'s subscription?</ModalHeader>
+          <ModalHeader>
+            <PopupTitle icon={<IconXCircle aria-hidden />} tone="danger">Cancel {client.storeName}'s subscription?</PopupTitle>
+          </ModalHeader>
           <ModalBody>
             <p className="text-body text-fg-muted">
               By default the subscription ends when the current period does. Immediate cancellation ends it today.
@@ -355,7 +367,9 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
       {/* Activate without payment (PRD-014 SEC-04) */}
       <Modal isOpen={dialog === "activate"} onClose={closeDialog} width="sm">
         <ModalContent>
-          <ModalHeader>Activate {client.storeName} without a payment?</ModalHeader>
+          <ModalHeader>
+            <PopupTitle icon={<IconPower aria-hidden />}>Activate {client.storeName} without a payment?</PopupTitle>
+          </ModalHeader>
           <ModalBody>
             <p className="text-body text-fg-muted">
               The subscription becomes active today and a new period starts, with an invoice issued for it, although
@@ -396,7 +410,9 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
       {/* Record payment */}
       <Modal isOpen={dialog === "payment"} onClose={closeDialog} width="sm">
         <ModalContent>
-          <ModalHeader>Record a payment</ModalHeader>
+          <ModalHeader>
+            <PopupTitle icon={<IconPayments aria-hidden />}>Record a payment</PopupTitle>
+          </ModalHeader>
           <ModalBody>
             <p className="text-body text-fg-muted">
               For a bank transfer or UPI payment taken outside the platform. A past-due subscription becomes active.

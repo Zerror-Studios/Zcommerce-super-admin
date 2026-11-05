@@ -1,5 +1,5 @@
 /**
- * Flags raw hex colours in component and page files (docs/design/01-foundations.md §4, 06-qa-checklist.md).
+ * Flags raw hex colours and Tailwind palette classes (text-purple-500) in component and page files (docs/design/01-foundations.md §4, 06-qa-checklist.md).
  * Colours belong in src/styles/tokens.css (and src/theme/heroui-theme.js, which HeroUI needs as hex).
  *
  * Usage: node scripts/check-hex.mjs [--max N]
@@ -30,6 +30,9 @@ const ALLOWED = [
   "src/App.css",
 ];
 const HEX_PATTERN = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b/g;
+// Tailwind's built-in palette (text-purple-500, bg-gray-100 ...) bypasses the tokens just like a hex value (v2 §2.1).
+const PALETTE_PATTERN =
+  /\b(?:bg|text|border|ring|fill|stroke|from|to|via|outline|divide|shadow|accent|caret|decoration)-(?:red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone)-\d{2,3}\b/g;
 
 const maxIndex = process.argv.indexOf("--max");
 const MAX_HITS = maxIndex > -1 ? Number(process.argv[maxIndex + 1]) : 0;
@@ -58,6 +61,8 @@ for (const file of walk(SCAN_DIR)) {
         return !before.endsWith("&") && !/(href|to)=["'{`]*$/.test(before);
       });
       for (const match of matches) hits.push(`${rel}:${index + 1}  ${match[0]}`);
+      if (rel.endsWith(".css")) return;
+      for (const match of line.matchAll(PALETTE_PATTERN)) hits.push(`${rel}:${index + 1}  ${match[0]}`);
     });
 }
 
@@ -68,5 +73,5 @@ for (const hit of hits) {
   byFile.set(file, (byFile.get(file) ?? 0) + 1);
 }
 for (const hit of hits) console.log(hit);
-console.log(`\n${hits.length} raw hex colour(s) in ${byFile.size} file(s); allowed: ${MAX_HITS}.`);
+console.log(`\n${hits.length} raw colour(s) (hex or Tailwind palette) in ${byFile.size} file(s); allowed: ${MAX_HITS}.`);
 process.exit(hits.length > MAX_HITS ? 1 : 0);

@@ -5,7 +5,7 @@
  */
 
 import { useQuery } from "@apollo/client";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PLATFORM_DELETED_TENANTS, PLATFORM_PURGED_TENANTS } from "../../../graphql/tenants";
 import { nextOffset } from "../../../lib/offset-paging.util";
@@ -13,9 +13,8 @@ import { purgeCountdown } from "../../../lib/tenant-lifecycle.util";
 import { formatDate } from "../../../lib/utils";
 import type { PlatformList, PlatformTenant, TenantPurgeRecord } from "../../../types/platform-api";
 import { LoadMoreFooter } from "../../common/LoadMoreFooter";
-import { DataTable, EmptyState, ErrorState, SegmentedSwitch, type DataTableColumn } from "../../ui";
+import { DataTable, EmptyState, ErrorState, SegmentedSwitch, TableToolbar, type DataTableColumn, type SegmentedItem } from "../../ui";
 import { IconDelete, IconUndo } from "../../ui/icons";
-import { StoresToolbar } from "./StoresToolbar";
 
 const PAGE_LIMIT = 50;
 
@@ -23,17 +22,17 @@ type View = "deleted" | "purged";
 type DeletedRow = Pick<PlatformTenant, "id" | "slug" | "name" | "domain" | "purgeAfter">;
 
 const deletedColumns: DataTableColumn[] = [
-  { key: "store", label: "Store" },
-  { key: "domain", label: "Domain", width: 180 },
-  { key: "purgeAfter", label: "Purged on", width: 150 },
+  { key: "store", label: "Store", mobile: "primary" },
+  { key: "domain", label: "Domain", width: 180, mobile: "title" },
+  { key: "purgeAfter", label: "Purged on", width: 150, mobile: "meta" },
 ];
 
 const purgedColumns: DataTableColumn[] = [
-  { key: "store", label: "Store" },
-  { key: "domain", label: "Domain", width: 180 },
-  { key: "deletedAt", label: "Deleted", width: 130 },
-  { key: "purgedAt", label: "Purged", width: 130 },
-  { key: "reason", label: "Reason" },
+  { key: "store", label: "Store", mobile: "primary" },
+  { key: "domain", label: "Domain", width: 180, hideWhen: "narrow", mobile: "hide" },
+  { key: "deletedAt", label: "Deleted", width: 130, hideWhen: "narrow", mobile: "hide" },
+  { key: "purgedAt", label: "Purged", width: 130, mobile: "meta" },
+  { key: "reason", label: "Reason", mobile: "title" },
 ];
 
 const dash = <span className="text-fg-subtle">—</span>;
@@ -72,15 +71,17 @@ function StoreCell({ name, slug }: { name: string; slug: string }) {
 }
 
 export interface DeletedStoresTableProps {
-  /** The page's status switch, so Deleted sits in the same row as the other tabs. */
-  tabs: ReactNode;
+  /** The page's status tabs (v2 §4.3, above the table), so Deleted sits in the same row as the other tabs. */
+  tabs: SegmentedItem<string>[];
+  tab: string;
+  onTabChange: (tab: string) => void;
   search: string;
   onSearchChange: (value: string) => void;
   /** The applied search (from the URL). */
   query: string;
 }
 
-export function DeletedStoresTable({ tabs, search, onSearchChange, query }: DeletedStoresTableProps) {
+export function DeletedStoresTable({ tabs, tab, onTabChange, search, onSearchChange, query }: DeletedStoresTableProps) {
   const navigate = useNavigate();
   const [view, setView] = useState<View>("deleted");
   const deleted = usePaged<DeletedRow>(PLATFORM_DELETED_TENANTS, "platformTenants");
@@ -90,7 +91,15 @@ export function DeletedStoresTable({ tabs, search, onSearchChange, query }: Dele
     !term || [row.name, row.slug, row.domain ?? ""].some((text) => text.toLowerCase().includes(term));
 
   const toolbar = (
-    <StoresToolbar tabs={tabs} search={search} onSearchChange={onSearchChange}>
+    <TableToolbar<string>
+      tabs={tabs}
+      tab={tab}
+      onTabChange={onTabChange}
+      tabsLabel="Store status"
+      search={search}
+      onSearchChange={onSearchChange}
+      searchPlaceholder="Store or domain"
+    >
       <SegmentedSwitch<View>
         size="sm"
         ariaLabel="Which stores"
@@ -101,7 +110,7 @@ export function DeletedStoresTable({ tabs, search, onSearchChange, query }: Dele
           { value: "purged", label: "Purged", count: purged.total ?? null },
         ]}
       />
-    </StoresToolbar>
+    </TableToolbar>
   );
 
   const active = view === "deleted" ? deleted : purged;
@@ -119,9 +128,11 @@ export function DeletedStoresTable({ tabs, search, onSearchChange, query }: Dele
 
   if (active.query.error && !active.query.data) {
     return (
-      <div className="overflow-clip rounded-[var(--zc-radius-card)] border border-line bg-surface">
-        {toolbar}
-        <ErrorState title="Couldn't load these stores." onRetry={() => void active.query.refetch()} />
+      <div className="zc-table-wrap">
+        <div className="zc-table-toolbar">{toolbar}</div>
+        <div className="overflow-clip rounded-(--zc-radius-card) border border-line bg-surface">
+          <ErrorState title="Couldn't load these stores." onRetry={() => void active.query.refetch()} />
+        </div>
       </div>
     );
   }
@@ -151,7 +162,7 @@ export function DeletedStoresTable({ tabs, search, onSearchChange, query }: Dele
       onRowAction={(row) => navigate(`/stores/${row.id}/overview`)}
       // The live app restores a deleted store from its page (Lifecycle).
       rowActions={(row) => [
-        { key: "restore", label: "Restore store", icon: IconUndo, onSelect: () => navigate(`/stores/${row.id}/lifecycle`) },
+        { key: "restore", label: "Restore store", icon: IconUndo, onSelect: () => navigate(`/stores/${row.id}/settings#lifecycle`) },
       ]}
       rowActionsLabel={(row) => `Actions for ${row.name}`}
       emptyContent={emptyContent}

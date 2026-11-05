@@ -14,6 +14,7 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
   Tooltip,
   formatDateTime,
   toastError,
@@ -61,7 +62,9 @@ export function RerunSyncDialog({ row, onClose }: RerunSyncDialogProps) {
       hideCloseButton={loading}
     >
       <ModalContent>
-        <ModalHeader>Re-run the analytics sync for {row?.name}?</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={<IconRefresh aria-hidden />}>Re-run the analytics sync for {row?.name}?</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           <p className="text-body text-fg-muted">
             An incremental sync of property {row?.propertyId} runs within a minute. It uses the store's daily GA4

@@ -1,6 +1,5 @@
 import { useMemo, useState, useSyncExternalStore, type ComponentType } from "react";
 import { Navigate, useParams } from "react-router-dom";
-import { PageHeader } from "../components/common/PageHeader";
 import { ConfirmModal } from "../components/common/ConfirmModal";
 import { AiSettings } from "../components/settings/AiSettings";
 import { AuditLogSettings } from "../components/settings/AuditLogSettings";
@@ -23,7 +22,7 @@ import {
   settingsSearchEntries,
 } from "../components/settings/settings-sections";
 import { SettingsSearch, SettingsShell, type SettingsMenuGroup } from "../components/ui";
-import { IconLogout, IconSettings } from "../components/ui/icons";
+import { IconLogout } from "../components/ui/icons";
 import { useAuth } from "../providers/AuthProvider";
 
 const PHONE_QUERY = "(max-width: 767px)";
@@ -51,9 +50,11 @@ const SECTION_CONTENT: Record<SettingsSectionKey, ComponentType> = {
 };
 
 /**
- * Settings (04 S-07): slate header with "Search settings" (sections and field labels), then the shared
- * SettingsShell — a 260px menu card (Your account · Platform · Records, Sign out last after a divider) and a
- * full-width content column. Each section keeps its URL (/settings/:section); old section URLs redirect.
+ * Settings (04 S-07; the merchant Settings look of design v2 boards 48–57): the shared SettingsShell — a
+ * full-height white menu column next to the sidebar ("Settings", one line, "Search settings" for sections and field
+ * labels, Your account · Platform · Records, a red "Log out" at the bottom) and the sections on the page
+ * background, each with its own title row. Each section keeps its URL (/settings/:section); old section URLs
+ * redirect.
  */
 export function Settings() {
   const { section } = useParams<{ section: string }>();
@@ -84,23 +85,14 @@ export function Settings() {
 
   return (
     <div>
-      {/* On phone a section opens full screen with its own back button. */}
-      <div className={active ? "max-md:hidden" : undefined}>
-        <PageHeader
-          type="page"
-          icon={<IconSettings aria-hidden />}
-          section="slate"
-          title="Settings"
-          description="Your account, team, plans, billing rules, AI and the audit trail."
-          actions={<SettingsSearch entries={searchEntries} />}
-        />
-      </div>
-
       <SettingsShell
         aria-label="Settings sections"
+        title="Settings"
+        subtitle="Your account, team, plans, billing rules, AI and the audit trail."
+        search={<SettingsSearch entries={searchEntries} fullWidth />}
         groups={groups}
         activeKey={active}
-        footer={[{ key: "sign-out", label: "Sign out", icon: IconLogout, onSelect: () => setSignOutOpen(true), destructive: true }]}
+        footer={[{ key: "sign-out", label: "Log out", icon: IconLogout, onSelect: () => setSignOutOpen(true), destructive: true }]}
         showList={!active}
         back={{ href: "/settings", label: "Settings" }}
       >
@@ -111,9 +103,11 @@ export function Settings() {
         isOpen={signOutOpen}
         onClose={() => setSignOutOpen(false)}
         onConfirm={() => void signOut()}
-        title="Sign out?"
-        description="You'll need to sign in again to use the console."
-        confirmLabel="Sign out"
+        title="Log out of Zcom?"
+        description="You'll need your password to come back in."
+        confirmLabel="Log out"
+        confirmColor="primary"
+        icon={<IconLogout aria-hidden />}
       />
     </div>
   );

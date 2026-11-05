@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Menu</title>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2563EB;text-decoration:none}
+.z{font-family:'Geist',ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:20px;color:#0B0C10;-webkit-font-smoothing:antialiased;background:#EBECF0}
+.z *{box-sizing:border-box}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:'Geist Mono',ui-monospace,monospace}
+.mu{color:#5B606B}.fa{color:#6E7380}
+.side{flex:0 0 240px;display:flex;flex-direction:column;gap:2px;padding:16px 12px;background:#0B0C10;font-size:13px;min-height:100%}
+.grp{font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#5C616C;padding:14px 10px 6px 10px}
+.nav{display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:9px;color:#A3A8B3;font-weight:500}
+.nav svg{flex:none;color:#7B808B}
+.nav.on{background:#20232B;color:#FFFFFF}.nav.on svg{color:#FFFFFF}
+.sub{display:flex;align-items:center;height:30px;padding:0 10px 0 37px;border-radius:8px;color:#8A8F9A;font-weight:500;font-size:13px}
+.sub.on{color:#FFFFFF;background:#17191F}
+.nav .ct{margin-left:auto;font-size:11.5px;color:#7B808B}
+.top{display:flex;align-items:center;gap:12px;height:64px;padding:0 32px;border-bottom:1px solid #E7E7EC;background:rgba(255,255,255,.7)}
+.srch{flex:0 1 460px;display:flex;align-items:center;gap:10px;height:40px;padding:0 8px 0 14px;border-radius:12px;background:#FFFFFF;border:1px solid #E4E4EA;color:#6E7380}
+.kbd{font-family:'Geist Mono',monospace;font-size:11px;padding:2px 6px;border-radius:6px;background:#F1F1F5;color:#5B606B;border:1px solid #E4E4EA}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;font:inherit;font-weight:500;color:#1F4FD6;background:#EEF3FF;border:1px solid #DCE5FF;white-space:nowrap;cursor:pointer}
+.btn.pri{background:#1F5EFF;border-color:#1F5EFF;color:#FFFFFF}
+.btn.dk{background:#0B0C10;border-color:#0B0C10;color:#FFFFFF}
+.btn.sm{height:32px;padding:0 14px;font-size:13px}
+.ib{width:38px;height:38px;border-radius:12px;border:1px solid #E4E4EA;background:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;color:#3D414B;position:relative}
+.card{background:#FFFFFF;border:1px solid #E7E7EC;border-radius:22px}
+.gc{border-radius:22px;padding:20px 22px;color:#FFFFFF;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:236px}
+.gc::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 80% at 100% 0%,rgba(255,255,255,.28),rgba(255,255,255,0) 55%);pointer-events:none}
+.gc > *{position:relative}
+.lbl{font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.8}
+.big{font-size:34px;line-height:40px;font-weight:600;letter-spacing:-0.03em;margin-top:8px}
+.chip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:11px;font-size:12px;font-weight:600;background:rgba(255,255,255,.2)}
+.pxa{margin-top:auto;height:96px;background:radial-gradient(circle,rgba(255,255,255,.95) 1.7px,transparent 2.1px) 0 0/7px 7px}
+.pxb{margin-top:auto;display:flex;align-items:flex-end;gap:4px;height:96px}
+.pxb i{flex:1;background:repeating-linear-gradient(0deg,currentColor 0 5px,transparent 5px 7px);border-radius:1px}
+.dots{display:grid;grid-template-columns:repeat(20,1fr);gap:4px;margin-top:auto}
+.dots i{aspect-ratio:1;border-radius:2px;background:rgba(255,255,255,.14)}
+.dots i.f{background:#7AF0B8}
+.ins{flex:1 1 260px;min-width:0;padding:16px 18px;border-radius:18px;background:#FFFFFF;border:1px solid #E7E7EC;display:flex;flex-direction:column;gap:10px}
+.ins .k{display:flex;align-items:center;gap:8px;font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.row{display:flex;align-items:center;gap:14px;padding:12px 20px;border-top:1px solid #F0F0F4}
+.ti{width:36px;height:36px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.tp{display:grid;grid-template-columns:22px minmax(0,1fr) 60px 100px;column-gap:12px;align-items:center;padding:10px 20px;border-top:1px solid #F0F0F4}
+.tp img{width:34px;height:34px;border-radius:9px;object-fit:cover}
+.cx{margin-left:auto}
+.sbox{display:flex;align-items:center;gap:10px;height:38px;padding:0 8px 0 10px;margin:0 2px 10px 2px;border-radius:11px;background:#15171D;border:1px solid #23262E;color:#8A8F9A}
+.kbd2{font-family:'Geist Mono',monospace;font-size:10.5px;padding:1px 6px;border-radius:6px;background:#20232B;color:#9AA0AB}
+.aib{display:flex;align-items:center;gap:10px;padding:10px;margin:0 2px 8px 2px;border-radius:14px;background:linear-gradient(135deg,#0E1A3D,#13245A);border:1px solid #22356F}
+.ai-card{border-radius:22px;padding:20px 22px;color:#FFFFFF;position:relative;overflow:hidden;background:radial-gradient(120% 120% at 100% 0%,#60A5FA 0%,#1D4ED8 38%,#0B1A4F 78%,#070E2B 100%)}
+.ai-card::before{content:"";position:absolute;inset:0;background:radial-gradient(60% 50% at 90% 10%,rgba(255,255,255,.35),transparent 60%)}
+.ai-card > *{position:relative}
+.ai-line{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:linear-gradient(90deg,#EEF4FF,#FFFFFF);border:1px solid #DCE7FF}
+.dotc{--c:#2563EB;background:radial-gradient(circle,var(--c) 2.4px,transparent 2.8px) 0 0/9px 9px}
+.hat{background:repeating-linear-gradient(135deg,currentColor 0 2px,transparent 2px 6px)}
+.seg10{display:flex;gap:3px}
+.seg10 i{width:7px;height:16px;border-radius:3px;background:#E4E7EE}
+.seg10 i.f{background:#1D4ED8}
+
+@keyframes gl6{to{transform:rotate(360deg)}}
+@keyframes gl6b{0%,100%{transform:scale(.86);opacity:.8}50%{transform:scale(1.06);opacity:1}}
+.glyph,.orb-s{width:18px;height:18px;border-radius:50%;flex:none;display:inline-block;vertical-align:middle;position:relative;overflow:hidden;background:#1E3A8A;-webkit-mask:none;mask:none;animation:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45),0 2px 8px -2px rgba(37,99,235,.55);isolation:isolate}
+.glyph::before,.orb-s::before{content:"";position:absolute;inset:-30%;border-radius:50%;background:radial-gradient(circle at 28% 30%,#7DD3FC 0,rgba(125,211,252,0) 42%),radial-gradient(circle at 74% 34%,#A5B4FC 0,rgba(165,180,252,0) 44%),radial-gradient(circle at 50% 82%,#3B82F6 0,rgba(59,130,246,0) 52%),radial-gradient(circle at 50% 50%,#1D4ED8,#172554 70%);animation:gl6 5s linear infinite}
+.glyph::after,.orb-s::after{content:"";position:absolute;inset:20%;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.95),rgba(255,255,255,0) 68%);animation:gl6b 2.8s ease-in-out infinite}
+.glyph.w{box-shadow:inset 0 0 0 1px rgba(255,255,255,.7),0 0 0 1.5px rgba(255,255,255,.55),0 0 12px rgba(191,219,254,.55)}
+.glyph.lg{width:28px;height:28px}
+.glyph.st::before{animation-duration:14s}.glyph.st::after{animation:none}
+.orb-s{width:30px;height:30px;box-shadow:inset 0 0 0 1px rgba(191,219,254,.5),0 0 16px rgba(59,130,246,.45)}
+@media (prefers-reduced-motion:reduce){.glyph::before,.glyph::after,.orb-s::before,.orb-s::after{animation:none}}
+@keyframes aib6{to{transform:translate(-70px,50px) scale(1.2)}}
+.ai-card::after{content:"";position:absolute;width:280px;height:280px;right:-90px;top:-120px;border-radius:50%;background:radial-gradient(circle,rgba(147,197,253,.5),rgba(59,130,246,0) 65%);animation:aib6 10s ease-in-out infinite alternate;z-index:0;pointer-events:none}
+.ai-card > *{position:relative;z-index:1}
+.ai-card::before{z-index:0}
+
+.k4{display:grid;gap:12px}
+.k4c{position:relative;overflow:hidden;border-radius:18px;padding:16px 18px 18px 18px;background:linear-gradient(180deg,color-mix(in srgb,var(--a) 9%,#FFFFFF) 0%,#FFFFFF 62%);border:1px solid #E3E4E9;display:flex;flex-direction:column;gap:2px;min-height:122px}
+.k4c .l{font-size:13px;font-weight:500;color:#5F646E;display:flex;align-items:center;gap:8px}
+.k4c .l i{width:8px;height:8px;border-radius:3px;background:var(--a)}
+.k4c .v{font-size:26px;line-height:32px;font-weight:600;letter-spacing:-0.02em;margin-top:6px;color:#0B0C10}
+.k4c .s{font-size:12px;color:#6F747E;max-width:58%}
+.k4c .ch{position:absolute;right:16px;bottom:16px;width:92px;height:40px}
+.mb{display:flex;align-items:flex-end;gap:3px}
+.mb i{flex:1;border-radius:2px;background:var(--a);opacity:.22}
+.mb i:last-child,.mb i:nth-last-child(2){opacity:1}
+.dm2{background:radial-gradient(circle,var(--a) 1.8px,transparent 2.2px) 0 0/7px 7px}
+.rg{width:44px!important;height:44px!important;border-radius:50%;background:conic-gradient(var(--a) calc(var(--p)*1%),#ECEEF2 0);-webkit-mask:radial-gradient(circle,transparent 54%,#000 56%);mask:radial-gradient(circle,transparent 54%,#000 56%)}
+.sg2{display:flex;gap:3px;align-items:flex-end;height:18px!important}
+.sg2 i{flex:1;height:16px;border-radius:3px;background:#E6E8EE}
+.sg2 i.f{background:var(--a)}
+.ib2{width:36px;height:36px;border-radius:18px;border:1px solid #E2E3E8;background:#FFFFFF;color:#3D414B;display:inline-flex;align-items:center;justify-content:center;flex:none;cursor:pointer}
+.ib2.on{background:#0B0C10;border-color:#0B0C10;color:#FFFFFF}
+.srch2{display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;border:1px solid #E2E3E8;background:#FFFFFF;border-radius:999px;color:#8A8F9A}
+.srch2 input{border:0;outline:0;font:inherit;flex:1;min-width:0;background:transparent;color:#0B0C10}
+.tbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.tbar .r{display:flex;gap:8px;align-items:center}
+.vt{display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:#FFFFFF;border:1px solid #E2E3E8}
+.vt a{width:32px;height:28px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;color:#6F747E}
+.vt a.on{background:#0B0C10;color:#FFFFFF}
+.wal{display:inline-flex;align-items:center;gap:10px;height:36px;padding:0 6px 0 6px;border-radius:999px;background:#FFFFFF;border:1px solid #E2E3E8;font-size:13px}
+.wal .wi{width:26px;height:26px;border-radius:13px;background:#0B0C10;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.wal b{font-weight:600}
+.wal a{height:26px;padding:0 10px;border-radius:13px;background:#EEF3FF;color:#1F4FD6;font-weight:500;display:inline-flex;align-items:center;font-size:12.5px}
+.mnu{position:absolute;right:0;top:44px;width:230px;background:#FFFFFF;border-radius:16px;box-shadow:0 24px 60px -18px rgba(11,12,16,.35),0 0 0 1px rgba(11,12,16,.06);padding:6px;z-index:5}
+.mnu a{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:10px;color:#0B0C10;font-size:13.5px}
+.mnu a:first-child{background:#F3F4F7}
+.mnu a span{margin-left:auto;font-size:12px;color:#8A8F9A}
+.mnu hr{border:0;height:1px;background:#EFEFF3;margin:4px 6px}
+.seo{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:13px}
+.seo i{width:26px;height:26px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*1%),#ECEEF2 0);-webkit-mask:radial-gradient(circle,transparent 56%,#000 58%);mask:radial-gradient(circle,transparent 56%,#000 58%)}
+.seo small{font-size:11.5px;font-weight:500;color:#6F747E}
+.seg{background:#DFE1E7}
+.chn span{background:#F1F2F5!important;color:#0B0C10!important;width:24px!important;height:24px!important;border-radius:7px!important}
+.side{flex:0 0 240px!important;width:240px;max-width:240px;box-sizing:border-box}
+.ai-edge{background:linear-gradient(90deg,#F1F6FF,#FFFFFF 70%)!important}.ai-edge::before{background:linear-gradient(115deg,#BFD3FF,#2563EB 60%,#93B4F8)!important}
+.z{position:relative}
+.k4c{background:#FFFFFF!important}
+.k4c[style*="#D92D20"]{background:linear-gradient(180deg,#FFF4F3 0%,#FFFFFF 64%)!important;border-color:#F6DCDA}
+.k4c[style*="#F59E0B"]{background:linear-gradient(180deg,#FFF8EC 0%,#FFFFFF 64%)!important;border-color:#F4E6CC}
+.k4c[style*="#0B0C10"] .mb i{opacity:.14}.k4c[style*="#0B0C10"] .mb i:last-child,.k4c[style*="#0B0C10"] .mb i:nth-last-child(2){opacity:.85}
+.k4c[style*="#0B0C10"] .dm2{opacity:.5}
+.k4c.f{background:radial-gradient(120% 120% at 100% 0%,#60A5FA 0%,#1D4ED8 38%,#0B1A4F 78%,#070E2B 100%)!important;border-color:transparent;--a:#FFFFFF!important;color:#FFFFFF}
+.k4c.f .l,.k4c.f .s,.k4c.f .v,.k4c.f .s *{color:#FFFFFF!important}.k4c.f .l,.k4c.f .s{opacity:.82}
+.k4c.f .l i{background:#FFFFFF}
+.k4c.f .mb i{background:#FFFFFF;opacity:.3}.k4c.f .mb i:last-child,.k4c.f .mb i:nth-last-child(2){opacity:1}
+.k4c.f .sg2 i{background:rgba(255,255,255,.22)}.k4c.f .sg2 i.f{background:#FFFFFF}
+.k4c.f .rg{background:conic-gradient(#FFFFFF calc(var(--p)*1%),rgba(255,255,255,.2) 0)}
+.k4c.f .dm2{background:radial-gradient(circle,#FFFFFF 1.8px,transparent 2.2px) 0 0/7px 7px;opacity:.85}
+.k4c.f::after{content:"";position:absolute;width:220px;height:220px;right:-70px;top:-90px;border-radius:50%;background:radial-gradient(circle,rgba(147,197,253,.45),rgba(59,130,246,0) 65%);animation:aib6 10s ease-in-out infinite alternate;pointer-events:none}
+.zbar{position:absolute;left:calc(240px + (100% - 240px) / 2);bottom:26px;transform:translateX(-50%);width:600px;max-width:calc(100% - 300px);display:flex;align-items:center;gap:12px;height:54px;padding:0 8px 0 12px;border-radius:27px;background:#FFFFFF;border:1px solid #E1E4EC;box-shadow:0 22px 50px -18px rgba(11,26,79,.35),0 0 0 6px rgba(255,255,255,.55);z-index:40}
+.zbar .orb-s{width:30px;height:30px}
+.zbar .ph{flex:1;color:#8A8F9A;font-size:14px}
+.zbar .ch{height:30px;padding:0 12px;border-radius:15px;background:#F3F5FA;color:#1F2430;font-size:12.5px;display:inline-flex;align-items:center;white-space:nowrap}
+.zbar .kbd2{background:#F1F2F5;color:#6F747E}
+.av-n{background:#E8EAEF!important;color:#1F2430!important}
+.ch3 span{background:#F1F2F5!important;color:#1F2430!important}
+.ch3 span.off,.ch3 span[class$="x"]{opacity:.35}
+.z main{padding-bottom:120px!important}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:#DFE1E7}
+.seg a{height:32px;padding:0 14px;border-radius:999px;display:inline-flex;align-items:center;gap:6px;font-weight:500;color:#5F646E;font-size:13px}
+.seg a.on{background:#FFFFFF;color:#111318;box-shadow:0 1px 2px rgba(17,19,24,.08)}
+.seg .c,.seg .n{color:#8A909B;font-size:12px}
+
+.mu{color:#5B606B}
+.sbw{display:flex;height:900px;border-radius:22px;overflow:hidden;flex:0 0 240px}
+.sbw .side{flex:1 1 auto}
+.tagk{font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:.1em;color:#8A8F9A;margin:0 0 10px 4px}
+.mp{display:flex;flex-direction:column;gap:2px}
+.mr{display:grid;grid-template-columns:120px 1fr;gap:12px;padding:12px 0;border-top:1px solid #F0F0F4;font-size:13.5px;line-height:20px}
+.mr > b{font-weight:600}
+.pg{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pg span{height:26px;padding:0 10px;border-radius:13px;background:#F1F1F5;color:#1F2430;font-size:12.5px;font-weight:500;display:inline-flex;align-items:center}
+.pg span.t{background:#FFFFFF;border:1px dashed #C9CBD3;color:#5B606B;font-weight:400}
+.pg span.new{background:#EEF3FF;color:#1D4ED8}
+.pg em{font-style:normal;color:#8A8F9A;font-size:12px}
+.ft2{display:flex;gap:6px;flex-wrap:wrap}
+.ft2 span{height:30px;padding:0 12px;border-radius:15px;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px;background:#FFFFFF;border:1px solid #E1E1E8;color:#3D414B}
+.ft2 span.on{background:#0B0C10;border-color:#0B0C10;color:#FFFFFF}
+.ft2 span i{font-style:normal;color:#8A8F9A;font-weight:400}
+.ft2 span.on i{color:#A3A8B3}
+
+</style>
+</helmet>
+<div class="z" style="position: relative; min-height: 1560px; padding: 48px 56px 64px 56px;">
+<div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 28px;"><span class="mono" style="font-size: 11px; letter-spacing: .14em; color: #2563EB;">MENU · ROUND 7</span><h1 style="margin: 0; font-size: 34px; line-height: 40px; font-weight: 600; letter-spacing: -0.03em;">One simple list</h1><p class="mu" style="margin: 0; max-width: 760px; font-size: 15px; line-height: 22px; color: #5B606B;">No group headings. Help &amp; support sits after Apps &amp; channels and opens in place. Notifications and Settings sit at the bottom. Zcom AI is no longer in the menu: it is the bar at the bottom of every page.</p></div><div style="display: flex; gap: 20px; align-items: flex-start;"><div><div class="tagk">SALES OPEN</div><div class="sbw"><aside class="side">
+  <div style="display: flex; align-items: center; gap: 10px; padding: 2px 6px 12px 6px;"><span style="width: 30px; height: 30px; border-radius: 9px; background: #23262E; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px;">KK</span><span style="display: flex; flex-direction: column; line-height: 16px; flex: 1;"><b style="color: #FFFFFF; font-weight: 600;">Kesar &amp; Kin</b><span style="font-size: 11.5px; color: #7B808B;">kesarandkin.in</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7B808B" stroke-width="2" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"></path></svg></div>
+  <label class="sbox"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><input aria-label="Search" placeholder="Search" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; color: #FFFFFF;"><span class="kbd2">⌘K</span></label>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"></path></svg>Home</a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"></path></svg>Inbox<span class="ct num">9</span></a>
+  <a class="nav on" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18M16 10a4 4 0 0 1-8 0"></path></svg>Sales<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></a>
+  <a class="sub on" href="#">Orders</a><a class="sub" href="#">Payments</a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"></path><circle cx="7" cy="7" r="1.5"></circle></svg>Catalogue<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.9"></path></svg>Customers</a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v3a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"></path><path d="M16 9a3 3 0 0 1 0 6"></path></svg>Marketing<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M8 13h8M8 17h5"></path></svg>Content<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 3v18h18"></path><path d="M7 15v3M12 10v8M17 6v12"></path></svg>Analytics<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>Apps &amp; channels</a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01"></path></svg>Help &amp; support<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <div style="flex: 1; min-height: 24px;"></div>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a2 2 0 0 0 3.4 0"></path></svg>Notifications<span class="ct num" style="background: #FF5B5B; color: #FFFFFF; border-radius: 9px; padding: 0 6px; font-weight: 600;">3</span></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"></path><circle cx="15" cy="6" r="2"></circle><circle cx="9" cy="12" r="2"></circle><circle cx="17" cy="18" r="2"></circle></svg>Settings</a>
+  <div style="display: flex; align-items: center; gap: 10px; padding: 12px 8px 2px 8px; margin-top: 6px; border-top: 1px solid #1C1F26;"><span style="width: 30px; height: 30px; border-radius: 15px; background: linear-gradient(135deg,#34D3B4,#1F9E8A); color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; flex: none;">AM</span><span style="display: flex; flex-direction: column; line-height: 16px; min-width: 0; flex: 1;"><span style="font-weight: 500; color: #FFFFFF;">Aarav Mehta</span><span style="font-size: 12px; color: #7B808B;">Owner</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="#7B808B" aria-hidden="true"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></div>
+</aside>
+</div></div><div><div class="tagk">HELP OPEN</div><div class="sbw"><aside class="side">
+  <div style="display: flex; align-items: center; gap: 10px; padding: 2px 6px 12px 6px;"><span style="width: 30px; height: 30px; border-radius: 9px; background: #23262E; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px;">KK</span><span style="display: flex; flex-direction: column; line-height: 16px; flex: 1;"><b style="color: #FFFFFF; font-weight: 600;">Kesar &amp; Kin</b><span style="font-size: 11.5px; color: #7B808B;">kesarandkin.in</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7B808B" stroke-width="2" aria-hidden="true"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"></path></svg></div>
+  <label class="sbox"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><input aria-label="Search" placeholder="Search" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; color: #FFFFFF;"><span class="kbd2">⌘K</span></label>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"></path></svg>Home</a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"></path></svg>Inbox<span class="ct num">9</span></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18M16 10a4 4 0 0 1-8 0"></path></svg>Sales<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"></path><circle cx="7" cy="7" r="1.5"></circle></svg>Catalogue<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.9"></path></svg>Customers</a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v3a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"></path><path d="M16 9a3 3 0 0 1 0 6"></path></svg>Marketing<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M8 13h8M8 17h5"></path></svg>Content<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 3v18h18"></path><path d="M7 15v3M12 10v8M17 6v12"></path></svg>Analytics<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>Apps &amp; channels</a>
+  <a class="nav on" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01"></path></svg>Help &amp; support<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></a>
+  <a class="sub on" href="#">Tutorial videos</a><a class="sub" href="#">Guides</a><a class="sub" href="#">My tickets</a><a class="sub" href="#">What's new</a>
+  <div style="flex: 1; min-height: 24px;"></div>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a2 2 0 0 0 3.4 0"></path></svg>Notifications<span class="ct num" style="background: #FF5B5B; color: #FFFFFF; border-radius: 9px; padding: 0 6px; font-weight: 600;">3</span></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"></path><circle cx="15" cy="6" r="2"></circle><circle cx="9" cy="12" r="2"></circle><circle cx="17" cy="18" r="2"></circle></svg>Settings</a>
+  <div style="display: flex; align-items: center; gap: 10px; padding: 12px 8px 2px 8px; margin-top: 6px; border-top: 1px solid #1C1F26;"><span style="width: 30px; height: 30px; border-radius: 15px; background: linear-gradient(135deg,#34D3B4,#1F9E8A); color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; flex: none;">AM</span><span style="display: flex; flex-direction: column; line-height: 16px; min-width: 0; flex: 1;"><span style="font-weight: 500; color: #FFFFFF;">Aarav Mehta</span><span style="font-size: 12px; color: #7B808B;">Owner</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="#7B808B" aria-hidden="true"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></div>
+</aside>
+</div></div><div style="flex: 1; min-width: 0;"><div class="tagk">WHERE EVERYTHING LIVES · DASHED = A TAB INSIDE THE PAGE</div><div class="card" style="padding: 8px 22px 14px 22px;"><div class="mr" style="border-top: 0;"><b>Home</b><div class="pg"><span>Home</span></div></div><div class="mr"><b>Inbox</b><div class="pg"><span>Inbox</span><em>messages, reviews, restock asks</em></div></div><div class="mr"><b>Sales</b><div class="pg"><span>Orders</span><span class="t">All</span><span class="t">Returns</span><span class="t">Abandoned</span><span>Payments</span><span class="t">Payments | Refunds</span><em>no separate pages</em></div></div><div class="mr"><b>Catalogue</b><div class="pg"><span>Products</span><span>Inventory</span><span>Collections</span><span>Lookbooks</span></div></div><div class="mr"><b>Customers</b><div class="pg"><span>One page</span><span class="t">All 300</span><span class="t">VIP 24</span><span class="t">Loyal 45</span><span class="t">New 41</span><span class="t">Slipping away 18</span><span class="t">Wedding shoppers 42</span><span class="new">+ New group · pop-up</span></div></div><div class="mr"><b>Marketing</b><div class="pg"><span>Overview</span><span>Campaigns</span><span>Discounts</span></div></div><div class="mr"><b>Content</b><div class="pg"><span>Blog posts</span><span>Categories</span><span>Tags</span><span>Authors</span></div></div><div class="mr"><b>Analytics</b><div class="pg"><span>Overview</span><span>Sales</span><span>Customers</span><span>Traffic</span><span>Marketing</span></div></div><div class="mr"><b>Apps</b><div class="pg"><span>Apps &amp; channels</span></div></div><div class="mr"><b>Help</b><div class="pg"><span>Tutorial videos</span><span>Guides</span><span>My tickets</span><span>What's new</span></div></div><div class="mr"><b>Bottom</b><div class="pg"><span>Notifications</span><span>Settings · its own menu inside the page</span><span>Profile · version, log out</span></div></div><div class="mr"><b>Zcom AI</b><div class="pg"><span class="new">A bar at the bottom of every page · ⌘J</span></div></div></div><div class="tagk" style="margin-top: 24px;">ONE RULE PER LEVEL</div><div class="card" style="padding: 18px 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; font-size: 13.5px; line-height: 20px;"><div><b style="font-weight: 600;">1 · Section</b><div class="mu">Left menu. Opens its first page.</div></div><div><b style="font-weight: 600;">2 · Page</b><div class="mu">Shown under the open section. Never more than 5.</div></div><div><b style="font-weight: 600;">3 · Tab</b><div class="mu">Inside a page, for a slice of the same list: Returns, Refunds, groups.</div></div><div><b style="font-weight: 600;">4 · Detail</b><div class="mu">A row opens a preview over the table; Open full page goes deeper.</div></div></div><div class="tagk" style="margin-top: 24px;">SUPER ADMIN · ONE STORES PAGE, FILTERS ON THE TABLE</div><div class="card" style="padding: 18px 22px;"><div class="ft2"><span class="on">All <i>3</i></span><span>Live <i>2</i></span><span>In setup <i>1</i></span><span>At risk <i>1</i></span><span>Paused <i>0</i></span><span style="margin-left: auto;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 5h18M6 12h12M10 19h4"></path></svg>Plan, city, health</span></div><div class="mu" style="font-size: 13px; margin-top: 12px;">Onboarding is no longer its own page. Each row opens in place to show sales, apps and what to do, so it scales to hundreds of stores.</div></div></div><div><div class="tagk">SUPER ADMIN</div><div class="sbw"><aside class="side">
+  <div style="display: flex; align-items: center; gap: 10px; padding: 2px 6px 14px 6px;"><span style="width: 30px; height: 30px; border-radius: 9px; background: #FFFFFF; color: #0B0C10; display: inline-flex; align-items: center; justify-content: center; font-weight: 700;">Z</span><span style="display: flex; flex-direction: column; line-height: 16px; flex: 1;"><b style="color: #FFFFFF; font-weight: 600;">Zcom</b><span style="font-size: 11.5px; color: #B9A6FF;">Platform admin</span></span></div>
+  <label class="sbox"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><input aria-label="Search" placeholder="Search stores" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; color: #FFFFFF;"><span class="kbd2">⌘K</span></label>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"></path></svg>Home</a>
+  <a class="nav on" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 9 5 4h14l2 5M3 9v11h18V9M3 9h18"></path></svg>Stores<span class="ct num">3</span></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg>Billing<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>Support<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 3v18h18"></path><path d="M7 15v3M12 10v8M17 6v12"></path></svg>Analytics<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>System health</a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"></path><circle cx="15" cy="6" r="2"></circle><circle cx="9" cy="12" r="2"></circle><circle cx="17" cy="18" r="2"></circle></svg>Settings</a>
+  <div style="flex: 1; min-height: 24px;"></div>
+  <div style="display: flex; align-items: center; gap: 10px; padding: 12px 8px 2px 8px; margin-top: 6px; border-top: 1px solid #1C1F26;"><span style="width: 30px; height: 30px; border-radius: 15px; background: linear-gradient(135deg,#7B5CFF,#1F5EFF); color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; flex: none;">ZS</span><span style="display: flex; flex-direction: column; line-height: 16px; min-width: 0; flex: 1;"><span style="font-weight: 500; color: #FFFFFF;">Zerror Studios</span><span style="font-size: 12px; color: #7B808B;">Super admin</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="#7B808B" aria-hidden="true"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></div>
+</aside>
+</div></div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

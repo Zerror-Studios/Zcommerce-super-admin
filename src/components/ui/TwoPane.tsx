@@ -1,15 +1,17 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * The two-pane card (docs/design/09-settings-and-scale.md §1, §2B): one card, a 260px list of things on the
- * left, the selected one on the right. Used by Settings, campaign channel pages, Roles, Locations, plans…
+ * left, the selected one on the right. Settings now uses SettingsShell; PaneHeader below is its section title row.
  * Below 1024px it stacks: the list is the page, and opening an item shows only the detail with a back link.
  * From 1024px (owner 2026-10-29): the card is at least the screen's height below the page header, so the list
  * keeps its size when a section is short, and the list sticks to the top while a long section scrolls.
  */
-import { useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { PageIconContext } from "../layout/page-icon";
+import { TitleActions } from "../layout/PageHeader";
 import { BackLink } from "./Primitives";
+import type { RowMenuItem } from "./RowMenu";
 import { cx } from "./cx";
 
 // ─── Card ────────────────────────────────────────────────────────────────────
@@ -169,35 +171,76 @@ export function PaneList({ groups, activeKey, onSelect, search, emptyContent, ..
   );
 }
 
-// ─── Right pane header ───────────────────────────────────────────────────────
+// ─── Section title row ───────────────────────────────────────────────────────
 
 export interface PaneHeaderProps {
   title: ReactNode;
   /** One muted sentence of what the section does. */
   description?: ReactNode;
-  /** Badge next to the title (campaign status, On/Off). */
+  /** Badge next to the title (campaign status, On/Off, a count). */
   badges?: ReactNode;
-  /** At most one primary button ("+ Add shipping profile"), plus ghost extras before it. */
+  /**
+   * At most one secondary and one primary pill ("Save changes", "Invite people"). Like the page title row: under
+   * 1024px the secondary buttons move into ⋯, and on phone only the primary stays. A portal slot filled from
+   * elsewhere (Save) is marked `data-slot` and always stays.
+   */
   actions?: ReactNode;
-  /** A row under the title inside the same card (a section's tabs). */
+  /** Phone label for the primary ("Invite" for "Invite people"). */
+  primaryShortLabel?: string;
+  /** The ⋯ menu after the actions. */
+  more?: RowMenuItem[];
+  /** Names the ⋯ button. */
+  moreLabel?: string;
+  /** A row under the title (a section's tabs). */
   children?: ReactNode;
   className?: string;
 }
 
-/** Its own card: H2 18/600 → one muted line → actions right → optional row below; 16px above the first card. */
-export function PaneHeader({ title, description, badges, actions, children, className }: PaneHeaderProps) {
+/**
+ * A settings section's title row on the page background (design v2 boards 48–57): the title (title-1, 22/30), one
+ * muted line, the actions on the right; 16px above the first card. From 768px it sticks to the top of the page so
+ * Save stays in reach, and it hands its height to sticky table heads below it (`--zc-sticky-top` on its parent).
+ */
+export function PaneHeader({
+  title,
+  description,
+  badges,
+  actions,
+  primaryShortLabel,
+  more,
+  moreLabel,
+  children,
+  className,
+}: PaneHeaderProps) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const node = ref.current;
+    const parent = node?.parentElement;
+    if (!node || !parent || typeof ResizeObserver === "undefined") return undefined;
+    const update = () => parent.style.setProperty("--zc-sticky-top", `${node.offsetHeight}px`);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      parent.style.removeProperty("--zc-sticky-top");
+    };
+  }, []);
+
   return (
-    // Its own card, like the cards below it (owner, 2026-11-04); 20px sides as a card header
-    <div className={cx("mb-4 rounded-card border border-line bg-surface px-5 py-4", className)}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
+    <div ref={ref} className={cx("mb-1 bg-page pb-3 md:sticky md:top-0 md:z-30 md:-mt-3 md:pt-3", className)}>
+      <div className="flex flex-row items-start justify-between gap-3 md:items-center">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-title-2 font-semibold text-fg">{title}</h2>
+            <h1 className="text-title-1 text-fg">{title}</h1>
             {badges}
           </div>
           {description != null ? <p className="mt-0.5 text-body text-fg-muted">{description}</p> : null}
         </div>
-        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+        {actions || more?.length ? (
+          <TitleActions actions={actions} primaryShortLabel={primaryShortLabel} more={more} moreLabel={moreLabel} className="justify-end" />
+        ) : null}
       </div>
       {children ? <div className="mt-4">{children}</div> : null}
     </div>

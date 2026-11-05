@@ -1,20 +1,23 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
-/* Zcom expression tokens v1.4 (docs/design/README.md, 08-fixes-and-screens.md, 09-settings-and-scale.md).
+/* Zcom expression tokens v1.4 (docs/design/README.md, 08-fixes-and-screens.md, 09-settings-and-scale.md), with the
+   v2 retirements applied (docs/design-v2/README.md §2.1: no section, channel or avatar colours).
    Imported after tokens.css. Section colours, channel colours, the welcome banner, the support strip, the
    settings/two-pane list, gradient avatars and the Google result preview. 07-expression.md was never supplied,
    so section colours are chosen here from the colours 08/09 name (slate settings, coral campaigns, blue/violet/
    green channels); fg on its own soft passes WCAG AA. theme.css maps these into Tailwind utilities. */
 
 :root {
-  /* ---------- Section palette (icon tile fg / tile bg / header tint / header border) ---------- */
-  --zc-sec-blue-fg: #1747C7;   --zc-sec-blue-soft: #E6EDFF;   --zc-sec-blue-tint: #F3F6FF;   --zc-sec-blue-line: #DCE5FB;
-  --zc-sec-violet-fg: #6236D9; --zc-sec-violet-soft: #EFE9FF; --zc-sec-violet-tint: #F8F5FF; --zc-sec-violet-line: #E7DFFB;
-  --zc-sec-teal-fg: #0B6E6E;   --zc-sec-teal-soft: #DDF4F3;   --zc-sec-teal-tint: #F1FAFA;   --zc-sec-teal-line: #D3ECEA;
-  --zc-sec-green-fg: #18794E;  --zc-sec-green-soft: #E3F5EA;  --zc-sec-green-tint: #F2FAF5;  --zc-sec-green-line: #D5EDDE;
-  --zc-sec-amber-fg: #9A5306;  --zc-sec-amber-soft: #FFEFD6;  --zc-sec-amber-tint: #FFF9EF;  --zc-sec-amber-line: #F6E2C2;
-  --zc-sec-coral-fg: #B93A12;  --zc-sec-coral-soft: #FFE9E0;  --zc-sec-coral-tint: #FFF6F2;  --zc-sec-coral-line: #F8DCD1;
-  --zc-sec-pink-fg: #B3176A;   --zc-sec-pink-soft: #FCE7F2;   --zc-sec-pink-tint: #FEF5FA;   --zc-sec-pink-line: #F5D9E8;
-  --zc-sec-slate-fg: #475569;  --zc-sec-slate-soft: #EEF1F5;  --zc-sec-slate-tint: #F7F8FA;  --zc-sec-slate-line: #E5E8ED;
+  /* ---------- Section palette: RETIRED in v2 (§2.1). Every section is neutral: ink icon, grey tile, no tinted
+     headers. The names stay so old .zc-sec-* call sites render v2; new code doesn't use them. ---------- */
+  --zc-sec-neutral-fg: var(--zc-ink); --zc-sec-neutral-soft: #F1F2F5; --zc-sec-neutral-tint: #FAFAFB; --zc-sec-neutral-line: var(--zc-border);
+  --zc-sec-blue-fg: var(--zc-sec-neutral-fg);   --zc-sec-blue-soft: var(--zc-sec-neutral-soft);   --zc-sec-blue-tint: var(--zc-sec-neutral-tint);   --zc-sec-blue-line: var(--zc-sec-neutral-line);
+  --zc-sec-violet-fg: var(--zc-sec-neutral-fg); --zc-sec-violet-soft: var(--zc-sec-neutral-soft); --zc-sec-violet-tint: var(--zc-sec-neutral-tint); --zc-sec-violet-line: var(--zc-sec-neutral-line);
+  --zc-sec-teal-fg: var(--zc-sec-neutral-fg);   --zc-sec-teal-soft: var(--zc-sec-neutral-soft);   --zc-sec-teal-tint: var(--zc-sec-neutral-tint);   --zc-sec-teal-line: var(--zc-sec-neutral-line);
+  --zc-sec-green-fg: var(--zc-sec-neutral-fg);  --zc-sec-green-soft: var(--zc-sec-neutral-soft);  --zc-sec-green-tint: var(--zc-sec-neutral-tint);  --zc-sec-green-line: var(--zc-sec-neutral-line);
+  --zc-sec-amber-fg: var(--zc-sec-neutral-fg);  --zc-sec-amber-soft: var(--zc-sec-neutral-soft);  --zc-sec-amber-tint: var(--zc-sec-neutral-tint);  --zc-sec-amber-line: var(--zc-sec-neutral-line);
+  --zc-sec-coral-fg: var(--zc-sec-neutral-fg);  --zc-sec-coral-soft: var(--zc-sec-neutral-soft);  --zc-sec-coral-tint: var(--zc-sec-neutral-tint);  --zc-sec-coral-line: var(--zc-sec-neutral-line);
+  --zc-sec-pink-fg: var(--zc-sec-neutral-fg);   --zc-sec-pink-soft: var(--zc-sec-neutral-soft);   --zc-sec-pink-tint: var(--zc-sec-neutral-tint);   --zc-sec-pink-line: var(--zc-sec-neutral-line);
+  --zc-sec-slate-fg: var(--zc-sec-neutral-fg);  --zc-sec-slate-soft: var(--zc-sec-neutral-soft);  --zc-sec-slate-tint: var(--zc-sec-neutral-tint);  --zc-sec-slate-line: var(--zc-sec-neutral-line);
 
   /* The current section. Pages set it with a .zc-sec-* class (below); components read --zc-sec-*. */
   --zc-sec-fg: var(--zc-sec-slate-fg);
@@ -22,22 +25,23 @@
   --zc-sec-tint: var(--zc-sec-slate-tint);
   --zc-sec-line: var(--zc-sec-slate-line);
 
-  /* ---------- Channels (Marketing › Campaigns, 08 §2.10) ---------- */
-  --zc-channel-email-from: #E9F0FF;    --zc-channel-email-to: #D7E3FF;    --zc-channel-email-fg: #1747C7;
-  --zc-channel-sms-from: #F2EDFF;      --zc-channel-sms-to: #E2D8FF;      --zc-channel-sms-fg: #6236D9;
-  --zc-channel-whatsapp-from: #E6F7EC; --zc-channel-whatsapp-to: #CFEFDB; --zc-channel-whatsapp-fg: #18794E;
+  /* ---------- Channels: RETIRED colours (v2 §2.1). Grey tiles with ink icons; the WhatsApp mark keeps its brand green. ---------- */
+  --zc-channel-email-from: #F1F2F5;    --zc-channel-email-to: #F1F2F5;    --zc-channel-email-fg: #1F2430;
+  --zc-channel-sms-from: #F1F2F5;      --zc-channel-sms-to: #F1F2F5;      --zc-channel-sms-fg: #1F2430;
+  --zc-channel-whatsapp-from: #F1F2F5; --zc-channel-whatsapp-to: #F1F2F5; --zc-channel-whatsapp-fg: #1F2430;
+  --zc-channel-dot: #9AA0AB;           /* neutral source / channel dots */
   --zc-whatsapp: #25D366; /* the WhatsApp mark only */
 
   /* ---------- Welcome banner on Home (08 §2.1): light, never dark or saturated ---------- */
-  --zc-welcome-border: #E1E7F8;
-  --zc-welcome-gradient: linear-gradient(110deg, #EAF0FF, #EEF1FF 60%, #F3EEFF);
-  --zc-welcome-bloom-violet: rgba(157, 123, 255, 0.28);
+  --zc-welcome-border: #DCE5FF;
+  --zc-welcome-gradient: linear-gradient(110deg, #EAF0FF, #EEF3FF 60%, #F1F6FF);
+  --zc-welcome-bloom-violet: rgba(96, 165, 250, 0.26); /* name kept; blue in v2 */
   --zc-welcome-bloom-blue: rgba(91, 140, 255, 0.18);
   --zc-welcome-dot: rgba(31, 94, 255, 0.10);
   --zc-welcome-tile: rgba(255, 255, 255, 0.72);
 
   /* ---------- Support strip (08 §1.1) ---------- */
-  --zc-support-bg: #FFF4E5;
+  --zc-support-bg: #FFF4E0;
   --zc-support-fg: #7A4B00;
   --zc-support-border: #F6E2C2;
   --zc-support-h: 36px;
@@ -55,28 +59,32 @@
   --zc-pane-row-h: 36px;
 
   /* ---------- AI chat card (09 §2A) ---------- */
-  --zc-ai-send: #111318;        /* dark square send button */
+  --zc-ai-send: var(--zc-ink);  /* dark send button */
   --zc-user-bubble: var(--zc-primary-soft); /* v2 (02 §6): user messages in the assistant panel */
 
-  /* ---------- Gradient avatars (initials; pick by hash of the name) ---------- */
-  --zc-avatar-1: linear-gradient(135deg, #5B8CFF, #9D7BFF);
-  --zc-avatar-2: linear-gradient(135deg, #14A3A3, #5B8CFF);
-  --zc-avatar-3: linear-gradient(135deg, #FF8FB8, #9D7BFF);
-  --zc-avatar-4: linear-gradient(135deg, #FFBE73, #FF8FB8);
-  --zc-avatar-5: linear-gradient(135deg, #34C38F, #14A3A3);
-  --zc-avatar-6: linear-gradient(135deg, #8D919A, #475569);
+  /* ---------- Avatars: neutral grey, no colour or gradient anywhere (v2 §2.1) ---------- */
+  --zc-avatar-bg: #E8EAEF;
+  --zc-avatar-fg: #1F2430;
+  /* LEGACY names (were six gradients picked by name hash); all neutral now. */
+  --zc-avatar-1: var(--zc-avatar-bg);
+  --zc-avatar-2: var(--zc-avatar-bg);
+  --zc-avatar-3: var(--zc-avatar-bg);
+  --zc-avatar-4: var(--zc-avatar-bg);
+  --zc-avatar-5: var(--zc-avatar-bg);
+  --zc-avatar-6: var(--zc-avatar-bg);
 
   /* ---------- Charts ---------- */
   --zc-chart-area-from: rgba(31, 94, 255, 0.18);
   --zc-chart-area-to: rgba(31, 94, 255, 0);
 
   /* ---------- Status steps (payment detail) and timeline ---------- */
-  --zc-step-done: #18794E;
+  --zc-step-done: var(--zc-ink);     /* done steps are ink tiles joined by an ink line (§6.3) */
+  --zc-step-complete: var(--zc-green); /* Delivered once complete */
   --zc-step-pending: #D0D3D9;
   --zc-step-failed: #D92D20;
   --zc-card-footer: #FAFAFB;
 
-  /* ---------- Google result preview (08 §2.3): the one place that isn't Inter ---------- */
+  /* ---------- Google result preview (08 §2.3): the one place that isn't Geist ---------- */
   --zc-google-font: Arial, "Helvetica Neue", Helvetica, sans-serif;
   --zc-google-site: #202124;
   --zc-google-url: #4D5156;
@@ -106,6 +114,7 @@
   --zc-article-w: 720px;
   --zc-search-w: 240px;
   --zc-search-w-lg: 260px;
+  --zc-search-w-tablet: 200px; /* table toolbar search, laptop and tablet (v2 §10) */
 }
 
 /* Section classes: put one on the page (or its header) and every --zc-sec-* reader follows it. */
@@ -143,10 +152,10 @@
   mask-image: linear-gradient(90deg, transparent 35%, #000);
 }
 
-/* Spectrum-bordered AI button (08 §1.3): white fill, 1px gradient edge. */
+/* AI button (08 §1.3): white fill, 1px blue edge (v2: no spectrum). */
 .btn-ai { position: relative; background: var(--zc-surface); }
 .btn-ai::before {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: var(--zc-ai-gradient);
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: var(--zc-ai-edge);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
 }

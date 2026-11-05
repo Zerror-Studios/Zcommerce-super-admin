@@ -41,36 +41,12 @@ export function StoreLifecycleCard({ client, onDeleted }: StoreLifecycleCardProp
 
   return (
     <>
-      <Card title="Status" actions={<Chip tone={lifecycle.tone}>{lifecycle.label}</Chip>}>
-        <div className="flex flex-col gap-4">
-          {isSuspended || (isDeleted && countdown) ? (
-            <div className="flex flex-col gap-2">
-              {isSuspended ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Chip tone="neutral">{suspendCategoryLabel(client.suspendCategory)}</Chip>
-                  <span className="text-body text-fg-muted">
-                    {client.suspendedAt ? `Suspended on ${formatDate(client.suspendedAt)}` : "Suspended"}
-                    {client.suspendReason ? `: ${client.suspendReason}` : "."}
-                  </span>
-                </div>
-              ) : null}
-              {isDeleted && countdown ? (
-                <p className={cx("text-body", countdown.expired ? toneTextClasses.danger : "text-fg")}>
-                  {countdown.expired
-                    ? `The grace period ended on ${formatDate(client.purgeAfter!)}; the data is being purged.`
-                    : `Data will be purged on ${formatDate(client.purgeAfter!)} (${countdown.daysLeft} days left).`}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-          {!isDeleted ? <MoneyInFlightPanel tenantId={client.id} /> : null}
-          {isDeleted && !countdown ? <p className="text-body text-fg-muted">This store is deleted.</p> : null}
-        </div>
-      </Card>
-
-      {!isDeleted && canReadBilling ? <StoreStuckPayments tenantId={client.id} /> : null}
-
-      <Card padding="none" className="overflow-clip">
+      {/* Board 66 "Careful": the actions that take the store offline, first, with the title in red. */}
+      <Card
+        title={isDeleted ? "Restore" : <span className={toneTextClasses.danger}>Careful</span>}
+        padding="none"
+        className="overflow-clip"
+      >
         {isDeleted ? (
           <LifecycleRow
             title="Restore store"
@@ -132,6 +108,35 @@ export function StoreLifecycleCard({ client, onDeleted }: StoreLifecycleCardProp
           />
         ) : null}
       </Card>
+
+      <Card title="Status" actions={<Chip tone={lifecycle.tone}>{lifecycle.label}</Chip>}>
+        <div className="flex flex-col gap-4">
+          {isSuspended || (isDeleted && countdown) ? (
+            <div className="flex flex-col gap-2">
+              {isSuspended ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Chip tone="neutral">{suspendCategoryLabel(client.suspendCategory)}</Chip>
+                  <span className="text-body text-fg-muted">
+                    {client.suspendedAt ? `Suspended on ${formatDate(client.suspendedAt)}` : "Suspended"}
+                    {client.suspendReason ? `: ${client.suspendReason}` : "."}
+                  </span>
+                </div>
+              ) : null}
+              {isDeleted && countdown ? (
+                <p className={cx("text-body", countdown.expired ? toneTextClasses.danger : "text-fg")}>
+                  {countdown.expired
+                    ? `The grace period ended on ${formatDate(client.purgeAfter!)}; the data is being purged.`
+                    : `Data will be purged on ${formatDate(client.purgeAfter!)} (${countdown.daysLeft} days left).`}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {!isDeleted ? <MoneyInFlightPanel tenantId={client.id} /> : null}
+          {isDeleted && !countdown ? <p className="text-body text-fg-muted">This store is deleted.</p> : null}
+        </div>
+      </Card>
+
+      {!isDeleted && canReadBilling ? <StoreStuckPayments tenantId={client.id} /> : null}
 
       <StoreActionDialog client={client} action={action} onClose={() => setAction(null)} onDeleted={onDeleted} />
     </>

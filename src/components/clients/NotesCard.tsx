@@ -14,6 +14,9 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconAdd,
+  IconEdit,
   Textarea,
   toastError,
 } from "../ui";
@@ -80,7 +83,9 @@ function NoteDialog({ client, isEdit, onClose }: { client: Client; isEdit: boole
   return (
     <Modal isOpen onClose={() => !busy && onClose()} width="sm">
       <ModalContent>
-        <ModalHeader>{isEdit ? "Edit note" : "Add note"}</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={isEdit ? <IconEdit aria-hidden /> : <IconAdd aria-hidden />}>{isEdit ? "Edit note" : "Add note"}</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           <Textarea label="Note" value={draft} onValueChange={setDraft} maxLength={4000} autoFocus />
         </ModalBody>

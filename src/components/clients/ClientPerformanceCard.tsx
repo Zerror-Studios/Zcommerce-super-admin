@@ -32,7 +32,10 @@ import {
   Skeleton,
   chartColors,
   formatMoney,
+  pointsForViewport,
   recharts,
+  rechartsEndTicks,
+  useIsPhone,
 } from "../ui";
 import { IconAnalytics } from "../ui/icons";
 
@@ -80,18 +83,27 @@ function PerformanceTooltip({
 
 // ─── Component ────────────────────────────────────────────────────────────
 
+/** Phone: the last six months (v2 §10: fewer bars, the same shape). */
+const PHONE_MONTHS = 6;
+
 export function ClientPerformanceCard({ tenantId }: { tenantId: string }) {
   const query = useQuery<{ platformUsage: UsageSnapshot[] }>(PLATFORM_USAGE, {
     variables: { tenantId, months: USAGE_HISTORY_MONTHS },
     fetchPolicy: "cache-and-network",
   });
+  const isPhone = useIsPhone();
+  // v2 §10: phones show the last six months, labelled at the start and end only.
   const points = useMemo(
     () =>
-      performanceSeries(query.data?.platformUsage ?? []).map((point) => ({
-        ...point,
-        label: monthLabel(point.month),
-      })),
-    [query.data],
+      pointsForViewport(
+        performanceSeries(query.data?.platformUsage ?? []).map((point) => ({
+          ...point,
+          label: monthLabel(point.month),
+        })),
+        isPhone,
+        PHONE_MONTHS,
+      ),
+    [query.data, isPhone],
   );
 
   return (
@@ -123,7 +135,7 @@ export function ClientPerformanceCard({ tenantId }: { tenantId: string }) {
               barCategoryGap="28%"
             >
               <CartesianGrid {...recharts.grid} />
-              <XAxis dataKey="label" {...recharts.axis} />
+              <XAxis dataKey="label" {...(isPhone ? rechartsEndTicks(points, (point) => point.label) : recharts.axis)} />
               <YAxis
                 {...recharts.axis}
                 width={80}

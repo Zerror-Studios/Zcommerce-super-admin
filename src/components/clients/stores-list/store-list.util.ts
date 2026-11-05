@@ -186,7 +186,7 @@ export function matchesListFilters(
 
 export function matchesSearch(client: Client, query: string): boolean {
   if (!query) return true;
-  return [client.storeName, client.slug ?? "", client.ownerName, client.ownerEmail].some((text) =>
+  return [client.storeName, client.slug ?? "", client.domain ?? "", client.ownerName, client.ownerEmail].some((text) =>
     text.toLowerCase().includes(query),
   );
 }
@@ -231,6 +231,12 @@ export function compareByColumn(a: SortableRow, b: SortableRow, column: string):
       return a.client.revenue - b.client.revenue;
     case "fee":
       return a.client.mrr - b.client.mrr;
+    case "orders":
+      return a.client.orders30d - b.client.orders30d;
+    case "lastActive":
+      return a.client.lastActive.localeCompare(b.client.lastActive);
+    case "owner":
+      return a.client.ownerName.localeCompare(b.client.ownerName, undefined, { sensitivity: "base" });
     case "status":
       return storeStatusBadge(a.client).label.localeCompare(storeStatusBadge(b.client).label);
     case "plan":

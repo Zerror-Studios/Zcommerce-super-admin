@@ -4,13 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/common/PageHeader";
 import { toasts } from "../copy";
 import { TotpQrCode } from "../components/auth/TotpQrCode";
-import { Button as UiButton, Card, CopyableId, Input } from "../components/ui";
-import { IconLock } from "../components/ui/icons";
-
-/** "JBSW Y3DP EHPK 3PXP": easier to type into an app than one long run. */
-function groupKey(secret: string): string {
-  return secret.replace(/(.{4})/g, "$1 ").trim();
-}
+import { Button as UiButton, Card, Chip, CopyableId, IconTile, Input, cx } from "../components/ui";
+import { IconCheck, IconClipboard, IconLock, IconMobile } from "../components/ui/icons";
 import { PLATFORM_CONFIRM_MFA, PLATFORM_ENROL_MFA } from "../graphql/auth";
 import { client, errorCodeOf } from "../lib/apollo-client";
 import { broadcastToken } from "../lib/auth-channel";
@@ -20,10 +15,66 @@ import type { PlatformMfaConfirmation, PlatformMfaEnrolment } from "../types/pla
 
 type Step = "intro" | "scan" | "done";
 
+/** "JBSW Y3DP EHPK 3PXP": easier to type into an app than one long run. */
+function groupKey(secret: string): string {
+  return secret.replace(/(.{4})/g, "$1 ").trim();
+}
+
+const SETUP_STEPS = [
+  { key: "intro", label: "Confirm it's you", icon: IconLock },
+  { key: "scan", label: "Scan the code", icon: IconMobile },
+  { key: "done", label: "Save recovery codes", icon: IconClipboard },
+] as const;
+
+/**
+ * The setup's step tracker (v2 §10A record recipe: one icon per step). Done steps get a tick, the current one is
+ * ink, the next ones grey; on phone only the current step keeps its label.
+ */
+function SetupSteps({ current }: { current: Step }) {
+  const index = SETUP_STEPS.findIndex((step) => step.key === current);
+  return (
+    <ol aria-label="Setup steps" className="mb-4 flex items-center gap-2">
+      {SETUP_STEPS.map((step, position) => {
+        const done = position < index;
+        const isCurrent = position === index;
+        const Icon = done ? IconCheck : step.icon;
+        return (
+          <li
+            key={step.key}
+            aria-current={isCurrent ? "step" : undefined}
+            className={cx("flex items-center gap-2", position < SETUP_STEPS.length - 1 && "flex-1")}
+          >
+            <IconTile size="sm" tone={done || isCurrent ? "ink" : "neutral"}>
+              <Icon aria-hidden />
+            </IconTile>
+            <span
+              className={cx(
+                "whitespace-nowrap text-label font-medium",
+                isCurrent ? "text-fg" : "hidden text-fg-muted sm:inline",
+              )}
+            >
+              {step.label}
+              {done ? <span className="sr-only"> (done)</span> : null}
+            </span>
+            {position < SETUP_STEPS.length - 1 ? <span aria-hidden className="h-px min-w-4 flex-1 bg-line" /> : null}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 /**
  * MFA enrolment (PRD-005 FR-1.4). Manage roles must enrol before any manage
- * action; the secret is shown for manual entry (no QR library) with the
- * otpauth link for apps that accept it.
+ * action; the QR code, the secret for manual entry and the otpauth link for
+ * apps that accept it.
+ *
+ * Design v2: inside the shell, so the settings look (board 55 "Your login")
+ * rather than the black sign-in screen: the page title row (ink tile), a
+ * 720px column, a three-step tracker while setting up (confirm it's you →
+ * scan → save recovery codes) and one card per step with the buttons on the
+ * right, Cancel / Later first. Once it is on, one settings row: "Two-step
+ * login · Authenticator app", an On badge and Replace authenticator.
  */
 export function Mfa() {
   const navigate = useNavigate();
@@ -39,6 +90,8 @@ export function Mfa() {
   const [currentCode, setCurrentCode] = useState("");
   const [startError, setStartError] = useState<string | undefined>();
   const replacing = user?.mfaEnabled === true;
+  // The tracker shows while setting up, and on the recovery codes that end it.
+  const setupStep: Step | null = step === "done" && recoveryCodes.length === 0 ? null : step;
 
   const start = async (event: FormEvent) => {
     event.preventDefault();
@@ -104,14 +157,15 @@ export function Mfa() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[720px]">
+    <div className="mx-auto w-full max-w-[var(--zc-content-max-form)]">
       <PageHeader
         type="page"
         icon={<IconLock aria-hidden />}
-        section="slate"
         title="Two-step verification"
         description="Required for owners, admins and billing managers before any change to platform data."
       />
+
+      {setupStep ? <SetupSteps current={setupStep} /> : null}
 
       {step === "intro" ? (
         <Card
@@ -149,8 +203,13 @@ export function Mfa() {
                 errorMessage={password ? startError : undefined}
               />
             ) : null}
-            {!replacing && startError && password ? <p className="text-caption text-danger">{startError}</p> : null}
-            <div className="flex justify-end gap-2">
+            {!replacing && startError && password ? (
+              <p role="alert" className="text-caption text-tone-danger-text">
+                {startError}
+              </p>
+            ) : null}
+            {/* Phone (v2 §10): full-width buttons, the action on top. */}
+            <div className="flex justify-end gap-2 max-md:flex-col-reverse max-md:[&>*]:w-full">
               {replacing ? (
                 <UiButton variant="secondary" onPress={() => setStep("done")}>
                   Cancel
@@ -203,7 +262,7 @@ export function Mfa() {
               isInvalid={!!error}
               errorMessage={error}
             />
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 max-md:flex-col-reverse max-md:[&>*]:w-full">
               <UiButton variant="secondary" onPress={() => navigate("/")}>
                 Later
               </UiButton>
@@ -215,33 +274,44 @@ export function Mfa() {
         </Card>
       ) : null}
 
-      {step === "done" ? (
+      {step === "done" && recoveryCodes.length ? (
         <Card
-          title={recoveryCodes.length ? "Save your recovery codes" : "Two-step verification is on"}
-          description={
-            recoveryCodes.length
-              ? "Each code signs you in once if you lose your phone. They are shown only now."
-              : "Ask a platform owner to reset it if you lose your device."
-          }
+          title="Save your recovery codes"
+          description="Each code signs you in once if you lose your phone. They are shown only now."
         >
-          {recoveryCodes.length ? (
-            <ul className="mb-4 grid grid-cols-2 gap-2 font-mono text-body">
-              {recoveryCodes.map((recoveryCode) => (
-                <li key={recoveryCode}>
-                  <CopyableId value={recoveryCode} />
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          <div className="flex flex-wrap gap-2">
+          <ul className="mb-4 grid grid-cols-1 gap-2 font-mono text-body sm:grid-cols-2">
+            {recoveryCodes.map((recoveryCode) => (
+              <li key={recoveryCode}>
+                <CopyableId value={recoveryCode} />
+              </li>
+            ))}
+          </ul>
+          <div className="flex justify-end max-md:[&>*]:w-full">
             <UiButton variant="primary" onPress={() => navigate("/", { replace: true })}>
               Done
             </UiButton>
-            {recoveryCodes.length === 0 ? (
-              <UiButton variant="secondary" onPress={() => setStep("intro")}>
-                Replace authenticator
-              </UiButton>
-            ) : null}
+          </div>
+        </Card>
+      ) : null}
+
+      {step === "done" && recoveryCodes.length === 0 ? (
+        <Card title="Your login">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-body font-medium text-fg">Two-step login</p>
+              <p className="text-label text-fg-muted">
+                Authenticator app. Ask a platform owner to reset it if you lose your device.
+              </p>
+            </div>
+            <Chip tone="success">On</Chip>
+            <UiButton variant="secondary" size="sm" onPress={() => setStep("intro")}>
+              Replace authenticator
+            </UiButton>
+          </div>
+          <div className="mt-4 flex justify-end border-t border-line-subtle pt-4">
+            <UiButton variant="primary" onPress={() => navigate("/", { replace: true })}>
+              Done
+            </UiButton>
           </div>
         </Card>
       ) : null}

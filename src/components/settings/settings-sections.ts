@@ -1,5 +1,5 @@
 /**
- * Settings sections and searchable fields (04 S-00, S-07). Groups: Your account · Platform · Records; Sign out
+ * Settings sections and searchable fields (04 S-00, S-07). Groups: Your account · Platform · Records; Log out
  * is a menu action after a divider (Settings.tsx). Field ids are the DOM ids the sections give their inputs or
  * cards: the settings search opens `/settings/:section#id` and the shell focuses and flashes that field.
  */
@@ -22,7 +22,7 @@ export const SETTINGS_SECTIONS: Record<SettingsSectionKey, SettingsSectionMeta> 
     label: "Profile & security",
     description: "Your account, password, two-step verification and signed-in devices.",
     icon: IconUser,
-    keywords: ["account", "password", "sessions", "devices", "sign out everywhere", "notifications", "push"],
+    keywords: ["account", "password", "sessions", "devices", "log out everywhere", "sign out everywhere", "notifications", "push"],
   },
   team: {
     label: "Team & roles",
@@ -90,7 +90,7 @@ export const SETTINGS_FIELDS: Partial<Record<SettingsSectionKey, FieldEntry[]>> 
     // PRD-033 FR-2.8: shown only while the platform has push keys.
     { id: "browser-notifications", label: "Browser notifications", keywords: ["push", "alerts", "notifications"] },
     { id: "sessions", label: "Sessions", keywords: ["devices", "revoke"] },
-    { id: "sign-out-everywhere", label: "Sign out everywhere", keywords: ["logout", "sessions"] },
+    { id: "sign-out-everywhere", label: "Log out everywhere", keywords: ["logout", "sign out", "sessions"] },
   ],
   team: [
     { id: "members", label: "Members", keywords: ["admins", "invite", "two-step"] },

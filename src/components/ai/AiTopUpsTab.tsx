@@ -19,7 +19,6 @@ import {
   Button,
   DataTable,
   EmptyState,
-  SearchInput,
   SegmentedSwitch,
   TablePagination,
   formatDate,
@@ -28,22 +27,23 @@ import {
   useTableUrlState,
   type DataTableColumn,
 } from "../ui";
+import { useIsPhone } from "../ui/use-media";
 import { AiErrorCard, AiToolbar } from "./ai-table";
 import { datedCsvName, useAiExport, type AiTabProps } from "./ai-export";
 import { GrantTopUpDialog } from "./GrantTopUpDialog";
 
 const openColumns: DataTableColumn[] = [
-  { key: "store", label: "Store" },
-  { key: "week", label: "Week of", width: 130 },
-  { key: "requested", label: "Requested", width: 130 },
+  { key: "store", label: "Store", mobile: "primary" },
+  { key: "week", label: "Week of", width: 130, mobile: "title" },
+  { key: "requested", label: "Requested", width: 130, mobile: "meta" },
   { key: "action", label: "Quick action", width: 110, hideLabel: true, mobile: "hide" },
 ];
 
 const handledColumns: DataTableColumn[] = [
-  { key: "store", label: "Store" },
-  { key: "week", label: "Week of", width: 130 },
-  { key: "requested", label: "Requested", width: 130 },
-  { key: "handled", label: "Handled", width: 150 },
+  { key: "store", label: "Store", mobile: "primary" },
+  { key: "week", label: "Week of", width: 130, mobile: "title" },
+  { key: "requested", label: "Requested", width: 130, hideWhen: "narrow", mobile: "hide" },
+  { key: "handled", label: "Handled", width: 150, mobile: "meta" },
 ];
 
 /** The status in the URL (`?status=granted`); Open by default. */
@@ -62,6 +62,7 @@ export function AiTopUpsTab({ tabs, exportRef }: AiTabProps) {
   const navigate = useNavigate();
   const { can } = useAuth();
   const canManage = can(PLATFORM_PERMISSIONS.AI_MANAGE);
+  const isPhone = useIsPhone();
   const table = useTableUrlState();
   const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
   const status = statusFromParam(table.filters.status);
@@ -133,7 +134,6 @@ export function AiTopUpsTab({ tabs, exportRef }: AiTabProps) {
 
   const toolbarControls = (
     <>
-      <SearchInput placement="toolbar" placeholder="Search stores" value={search} onValueChange={setSearch} onClear={() => setSearch("")} />
       <SegmentedSwitch
         size="sm"
         ariaLabel="Request status"
@@ -159,11 +159,17 @@ export function AiTopUpsTab({ tabs, exportRef }: AiTabProps) {
         onRowAction={(row) => navigate(`/stores/${row.tenantId}/ai`)}
         rowActions={
           isOpen && canManage
-            ? (row) => [{ key: "dismiss", label: "Dismiss", icon: IconClose, onSelect: () => setDismissing(row) }]
+            ? (row) => [
+                // Phone cards hide the Quick action column, so Grant moves into ⋯ there (v2 §10).
+                ...(isPhone
+                  ? [{ key: "grant", label: "Grant questions", icon: IconGift, onSelect: () => setGranting({ tenantId: row.tenantId, name: row.storeName }) }]
+                  : []),
+                { key: "dismiss", label: "Dismiss", icon: IconClose, onSelect: () => setDismissing(row) },
+              ]
             : undefined
         }
         rowActionsLabel={(row) => `Actions for ${row.storeName}`}
-        toolbar={<AiToolbar tabs={tabs}>{toolbarControls}</AiToolbar>}
+        toolbar={<AiToolbar tabs={tabs} search={{ value: search, onValueChange: setSearch, placeholder: "Search stores" }}>{toolbarControls}</AiToolbar>}
         renderCell={(row, key) => {
           switch (key) {
             case "store":

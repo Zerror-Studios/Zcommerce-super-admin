@@ -23,6 +23,10 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconPayments,
+  IconTicketPercent,
+  IconXCircle,
   Select,
   SelectItem,
   Textarea,
@@ -144,7 +148,9 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
 
       <Modal isOpen={dialog === "payment"} onClose={closeDialog} width="sm">
         <ModalContent>
-          <ModalHeader>Record payment for {row.transactionId}</ModalHeader>
+          <ModalHeader>
+            <PopupTitle icon={<IconPayments aria-hidden />}>Record payment for {row.transactionId}</PopupTitle>
+          </ModalHeader>
           <ModalBody>
             <div className="flex flex-col gap-4">
               <Input label="Amount (₹)" type="number" min={1} value={amount} onValueChange={setAmount} />
@@ -181,7 +187,9 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
 
       <Modal isOpen={dialog === "coupon"} onClose={closeDialog} width="sm">
         <ModalContent>
-          <ModalHeader>Apply a discount code</ModalHeader>
+          <ModalHeader>
+            <PopupTitle icon={<IconTicketPercent aria-hidden />}>Apply a discount code</PopupTitle>
+          </ModalHeader>
           <ModalBody>
             <Input label="Code" placeholder="LAUNCH25" value={code} onValueChange={(value) => setCode(value.toUpperCase())} isInvalid={!!error} errorMessage={error ?? undefined} />
           </ModalBody>
@@ -202,7 +210,9 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
           action stays disabled until one is chosen. */}
       <Modal isOpen={dialog === "void"} onClose={closeDialog} width="sm">
         <ModalContent>
-          <ModalHeader>Void invoice {row.transactionId}?</ModalHeader>
+          <ModalHeader>
+            <PopupTitle icon={<IconXCircle aria-hidden />} tone="danger">Void invoice {row.transactionId}?</PopupTitle>
+          </ModalHeader>
           <ModalBody>
             <p className="text-body text-fg-muted">The store no longer owes this amount. This can't be undone.</p>
             <Select

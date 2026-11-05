@@ -38,6 +38,8 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconTicketPercent,
   Select,
   SelectItem,
   Switch,
@@ -71,10 +73,10 @@ export interface CouponsTabProps {
 
 /** Fixed 476 → Code 208px in the 684px Settings column (04 S-07e). No checkbox column: no bulk actions (06 Q31). */
 const columns = [
-  { key: "code", label: "Code" },
-  { key: "discount", label: "Discount", width: 110 },
-  { key: "redemptions", label: "Used", width: 90, hideWhen: "narrow" },
-  { key: "expiresAt", label: "Expires", width: 110 },
+  { key: "code", label: "Code", mobile: "primary" },
+  { key: "discount", label: "Discount", width: 110, mobile: "value" },
+  { key: "redemptions", label: "Used", width: 90, hideWhen: "narrow", mobile: "hide" },
+  { key: "expiresAt", label: "Expires", width: 110, mobile: "meta" },
   { key: "active", label: "Status", width: 110, skeleton: "badge", mobile: "badge" },
 ] as const satisfies readonly DataTableColumn[];
 
@@ -303,32 +305,34 @@ export function CouponsTab({
         rowActionsLabel={(coupon) => `Actions for ${coupon.code}`}
         stickyFirstColumn
         toolbar={
-          <>
-            <TableToolbar
-              search={search}
-              onSearchChange={setSearch}
-              searchPlaceholder="Search by code or plan"
-              columns={columns.map((column) => ({ key: column.key, label: column.label }))}
-              visibleColumns={Array.from(visibleColumns)}
-              onVisibleColumnsChange={(keys) => setVisibleColumns(new Set(keys))}
-              filterContent={
-                <FilterCheckboxGroup
-                  label="Status"
-                  options={statusOptions}
-                  value={statusFilter}
-                  onChange={(value) => table.setFilter("status", joinParam(value))}
-                />
-              }
-            />
-            <AppliedFilters
-              items={statusFilter.map((status) => ({
-                key: status,
-                label: `Status: ${statusOptions.find((o) => o.key === status)?.label ?? status}`,
-                onRemove: () => table.setFilter("status", joinParam(statusFilter.filter((s) => s !== status))),
-              }))}
-              onClearAll={clearFilters}
-            />
-          </>
+          <TableToolbar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search by code or plan"
+            columns={columns.map((column) => ({ key: column.key, label: column.label }))}
+            visibleColumns={Array.from(visibleColumns)}
+            onVisibleColumnsChange={(keys) => setVisibleColumns(new Set(keys))}
+            filterCount={statusFilter.length}
+            onClearFilters={() => table.setFilter("status")}
+            filterContent={
+              <FilterCheckboxGroup
+                label="Status"
+                options={statusOptions}
+                value={statusFilter}
+                onChange={(value) => table.setFilter("status", joinParam(value))}
+              />
+            }
+          />
+        }
+        chips={
+          <AppliedFilters
+            items={statusFilter.map((status) => ({
+              key: status,
+              label: `Status: ${statusOptions.find((o) => o.key === status)?.label ?? status}`,
+              onRemove: () => table.setFilter("status", joinParam(statusFilter.filter((s) => s !== status))),
+            }))}
+            onClearAll={clearFilters}
+          />
         }
         footer={
           <>
@@ -370,7 +374,9 @@ export function CouponsTab({
         <ModalContent>
           {() => (
             <>
-              <ModalHeader>{editing ? `Edit ${editing.code}` : "Create discount"}</ModalHeader>
+              <ModalHeader>
+                <PopupTitle icon={<IconTicketPercent aria-hidden />}>{editing ? `Edit ${editing.code}` : "Create discount"}</PopupTitle>
+              </ModalHeader>
               <ModalBody className="gap-4">
                 {formErrors.form ? (
                   <p role="alert" className="text-label text-tone-danger-text">

@@ -1,67 +1,109 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ClientsTable } from "../components/clients/ClientsTable";
-import { EarningsChart } from "../components/dashboard/EarningsChart";
-import { AttentionSummaryCard } from "../components/insights/home/AttentionSummaryCard";
-import { MoneyDueCard } from "../components/insights/home/MoneyDueCard";
-import { AtRiskCard, DevelopmentCard } from "../components/insights/home/StoreListCard";
-import { MetricCard } from "../components/insights/MetricCard";
+import { NeedsYouAiCard, NeedsYouBillingCard, NeedsYouStoresCard } from "../components/insights/home/NeedsYouCards";
+import { RecentActivityCard } from "../components/insights/home/RecentActivityCard";
 import { SnapshotHeader } from "../components/insights/SnapshotHeader";
-import { Button, ErrorState, KpiStrip, VideoBanner } from "../components/ui";
-import { IconAdd } from "../components/ui/icons";
+import { Button, ErrorState, HomeHero, SummaryPanel, cx } from "../components/ui";
 import { toasts } from "../copy";
-import { knownStoreNames, thisMonthCells } from "../lib/home-attention.util";
-import { FIRST_SNAPSHOT_COPY } from "../lib/platform-insights.util";
+import { knownStoreNames } from "../lib/home-attention.util";
+import { findMetric } from "../lib/platform-insights.util";
 import { PLATFORM_PERMISSIONS } from "../lib/permissions";
+import {
+  SA_HOME_COMPARISON,
+  SA_HOME_DEFAULT_PERIOD,
+  SA_HOME_PERIODS,
+  greetingName,
+  healthSummary,
+  heroChips,
+  heroDate,
+  heroSummary,
+  pastDueOf,
+  storeCounts,
+  summaryCells,
+} from "../lib/sa-home.util";
 import { useAuth } from "../providers/AuthProvider";
 import { useClients } from "../providers/ClientsProvider";
-import { usePlatformAttention } from "../hooks/use-platform-insights";
-import { useRevenueOverview } from "../hooks/use-platform-reports";
-
-const monthYear = new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" });
-
-function plural(n: number, one: string, many: string): string {
-  return `${n} ${n === 1 ? one : many}`;
-}
+import { usePlatformAttention, usePlatformMetrics } from "../hooks/use-platform-insights";
+import type { PlatformMetricsPeriod } from "../types/platform-insights";
 
 /**
- * Home (backend PRD-026 FR-7.1, console guide §3): the video banner, then
- * "Last updated · Refresh now" and the blocks in this order: money due this
- * week (read live; hidden without billing:read), stores at risk, this month
- * in one row (each a snapshot metric, so small samples show names and
- * missing ones their reason), new and in development, and What needs
- * attention (the daily summary). Ask ZCOM is the floating ask bar. Below
- * them the earnings chart and the stores preview stay as before. Every
- * number is the server's; the page computes none.
+ * Home (design v2 §7, board 02-V4-SA-Home; backend PRD-026 FR-7.1).
+ *
+ * The hero (date · Platform, Create store, "Good morning, ‹name›", the
+ * orb with this week's line, chips for stores · live, GMV change and
+ * payments past due, period tabs) → the summary panel (GMV, Subscriptions
+ * with past due in red, Store health, and Uptime, which shows checkout
+ * failures until uptime is monitored) → three Needs you cards (Zcom AI's
+ * What needs attention, Billing's money due this week, Stores at risk and
+ * in setup) → Recent activity → "Last updated · Refresh now".
+ *
+ * The period tabs pick the snapshot period for GMV and its chip; the rest
+ * is live (money due), this month (MRR) or fixed (checkout failures, 7
+ * days). Every number is the server's; the page only averages the loaded
+ * stores' health scores. No "Ask AI" here: the bottom bar is the one place.
  */
 export function Home() {
-  const { clients, loading: clientsLoading, error: clientsError, refetch, totalCount } = useClients();
+  const { clients, loading: clientsLoading, totalCount } = useClients();
   const navigate = useNavigate();
-  const { can } = useAuth();
-  const now = useMemo(() => new Date(), []);
+  const { can, user } = useAuth();
+  const [period, setPeriod] = useState<PlatformMetricsPeriod>(SA_HOME_DEFAULT_PERIOD);
+
   const attention = usePlatformAttention();
+  const metrics = usePlatformMetrics(period);
   const data = attention.data;
   const loading = attention.loading;
   const firstRun = !loading && !attention.error && data != null && !data.computedAt;
-  const cells = thisMonthCells(data?.thisMonth);
   const storeNames = useMemo(() => knownStoreNames(data), [data]);
 
-  // PRD-005 FR-5.3: the earnings chart reads the server rollup.
-  const yearRange = useMemo(() => ({ startDate: new Date(now.getFullYear(), 0, 1), endDate: now }), [now]);
-  const revenue = useRevenueOverview(yearRange);
+  const snapshot = metrics.data;
+  const sections = snapshot?.sections;
+  const gmv = findMetric(sections, "gmv");
+  const pastDue = pastDueOf(data?.moneyDue);
+  const stores = useMemo(() => (clientsLoading ? null : storeCounts(clients)), [clients, clientsLoading]);
+  const health = useMemo(() => healthSummary(clients), [clients]);
+
+  const chips = heroChips({ stores, gmv, pastDue, comparison: SA_HOME_COMPARISON[period] });
+  const summary = loading
+    ? ""
+    : heroSummary({ pastDue, atRisk: data?.atRisk.totalCount ?? 0, inSetup: data?.development.totalCount ?? 0 });
+
+  const cells = summaryCells({
+    gmv,
+    orders: findMetric(sections, "orders"),
+    activeStores: snapshot?.activeStores ?? data?.activeStores ?? null,
+    mrr: data?.thisMonth.mrr ?? null,
+    collected: data?.thisMonth.collected ?? null,
+    pastDue,
+    health,
+    totalStores: totalCount,
+    uptime: findMetric(sections, "uptimePct"),
+    checkoutFailures: findMetric(sections, "checkoutFailures7d"),
+    paymentFailures: findMetric(sections, "paymentFailures7d"),
+    metricsError: metrics.error != null,
+  });
+  const summaryLoading = (metrics.loading && !snapshot) || loading || clientsLoading;
+
+  const showBilling = loading || data?.moneyDue != null;
 
   return (
-    <div className="flex w-full flex-col gap-6">
-      <VideoBanner
-        eyebrow={`${monthYear.format(now)} · ${plural(totalCount, "store", "stores")}`}
-        subline="Here's what needs your attention today."
-        action={
+    <div className="flex w-full flex-col gap-4">
+      <HomeHero
+        date={heroDate()}
+        name={greetingName(user?.name)}
+        actions={
+          // Announce (board 02) waits for an Announcements feature: there is no data for it yet.
           can(PLATFORM_PERMISSIONS.TENANTS_MANAGE) ? (
-            <Button variant="glass" startIcon={<IconAdd aria-hidden />} onPress={() => navigate("/stores/new")}>
-              Add store
+            <Button variant="glass" size="sm" onPress={() => navigate("/stores/new")}>
+              Create store
             </Button>
           ) : undefined
         }
+        summary={summary}
+        chips={chips}
+        periods={SA_HOME_PERIODS}
+        period={period}
+        onPeriodChange={setPeriod}
+        periodLabel="Show sales for"
       />
 
       {attention.error ? (
@@ -69,60 +111,35 @@ export function Home() {
           title="Couldn't load the platform numbers."
           description={toasts.genericError}
           onRetry={() => void attention.refetch()}
+          className="rounded-card-lg border border-line bg-surface py-10"
         />
       ) : (
         <>
-          <SnapshotHeader computedAt={data?.computedAt ?? null} stale={data?.stale ?? false} />
-          {firstRun ? <p className="text-body text-fg-muted">{FIRST_SNAPSHOT_COPY}. Money due below is live.</p> : null}
+          <SummaryPanel cells={cells} isLoading={summaryLoading} storageKey={`${user?.id ?? "me"}:home`} aria-label="Platform summary" />
 
-          {loading || data?.moneyDue ? (
-            <MoneyDueCard moneyDue={data?.moneyDue ?? null} isLoading={loading} />
-          ) : null}
-
-          <AtRiskCard list={data?.atRisk ?? null} isLoading={loading} />
-
-          {loading || cells.length > 0 ? (
-            <div className="flex flex-col gap-3">
-              <h2 className="text-title-2 text-fg">This month</h2>
-              <KpiStrip>
-                {loading
-                  ? ["mrr", "collected", "outstanding", "new", "lost", "ai"].map((key) => (
-                      <MetricCard key={key} metric={null} label=" " bare isLoading />
-                    ))
-                  : cells.map((cell) => (
-                      <MetricCard
-                        key={cell.key}
-                        metric={cell.metric}
-                        label={cell.label}
-                        smallSampleThreshold={data?.smallSampleThreshold}
-                        bare
-                      />
-                    ))}
-              </KpiStrip>
-            </div>
-          ) : null}
-
-          <DevelopmentCard list={data?.development ?? null} isLoading={loading} />
-
-          <AttentionSummaryCard
-            summary={data?.whatNeedsAttention ?? null}
-            storeNames={storeNames}
-            isLoading={loading}
-          />
+          {/* v2 §10: three cards a row from 1024px, two on tablet (the third spans the row), one on phone. */}
+          <div
+            className={cx(
+              "grid grid-cols-1 gap-4 md:grid-cols-2",
+              showBilling && "lg:grid-cols-3 md:max-lg:[&>:last-child]:col-span-2",
+            )}
+          >
+            <NeedsYouAiCard summary={data?.whatNeedsAttention ?? null} storeNames={storeNames} isLoading={loading} />
+            {showBilling ? <NeedsYouBillingCard moneyDue={data?.moneyDue ?? null} isLoading={loading} /> : null}
+            <NeedsYouStoresCard atRisk={data?.atRisk ?? null} development={data?.development ?? null} isLoading={loading} />
+          </div>
         </>
       )}
 
-      <EarningsChart
-        monthly={revenue.data.monthly}
-        monthlyBilling={revenue.data.billing}
-        now={now}
-        isLoading={revenue.loading}
-      />
+      {/* PRD-014 UX-27: the audit log needs audit:read (not billing or support roles). */}
+      {can(PLATFORM_PERMISSIONS.AUDIT_READ) ? <RecentActivityCard /> : null}
 
-      {clientsError ? (
-        <ErrorState title="Couldn't load the stores." description={toasts.genericError} onRetry={() => void refetch()} />
-      ) : (
-        <ClientsTable clients={clients} isLoading={clientsLoading} previewLimit={10} />
+      {attention.error ? null : (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <SnapshotHeader computedAt={data?.computedAt ?? null} stale={data?.stale ?? false} />
+          {/* Before the first snapshot the header names when it runs; money due is read live meanwhile. */}
+          {firstRun ? <span className="text-caption text-fg-subtle">Money due is live.</span> : null}
+        </div>
       )}
     </div>
   );

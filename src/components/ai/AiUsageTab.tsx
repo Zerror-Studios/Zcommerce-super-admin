@@ -18,7 +18,6 @@ import {
   EmptyState,
   FilterButton,
   FilterDrawer,
-  SearchInput,
   TablePagination,
   countActiveFilters,
   cx,
@@ -35,13 +34,13 @@ import { useAiExport, type AiTabProps } from "./ai-export";
 
 /** Fixed 730 → Store 230px at 960px (04 S-06). */
 const columns: DataTableColumn[] = [
-  { key: "store", label: "Store" },
-  { key: "plan", label: "Plan", width: 130 },
-  { key: "week", label: "This week", width: 120 },
-  { key: "month", label: "This month", width: 120 },
-  { key: "tokens", label: "Tokens · month", width: 130 },
-  { key: "cost", label: "Cost · month", width: 130 },
-  { key: "cache", label: "Cache hits", width: 100 },
+  { key: "store", label: "Store", mobile: "primary" },
+  { key: "plan", label: "Plan", width: 130, mobile: "badge" },
+  { key: "week", label: "This week", width: 120, hideWhen: "narrow", mobile: "title" },
+  { key: "month", label: "This month", width: 120, mobile: "title" },
+  { key: "tokens", label: "Tokens · month", width: 130, hideWhen: "narrow", mobile: "hide" },
+  { key: "cost", label: "Cost · month", width: 130, mobile: "value" },
+  { key: "cache", label: "Cache hits", width: 100, hideWhen: "narrow", mobile: "hide" },
 ];
 
 const filterGroups: FilterGroup[] = [
@@ -116,14 +115,7 @@ export function AiUsageTab({ tabs, exportRef }: AiTabProps) {
         rowHeight="tall"
         onRowAction={(row) => navigate(`/stores/${row.tenantId}/ai`)}
         toolbar={
-          <AiToolbar tabs={tabs}>
-            <SearchInput
-              placement="toolbar"
-              placeholder="Search stores"
-              value={search}
-              onValueChange={setSearch}
-              onClear={() => setSearch("")}
-            />
+          <AiToolbar tabs={tabs} search={{ value: search, onValueChange: setSearch, placeholder: "Search stores" }}>
             <FilterButton count={countActiveFilters(filterValues)} onPress={() => setFiltersOpen(true)} />
           </AiToolbar>
         }

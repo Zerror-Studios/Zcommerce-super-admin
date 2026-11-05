@@ -1,5 +1,5 @@
 import { ownerNoticeKind, ownerNoticeKindEnum } from "../../lib/owner-onboarding";
-import { Button as UiButton, CopyableId, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "../ui";
+import { Button as UiButton, CopyableId, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, PopupTitle, IconSuccess } from "../ui";
 
 export interface OwnerCredentialsDialogProps {
   isOpen: boolean;
@@ -29,7 +29,9 @@ export function OwnerCredentialsDialog({
   return (
     <Modal isOpen={isOpen} onClose={onClose} width="sm">
       <ModalContent>
-        <ModalHeader>{storeName} is ready</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={<IconSuccess aria-hidden />}>{storeName} is ready</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           {kind === ownerNoticeKindEnum.INVITE_SENT ? (
             <p className="text-body text-fg-muted">

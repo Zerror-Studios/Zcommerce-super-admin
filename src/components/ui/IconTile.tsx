@@ -2,50 +2,53 @@
 import type { ReactNode } from "react";
 import { cx } from "./cx";
 
-/** Section colours (01 §5.1). "ink" is Home; the rest match the .zc-sec-* soft palettes in tokens-expression.css. */
+/**
+ * LEGACY section colours (01 §5.1). Retired in design v2 (§2.1): every value now renders the ink tile, and the
+ * `.zc-sec-*` palettes resolve to neutral. Kept so old call sites compile; new code leaves `section` out.
+ */
 export type SectionColor = "ink" | "blue" | "violet" | "teal" | "green" | "amber" | "coral" | "pink" | "slate";
 
 export const sectionClass = (section?: SectionColor) => (section && section !== "ink" ? `zc-sec-${section}` : undefined);
 
+/**
+ * ink: page-title tiles (white icon). neutral: pop-up title rows and list rows (grey, ink icon). danger: delete.
+ * success (green tint) and info (blue tint): status tiles that carry meaning, e.g. the order detail's "Paid" and
+ * "Shipped" cards (board 14). Never for decoration.
+ */
+export type IconTileTone = "ink" | "neutral" | "danger" | "success" | "info";
+
 export interface IconTileProps {
   /** A stroke icon from ./icons; sized by the tile. */
   children: ReactNode;
-  /** Section colour: the solid fill with a white glyph (01 §5.1). Without it the tile is ink. */
+  /** LEGACY: ignored in v2 (all ink). */
   section?: SectionColor;
-  /** lg 40px (page headers), md 36px (count tiles, named entities), sm 28px (rows). */
+  tone?: IconTileTone;
+  /** lg 44px (page titles), md 36px (pop-up titles, named entities), sm 28px (rows). */
   size?: "sm" | "md" | "lg";
   className?: string;
 }
 
 const sizes = {
   sm: "size-7 rounded-lg [&_svg]:size-3.5",
-  md: "size-9 rounded-[10px] [&_svg]:size-4",
-  lg: "size-10 rounded-xl [&_svg]:size-5",
+  md: "size-[var(--zc-popup-tile)] rounded-field [&_svg]:size-4.5",
+  lg: "size-[var(--zc-title-tile)] rounded-tile [&_svg]:size-5",
 };
 
-/** The solid fill per section (01 §5.1: white glyph, all at least 3:1). */
-const solid: Record<SectionColor, string> = {
-  ink: "bg-sec-ink-solid",
-  blue: "bg-sec-blue-solid",
-  green: "bg-sec-green-solid",
-  violet: "bg-sec-violet-solid",
-  teal: "bg-sec-teal-solid",
-  coral: "bg-sec-coral-solid",
-  amber: "bg-sec-amber-solid",
-  pink: "bg-sec-pink-solid",
-  slate: "bg-sec-slate-solid",
+const tones: Record<IconTileTone, string> = {
+  ink: "bg-ink text-white",
+  neutral: "bg-surface-sunken text-fg",
+  danger: "bg-tone-danger-soft text-tone-danger",
+  success: "bg-tone-success-soft text-tone-success",
+  info: "bg-tone-info-soft text-tone-info",
 };
 
 /**
- * The page-header icon tile (01 §6.4): 40px, radius 12, the section's solid colour, a white 20px glyph. One per
- * header. Decorative: the title next to it says what it is.
+ * Icon tile (v2 §2.1, §4.1, §4.6): page titles get a 44px ink tile with a white icon; pop-up title rows a 36px grey
+ * tile (red for delete). Decorative: the title next to it says what it is.
  */
-export function IconTile({ children, section, size = "lg", className }: IconTileProps) {
+export function IconTile({ children, tone = "ink", size = "lg", className }: IconTileProps) {
   return (
-    <span
-      aria-hidden
-      className={cx("inline-flex shrink-0 items-center justify-center text-white", solid[section ?? "ink"], sizes[size], className)}
-    >
+    <span aria-hidden className={cx("inline-flex shrink-0 items-center justify-center", tones[tone], sizes[size], className)}>
       {children}
     </span>
   );

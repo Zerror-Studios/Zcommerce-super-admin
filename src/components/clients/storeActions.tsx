@@ -1,5 +1,5 @@
 import { addToast } from "@heroui/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Client } from "../../types";
 import type { TenantMoneyInFlight, TenantSuspendCategory } from "../../types/platform-api";
 import { errorReasonOf } from "../../lib/apollo-client";
@@ -32,12 +32,23 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
   Textarea,
   toastError,
 } from "../ui";
+import { IconDelete, IconEdit, IconPause, IconPlay, IconRefresh } from "../ui/icons";
 
 /** `category` changes why a suspended store is suspended (PRD-018 FR-1.1). */
 export type StoreAction = "suspend" | "category" | "reactivate" | "delete" | "restore";
+
+/** The pop-up title-row icon per action (v2 §4.6); delete gets the red tile. */
+const STORE_ACTION_ICONS: Record<StoreAction, ReactNode> = {
+  suspend: <IconPause aria-hidden />,
+  category: <IconEdit aria-hidden />,
+  reactivate: <IconPlay aria-hidden />,
+  delete: <IconDelete aria-hidden />,
+  restore: <IconRefresh aria-hidden />,
+};
 
 export interface StoreActionDialogProps {
   client: Client | null;
@@ -189,7 +200,9 @@ export function StoreActionDialog({ client, action, onClose, onDeleted }: StoreA
   return (
     <Modal isOpen={open} onClose={onClose} width="sm">
       <ModalContent>
-        <ModalHeader>{copy.title}</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={STORE_ACTION_ICONS[action]} tone={action === "delete" ? "danger" : "neutral"}>{copy.title}</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           <p className="text-body text-fg-muted">{copy.description}</p>
 

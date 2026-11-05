@@ -1,0 +1,342 @@
+/**
+ * Super Admin Home rules (design v2 §7 "Home", board 02-V4-SA-Home)
+ *
+ * Pure helpers for the v2 Home: the hero's period tabs (the snapshot
+ * periods), its chips and one-line summary, the four summary cells (GMV,
+ * Subscriptions, Store health, and Uptime, which falls back to checkout
+ * failures until uptime is monitored), and the Recent activity rows. The
+ * server computes every number; the only sum here is the average store
+ * health over the stores the console has loaded (Phase 0 audit §6).
+ */
+
+import type { HomeHeroChip, HomeHeroPeriod, SummaryCell, SummaryTone } from "../components/ui";
+import { formatCount, formatMoney, formatPercent } from "../components/ui/money";
+import { formatDate } from "../components/ui/format-date";
+import { getHealthBand } from "../components/ui/status-map";
+import { formatMetricValue } from "./platform-insights.util";
+import { storeLifecycleEnum, storeLifecycleKey } from "./storeStatus";
+import type { Client } from "../types";
+import type { PlatformAttention, PlatformMetric, PlatformMetricsPeriod } from "../types/platform-insights";
+
+// ─── Hero ─────────────────────────────────────────────────────────────────
+
+/**
+ * The hero's period tabs, as snapshot periods. The snapshot has no
+ * calendar-year period, so the last tab is the last 12 months and says so.
+ */
+export const SA_HOME_PERIODS: HomeHeroPeriod<PlatformMetricsPeriod>[] = [
+  { value: "TODAY", label: "Today" },
+  { value: "LAST_7D", label: "7 days" },
+  { value: "LAST_30D", label: "30 days" },
+  { value: "LAST_12M", label: "12 months" },
+];
+
+export const SA_HOME_DEFAULT_PERIOD: PlatformMetricsPeriod = "LAST_30D";
+
+/** "vs the previous 30 days", for the chip tooltips. */
+export const SA_HOME_COMPARISON: Partial<Record<PlatformMetricsPeriod, string>> = {
+  TODAY: "vs yesterday",
+  LAST_7D: "vs the previous 7 days",
+  LAST_30D: "vs the previous 30 days",
+  LAST_12M: "vs the 12 months before",
+};
+
+/** The greeting's name: the viewer's first name, else the studio. */
+export function greetingName(name: string | null | undefined): string {
+  const first = name?.trim().split(/\s+/)[0];
+  return first || "Zerror Studios";
+}
+
+/** "Thursday, 5 November · Platform" (the hero shows it in mono capitals). */
+export function heroDate(now: Date = new Date()): string {
+  return `${now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })} · Platform`;
+}
+
+export interface StoreCounts {
+  total: number;
+  live: number;
+}
+
+/** Stores the console has loaded (deleted ones left out) and how many went live. */
+export function storeCounts(clients: Client[]): StoreCounts {
+  let total = 0;
+  let live = 0;
+  for (const client of clients) {
+    const key = storeLifecycleKey(client);
+    if (key === storeLifecycleEnum.DELETED) continue;
+    total += 1;
+    if (key === storeLifecycleEnum.LIVE) live += 1;
+  }
+  return { total, live };
+}
+
+export interface PastDue {
+  count: number;
+  amount: number;
+}
+
+/** Overdue rows of money due (live; `null` without `platform:billing:read`). */
+export function pastDueOf(moneyDue: PlatformAttention["moneyDue"] | null | undefined): PastDue | null {
+  if (!moneyDue) return null;
+  const rows = moneyDue.items.filter((row) => row.overdue);
+  return { count: rows.length, amount: rows.reduce((sum, row) => sum + row.amount, 0) };
+}
+
+const plural = (count: number, one: string, many: string) => `${formatCount(count)} ${count === 1 ? one : many}`;
+
+/** The three chips: stores · live, GMV change, payments past due. */
+export function heroChips(input: {
+  stores: StoreCounts | null;
+  gmv: PlatformMetric | null;
+  pastDue: PastDue | null;
+  comparison?: string;
+}): HomeHeroChip[] {
+  const chips: HomeHeroChip[] = [];
+  if (input.stores) {
+    chips.push({
+      key: "stores",
+      label: `${plural(input.stores.total, "store", "stores")} ·`,
+      value: `${formatCount(input.stores.live)} live`,
+      // A count, not a change: "flat" keeps the arrow off (and the dot white; the kit ties the dot to the trend).
+      trend: "flat",
+    });
+  }
+  const gmv = input.gmv;
+  if (gmv && gmv.status !== "UNAVAILABLE" && gmv.value != null) {
+    const change = gmv.changePercent;
+    const hasChange = change != null && Number.isFinite(change) && change !== 0;
+    chips.push({
+      key: "gmv",
+      label: "GMV",
+      value: hasChange ? formatPercent(Math.abs(change)) : formatMetricValue(gmv.value, String(gmv.unit)),
+      trend: hasChange ? (change > 0 ? "up" : "down") : "flat",
+      title: hasChange ? input.comparison : undefined,
+    });
+  }
+  if (input.pastDue) {
+    const { count } = input.pastDue;
+    chips.push({
+      key: "past-due",
+      label: count ? `${plural(count, "payment", "payments")} past due` : "Nothing past due",
+      // The dot only: red with something past due, green when clear.
+      trend: count ? "down" : "up",
+      title: count ? `${formatMoney(input.pastDue.amount, { whole: true })} overdue` : undefined,
+    });
+  }
+  return chips;
+}
+
+/** The hero's one line: what needs the team this week, from the counts Home already has. */
+export function heroSummary(input: { pastDue: PastDue | null; atRisk: number; inSetup: number }): string {
+  const parts: string[] = [];
+  if (input.pastDue?.count) parts.push(plural(input.pastDue.count, "payment past due", "payments past due"));
+  if (input.atRisk) parts.push(`${plural(input.atRisk, "store", "stores")} at risk`);
+  if (input.inSetup) parts.push(`${plural(input.inSetup, "store", "stores")} in setup`);
+  if (parts.length === 0) return "Nothing needs you today. Every store is paid up and on track.";
+  const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0];
+  return `This week: ${list}.`;
+}
+
+// ─── Summary panel ────────────────────────────────────────────────────────
+
+export interface HealthSummary {
+  /** Rounded average of the scored stores; null when none is scored. */
+  average: number | null;
+  scored: number;
+  /** Scored stores, highest first. */
+  rows: { id: string; name: string; score: number }[];
+}
+
+/** Average server health score over the loaded, scored stores (deleted ones left out). */
+export function healthSummary(clients: Client[]): HealthSummary {
+  const rows = clients
+    .filter((client) => client.health && storeLifecycleKey(client) !== storeLifecycleEnum.DELETED)
+    .map((client) => ({
+      id: client.id,
+      name: client.storeName,
+      score: Math.max(0, Math.min(100, Math.round(client.health!.score))),
+    }))
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+  if (rows.length === 0) return { average: null, scored: 0, rows };
+  const average = Math.round(rows.reduce((sum, row) => sum + row.score, 0) / rows.length);
+  return { average, scored: rows.length, rows };
+}
+
+const EMPTY = "—";
+
+const toneOfBand = (tone: string): SummaryTone => (tone === "danger" ? "danger" : tone === "warning" ? "warning" : "default");
+
+const usable = (metric: PlatformMetric | null | undefined): metric is PlatformMetric =>
+  Boolean(metric && metric.status !== "UNAVAILABLE" && metric.value != null);
+
+export interface SummaryInput {
+  gmv: PlatformMetric | null;
+  orders: PlatformMetric | null;
+  activeStores: number | null;
+  mrr: PlatformMetric | null;
+  collected: PlatformMetric | null;
+  pastDue: PastDue | null;
+  health: HealthSummary;
+  /** Stores on the server; more than the loaded ones while paging. */
+  totalStores: number;
+  uptime: PlatformMetric | null;
+  checkoutFailures: PlatformMetric | null;
+  paymentFailures: PlatformMetric | null;
+  /** The snapshot failed to load. */
+  metricsError: boolean;
+}
+
+/**
+ * GMV, Subscriptions, Store health and Uptime (§7). Uptime is not monitored
+ * yet (`uptimePct` is UNAVAILABLE, Phase 0 audit §6), so until it is the
+ * cell shows the nearest live platform number: checkout failures in 7 days.
+ */
+export function summaryCells(input: SummaryInput): SummaryCell[] {
+  const snapshotNote = input.metricsError ? "Couldn't load the snapshot" : "No snapshot yet";
+
+  // GMV
+  const gmv = input.gmv;
+  const orders = usable(input.orders) ? input.orders.value! : null;
+  const gmvNote = usable(gmv)
+    ? [
+        orders != null ? plural(orders, "order", "orders") : null,
+        input.activeStores != null ? `across ${plural(input.activeStores, "store", "stores")}` : null,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    : (input.gmv?.reason ?? snapshotNote);
+  const gmvCell: SummaryCell = {
+    key: "gmv",
+    label: "Sales on Zcom · GMV",
+    value: usable(gmv) ? formatMetricValue(gmv.value, String(gmv.unit)) : EMPTY,
+    note: gmvNote || undefined,
+    chart: usable(gmv) ? { kind: "dots" } : undefined,
+  };
+
+  // Subscriptions: MRR, paying stores, past due in red.
+  const mrr = input.mrr;
+  const pastDue = input.pastDue;
+  const paying = usable(mrr) ? mrr.count : null;
+  const subNote = !mrr
+    ? "Needs billing access"
+    : !usable(mrr)
+      ? (input.mrr?.reason ?? "No MRR snapshot yet")
+      : [
+          paying != null ? `${formatCount(paying)} paying` : null,
+          pastDue?.count
+            ? `${formatCount(pastDue.count)} past due`
+            : usable(input.collected)
+              ? `${formatMoney(input.collected.value, { whole: true })} collected this month`
+              : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+  const storesForShare = input.activeStores ?? 0;
+  const subCell: SummaryCell = {
+    key: "subscriptions",
+    label: "Subscriptions",
+    value: usable(mrr) ? formatMetricValue(mrr.value, String(mrr.unit)) : EMPTY,
+    note: subNote || undefined,
+    tone: pastDue?.count ? "danger" : "default",
+    chart:
+      paying != null && storesForShare > 0
+        ? { kind: "segments", filled: Math.round((10 * Math.min(paying, storesForShare)) / storesForShare), total: 10 }
+        : undefined,
+  };
+
+  // Store health: the average of the loaded stores' server scores.
+  const health = input.health;
+  const healthNote =
+    health.average == null
+      ? "No store scored yet"
+      : health.rows.length <= 3
+        ? health.rows.map((row) => `${row.name} ${row.score}`).join(" · ")
+        : `Lowest: ${health.rows[health.rows.length - 1].name} ${health.rows[health.rows.length - 1].score} · ${plural(
+            health.rows.filter((row) => getHealthBand(row.score).tone === "danger").length,
+            "store",
+            "stores",
+          )} critical`;
+  const partial = health.average != null && input.totalStores > health.scored ? ` (${formatCount(health.scored)} scored)` : "";
+  const healthCell: SummaryCell = {
+    key: "health",
+    label: "Store health",
+    value: health.average == null ? EMPTY : `${health.average} of 100`,
+    note: health.average == null ? healthNote : `${healthNote}${partial}`,
+    tone: health.average == null ? "default" : toneOfBand(getHealthBand(health.average).tone),
+    chart: health.average == null ? undefined : { kind: "ring", percent: health.average },
+  };
+
+  // Uptime, or checkout failures in 7 days until uptime is monitored.
+  let uptimeCell: SummaryCell;
+  if (usable(input.uptime)) {
+    uptimeCell = {
+      key: "uptime",
+      label: "Uptime",
+      // Two decimals: 99.98% must not round to 100%.
+      value: formatPercent(input.uptime.value, 2),
+      note: input.uptime.reason ?? undefined,
+    };
+  } else {
+    const checkout = usable(input.checkoutFailures) ? input.checkoutFailures : null;
+    const payment = usable(input.paymentFailures) ? input.paymentFailures.value! : null;
+    const failing = checkout?.count ?? 0;
+    const note = checkout
+      ? [
+          failing ? `In ${plural(failing, "store", "stores")}` : "No store affected",
+          payment != null ? plural(payment, "payment failure", "payment failures") : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : snapshotNote;
+    uptimeCell = {
+      key: "uptime",
+      label: "Checkout failures · 7 days",
+      value: checkout ? formatCount(checkout.value) : EMPTY,
+      note,
+      tone: checkout && checkout.value! > 0 ? "danger" : "default",
+      chart:
+        checkout && storesForShare > 0
+          ? { kind: "ring", percent: Math.round((100 * (storesForShare - Math.min(failing, storesForShare))) / storesForShare) }
+          : undefined,
+    };
+  }
+
+  return [gmvCell, subCell, healthCell, uptimeCell];
+}
+
+// ─── Recent activity ──────────────────────────────────────────────────────
+
+export type ActivityIconKey = "store" | "plan" | "coupon" | "ai" | "user" | "auth" | "settings" | "billing" | "other";
+
+const ACTIVITY_PREFIXES: [string, ActivityIconKey][] = [
+  ["tenant.", "store"],
+  ["store.", "store"],
+  ["plan.", "plan"],
+  ["coupon.", "coupon"],
+  ["ai.", "ai"],
+  ["user.", "user"],
+  ["auth.", "auth"],
+  ["settings.", "settings"],
+  ["invoice.", "billing"],
+  ["subscription.", "billing"],
+  ["payment.", "billing"],
+  ["billing.", "billing"],
+];
+
+/** Which grey tile icon an audit action gets, by its area prefix. */
+export function activityIconKey(action: string): ActivityIconKey {
+  const lower = action.toLowerCase();
+  return ACTIVITY_PREFIXES.find(([prefix]) => lower.startsWith(prefix))?.[1] ?? "other";
+}
+
+const timeOfDay = new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit" });
+
+/** "10:42 am" today, "Yesterday", else "2 Nov". */
+export function activityWhen(at: string, now: Date = new Date()): string {
+  const date = new Date(at);
+  if (Number.isNaN(date.getTime())) return EMPTY;
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  if (date.getTime() >= startOfToday) return timeOfDay.format(date);
+  if (date.getTime() >= startOfToday - 86_400_000) return "Yesterday";
+  return formatDate(date, now);
+}

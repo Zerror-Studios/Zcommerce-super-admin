@@ -18,7 +18,7 @@ export function SessionUnreachable() {
     <div className="flex min-h-screen items-center justify-center bg-surface-sunken">
       <ErrorState
         title="Can't reach the server."
-        description="Check your connection and try again. You haven't been signed out."
+        description="Check your connection and try again. You haven't been logged out."
         onRetry={() => void retryRestore()}
       />
     </div>

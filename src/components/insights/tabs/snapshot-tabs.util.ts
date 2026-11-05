@@ -7,7 +7,14 @@
  * number and nothing here turns a count into a rate.
  */
 
-import { formatMetricValue } from "../../../lib/platform-insights.util";
+import {
+  changeTone,
+  coverageText,
+  formatMetricChange,
+  formatMetricValue,
+  smallSampleNote,
+  smallSampleText,
+} from "../../../lib/platform-insights.util";
 import type {
   PlatformMetric,
   PlatformMetricItem,
@@ -200,6 +207,49 @@ export function chunkCells<T>(cells: T[], size = 5): T[][] {
     rows.push(cells.slice(index, index + size));
   }
   return rows;
+}
+
+/** The summary panel holds exactly four cells (design v2 §4.2); the rest go in white "lite" rows of four. */
+export const SUMMARY_CELLS = 4;
+
+export interface MetricSummaryText {
+  value: string;
+  note: string | null;
+  /** "danger" only when the change goes the wrong way for this metric (as the old KPI chip's red). */
+  tone: "default" | "danger";
+}
+
+/**
+ * One snapshot metric as a summary-panel cell (design v2 §4.2; the same three states as `MetricCard`):
+ * - OK: the value; the note is the change against the previous period and the coverage.
+ * - SMALL_SAMPLE: the count; the note names the stores and why there is no rate.
+ * - UNAVAILABLE: "—"; the note is the reason and, when given, the fix.
+ */
+export function metricSummaryText(metric: PlatformMetric, smallSampleThreshold?: number | null): MetricSummaryText {
+  if (metric.status === "UNAVAILABLE") {
+    return {
+      value: "—",
+      note: [metric.reason ?? "Not available yet", metric.fix].filter(Boolean).join(" · "),
+      tone: "default",
+    };
+  }
+  if (metric.status === "SMALL_SAMPLE") {
+    return {
+      value: formatMetricValue(metric.count ?? 0, "COUNT"),
+      note: `${smallSampleText(metric)} · ${smallSampleNote(metric, smallSampleThreshold)}`,
+      tone: "default",
+    };
+  }
+  const hasChange = metric.changePercent != null && Number.isFinite(metric.changePercent);
+  const change = hasChange
+    ? `${metric.changePercent! > 0 ? "↑" : metric.changePercent! < 0 ? "↓" : ""} ${formatMetricChange(metric).replace(/^[+−]/, "")} vs ${formatMetricValue(metric.previousValue, metric.unit)}`.trim()
+    : null;
+  const note = [change, coverageText(metric.coverage)].filter(Boolean).join(" · ");
+  return {
+    value: formatMetricValue(metric.value, metric.unit),
+    note: note || null,
+    tone: changeTone(metric) === "danger" ? "danger" : "default",
+  };
 }
 
 // ─── Breakdowns ───────────────────────────────────────────────────────────

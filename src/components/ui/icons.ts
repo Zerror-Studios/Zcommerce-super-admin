@@ -163,6 +163,20 @@ export {
   LuClipboard as IconClipboard,
   LuMailX as IconMailX,
   LuCircleX as IconXCircle,
+  // Design v2 (docs/design-v2 §4): the toolbar's sort button, the video play glyph, the order step icons.
+  LuArrowUpDown as IconSort,
+  LuPlay as IconPlayGlyph,
+  LuCreditCard as IconCard,
+  LuBox as IconBox,
+  LuTruck as IconTruck,
+  LuHouse as IconHouseCheck,
+  LuRocket as IconRocket,
+  LuInstagram as IconInstagram,
+  LuStore as IconOnlineStore,
+  LuMaximize2 as IconMaximize,
+  LuMinimize2 as IconMinimize,
+  // Inbox (§6.9): the tray for the menu item, empty states and the Super Admin support inbox.
+  LuInbox as IconInbox,
 } from "react-icons/lu";
 
 /* Filled glyphs where a fill carries the meaning: brand logo, status dot, rating star. */

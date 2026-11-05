@@ -40,7 +40,7 @@ export function SupportBanner({ storeName, onExit }: SupportBannerProps) {
   return (
     <div
       role="status"
-      className="zc-sec-amber flex min-h-support shrink-0 items-center gap-2.5 border-b border-support-line bg-support px-4 text-label text-support-fg"
+      className="flex min-h-support shrink-0 items-center gap-2.5 border-b border-support-line bg-support px-4 text-label text-support-fg"
     >
       <IconSupport aria-hidden className="size-4 shrink-0" />
       <p className="min-w-0 flex-1 truncate">
@@ -53,7 +53,7 @@ export function SupportBanner({ storeName, onExit }: SupportBannerProps) {
         type="button"
         aria-label="Hide for this session"
         onClick={hide}
-        className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm hover:bg-sec-soft"
+        className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm hover:bg-support-line"
       >
         <IconClose aria-hidden className="size-3.5" />
       </button>

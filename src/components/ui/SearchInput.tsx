@@ -10,7 +10,7 @@ export interface SearchInputProps extends Omit<HeroInputProps, "size" | "variant
   size?: FieldSize;
   /**
    * Where it sits (docs/design/09-settings-and-scale.md §2): "field" fills its container (dialogs, panels);
-   * "toolbar" is the table toolbar search, 32px × 240px; "header" sits in a page header, 36px × 260px.
+   * "toolbar" is the table toolbar search, 36px × 240px (v2 §4.3); "header" sits in a page header, 36px × 260px.
    * Phones always get the full width.
    */
   placement?: "field" | "toolbar" | "header";
@@ -23,7 +23,7 @@ const placementBase = {
 };
 
 /**
- * The one search field (01 §7.5): a capsule, 36px (32px in table toolbars),
+ * The one search field (01 §7.5): a capsule, 36px (32px with size="sm"),
  * 16px leading magnifier, a 20px circle clear button when it has a value. Always pass a page-specific placeholder
  * ("Search orders"). Every search in both apps is this component.
  */
@@ -53,10 +53,10 @@ export function SearchInput({
         base: cx(placementBase[placement], classNames?.base),
         inputWrapper: cx(
           styles.inputWrapper,
-          (size === "sm" || placement === "toolbar") && "h-[var(--zc-control-h-sm)] min-h-[var(--zc-control-h-sm)]",
+          size === "sm" && "h-[var(--zc-control-h-sm)] min-h-[var(--zc-control-h-sm)]",
           classNames?.inputWrapper,
         ),
-        input: cx(styles.input, (size === "sm" || placement === "toolbar") && "md:text-[13px]", classNames?.input),
+        input: cx(styles.input, size === "sm" && "md:text-[13px]", classNames?.input),
         // HeroUI shows the button as `block`, so its icon sat on the text baseline: centre it as a flex box in the
         // middle of the field, with our 12px × in a 20px sunken circle (01 §7.5).
         clearButton: cx(

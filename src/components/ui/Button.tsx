@@ -1,15 +1,26 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 import { Button as HeroButton } from "@heroui/react";
 import type { ButtonProps as HeroButtonProps } from "@heroui/react";
-import { forwardRef, useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import {
+  forwardRef,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import { Link } from "react-router-dom";
 import { cx } from "./cx";
+import { ButtonShortLabelContext } from "./short-label";
 import { IconExternalArrow } from "./icons";
 
 /**
  * Capsule button (01 §7.1, styles in src/styles/components.css `.zc-btn`). One primary per area, rightmost.
  * - primary: the one main action
- * - secondary: Export, Import, Cancel, Filter and other actions
+ * - secondary: light blue (v2 §4.5): Cancel and the one secondary action per area
+ * - dark: ink (Log out, Mark done)
  * - tertiary: blue text with a pill hover ("View full report ›", "Clear all", "See all")
  * - ghost: neutral text with a grey hover (toolbar items, "Dismiss")
  * - destructive: filled red, only the final Delete / Suspend in a confirm dialog
@@ -17,17 +28,20 @@ import { IconExternalArrow } from "./icons";
  * - glass: only on video, photos and the Home banner
  * - ai: gradient ring; pass the sparkle as startIcon ("Ask AI", "Write with AI")
  * - secondary-on-dark: only on the blog editor's dark side panels
+ * - on-dark: white fill, ink text: the one main action on a dark or gradient surface (Home hero "Create store")
  */
 export type ButtonVariant =
   | "primary"
   | "secondary"
+  | "dark"
   | "tertiary"
   | "ghost"
   | "destructive"
   | "destructive-secondary"
   | "glass"
   | "ai"
-  | "secondary-on-dark";
+  | "secondary-on-dark"
+  | "on-dark";
 
 /** lg 40 (banner, empty states), md 36 (default), sm 32 (toolbars, card headers), xs 28 (dense rows only). */
 export type ButtonSize = "lg" | "md" | "sm" | "xs";
@@ -93,6 +107,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 ) {
   const innerRef = useRef<HTMLButtonElement | null>(null);
   const spinner = useDelayedSpinner(isLoading);
+  const shortLabel = useContext(ButtonShortLabelContext);
+  const short = shortLabel && variant === "primary" ? shortLabel : undefined;
   // Lock the width while busy so the button never jumps when the spinner replaces the icon.
   const [lockedWidth, setLockedWidth] = useState<number>();
   useLayoutEffect(() => {
@@ -119,6 +135,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       endContent={trailing}
       isDisabled={isDisabled ?? disabled}
       aria-busy={isLoading || undefined}
+      // The short label keeps the full one as the accessible name.
+      aria-label={short ? (rest["aria-label"] ?? (typeof children === "string" ? children : undefined)) : rest["aria-label"]}
       // Busy buttons ignore extra clicks, without the disabled look.
       onPress={isLoading ? undefined : onPress}
       onClick={isLoading ? undefined : onClick}
@@ -134,7 +152,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       {...externalProps}
       {...rest}
     >
-      {children}
+      {short ?? children}
     </HeroButton>
   );
 });

@@ -592,6 +592,21 @@ export interface CreateTenantInput {
 }
 
 /** PRD-031 FR-D1: one store setup check (`platformStoreSetup`). */
+/** One person on a store's team (`platformTenantStaff`, PRD-035 item 4). */
+export interface PlatformTenantStaffMember {
+  id: string;
+  name: string;
+  email: string;
+  /** The role name: custom roles by their name; legacy roles OWNER, ADMIN, … */
+  role: string;
+  status: "ACTIVE" | "INACTIVE" | "BLOCKED";
+  isOwner: boolean;
+  /** Invited; the set-password link isn't used yet. */
+  invitePending: boolean;
+  /** ISO time of the last sign-in; null when never. */
+  lastActiveAt: string | null;
+}
+
 export interface PlatformStoreSetupCheck {
   key: string;
   status: "OK" | "MISSING" | "WARNING";

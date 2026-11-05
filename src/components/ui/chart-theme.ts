@@ -122,6 +122,48 @@ export const recharts = {
   area: { type: "monotone", strokeWidth: 2, fillOpacity: 1, dot: false, activeDot: { r: 4 } } as const,
 };
 
+/**
+ * Phone charts (v2 §10): keep the shape, show fewer points (the last 14 days instead of 30) and label the start
+ * and end only. Pages pass `useIsPhone()` (./use-media) into these.
+ */
+export const PHONE_CHART_POINTS = 14;
+
+/** The last `count` points on phone; every point otherwise. */
+export function pointsForViewport<T>(points: readonly T[], isPhone: boolean, count: number = PHONE_CHART_POINTS): T[] {
+  return isPhone && points.length > count ? points.slice(-count) : [...points];
+}
+
+/** True for the first and the last point: the only labels a phone chart shows. */
+export function isEndTick(index: number, length: number): boolean {
+  return index === 0 || index === length - 1;
+}
+
+/** Recharts category axis for phones: the axis preset with labels at the start and end only. */
+export function rechartsEndTicks<T>(points: readonly T[], key: (point: T) => string | number) {
+  const ticks = points.length > 1 ? [key(points[0]), key(points[points.length - 1])] : points.map(key);
+  return { ...recharts.axis, ticks, interval: 0 as const };
+}
+
+/**
+ * ApexCharts category axis for phones: the categories with labels at the start and end only (straight, never
+ * dropped). Spread into `xaxis`; keep the chart's own label style with `labels.style`. Use it with
+ * `pointsForViewport` for day series, and on its own for fixed buckets (24 hours keep all 24 bars).
+ */
+export function apexEndLabels(categories: readonly string[]) {
+  const list = [...categories];
+  return {
+    categories: list,
+    labels: {
+      rotate: 0,
+      hideOverlappingLabels: false,
+      formatter: (value: string) => {
+        const index = list.indexOf(value);
+        return index >= 0 && isEndTick(index, list.length) ? value : "";
+      },
+    },
+  };
+}
+
 /** Gradient stops for area fills (top → bottom): spec §14 soft vertical gradient, 14% → 0%. */
 export const areaGradientStops = [
   { offset: "0%", stopOpacity: 0.14 },
@@ -156,5 +198,7 @@ export function apexBaseOptions() {
     },
     yaxis: { labels: { style: { colors: t.axis, fontSize: CHART_FONT_SIZE } } },
     tooltip: { theme: "light", style: { fontSize: CHART_FONT_SIZE, fontFamily: t.fontFamily } },
+    // Phone (v2 §10): straight labels that drop out instead of overlapping. Fewer points: pointsForViewport.
+    responsive: [{ breakpoint: 768, options: { xaxis: { labels: { rotate: 0, hideOverlappingLabels: true } } } }],
   };
 }

@@ -28,6 +28,9 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconDownload,
+  IconInvoice,
   formatDate,
   formatDateTime,
   formatMoney,
@@ -58,24 +61,36 @@ export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps
     { label: "Paid", value: money(invoice.amountPaid) },
     { label: "Still owed", value: money(invoice.amountDue), strong: true },
   ];
+  const owed = invoice.amountDue > 0;
   return (
     <Modal isOpen onClose={onClose} width="md">
       <ModalContent>
-        <ModalHeader>Invoice {invoice.number}</ModalHeader>
+        <ModalHeader>
+          <PopupTitle
+            icon={<IconInvoice aria-hidden />}
+            description={`${invoice.tenantName} · ${getPlanLabel(invoice.planName)}, ${invoice.billingCycle === "YEARLY" ? "yearly" : "monthly"}`}
+          >
+            Invoice {invoice.number}
+          </PopupTitle>
+        </ModalHeader>
         <ModalBody>
-          <div className="flex flex-wrap items-center gap-2">
-            <InvoiceStatusChip invoice={invoice} />
-            <Chip tone="neutral" dot={false}>
-              {invoiceReasonLabel(invoice)}
-            </Chip>
+          {/* The number the console checks first (v2 §10A): what is still owed, else the total. */}
+          <div className="flex flex-wrap items-end justify-between gap-3 rounded-card border border-line p-4">
+            <div className="min-w-0">
+              <p className="text-label text-fg-muted">{owed ? "Still owed" : "Total"}</p>
+              <p className="text-title-1 text-fg num">{money(owed ? invoice.amountDue : invoice.total)}</p>
+              <p className="text-caption text-fg-muted">
+                {invoice.paidAt ? `Paid on ${formatDate(invoice.paidAt)}` : `Due ${formatDate(invoice.dueAt)}`}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <InvoiceStatusChip invoice={invoice} />
+              <Chip tone="neutral" dot={false}>
+                {invoiceReasonLabel(invoice)}
+              </Chip>
+            </div>
           </div>
-          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-body">
-            <dt className="text-fg-muted">Store</dt>
-            <dd className="text-fg">{invoice.tenantName}</dd>
-            <dt className="text-fg-muted">Plan</dt>
-            <dd className="text-fg">
-              {getPlanLabel(invoice.planName)}, {invoice.billingCycle === "YEARLY" ? "yearly" : "monthly"}
-            </dd>
+          <dl className="mt-1 grid grid-cols-2 gap-x-4 gap-y-2 text-body">
             <dt className="text-fg-muted">Period</dt>
             <dd className="text-fg">
               {formatDate(invoice.periodStart)} – {formatDate(invoice.periodEnd)}
@@ -112,9 +127,13 @@ export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps
           <InvoiceHistory invoice={invoice} />
         </ModalBody>
         <ModalFooter>
+          <UiButton variant="secondary" onPress={onClose}>
+            Close
+          </UiButton>
           {pdf.canDownload ? (
             <UiButton
-              variant="secondary"
+              variant="primary"
+              startIcon={<IconDownload aria-hidden />}
               isLoading={pdf.downloadingId === invoice.id}
               isDisabled={pdf.downloadingId !== null}
               onPress={() => void pdf.download(invoice.id)}
@@ -122,9 +141,6 @@ export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps
               Download PDF
             </UiButton>
           ) : null}
-          <UiButton variant="primary" onPress={onClose}>
-            Close
-          </UiButton>
         </ModalFooter>
       </ModalContent>
     </Modal>

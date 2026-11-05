@@ -13,14 +13,40 @@ import { cx } from "./cx";
  *   working; HeroUI's own cursor is the thumb.
  * - <SegmentedSwitch> is the plain value / onChange version for status tabs, date presets and channel switches.
  * - <TabLabel label count> renders "New 12" with the count in the muted, tabular style.
+ *
+ * Variants (design v2), the same components, not a second tab system:
+ * - "segmented" (default): the grey capsule above tables and for date presets (§4.3).
+ * - "underline": in-card and profile tabs (board 24 `.ptb`, board 60 store sections): 42px items on a hairline,
+ *   the selected one ink with a 2px ink bar that slides (transform). <Tabs variant="underline"> and
+ *   <SegmentedSwitch variant="underline">.
+ * - "chips" (SegmentedSwitch only): the Inbox list filters (board 23 `.fch`): small 28px grey pills, the selected
+ *   one ink with white text, the count faded.
  */
 export type SegmentedSize = "md" | "sm";
+export type TabsVariant = "segmented" | "underline";
+export type SegmentedVariant = "segmented" | "underline" | "chips";
 
 export type TabsProps<T extends object = object> = Omit<HeroTabsProps<T>, "variant" | "color" | "size" | "radius"> & {
   size?: SegmentedSize;
+  variant?: TabsVariant;
 };
 
-export function Tabs<T extends object = object>({ classNames, size = "md", ...rest }: TabsProps<T>) {
+export function Tabs<T extends object = object>({ classNames, size = "md", variant = "segmented", ...rest }: TabsProps<T>) {
+  if (variant === "underline") {
+    return (
+      <HeroTabs<T>
+        variant="underlined"
+        classNames={{
+          ...classNames,
+          tabList: cx("zc-line-tabs", classNames?.tabList),
+          tab: cx("zc-line-tab", classNames?.tab),
+          tabContent: cx("zc-line-tab__content", classNames?.tabContent),
+          cursor: cx("zc-line-tab__cursor", classNames?.cursor),
+        }}
+        {...rest}
+      />
+    );
+  }
   return (
     <HeroTabs<T>
       variant="solid"
@@ -61,16 +87,26 @@ export interface SegmentedSwitchProps<V extends string = string> {
   value: V;
   onChange: (value: V) => void;
   size?: SegmentedSize;
+  /** "segmented" (default), "underline" (in-card / profile tabs) or "chips" (Inbox list filters). */
+  variant?: SegmentedVariant;
   /** Names the tab list for screen readers ("Order status"). */
   ariaLabel: string;
   className?: string;
 }
+
+const TRACK: Record<SegmentedVariant, string> = { segmented: "zc-seg", underline: "zc-line", chips: "zc-chips" };
+const ITEM: Record<SegmentedVariant, string> = {
+  segmented: "zc-seg__item",
+  underline: "zc-line__item",
+  chips: "zc-chips__item",
+};
 
 export function SegmentedSwitch<V extends string = string>({
   items,
   value,
   onChange,
   size = "md",
+  variant = "segmented",
   ariaLabel,
   className,
 }: SegmentedSwitchProps<V>) {
@@ -115,17 +151,24 @@ export function SegmentedSwitch<V extends string = string>({
       role="tablist"
       aria-label={ariaLabel}
       onKeyDown={onKeyDown}
-      className={cx("zc-seg", size === "sm" && "zc-seg--sm", overflowing && "zc-seg--scroll", className)}
+      className={cx(
+        TRACK[variant],
+        variant === "segmented" && size === "sm" && "zc-seg--sm",
+        overflowing && variant !== "chips" && "zc-seg--scroll",
+        className,
+      )}
     >
-      {thumb ? (
+      {thumb && variant !== "chips" ? (
         <span
           aria-hidden
-          className="zc-seg__thumb"
+          className={variant === "underline" ? "zc-line__bar" : "zc-seg__thumb"}
           style={{ transform: `translateX(${thumb.x}px)`, width: thumb.w }}
         />
       ) : null}
-      {items.map((item) => {
+      {items.map((item, index) => {
         const selected = item.value === value;
+        // No tab selected (a custom filter): the first tab still takes Tab focus.
+        const focusable = selected || (!items.some((entry) => entry.value === value) && index === 0);
         return (
           <button
             key={item.value}
@@ -133,10 +176,10 @@ export function SegmentedSwitch<V extends string = string>({
             role="tab"
             data-value={item.value}
             aria-selected={selected}
-            tabIndex={selected ? 0 : -1}
+            tabIndex={focusable ? 0 : -1}
             disabled={item.disabled}
             onClick={() => onChange(item.value)}
-            className="zc-seg__item"
+            className={ITEM[variant]}
           >
             <TabLabel label={item.label} count={item.count} />
           </button>

@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Platform · Home</title>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1F5EFF;text-decoration:none}a:hover{color:#1747C7}
+.z{font-family:'Geist',ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:20px;color:#111318;-webkit-font-smoothing:antialiased;background:#F6F7F9}
+.z *{box-sizing:border-box}
+.num{font-variant-numeric:tabular-nums}
+.mu{color:#5F646E}.fa{color:#6F747E}
+.side{flex:0 0 232px;display:flex;flex-direction:column;gap:2px;padding:14px 10px;background:#0E1015;font-size:13px;min-height:100%}
+.nav{display:flex;align-items:center;gap:10px;height:34px;padding:0 8px;border-radius:9px;color:#A4A9B3;font-weight:500}
+.nav .ic{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:#7C828E}
+.nav.on{background:#262A33;color:#FFFFFF}.nav.on .ic{color:#FFFFFF}
+.nav .ct{margin-left:auto;font-size:12px;color:#7C828E}
+.card{background:#FFFFFF;border:1px solid #EBEBEF;border-radius:16px}
+.ac{display:flex;gap:12px;padding:11px 0;border-top:1px solid #F1F1F4;align-items:flex-start}
+.ac:first-of-type{border-top:0}
+.ac .ai{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.st{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px 0 3px;border-radius:11px;background:#F1F2F4;font-size:11.5px;font-weight:500;color:#3A3F49;margin-top:4px}
+.st i{font-style:normal;width:16px;height:16px;border-radius:5px;color:#FFFFFF;font-size:8px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.h2{font-size:15px;line-height:22px;font-weight:600;margin:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;font:inherit;font-weight:500;color:#1F4FD6;background:#EEF3FF;border:1px solid #DCE5FF;white-space:nowrap;cursor:pointer}
+.btn.pri{background:#1F5EFF;border-color:#1F5EFF;color:#FFFFFF}
+.btn.sm{height:32px;padding:0 14px;font-size:13px}
+.badge{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 10px;border-radius:12px;font-size:12px;font-weight:500;white-space:nowrap}
+.badge.ok{background:#E8F6EE;color:#18794E}.badge.warn{background:#FFF3E0;color:#A15C07}.badge.crit{background:#FDECEC;color:#B42318}.badge.neu{background:#F1F2F4;color:#4A4F59}.badge.info{background:#EAF0FF;color:#1F4FD6}
+.dot{width:6px;height:6px;border-radius:3px;background:currentColor}
+.kpi{flex:1 1 170px;min-width:0;padding:16px 18px;border-left:1px solid #F1F1F4}
+.kpi:first-child{border-left:0}
+.kpi .l{font-size:13px;font-weight:500;color:#5F646E}
+.kpi .v{font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.02em;margin-top:4px}
+.att{display:flex;align-items:center;gap:14px;padding:14px 18px;border-top:1px solid #F1F1F4}
+.att:first-of-type{border-top:0}
+.att .ti{width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.sg{display:grid;grid-template-columns:minmax(220px,2fr) 110px 120px 130px 150px 40px;column-gap:16px;align-items:center;padding:0 18px}
+.sgh{height:40px;font-size:12px;font-weight:500;color:#5F646E;background:#FAFAFB;border-top:1px solid #EBEBEF;border-bottom:1px solid #EBEBEF}
+.sgr{height:66px;border-bottom:1px solid #F1F1F4}
+.ring{width:40px;height:40px;flex:none}
+.hero{position:relative;overflow:hidden;border-radius:18px;background:linear-gradient(120deg,#EEF3FF 0%,#F3F0FF 55%,#FFF2F6 100%);border:1px solid #E7E9F5}
+.hero .orb{position:absolute;right:-80px;top:-140px;width:460px;height:460px;border-radius:50%;background:conic-gradient(from 180deg,#5B8CFF,#9D7BFF,#FF8FB8,#FFBE73,#5B8CFF);filter:blur(80px);opacity:.3}
+.sys{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #F1F1F4}
+.sys:first-of-type{border-top:0}
+.hero2{position:relative;overflow:hidden;border-radius:20px;background:#FFFFFF;border:1px solid #E7E9F5;padding:24px 26px}
+.hero2 .b1,.hero2 .b2,.hero2 .b3{position:absolute;border-radius:50%;filter:blur(60px);pointer-events:none}
+.hero2 .b1{width:380px;height:380px;right:-60px;top:-180px;background:#C9B8FF;opacity:.55}
+.hero2 .b2{width:300px;height:300px;right:260px;top:-200px;background:#9DB8FF;opacity:.45}
+.hero2 .b3{width:260px;height:260px;right:-40px;bottom:-200px;background:#FFC7DA;opacity:.5}
+.hero2 .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(91,63,217,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(91,63,217,.05) 1px,transparent 1px);background-size:28px 28px;-webkit-mask:linear-gradient(200deg,#000,transparent 55%);mask:linear-gradient(200deg,#000,transparent 55%);pointer-events:none}
+.pillw{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:16px;background:rgba(255,255,255,.8);border:1px solid #E7E9F5;font-size:13px;font-weight:500}
+.gt{flex:1 1 160px;min-width:0;padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.72);border:1px solid rgba(231,233,245,.9);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);display:flex;flex-direction:column;gap:2px}
+.gt .l{font-size:12.5px;font-weight:500;color:#5F646E}
+.gt b{font-size:22px;line-height:30px;font-weight:600;letter-spacing:-0.02em}
+.up{color:#18794E;font-size:12px;font-weight:600}
+@keyframes glr{to{background-position:0 -12px}}
+.glyph{width:18px;height:18px;border-radius:50%;flex:none;display:inline-block;background:repeating-linear-gradient(0deg,#3B82F6 0 2px,rgba(59,130,246,0) 2px 4px),radial-gradient(circle at 35% 30%,#BFD7FF,#2563EB 70%);background-size:100% 12px,100% 100%;-webkit-mask:radial-gradient(circle,#000 62%,transparent 64%);mask:radial-gradient(circle,#000 62%,transparent 64%);animation:glr 1.6s linear infinite;vertical-align:middle}
+.glyph.lg{width:28px;height:28px}
+.glyph.w{background:repeating-linear-gradient(0deg,#FFFFFF 0 2px,rgba(255,255,255,0) 2px 4px),radial-gradient(circle at 35% 30%,rgba(255,255,255,.9),rgba(191,215,255,.4) 70%);background-size:100% 12px,100% 100%}
+
+/* r6 shell */
+.side{flex:0 0 240px;display:flex;flex-direction:column;gap:2px;padding:16px 12px;background:#0B0C10;font-size:13px;min-height:100%}
+.grp{font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#5C616C;padding:14px 10px 6px 10px}
+.nav{display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:9px;color:#A3A8B3;font-weight:500}
+.nav svg{flex:none;color:#7B808B}
+.nav.on{background:#20232B;color:#FFFFFF}
+.nav.on svg{color:#FFFFFF}
+.sub{display:flex;align-items:center;height:30px;padding:0 10px 0 37px;border-radius:8px;color:#8A8F9A;font-weight:500;font-size:13px}
+.sub.on{color:#FFFFFF;background:#17191F}
+.nav .ct{margin-left:auto;font-size:11.5px;color:#7B808B}
+.cx{margin-left:auto}
+.sbox{display:flex;align-items:center;gap:10px;height:38px;padding:0 8px 0 10px;margin:0 2px 10px 2px;border-radius:11px;background:#15171D;border:1px solid #23262E;color:#8A8F9A}
+.kbd2{font-family:'Geist Mono',monospace;font-size:10.5px;padding:1px 6px;border-radius:6px;background:#20232B;color:#9AA0AB}
+.aib{display:flex;align-items:center;gap:10px;padding:10px;margin:0 2px 8px 2px;border-radius:14px;background:linear-gradient(135deg,#0E1A3D,#13245A);border:1px solid #22356F}
+.ai-card{border-radius:22px;padding:20px 22px;color:#FFFFFF;position:relative;overflow:hidden;background:radial-gradient(120% 120% at 100% 0%,#60A5FA 0%,#1D4ED8 38%,#0B1A4F 78%,#070E2B 100%)}
+.ai-card::before{content:"";position:absolute;inset:0;background:radial-gradient(60% 50% at 90% 10%,rgba(255,255,255,.35),transparent 60%)}
+.ai-card > *{position:relative}
+.ai-line{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:linear-gradient(90deg,#EEF4FF,#FFFFFF);border:1px solid #DCE7FF}
+.dotc{--c:#2563EB;background:radial-gradient(circle,var(--c) 2.4px,transparent 2.8px) 0 0/9px 9px}
+.hat{background:repeating-linear-gradient(135deg,currentColor 0 2px,transparent 2px 6px)}
+.seg10{display:flex;gap:3px}
+.seg10 i{width:7px;height:16px;border-radius:3px;background:#E4E7EE}
+.seg10 i.f{background:#1D4ED8}
+
+@keyframes gl6{to{transform:rotate(360deg)}}
+@keyframes gl6b{0%,100%{transform:scale(.86);opacity:.8}50%{transform:scale(1.06);opacity:1}}
+.glyph,.orb-s{width:18px;height:18px;border-radius:50%;flex:none;display:inline-block;vertical-align:middle;position:relative;overflow:hidden;background:#1E3A8A;-webkit-mask:none;mask:none;animation:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45),0 2px 8px -2px rgba(37,99,235,.55);isolation:isolate}
+.glyph::before,.orb-s::before{content:"";position:absolute;inset:-30%;border-radius:50%;background:radial-gradient(circle at 28% 30%,#7DD3FC 0,rgba(125,211,252,0) 42%),radial-gradient(circle at 74% 34%,#A5B4FC 0,rgba(165,180,252,0) 44%),radial-gradient(circle at 50% 82%,#3B82F6 0,rgba(59,130,246,0) 52%),radial-gradient(circle at 50% 50%,#1D4ED8,#172554 70%);animation:gl6 5s linear infinite}
+.glyph::after,.orb-s::after{content:"";position:absolute;inset:20%;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.95),rgba(255,255,255,0) 68%);animation:gl6b 2.8s ease-in-out infinite}
+.glyph.w{box-shadow:inset 0 0 0 1px rgba(255,255,255,.7),0 0 0 1.5px rgba(255,255,255,.55),0 0 12px rgba(191,219,254,.55)}
+.glyph.lg{width:28px;height:28px}
+.glyph.st::before{animation-duration:14s}.glyph.st::after{animation:none}
+.orb-s{width:30px;height:30px;box-shadow:inset 0 0 0 1px rgba(191,219,254,.5),0 0 16px rgba(59,130,246,.45)}
+@media (prefers-reduced-motion:reduce){.glyph::before,.glyph::after,.orb-s::before,.orb-s::after{animation:none}}
+@keyframes aib6{to{transform:translate(-70px,50px) scale(1.2)}}
+.ai-card::after{content:"";position:absolute;width:280px;height:280px;right:-90px;top:-120px;border-radius:50%;background:radial-gradient(circle,rgba(147,197,253,.5),rgba(59,130,246,0) 65%);animation:aib6 10s ease-in-out infinite alternate;z-index:0;pointer-events:none}
+.ai-card > *{position:relative;z-index:1}
+.ai-card::before{z-index:0}
+
+.k4{display:grid;gap:12px}
+.k4c{position:relative;overflow:hidden;border-radius:18px;padding:16px 18px 18px 18px;background:linear-gradient(180deg,color-mix(in srgb,var(--a) 9%,#FFFFFF) 0%,#FFFFFF 62%);border:1px solid #E3E4E9;display:flex;flex-direction:column;gap:2px;min-height:122px}
+.k4c .l{font-size:13px;font-weight:500;color:#5F646E;display:flex;align-items:center;gap:8px}
+.k4c .l i{width:8px;height:8px;border-radius:3px;background:var(--a)}
+.k4c .v{font-size:26px;line-height:32px;font-weight:600;letter-spacing:-0.02em;margin-top:6px;color:#0B0C10}
+.k4c .s{font-size:12px;color:#6F747E;max-width:58%}
+.k4c .ch{position:absolute;right:16px;bottom:16px;width:92px;height:40px}
+.mb{display:flex;align-items:flex-end;gap:3px}
+.mb i{flex:1;border-radius:2px;background:var(--a);opacity:.22}
+.mb i:last-child,.mb i:nth-last-child(2){opacity:1}
+.dm2{background:radial-gradient(circle,var(--a) 1.8px,transparent 2.2px) 0 0/7px 7px}
+.rg{width:44px!important;height:44px!important;border-radius:50%;background:conic-gradient(var(--a) calc(var(--p)*1%),#ECEEF2 0);-webkit-mask:radial-gradient(circle,transparent 54%,#000 56%);mask:radial-gradient(circle,transparent 54%,#000 56%)}
+.sg2{display:flex;gap:3px;align-items:flex-end;height:18px!important}
+.sg2 i{flex:1;height:16px;border-radius:3px;background:#E6E8EE}
+.sg2 i.f{background:var(--a)}
+.ib2{width:36px;height:36px;border-radius:18px;border:1px solid #E2E3E8;background:#FFFFFF;color:#3D414B;display:inline-flex;align-items:center;justify-content:center;flex:none;cursor:pointer}
+.ib2.on{background:#0B0C10;border-color:#0B0C10;color:#FFFFFF}
+.srch2{display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;border:1px solid #E2E3E8;background:#FFFFFF;border-radius:999px;color:#8A8F9A}
+.srch2 input{border:0;outline:0;font:inherit;flex:1;min-width:0;background:transparent;color:#0B0C10}
+.tbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.tbar .r{display:flex;gap:8px;align-items:center}
+.vt{display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:#FFFFFF;border:1px solid #E2E3E8}
+.vt a{width:32px;height:28px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;color:#6F747E}
+.vt a.on{background:#0B0C10;color:#FFFFFF}
+.wal{display:inline-flex;align-items:center;gap:10px;height:36px;padding:0 6px 0 6px;border-radius:999px;background:#FFFFFF;border:1px solid #E2E3E8;font-size:13px}
+.wal .wi{width:26px;height:26px;border-radius:13px;background:#0B0C10;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.wal b{font-weight:600}
+.wal a{height:26px;padding:0 10px;border-radius:13px;background:#EEF3FF;color:#1F4FD6;font-weight:500;display:inline-flex;align-items:center;font-size:12.5px}
+.mnu{position:absolute;right:0;top:44px;width:230px;background:#FFFFFF;border-radius:16px;box-shadow:0 24px 60px -18px rgba(11,12,16,.35),0 0 0 1px rgba(11,12,16,.06);padding:6px;z-index:5}
+.mnu a{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:10px;color:#0B0C10;font-size:13.5px}
+.mnu a:first-child{background:#F3F4F7}
+.mnu a span{margin-left:auto;font-size:12px;color:#8A8F9A}
+.mnu hr{border:0;height:1px;background:#EFEFF3;margin:4px 6px}
+.seo{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:13px}
+.seo i{width:26px;height:26px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*1%),#ECEEF2 0);-webkit-mask:radial-gradient(circle,transparent 56%,#000 58%);mask:radial-gradient(circle,transparent 56%,#000 58%)}
+.seo small{font-size:11.5px;font-weight:500;color:#6F747E}
+.seg{background:#DFE1E7}
+.chn span{background:#F1F2F5!important;color:#0B0C10!important;width:24px!important;height:24px!important;border-radius:7px!important}
+.side{flex:0 0 240px!important;width:240px;max-width:240px;box-sizing:border-box}
+.ai-edge{background:linear-gradient(90deg,#F1F6FF,#FFFFFF 70%)!important}.ai-edge::before{background:linear-gradient(115deg,#BFD3FF,#2563EB 60%,#93B4F8)!important}
+.z{position:relative}
+.k4c{background:#FFFFFF!important}
+.k4c[style*="#D92D20"]{background:linear-gradient(180deg,#FFF4F3 0%,#FFFFFF 64%)!important;border-color:#F6DCDA}
+.k4c[style*="#F59E0B"]{background:linear-gradient(180deg,#FFF8EC 0%,#FFFFFF 64%)!important;border-color:#F4E6CC}
+.k4c[style*="#0B0C10"] .mb i{opacity:.14}.k4c[style*="#0B0C10"] .mb i:last-child,.k4c[style*="#0B0C10"] .mb i:nth-last-child(2){opacity:.85}
+.k4c[style*="#0B0C10"] .dm2{opacity:.5}
+.k4c.f{background:radial-gradient(120% 120% at 100% 0%,#60A5FA 0%,#1D4ED8 38%,#0B1A4F 78%,#070E2B 100%)!important;border-color:transparent;--a:#FFFFFF!important;color:#FFFFFF}
+.k4c.f .l,.k4c.f .s,.k4c.f .v,.k4c.f .s *{color:#FFFFFF!important}.k4c.f .l,.k4c.f .s{opacity:.82}
+.k4c.f .l i{background:#FFFFFF}
+.k4c.f .mb i{background:#FFFFFF;opacity:.3}.k4c.f .mb i:last-child,.k4c.f .mb i:nth-last-child(2){opacity:1}
+.k4c.f .sg2 i{background:rgba(255,255,255,.22)}.k4c.f .sg2 i.f{background:#FFFFFF}
+.k4c.f .rg{background:conic-gradient(#FFFFFF calc(var(--p)*1%),rgba(255,255,255,.2) 0)}
+.k4c.f .dm2{background:radial-gradient(circle,#FFFFFF 1.8px,transparent 2.2px) 0 0/7px 7px;opacity:.85}
+.k4c.f::after{content:"";position:absolute;width:220px;height:220px;right:-70px;top:-90px;border-radius:50%;background:radial-gradient(circle,rgba(147,197,253,.45),rgba(59,130,246,0) 65%);animation:aib6 10s ease-in-out infinite alternate;pointer-events:none}
+.zbar{position:absolute;left:calc(240px + (100% - 240px) / 2);bottom:26px;transform:translateX(-50%);width:600px;max-width:calc(100% - 300px);display:flex;align-items:center;gap:12px;height:54px;padding:0 8px 0 12px;border-radius:27px;background:#FFFFFF;border:1px solid #E1E4EC;box-shadow:0 22px 50px -18px rgba(11,26,79,.35),0 0 0 6px rgba(255,255,255,.55);z-index:40}
+.zbar .orb-s{width:30px;height:30px}
+.zbar .ph{flex:1;color:#8A8F9A;font-size:14px}
+.zbar .ch{height:30px;padding:0 12px;border-radius:15px;background:#F3F5FA;color:#1F2430;font-size:12.5px;display:inline-flex;align-items:center;white-space:nowrap}
+.zbar .kbd2{background:#F1F2F5;color:#6F747E}
+.av-n{background:#E8EAEF!important;color:#1F2430!important}
+.ch3 span{background:#F1F2F5!important;color:#1F2430!important}
+.ch3 span.off,.ch3 span[class$="x"]{opacity:.35}
+.z main{padding-bottom:120px!important}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:#DFE1E7}
+.seg a{height:32px;padding:0 14px;border-radius:999px;display:inline-flex;align-items:center;gap:6px;font-weight:500;color:#5F646E;font-size:13px}
+.seg a.on{background:#FFFFFF;color:#111318;box-shadow:0 1px 2px rgba(17,19,24,.08)}
+.seg .c,.seg .n{color:#8A909B;font-size:12px}
+.k4{gap:0!important;border-radius:22px;overflow:hidden;position:relative;isolation:isolate;background:radial-gradient(140% 180% at 100% 0%,#60A5FA 0%,#1D4ED8 32%,#0B1A4F 72%,#070E2B 100%)}
+.k4::after{content:"";position:absolute;width:420px;height:420px;right:-120px;top:-220px;border-radius:50%;background:radial-gradient(circle,rgba(147,197,253,.4),rgba(59,130,246,0) 65%);animation:aib6 12s ease-in-out infinite alternate;pointer-events:none;z-index:-1}
+.k4 .k4c,.k4 .k4c.f{background:transparent!important;border:0!important;border-left:1px solid rgba(255,255,255,.12)!important;border-radius:0!important;--a:#FFFFFF!important;color:#FFFFFF}
+.k4 .k4c:first-child{border-left:0!important}
+.k4 .k4c::after{display:none}
+.k4 .k4c .l,.k4 .k4c .v{color:#FFFFFF!important}.k4 .k4c .l{opacity:.78}
+.k4 .k4c .s,.k4 .k4c .s *{color:rgba(255,255,255,.72)!important}
+.k4 .k4c .l i{background:#FFFFFF}
+.k4 .k4c .mb i{background:#FFFFFF;opacity:.28}.k4 .k4c .mb i:last-child,.k4 .k4c .mb i:nth-last-child(2){opacity:1}
+.k4 .k4c .sg2 i{background:rgba(255,255,255,.2)}.k4 .k4c .sg2 i.f{background:#FFFFFF}
+.k4 .k4c .rg{background:conic-gradient(#FFFFFF calc(var(--p)*1%),rgba(255,255,255,.18) 0)}
+.k4 .k4c .dm2{background:radial-gradient(circle,#FFFFFF 1.8px,transparent 2.2px) 0 0/7px 7px;opacity:.7}
+.k4 .k4c[style*="#D92D20"] .l i{background:#FCA5A5}.k4 .k4c[style*="#D92D20"] .s,.k4 .k4c[style*="#D92D20"] .s *{color:#FECACA!important}
+.k4 .k4c[style*="#D92D20"] .mb i,.k4 .k4c[style*="#D92D20"] .sg2 i.f{background:#FCA5A5}.k4 .k4c[style*="#D92D20"] .dm2{background:radial-gradient(circle,#FCA5A5 1.8px,transparent 2.2px) 0 0/7px 7px}.k4 .k4c[style*="#D92D20"] .rg{background:conic-gradient(#FCA5A5 calc(var(--p)*1%),rgba(255,255,255,.18) 0)}
+.k4 .k4c[style*="#F59E0B"] .l i{background:#FCD34D}.k4 .k4c[style*="#F59E0B"] .s,.k4 .k4c[style*="#F59E0B"] .s *{color:#FDE68A!important}
+.k4 .k4c[style*="#F59E0B"] .mb i,.k4 .k4c[style*="#F59E0B"] .sg2 i.f{background:#FCD34D}.k4 .k4c[style*="#F59E0B"] .dm2{background:radial-gradient(circle,#FCD34D 1.8px,transparent 2.2px) 0 0/7px 7px}.k4 .k4c[style*="#F59E0B"] .rg{background:conic-gradient(#FCD34D calc(var(--p)*1%),rgba(255,255,255,.18) 0)}
+.k4.lite{background:none;gap:12px!important;overflow:visible}.k4.lite::after{display:none}
+.k4.lite .k4c{background:#FFFFFF!important;border:1px solid #E3E4E9!important;border-radius:18px!important;color:#0B0C10;--a:#0B0C10!important}
+.k4.lite .k4c .l{color:#5F646E!important;opacity:1}.k4.lite .k4c .v{color:#0B0C10!important}.k4.lite .k4c .s,.k4.lite .k4c .s *{color:#6F747E!important}
+.k4.lite .k4c .l i,.k4.lite .k4c .mb i,.k4.lite .k4c .sg2 i.f{background:#0B0C10}.k4.lite .k4c .sg2 i{background:#E6E8EE}
+.k4.lite .k4c .rg{background:conic-gradient(#0B0C10 calc(var(--p)*1%),#ECEEF2 0)}.k4.lite .k4c .dm2{background:radial-gradient(circle,#0B0C10 1.8px,transparent 2.2px) 0 0/7px 7px;opacity:.45}
+.k4t{position:absolute;right:12px;top:12px;width:28px;height:28px;border-radius:14px;border:0;background:rgba(255,255,255,.14);color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;z-index:2;cursor:pointer}
+.k4.lite .k4t{display:none}
+.k4.col .k4c{min-height:0!important;padding:13px 18px!important;flex-direction:row;align-items:baseline;gap:10px}
+.k4.col .k4c .s,.k4.col .k4c .ch{display:none}
+.k4.col .k4c .v{font-size:18px;line-height:22px;margin:0}
+.k4.col .k4t{top:50%;margin-top:-14px}.k4.col .k4t svg{transform:rotate(180deg)}
+.ogh,.pgh,.th,.gh,.bth,.gh6,.bgh{font-size:12px!important;font-weight:500!important;color:#5F646E!important;background:#FAFAFB!important}
+.k4 .k4t + .k4c{border-left:0!important}
+.ico36{background:#F1F2F5!important;color:#0B0C10!important}.chn i{background:#9AA0AB!important}
+
+.z{background:#EBECF0}
+/* /r6 */
+</style>
+</helmet>
+<div class="z" style="display: flex; flex-wrap: wrap; min-height: 1560px;">
+<aside class="side">
+  <div style="display: flex; align-items: center; gap: 10px; padding: 2px 6px 14px 6px;"><span style="width: 30px; height: 30px; border-radius: 9px; background: #FFFFFF; color: #0B0C10; display: inline-flex; align-items: center; justify-content: center; font-weight: 700;">Z</span><span style="display: flex; flex-direction: column; line-height: 16px; flex: 1;"><b style="color: #FFFFFF; font-weight: 600;">Zcom</b><span style="font-size: 11.5px; color: #B9A6FF;">Platform admin</span></span></div>
+  <label class="sbox"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg><input aria-label="Search" placeholder="Search stores" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; color: #FFFFFF;"><span class="kbd2">⌘K</span></label>
+  <a class="nav on" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"></path></svg>Home</a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 9 5 4h14l2 5M3 9v11h18V9M3 9h18"></path></svg>Stores<span class="ct num">3</span></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg>Billing<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>Support<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 3v18h18"></path><path d="M7 15v3M12 10v8M17 6v12"></path></svg>Analytics<svg class="cx" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>System health</a>
+  <a class="nav" href="#"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"></path><circle cx="15" cy="6" r="2"></circle><circle cx="9" cy="12" r="2"></circle><circle cx="17" cy="18" r="2"></circle></svg>Settings</a>
+  <div style="flex: 1; min-height: 24px;"></div>
+  <div style="display: flex; align-items: center; gap: 10px; padding: 12px 8px 2px 8px; margin-top: 6px; border-top: 1px solid #1C1F26;"><span style="width: 30px; height: 30px; border-radius: 15px; background: #E8EAEF; color: #1F2430; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; flex: none;">ZS</span><span style="display: flex; flex-direction: column; line-height: 16px; min-width: 0; flex: 1;"><span style="font-weight: 500; color: #FFFFFF;">Zerror Studios</span><span style="font-size: 12px; color: #7B808B;">Super admin</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="#7B808B" aria-hidden="true"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></div>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; padding: 24px 32px 56px 32px;">
+<div style="max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
+  <section class="hero2 num">
+    <span class="b1"></span><span class="b2"></span><span class="b3"></span><span class="grid"></span>
+    <div style="position: relative; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; justify-content: space-between;">
+      <div style="min-width: 0;">
+        <div class="fa" style="font-size: 13px; font-weight: 500;">Thursday, 5 November</div>
+        <h1 style="margin: 4px 0 0 0; font-size: 30px; line-height: 38px; font-weight: 600; letter-spacing: -0.025em;">Good morning, Zerror Studios</h1>
+        <div class="mu" style="margin-top: 4px; font-size: 15px;">Here's how the platform is doing this month.</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span class="pillw">3 stores · 2 live</span>
+        <span class="pillw"><span style="width: 8px; height: 8px; border-radius: 4px; background: #16A34A; box-shadow: 0 0 0 3px rgba(22,163,74,.18);"></span>All systems normal</span>
+      </div>
+    </div>
+    <div style="position: relative; display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px;">
+      <div class="gt" style="flex: 1.4 1 220px;"><span class="l">Sales on Zcom (GMV)</span><b>₹15,42,156</b><span class="up">↑ 48.7% <span class="fa" style="font-weight: 400;">· 190 orders</span></span>
+        <svg width="100%" height="34" viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true" style="display: block; margin-top: 6px;"><path d="M0 26 C20 24 30 22 50 20 S80 14 100 18 S130 8 150 4 S175 20 185 32 L200 32" stroke="#6A4BE0" stroke-width="2" fill="none" vector-effect="non-scaling-stroke"></path></svg></div>
+      <div class="gt"><span class="l">Subscription revenue</span><b>₹0</b><span style="color: #A15C07; font-size: 12px; font-weight: 600;">1 invoice past due</span></div>
+      <div class="gt"><span class="l">Live stores</span><b>2 <span class="fa" style="font-size: 16px; font-weight: 500;">of 3</span></b><span class="fa" style="font-size: 12px;">1 still in setup</span></div>
+      <div class="gt"><span class="l">AI cost</span><b>$0.02</b><span class="fa" style="font-size: 12px;">6 questions asked</span></div>
+      <div class="gt"><span class="l">Uptime</span><b>99.98%</b><span class="up">Last 30 days</span></div>
+    </div>
+    <div style="position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; padding: 8px 8px 8px 14px; border-radius: 999px; background: rgba(255,255,255,.75); border: 1px solid rgba(157,123,255,.35);">
+      <span class="glyph" aria-hidden="true"></span>
+      <span style="flex: 1 1 380px; font-size: 13.5px;"><b style="font-weight: 600;">2 stores need you this week.</b> <span class="mu">Nahara's payment is past due, and Nimbbl stops taking payments on 30 Nov.</span></span>
+      <button type="button" class="btn sm">See both</button><button type="button" class="btn sm pri">Remind Nahara</button>
+    </div>
+  </section>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: stretch;">
+    <section class="card" style="flex: 1.3 1 520px; min-width: 0; overflow: hidden;">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 18px 6px 18px;"><h2 class="h2">Needs you</h2><span class="fa num" style="font-size: 12px;">4</span></div>
+      <div class="att"><span class="ti" style="background: #FDECEC; color: #B42318;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg></span><div style="flex: 1; min-width: 0;"><b style="font-weight: 600;">Nahara</b> <span class="mu">· Starter plan payment past due</span><div class="fa" style="font-size: 12px;">Store pauses on 15 Nov if unpaid</div></div><button type="button" class="btn sm">Send reminder</button></div>
+      <div class="att"><span class="ti" style="background: #FFF3E0; color: #B86E00;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg></span><div style="flex: 1; min-width: 0;"><b style="font-weight: 600;">Nahara</b> <span class="mu">· Health 48, critical</span><div class="fa" style="font-size: 12px;">No products live, no payments set up</div></div><a href="#" style="font-size: 13px; font-weight: 500;">Open store</a></div>
+      <div class="att"><span class="ti" style="background: #EAF0FF; color: #1F5EFF;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></span><div style="flex: 1; min-width: 0;"><b style="font-weight: 600;">deveshe-dreams</b> <span class="mu">· Setup stuck</span><div class="fa" style="font-size: 12px;">Health 60 · has not added payments or shipping</div></div><button type="button" class="btn sm">Book a call</button></div>
+      <div class="att"><span class="ti" style="background: #F1EDFF; color: #5B3FD9;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg></span><div style="flex: 1; min-width: 0;"><b style="font-weight: 600;">Nimbbl retires 30 Nov</b> <span class="mu">· 1 store affected</span><div class="fa" style="font-size: 12px;">Kesar &amp; Kin has 110 unpaid orders since 25 Oct</div></div><a href="#" style="font-size: 13px; font-weight: 500;">See plan</a></div>
+    </section>
+    <section class="card" style="flex: 1 1 360px; min-width: 0; padding: 16px 18px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;"><h2 class="h2">System</h2><span class="badge ok"><span class="dot"></span>Normal</span></div>
+      <div class="sys num"><span style="flex: 1;">Storefronts</span><span class="fa" style="font-size: 12px;">p95 412 ms</span><span class="badge ok">Up</span></div>
+      <div class="sys num"><span style="flex: 1;">Admin &amp; API</span><span class="fa" style="font-size: 12px;">0.02% errors</span><span class="badge ok">Up</span></div>
+      <div class="sys num"><span style="flex: 1;">Payments (Nimbbl)</span><span class="fa" style="font-size: 12px;">99 failed</span><span class="badge warn">Degraded</span></div>
+      <div class="sys num"><span style="flex: 1;">Shipping (Shiprocket)</span><span class="fa" style="font-size: 12px;">Synced 4 min ago</span><span class="badge ok">Up</span></div>
+      <div class="sys num"><span style="flex: 1;">Google Analytics sync</span><span class="fa" style="font-size: 12px;">Last 27 Oct</span><span class="badge warn">Stopped</span></div>
+      <div class="sys num"><span style="flex: 1;">Email &amp; SMS</span><span class="fa" style="font-size: 12px;">Queue empty</span><span class="badge ok">Up</span></div>
+    </section>
+  </div>
+
+  <section class="card num" style="overflow: hidden;">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 18px 12px 18px;"><h2 class="h2">Stores</h2><a href="#" style="font-size: 13px; font-weight: 500;">All stores</a></div>
+    <div><div>
+      <div class="sg sgh"><span>Store</span><span>Plan</span><span>Health</span><span style="text-align: right;">Sales · 30d</span><span>Billing</span><span></span></div>
+      <div class="sg sgr"><span style="display: flex; align-items: center; gap: 12px;"><span style="width: 36px; height: 36px; border-radius: 10px; background: #E8EAEF; color: #1F2430; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px;">KK</span><span><b style="font-weight: 500;">Kesar &amp; Kin</b><span class="fa" style="display: block; font-size: 12px;">kesarandkin.example · Jaipur</span></span></span><span>Growth</span><span style="display: flex; align-items: center; gap: 8px;"><svg class="ring" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15" fill="none" stroke="#E8F6EE" stroke-width="4"></circle><circle cx="18" cy="18" r="15" fill="none" stroke="#16A34A" stroke-width="4" stroke-dasharray="88.6 94.2" stroke-linecap="round" transform="rotate(-90 18 18)"></circle></svg><b style="font-weight: 600;">94</b></span><span style="text-align: right; font-weight: 600;">₹15,42,156</span><span><span class="badge info">Complimentary</span></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A909B" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></div>
+      <div class="sg sgr"><span style="display: flex; align-items: center; gap: 12px;"><span style="width: 36px; height: 36px; border-radius: 10px; background: #E8EAEF; color: #1F2430; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px;">DD</span><span><b style="font-weight: 500;">deveshe-dreams</b><span class="fa" style="display: block; font-size: 12px;">In setup · joined Oct</span></span></span><span>Starter</span><span style="display: flex; align-items: center; gap: 8px;"><svg class="ring" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15" fill="none" stroke="#FFF3E0" stroke-width="4"></circle><circle cx="18" cy="18" r="15" fill="none" stroke="#F59E0B" stroke-width="4" stroke-dasharray="56.5 94.2" stroke-linecap="round" transform="rotate(-90 18 18)"></circle></svg><b style="font-weight: 600;">60</b></span><span class="fa" style="text-align: right;">No sales yet</span><span><span class="badge neu">Trial</span></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A909B" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></div>
+      <div class="sg sgr" style="border-bottom: 0;"><span style="display: flex; align-items: center; gap: 12px;"><span style="width: 36px; height: 36px; border-radius: 10px; background: #E8EAEF; color: #1F2430; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px;">NA</span><span><b style="font-weight: 500;">Nahara</b><span class="fa" style="display: block; font-size: 12px;">Live · no products yet</span></span></span><span>Starter</span><span style="display: flex; align-items: center; gap: 8px;"><svg class="ring" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15" fill="none" stroke="#FDECEC" stroke-width="4"></circle><circle cx="18" cy="18" r="15" fill="none" stroke="#D92D20" stroke-width="4" stroke-dasharray="45.2 94.2" stroke-linecap="round" transform="rotate(-90 18 18)"></circle></svg><b style="font-weight: 600;">48</b></span><span class="fa" style="text-align: right;">No sales yet</span><span><span class="badge crit">Past due · 15 Nov</span></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A909B" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></div>
+    </div></div>
+  </section>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: stretch;">
+    <section class="card num" style="flex: 2 1 560px; min-width: 0; padding: 16px 18px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;"><h2 class="h2">Sales across Zcom</h2><span class="fa" style="font-size: 12px;">Last 30 days</span></div>
+      <svg width="100%" height="190" viewBox="0 0 700 190" preserveAspectRatio="none" role="img" aria-label="Platform sales over 30 days, peaking 23 October and stopping after 25 October" style="display: block; margin-top: 12px;">
+        <defs><linearGradient id="sa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7B5CFF" stop-opacity=".2"></stop><stop offset="1" stop-color="#7B5CFF" stop-opacity="0"></stop></linearGradient></defs>
+        <path d="M0 47H700M0 94H700M0 141H700" stroke="#F0F0F3" fill="none"></path>
+        <path d="M0 136 C40 126 70 120 110 116 S170 104 200 112 S250 92 280 100 S330 140 350 160 S390 106 410 108 S440 140 460 122 S500 66 520 50 S550 92 570 118 S585 184 600 186 L700 186 L700 190 L0 190 Z" fill="url(#sa)"></path>
+        <path d="M0 136 C40 126 70 120 110 116 S170 104 200 112 S250 92 280 100 S330 140 350 160 S390 106 410 108 S440 140 460 122 S500 66 520 50 S550 92 570 118 S585 184 600 186 L700 186" stroke="#6A4BE0" stroke-width="2.5" fill="none" vector-effect="non-scaling-stroke"></path>
+      </svg>
+      <div class="fa" style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px;"><span>6 Oct</span><span>20 Oct</span><span>4 Nov</span></div>
+    </section>
+    <section class="card" style="flex: 1 1 340px; min-width: 0; padding: 16px 18px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;"><h2 class="h2">Recent activity</h2><a href="#" style="font-size: 13px; font-weight: 500;">All</a></div>
+      <div class="ac"><span class="ai" style="background: #EAF0FF; color: #1F5EFF;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="8" r="4"></circle><path d="M2 21v-1a6 6 0 0 1 12 0v1M19 8v6M16 11h6"></path></svg></span><span style="flex: 1; min-width: 0; font-size: 13px;">Invited <b style="font-weight: 500;">Dev Agarwal</b> as Viewer<br><span class="st"><i style="background: linear-gradient(135deg,#F59E0B,#E5487A);">KK</i>Kesar &amp; Kin</span></span><span class="fa num" style="font-size: 12px;">10:42</span></div>
+      <div class="ac"><span class="ai" style="background: #FDECEC; color: #B42318;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg></span><span style="flex: 1; min-width: 0; font-size: 13px;">Card declined for the Starter plan<br><span class="st"><i style="background: linear-gradient(135deg,#7B5CFF,#E5487A);">NA</i>Nahara</span></span><span class="fa num" style="font-size: 12px;">Yesterday</span></div>
+      <div class="ac"><span class="ai" style="background: #E8F6EE; color: #18794E;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg></span><span style="flex: 1; min-width: 0; font-size: 13px;">Added a logo and 2 pages<br><span class="st"><i style="background: linear-gradient(135deg,#0F9F8F,#1F5EFF);">DD</i>deveshe-dreams</span></span><span class="fa num" style="font-size: 12px;">2 Nov</span></div>
+      <div class="ac"><span class="ai" style="background: #FFF3E0; color: #B86E00;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 3v18h18"></path><path d="M7 15v3M12 10v8M17 6v12"></path></svg></span><span style="flex: 1; min-width: 0; font-size: 13px;">Google Analytics stopped syncing<br><span class="st"><i style="background: linear-gradient(135deg,#F59E0B,#E5487A);">KK</i>Kesar &amp; Kin</span></span><span class="fa num" style="font-size: 12px;">27 Oct</span></div>
+    </section>
+  </div>
+</div>
+</main>
+<div class="zbar" role="search" aria-label="Zcom AI"><span class="orb-s" aria-hidden="true"></span><span class="ph">Ask Zcom AI about any store…</span><span class="ch">Who is at risk this week?</span><span class="kbd2">⌘J</span></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

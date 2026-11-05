@@ -53,11 +53,11 @@ const MODE_TONES = { OFF: "neutral", LOG: "info", ENFORCE: "success" } as const;
 
 /** Fixed 466 → Plan 218px in the 684px column (04 S-07d change 3). */
 const CUSTOM_COLUMNS: DataTableColumn[] = [
-  { key: "plan", label: "Plan" },
-  { key: "store", label: "Store", width: 150 },
-  { key: "version", label: "Version", width: 70 },
-  { key: "monthly", label: "Monthly", width: 110 },
-  { key: "stores", label: "Stores", width: 80 },
+  { key: "plan", label: "Plan", mobile: "primary" },
+  { key: "store", label: "Store", width: 150, mobile: "title" },
+  { key: "version", label: "Version", width: 70, hideWhen: "narrow", mobile: "hide" },
+  { key: "monthly", label: "Monthly", width: 110, mobile: "value" },
+  { key: "stores", label: "Stores", width: 80, hideWhen: "narrow", mobile: "hide" },
 ];
 
 export function PlansSettings() {

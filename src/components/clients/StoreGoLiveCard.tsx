@@ -53,6 +53,8 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconRocket,
   Skeleton,
   Textarea,
   Tooltip,
@@ -395,7 +397,9 @@ function MarkLiveDialog({ isOpen, onClose, client, checks, onRecheck }: MarkLive
   return (
     <Modal isOpen={isOpen} onClose={close} width="md">
       <ModalContent>
-        <ModalHeader>Mark {client.storeName} live</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={<IconRocket aria-hidden />}>Mark {client.storeName} live</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           <div className="flex flex-col gap-3">
             <p className="text-body text-fg-muted">

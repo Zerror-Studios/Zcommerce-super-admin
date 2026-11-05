@@ -28,10 +28,10 @@ export function useStoreStuckPayments(tenantId: string, skip = false) {
 
 const columns: DataTableColumn[] = [
   { key: "payment", label: "Payment", mobile: "primary" },
-  { key: "order", label: "Order", width: 110 },
-  { key: "provider", label: "Provider", width: 110 },
-  { key: "amount", label: "Amount", width: 100 },
-  { key: "opened", label: "Opened", width: 150 },
+  { key: "order", label: "Order", width: 110, hideWhen: "narrow", mobile: "title" },
+  { key: "provider", label: "Provider", width: 110, mobile: "title" },
+  { key: "amount", label: "Amount", width: 100, mobile: "value" },
+  { key: "opened", label: "Opened", width: 150, mobile: "meta" },
 ];
 
 export function StoreStuckPayments({ tenantId }: { tenantId: string }) {

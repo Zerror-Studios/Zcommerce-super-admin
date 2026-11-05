@@ -11,6 +11,7 @@ export type { BadgeProps } from "./Badge";
 export { IconTile, sectionClass } from "./IconTile";
 export type { IconTileProps, SectionColor } from "./IconTile";
 export { Button, ButtonLink } from "./Button";
+export { ButtonShortLabelContext } from "./short-label";
 export type { ButtonLinkProps, ButtonProps, ButtonSize, ButtonVariant } from "./Button";
 export { AttentionList } from "./AttentionList";
 export type { AttentionItem, AttentionListProps, AttentionUrgency } from "./AttentionList";
@@ -57,12 +58,14 @@ export { Select } from "./Select";
 export type { SelectProps } from "./Select";
 export { Skeleton } from "./Skeleton";
 export type { SkeletonProps } from "./Skeleton";
+export { RouteProgress, RouteSkeleton } from "./RouteSkeleton";
+export type { RouteSkeletonProps } from "./RouteSkeleton";
 export { Spinner } from "./Spinner";
 export type { SpinnerProps } from "./Spinner";
 export { Switch } from "./Switch";
 export type { SwitchProps } from "./Switch";
 export { SegmentedSwitch, TabLabel, Tabs } from "./Tabs";
-export type { SegmentedItem, SegmentedSize, SegmentedSwitchProps, TabsProps } from "./Tabs";
+export type { SegmentedItem, SegmentedSize, SegmentedSwitchProps, SegmentedVariant, TabsProps, TabsVariant } from "./Tabs";
 export { Textarea } from "./Textarea";
 export type { TextareaProps } from "./Textarea";
 export { Tooltip } from "./Tooltip";
@@ -81,7 +84,19 @@ export { KpiStrip, StatCard } from "./StatCard";
 export type { KpiStripProps, StatCardProps } from "./StatCard";
 export { StatusChip } from "./StatusChip";
 export type { StatusChipProps } from "./StatusChip";
-export { apexBaseOptions, areaGradientStops, categoryColor, chartColors, planColor, planColors, recharts } from "./chart-theme";
+export {
+  PHONE_CHART_POINTS,
+  apexBaseOptions,
+  areaGradientStops,
+  categoryColor,
+  chartColors,
+  isEndTick,
+  planColor,
+  planColors,
+  pointsForViewport,
+  recharts,
+  rechartsEndTicks,
+} from "./chart-theme";
 export { formatCount, formatDelta, formatMoney, formatPercent } from "./money";
 export { formatDate, formatDateTime, formatRange, formatRelative } from "./format-date";
 export type { DateInput } from "./format-date";
@@ -137,10 +152,35 @@ export { ColorPicker } from "./ColorPicker";
 export type { SettingsMenuAction, SettingsMenuGroup, SettingsMenuItem, SettingsSearchEntry, SettingsShellProps } from "./SettingsShell";
 export type { PaneGroup, PaneHeaderProps, PaneItem, PaneListProps, TwoPaneCardProps } from "./TwoPane";
 export { CellText, DataTable, TableSkeletonRows } from "./DataTable";
-export type { DataTableColumn, DataTableProps } from "./DataTable";
+export type { DataTableColumn, DataTableProps, DataTableRowTone } from "./DataTable";
 export { DEFAULT_PAGE_SIZE, PAGE_SIZES, TablePagination } from "./TablePagination";
 export type { TablePaginationProps } from "./TablePagination";
 export { usePersistentColumns, useTableUrlState } from "./table-state";
 export type { SortDirection, TableSort, TableUrlOptions, TableUrlState } from "./table-state";
 export { Avatar, CoverTag, ImageControl, ViewToggle, useViewMode } from "./Media";
 export type { AvatarProps, ImageControlProps, ViewMode } from "./Media";
+// Design v2 (docs/design-v2/README.md §3.4, §4).
+export { AiCard, AiLine, Orb } from "./Orb";
+export type { AiCardProps, AiLineProps, OrbProps, OrbSize, OrbState } from "./Orb";
+export { SummaryPanel } from "./SummaryPanel";
+export type { SummaryCell, SummaryChart, SummaryPanelProps, SummaryTone } from "./SummaryPanel";
+export { RowChevron, rowControlProps, SortButton, TableToolbar, ThumbWithCount, ViewSwitch } from "./TableToolbar";
+export type { RowChevronProps, SortButtonProps, SortOption, TableToolbarProps, ThumbWithCountProps, ViewSwitchProps } from "./TableToolbar";
+export { SeoScore, VIDEO_LOOKS, VideoThumb, WALLET_CRITICAL_BALANCE, WalletCapsule, seoBand, videoLookAt, walletHealth } from "./V2Display";
+export type { SeoBand, SeoScoreProps, VideoLook, VideoThumbProps, WalletCapsuleProps, WalletHealth } from "./V2Display";
+export { PopupTitle } from "./Modal";
+export type { PopupTitleProps } from "./Modal";
+export type { IconTileTone } from "./IconTile";
+export { HomeHero } from "./HomeHero";
+export type { HomeHeroChip, HomeHeroPeriod, HomeHeroProps, HomeHeroTrend } from "./HomeHero";
+// Responsive bands (docs/design-v2/README.md §10).
+export {
+  BELOW_DESKTOP_QUERY,
+  BELOW_LAPTOP_QUERY,
+  NO_HOVER_QUERY,
+  PHONE_QUERY,
+  useIsPhone,
+  useMediaQuery,
+  useViewportBand,
+} from "./use-media";
+export type { ViewportBand } from "./use-media";

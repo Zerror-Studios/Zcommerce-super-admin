@@ -1,12 +1,13 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
- * Ask bar + assistant panel (docs/design/02-components.md §16 items 3–4, ref 01/04). Render only when the `ai`
- * flag is on. The app supplies `onAsk`; until a backend exists it returns sample answers marked as such.
+ * Zcom AI bar (docs/design-v2/README.md §3.3) + the LEGACY right-drawer assistant panel (the apps now render their
+ * own panels inside the shared AiSheet). Render only when the `ai` flag is on. The app supplies `onAsk`; until a backend exists it returns sample answers marked as such.
  */
 import { DrawerBody, DrawerContent, DrawerFooter, DrawerHeader } from "@heroui/react";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { AiFeedback, AiThinking, Sparkle } from "../ui/Ai";
+import { AiFeedback, AiThinking } from "../ui/Ai";
+import { Orb } from "../ui/Orb";
 import { Button } from "../ui/Button";
 import { cx } from "../ui/cx";
 import { Drawer } from "../ui/Drawer";
@@ -37,13 +38,24 @@ const MOD_KEY = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navig
 
 // ─── Ask bar ─────────────────────────────────────────────────────────────────
 
+export interface AskBarProps {
+  /** "Ask Zcom AI anything…" (store) / "Ask Zcom AI about any store…" (console). */
+  placeholder?: string;
+  /** True while the user scrolls down: the bar slides away. */
+  hidden: boolean;
+  /** Opens the sheet; with a question, asks it straight away. */
+  onOpen: (question?: string) => void;
+  /** One suggestion chip for the current page. */
+  suggestion?: string;
+}
+
 /**
- * AI ask bar (01 §7.23, 02 §6, `.zc-askbar`): a floating 48px capsule at the bottom centre of `main`, max 560px,
- * white with a 1px AI-gradient ring at rest (1.5px and the AI tint while focused) · sparkle · input · ⌘J chip ·
- * a 36px solid-dark circle send button. Hides on scroll down (the shell passes `hidden`) and while a dialog,
- * drawer or the save bar is open.
+ * The Zcom AI bar (v2 §3.3, `.zc-askbar`): the ONLY AI entry point. A white 54px pill, 600px max, centred at the
+ * bottom of the content area: the orb, the input, one suggestion chip for the page and the ⌘J hint. Enter (or the
+ * chip) opens the sheet with that question; an empty Enter opens it to "How can I help today?". Hides on scroll
+ * down (the shell passes `hidden`) and while a dialog, drawer or the save bar is open.
  */
-export function AskBar({ placeholder, hidden, onOpen }: { placeholder: string; hidden: boolean; onOpen: (question?: string) => void }) {
+export function AskBar({ placeholder = "Ask Zcom AI anything…", hidden, onOpen, suggestion }: AskBarProps) {
   const [value, setValue] = useState("");
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -53,25 +65,35 @@ export function AskBar({ placeholder, hidden, onOpen }: { placeholder: string; h
   return (
     <form
       onSubmit={submit}
-      aria-label="Ask the assistant"
+      aria-label="Ask Zcom AI"
       className={cx(
         "zc-askbar pointer-events-auto transition-[opacity,transform] duration-base ease-standard",
         hidden ? "pointer-events-none translate-y-4 opacity-0" : "translate-y-0 opacity-100",
       )}
     >
-      <Sparkle className="size-4 shrink-0" />
+      <Orb size="bar" />
       <input
         value={value}
         onChange={(event) => setValue(event.target.value)}
+        onFocus={(event) => {
+          // Clicking the bar opens the sheet; the sheet's own input takes over (v2: the bar becomes the input).
+          if (!value) {
+            event.currentTarget.blur();
+            onOpen();
+          }
+        }}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="h-full min-w-0 flex-1 bg-transparent text-body text-fg outline-hidden placeholder:text-fg-placeholder max-md:text-base"
+        className="h-full min-w-0 flex-1 bg-transparent text-body text-fg outline-hidden placeholder:text-fg-faint max-md:text-base"
         style={{ boxShadow: "none" }}
       />
+      {suggestion ? (
+        <button type="button" className="zc-askbar__chip" onClick={() => onOpen(suggestion)} title={suggestion}>
+          {suggestion}
+        </button>
+      ) : null}
       <Kbd className="hidden sm:inline-flex">{MOD_KEY}J</Kbd>
-      <IconButton type="submit" aria-label="Ask" variant="solid-dark" showTooltip={false}>
-        <IconArrowRight aria-hidden className="-rotate-90" />
-      </IconButton>
+      <button type="submit" className="sr-only">Ask</button>
     </form>
   );
 }
@@ -213,7 +235,7 @@ export function AssistantPanel({
               rows={2}
               placeholder="Ask a follow-up…"
               aria-label="Ask a follow-up"
-              className="min-h-10 flex-1 resize-none bg-transparent px-1 text-body text-fg outline-hidden placeholder:text-fg-placeholder"
+              className="min-h-10 flex-1 resize-none bg-transparent px-1 text-body text-fg outline-hidden placeholder:text-fg-placeholder max-md:text-base"
               style={{ boxShadow: "none" }}
             />
             <button

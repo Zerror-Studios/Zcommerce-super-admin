@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Zcom AI · Full window</title>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1F5EFF;text-decoration:none}
+.z{font-family:'Geist',ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:20px;color:#111318;-webkit-font-smoothing:antialiased;background:#F6F7F9}
+.z *{box-sizing:border-box}
+.num{font-variant-numeric:tabular-nums}
+.mu{color:#5F646E}.fa{color:#6F747E}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;font:inherit;font-weight:500;color:#1F4FD6;background:#EEF3FF;border:1px solid #DCE5FF;white-space:nowrap;cursor:pointer}
+.btn.pri{background:#1F5EFF;border-color:#1F5EFF;color:#FFFFFF}
+.btn.sm{height:32px;padding:0 14px;font-size:13px}
+.ib{width:32px;height:32px;border-radius:50%;border:1px solid #E2E3E8;background:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;color:#4A4F59;flex:none;padding:0;cursor:pointer}
+.hs{display:block;padding:9px 12px;border-radius:12px;font-size:13px;color:#3A3F49;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hs.on{background:#FFFFFF;color:#111318;font-weight:500;box-shadow:0 1px 2px rgba(17,19,24,.06)}
+.lbl{font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#8A909B;padding:14px 12px 6px 12px}
+.me{align-self:flex-end;max-width:70%;padding:11px 16px;border-radius:20px 20px 6px 20px;background:#1F5EFF;color:#FFFFFF}
+.ai{align-self:flex-start;max-width:86%;padding:16px 18px;border-radius:20px 20px 20px 6px;background:#F4F5F8}
+.step{display:flex;gap:12px;padding:12px 0;border-top:1px solid #E9EAEE}
+.step:first-of-type{border-top:0}
+.step i{font-style:normal;width:24px;height:24px;border-radius:50%;background:#FFFFFF;border:1px solid #DCE5FF;color:#1D4ED8;font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.pk{display:flex;flex-direction:column;background:#FFFFFF;border-radius:14px;overflow:hidden;border:1px solid #EBEBEF}
+.pk img{width:100%;height:110px;object-fit:cover;display:block}
+.chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 13px;border-radius:999px;background:#FFFFFF;border:1px solid #E2E8F6;font-size:13px;font-weight:500;color:#232731;white-space:nowrap}
+@keyframes glr{to{background-position:0 -12px}}
+.glyph{width:18px;height:18px;border-radius:50%;flex:none;display:inline-block;background:repeating-linear-gradient(0deg,#3B82F6 0 2px,rgba(59,130,246,0) 2px 4px),radial-gradient(circle at 35% 30%,#BFD7FF,#2563EB 70%);background-size:100% 12px,100% 100%;-webkit-mask:radial-gradient(circle,#000 62%,transparent 64%);mask:radial-gradient(circle,#000 62%,transparent 64%);animation:glr 1.6s linear infinite;vertical-align:middle}
+.glyph.lg{width:28px;height:28px}
+.glyph.w{background:repeating-linear-gradient(0deg,#FFFFFF 0 2px,rgba(255,255,255,0) 2px 4px),radial-gradient(circle at 35% 30%,rgba(255,255,255,.9),rgba(191,215,255,.4) 70%);background-size:100% 12px,100% 100%}
+
+.cx{margin-left:auto}
+.sbox{display:flex;align-items:center;gap:10px;height:38px;padding:0 8px 0 10px;margin:0 2px 10px 2px;border-radius:11px;background:#15171D;border:1px solid #23262E;color:#8A8F9A}
+.kbd2{font-family:'Geist Mono',monospace;font-size:10.5px;padding:1px 6px;border-radius:6px;background:#20232B;color:#9AA0AB}
+.aib{display:flex;align-items:center;gap:10px;padding:10px;margin:0 2px 8px 2px;border-radius:14px;background:linear-gradient(135deg,#0E1A3D,#13245A);border:1px solid #22356F}
+.ai-card{border-radius:22px;padding:20px 22px;color:#FFFFFF;position:relative;overflow:hidden;background:radial-gradient(120% 120% at 100% 0%,#60A5FA 0%,#1D4ED8 38%,#0B1A4F 78%,#070E2B 100%)}
+.ai-card::before{content:"";position:absolute;inset:0;background:radial-gradient(60% 50% at 90% 10%,rgba(255,255,255,.35),transparent 60%)}
+.ai-card > *{position:relative}
+.ai-line{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:linear-gradient(90deg,#EEF4FF,#FFFFFF);border:1px solid #DCE7FF}
+.dotc{--c:#2563EB;background:radial-gradient(circle,var(--c) 2.4px,transparent 2.8px) 0 0/9px 9px}
+.hat{background:repeating-linear-gradient(135deg,currentColor 0 2px,transparent 2px 6px)}
+.seg10{display:flex;gap:3px}
+.seg10 i{width:7px;height:16px;border-radius:3px;background:#E4E7EE}
+.seg10 i.f{background:#1D4ED8}
+
+@keyframes gl6{to{transform:rotate(360deg)}}
+@keyframes gl6b{0%,100%{transform:scale(.86);opacity:.8}50%{transform:scale(1.06);opacity:1}}
+.glyph,.orb-s{width:18px;height:18px;border-radius:50%;flex:none;display:inline-block;vertical-align:middle;position:relative;overflow:hidden;background:#1E3A8A;-webkit-mask:none;mask:none;animation:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45),0 2px 8px -2px rgba(37,99,235,.55);isolation:isolate}
+.glyph::before,.orb-s::before{content:"";position:absolute;inset:-30%;border-radius:50%;background:radial-gradient(circle at 28% 30%,#7DD3FC 0,rgba(125,211,252,0) 42%),radial-gradient(circle at 74% 34%,#A5B4FC 0,rgba(165,180,252,0) 44%),radial-gradient(circle at 50% 82%,#3B82F6 0,rgba(59,130,246,0) 52%),radial-gradient(circle at 50% 50%,#1D4ED8,#172554 70%);animation:gl6 5s linear infinite}
+.glyph::after,.orb-s::after{content:"";position:absolute;inset:20%;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.95),rgba(255,255,255,0) 68%);animation:gl6b 2.8s ease-in-out infinite}
+.glyph.w{box-shadow:inset 0 0 0 1px rgba(255,255,255,.7),0 0 0 1.5px rgba(255,255,255,.55),0 0 12px rgba(191,219,254,.55)}
+.glyph.lg{width:28px;height:28px}
+.glyph.st::before{animation-duration:14s}.glyph.st::after{animation:none}
+.orb-s{width:30px;height:30px;box-shadow:inset 0 0 0 1px rgba(191,219,254,.5),0 0 16px rgba(59,130,246,.45)}
+@media (prefers-reduced-motion:reduce){.glyph::before,.glyph::after,.orb-s::before,.orb-s::after{animation:none}}
+@keyframes aib6{to{transform:translate(-70px,50px) scale(1.2)}}
+.ai-card::after{content:"";position:absolute;width:280px;height:280px;right:-90px;top:-120px;border-radius:50%;background:radial-gradient(circle,rgba(147,197,253,.5),rgba(59,130,246,0) 65%);animation:aib6 10s ease-in-out infinite alternate;z-index:0;pointer-events:none}
+.ai-card > *{position:relative;z-index:1}
+.ai-card::before{z-index:0}
+
+.k4{display:grid;gap:12px}
+.k4c{position:relative;overflow:hidden;border-radius:18px;padding:16px 18px 18px 18px;background:linear-gradient(180deg,color-mix(in srgb,var(--a) 9%,#FFFFFF) 0%,#FFFFFF 62%);border:1px solid #E3E4E9;display:flex;flex-direction:column;gap:2px;min-height:122px}
+.k4c .l{font-size:13px;font-weight:500;color:#5F646E;display:flex;align-items:center;gap:8px}
+.k4c .l i{width:8px;height:8px;border-radius:3px;background:var(--a)}
+.k4c .v{font-size:26px;line-height:32px;font-weight:600;letter-spacing:-0.02em;margin-top:6px;color:#0B0C10}
+.k4c .s{font-size:12px;color:#6F747E;max-width:58%}
+.k4c .ch{position:absolute;right:16px;bottom:16px;width:92px;height:40px}
+.mb{display:flex;align-items:flex-end;gap:3px}
+.mb i{flex:1;border-radius:2px;background:var(--a);opacity:.22}
+.mb i:last-child,.mb i:nth-last-child(2){opacity:1}
+.dm2{background:radial-gradient(circle,var(--a) 1.8px,transparent 2.2px) 0 0/7px 7px}
+.rg{width:44px!important;height:44px!important;border-radius:50%;background:conic-gradient(var(--a) calc(var(--p)*1%),#ECEEF2 0);-webkit-mask:radial-gradient(circle,transparent 54%,#000 56%);mask:radial-gradient(circle,transparent 54%,#000 56%)}
+.sg2{display:flex;gap:3px;align-items:flex-end;height:18px!important}
+.sg2 i{flex:1;height:16px;border-radius:3px;background:#E6E8EE}
+.sg2 i.f{background:var(--a)}
+.ib2{width:36px;height:36px;border-radius:18px;border:1px solid #E2E3E8;background:#FFFFFF;color:#3D414B;display:inline-flex;align-items:center;justify-content:center;flex:none;cursor:pointer}
+.ib2.on{background:#0B0C10;border-color:#0B0C10;color:#FFFFFF}
+.srch2{display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;border:1px solid #E2E3E8;background:#FFFFFF;border-radius:999px;color:#8A8F9A}
+.srch2 input{border:0;outline:0;font:inherit;flex:1;min-width:0;background:transparent;color:#0B0C10}
+.tbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.tbar .r{display:flex;gap:8px;align-items:center}
+.vt{display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:#FFFFFF;border:1px solid #E2E3E8}
+.vt a{width:32px;height:28px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;color:#6F747E}
+.vt a.on{background:#0B0C10;color:#FFFFFF}
+.wal{display:inline-flex;align-items:center;gap:10px;height:36px;padding:0 6px 0 6px;border-radius:999px;background:#FFFFFF;border:1px solid #E2E3E8;font-size:13px}
+.wal .wi{width:26px;height:26px;border-radius:13px;background:#0B0C10;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.wal b{font-weight:600}
+.wal a{height:26px;padding:0 10px;border-radius:13px;background:#EEF3FF;color:#1F4FD6;font-weight:500;display:inline-flex;align-items:center;font-size:12.5px}
+.mnu{position:absolute;right:0;top:44px;width:230px;background:#FFFFFF;border-radius:16px;box-shadow:0 24px 60px -18px rgba(11,12,16,.35),0 0 0 1px rgba(11,12,16,.06);padding:6px;z-index:5}
+.mnu a{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:10px;color:#0B0C10;font-size:13.5px}
+.mnu a:first-child{background:#F3F4F7}
+.mnu a span{margin-left:auto;font-size:12px;color:#8A8F9A}
+.mnu hr{border:0;height:1px;background:#EFEFF3;margin:4px 6px}
+.seo{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:13px}
+.seo i{width:26px;height:26px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*1%),#ECEEF2 0);-webkit-mask:radial-gradient(circle,transparent 56%,#000 58%);mask:radial-gradient(circle,transparent 56%,#000 58%)}
+.seo small{font-size:11.5px;font-weight:500;color:#6F747E}
+.seg{background:#DFE1E7}
+.chn span{background:#F1F2F5!important;color:#0B0C10!important;width:24px!important;height:24px!important;border-radius:7px!important}
+
+.ai-edge{background:linear-gradient(90deg,#F1F6FF,#FFFFFF 70%)!important}.ai-edge::before{background:linear-gradient(115deg,#BFD3FF,#2563EB 60%,#93B4F8)!important}
+
+.z{background:#EBECF0}
+</style>
+</helmet>
+<div class="z" style="position: relative; min-height: 1000px; overflow: hidden;">
+  <div style="position: absolute; inset: 0; display: flex;"><div style="width: 232px; background: #0E1015;"></div><div style="flex: 1;"></div></div>
+  <div style="position: absolute; inset: 0; background: rgba(14,16,21,.5); backdrop-filter: blur(6px);"></div>
+
+  <section role="dialog" aria-label="Zcom AI" class="num" style="position: relative; margin: 40px auto 0 auto; width: min(1180px, calc(100% - 48px)); height: 920px; display: flex; background: #FFFFFF; border-radius: 28px; overflow: hidden; box-shadow: 0 40px 100px rgba(14,16,21,.4);">
+    <div style="position: absolute; left: 0; right: 0; top: 0; height: 3px; background: radial-gradient(120% 400% at 100% 0%,#60A5FA 0%,#1D4ED8 38%,#0B1A4F 78%);"></div>
+
+    <nav aria-label="Chats" style="flex: 0 0 250px; background: #F6F7F9; border-right: 1px solid #EBEBEF; padding: 18px 12px; display: flex; flex-direction: column;">
+      <div style="display: flex; align-items: center; gap: 10px; padding: 0 6px 14px 6px;"><span style="width: 28px; height: 28px; border-radius: 50%; background: radial-gradient(120% 120% at 100% 0%,#60A5FA 0%,#1D4ED8 38%,#0B1A4F 78%,#070E2B 100%); display: inline-flex; align-items: center; justify-content: center;"><span class="glyph w" aria-hidden="true"></span></span><b style="font-weight: 600;">Zcom AI</b></div>
+      <button type="button" class="btn sm" style="justify-content: flex-start;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New chat</button>
+      <div class="lbl">Today</div>
+      <a href="#" class="hs on">Plan my December wedding sale</a>
+      <a href="#" class="hs">Why did sales stop after 25 Oct?</a>
+      <div class="lbl">This week</div>
+      <a href="#" class="hs">Who should I win back?</a>
+      <a href="#" class="hs">Rewrite 4 draft descriptions</a>
+      <a href="#" class="hs">Best day to send email</a>
+      <div class="lbl">Pinned to Home</div>
+      <a href="#" class="hs">Stock that runs out in 3 weeks</a>
+      <div style="flex: 1;"></div>
+      <div class="fa" style="font-size: 12px; padding: 0 8px;">1,994 of 2,000 questions left this month</div>
+    </nav>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+      <header style="display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid #F1F1F4;">
+        <b style="font-weight: 600; flex: 1;">Plan my December wedding sale</b>
+        <button type="button" class="btn sm">Share</button>
+        <button type="button" class="ib" aria-label="Shrink back to the island"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"></path></svg></button>
+        <button type="button" class="ib" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+      </header>
+
+      <div style="flex: 1; overflow: hidden; padding: 22px 28px; display: flex; flex-direction: column; gap: 14px;">
+        <div class="me">Plan a sale for December weddings. Keep it simple, I have ₹20,000 for ads.</div>
+        <div class="ai">
+          <div class="fa" style="font-size: 12px; margin-bottom: 8px;">Used your stock, last year's searches and 30 days of sales</div>
+          <div style="font-size: 15px; line-height: 23px;">Here's a 3-week plan. Lead with sarees and lehengas, which bring 43% of your sales, and keep the discount small because only 16.7% of orders need one.</div>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 14px 0;">
+            <div class="pk"><img src="assets/5428daca1a0f139519a023051936df57.jpg" alt="" style="background: #ECEFF7;"><div style="padding: 8px 10px; font-size: 12.5px;"><b style="font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Bandhani Saree</b><span class="fa">Hero · 4 left</span></div></div>
+            <div class="pk"><img src="assets/67e3d0a4209243d7f352122b7ee9ffb4.jpg" alt="" style="background: #E9F3F2;"><div style="padding: 8px 10px; font-size: 12.5px;"><b style="font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Gota Patti Saree</b><span class="fa">3 left</span></div></div>
+            <div class="pk"><img src="assets/8283b18297786da69ae39ce4b862326b.jpg" alt="" style="background: #FBEDF2;"><div style="padding: 8px 10px; font-size: 12.5px;"><b style="font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Pink Lehenga</b><span class="fa">6 left</span></div></div>
+            <div class="pk"><img src="assets/8c5dc27373a88cb1ef1e7d9d4aa2a63f.jpg" alt="" style="background: #EEF5EC;"><div style="padding: 8px 10px; font-size: 12.5px;"><b style="font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Green Lehenga</b><span class="fa">9 left</span></div></div>
+          </div>
+          <div style="background: #FFFFFF; border-radius: 14px; padding: 4px 14px;">
+            <div class="step"><i>1</i><div style="flex: 1;"><b style="font-weight: 500;">1 Dec · Email and WhatsApp</b><div class="mu" style="font-size: 13px;">"The Wedding Edit" to 100 subscribers and 42 past buyers</div></div><span style="font-size: 12px; font-weight: 600; color: #1D4ED8;">Email</span></div>
+            <div class="step"><i>2</i><div style="flex: 1;"><b style="font-weight: 500;">5–20 Dec · Instagram ads, ₹20,000</b><div class="mu" style="font-size: 13px;">Hyderabad, Pune and Ahmedabad, your top 3 cities</div></div><span style="font-size: 12px; font-weight: 600; color: #1D4ED8;">Ads</span></div>
+            <div class="step"><i>3</i><div style="flex: 1;"><b style="font-weight: 500;">Code WEDDING10 · 10% above ₹15,000</b><div class="mu" style="font-size: 13px;">Ends 22 Dec, one use per customer</div></div><span style="font-size: 12px; font-weight: 600; color: #1F5EFF;">Discount</span></div>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px;"><button type="button" class="btn sm pri">Create everything as drafts</button><button type="button" class="btn sm">Change the budget</button><span class="fa" style="font-size: 12px;">Expected sales: ₹4,80,000 to ₹6,20,000</span></div>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;"><span class="chip">Restock before 1 Dec?</span><span class="chip">Write the email</span><span class="chip">Skip the ads</span></div>
+      </div>
+
+      <footer style="padding: 14px 28px 20px 28px;">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 20px; border-radius: 999px; border: 1px solid #DCE5FF; box-shadow: 0 4px 16px rgba(31,94,255,.08);">
+          <input aria-label="Ask anything" placeholder="Ask anything, or tell Zcom what to do…" style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 15px; height: 40px;">
+          <button type="button" class="ib" aria-label="Attach" style="border-color: transparent;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="m21 12-8.6 8.6a5 5 0 0 1-7-7L14 5a3.3 3.3 0 0 1 4.7 4.7L10 18.4a1.7 1.7 0 0 1-2.4-2.4l8-8"></path></svg></button>
+          <button type="button" aria-label="Talk to Zcom" style="height: 40px; padding: 0 16px; border-radius: 999px; border: 0; background: linear-gradient(115deg,#1D4ED8,#3B82F6 60%,#60A5FA); color: #FFFFFF; display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3"></path></svg>Talk</button>
+          <button type="button" aria-label="Send" style="width: 40px; height: 40px; border-radius: 50%; border: 0; background: #1F5EFF; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+        </div>
+        <div class="fa" style="text-align: center; font-size: 11.5px; margin-top: 8px;">Zcom can make mistakes. It asks before changing anything.</div>
+      </footer>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

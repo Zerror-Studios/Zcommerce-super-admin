@@ -5,6 +5,7 @@ import { Button, type ButtonSize } from "./Button";
 import { Checkbox } from "./Checkbox";
 import { Drawer } from "./Drawer";
 import { OptionChip } from "./FilterChips";
+import { IconButton } from "./IconButton";
 import { IconFilters } from "./icons";
 import { Input } from "./Input";
 import { formatCount } from "./money";
@@ -13,7 +14,8 @@ import { Select } from "./Select";
 
 /**
  * The filter drawer (01 §7.15): every table's Filter button opens it from the right (400px, full width on phone).
- * Changes are staged and applied only with the primary "Show 24 results"; closing without it discards them.
+ * Changes are staged and applied only with the primary "Show 24 results" ("Show 1 result"); Cancel, closing or
+ * Escape discards them. With `totalCount` the header says how many match ("7 of 18 match", board 36).
  * Escape closes; focus is trapped and returns to the Filter button (HeroUI).
  *
  * Two ways to fill it:
@@ -58,21 +60,42 @@ export function countActiveFilters(values: FilterValues): number {
 }
 
 export interface FilterButtonProps {
-  /** Applied filters: the label reads "Filter · 2". */
+  /** Applied filter groups: a small count badge, and the button turns ink. */
   count?: number;
   onPress: () => void;
+  /** LEGACY: ignored. v2 §4.3: the filter is always the 36px icon button. */
   size?: ButtonSize;
 }
 
-/** The toolbar's Filter button (01 §7.14): secondary sm with the filter icon; "Filter · N" while filters are on. */
+/**
+ * The toolbar's filter button (v2 §4.3, §4.5): a 36px round icon button that opens the right-hand drawer. While
+ * filters are applied it is ink with a count badge; its name says how many ("Filter, 2 applied").
+ */
 export const FilterButton = forwardRef<HTMLButtonElement, FilterButtonProps>(function FilterButton(
-  { count = 0, onPress, size = "sm" },
+  { count = 0, onPress },
   ref,
 ) {
+  const active = count > 0;
   return (
-    <Button ref={ref} variant="secondary" size={size} startIcon={<IconFilters aria-hidden />} onPress={onPress}>
-      {count > 0 ? `Filter · ${formatCount(count)}` : "Filter"}
-    </Button>
+    <span className="relative inline-flex">
+      <IconButton
+        ref={ref}
+        variant="default"
+        aria-label={active ? `Filter, ${formatCount(count)} applied` : "Filter"}
+        className={active ? "zc-icon-btn--active" : undefined}
+        onPress={onPress}
+      >
+        <IconFilters aria-hidden />
+      </IconButton>
+      {active ? (
+        <span
+          aria-hidden
+          className="zc-count-badge"
+        >
+          {formatCount(count)}
+        </span>
+      ) : null}
+    </span>
   );
 });
 
@@ -87,6 +110,10 @@ export interface FilterDrawerProps {
   onClear?: () => void;
   /** Live result count for a draft (debounced 300ms). Without it the button reads "Show results". */
   countResults?: (draft: FilterValues) => number | Promise<number>;
+  /** Everything before filtering: the header line reads "7 of 18 match" while the live count is known. */
+  totalCount?: number;
+  /** Plural noun for the header line: "posts" → "7 of 18 posts match". */
+  noun?: string;
   /** LEGACY: the page's existing filter fields (they apply as they change). */
   children?: ReactNode;
   title?: string;
@@ -210,6 +237,8 @@ export function FilterDrawer({
   onApply,
   onClear,
   countResults,
+  totalCount,
+  noun,
   children,
   title = "Filters",
 }: FilterDrawerProps) {
@@ -244,6 +273,10 @@ export function FilterDrawer({
   }, [draftKey, isOpen, staged, countResults]);
 
   const showLabel = count == null ? "Show results" : `Show ${formatCount(count)} ${count === 1 ? "result" : "results"}`;
+  const matchLine =
+    staged && count != null && totalCount != null
+      ? `${formatCount(count)} of ${formatCount(totalCount)}${noun ? ` ${noun}` : ""} match`
+      : null;
 
   const apply = () => {
     if (staged) onApply?.(draft);
@@ -257,7 +290,16 @@ export function FilterDrawer({
   return (
     <Drawer isOpen={isOpen} onOpenChange={(open) => !open && onClose()} size="sm">
       <DrawerContent>
-        <DrawerHeader>{title}</DrawerHeader>
+        <DrawerHeader>
+          <div className="flex min-w-0 flex-col">
+            <span>{title}</span>
+            {totalCount != null && staged ? (
+              <span aria-live="polite" className="text-label font-normal text-fg-subtle num">
+                {matchLine ?? "\u00a0"}
+              </span>
+            ) : null}
+          </div>
+        </DrawerHeader>
         <DrawerBody>
           <div className="flex flex-col gap-6">
             {staged
@@ -282,9 +324,16 @@ export function FilterDrawer({
           ) : (
             <span />
           )}
-          <Button variant="primary" onPress={apply}>
-            {staged ? showLabel : "Show results"}
-          </Button>
+          <span className="flex items-center gap-2">
+            {staged ? (
+              <Button variant="secondary" onPress={onClose}>
+                Cancel
+              </Button>
+            ) : null}
+            <Button variant="primary" onPress={apply}>
+              {staged ? showLabel : "Show results"}
+            </Button>
+          </span>
         </DrawerFooter>
       </DrawerContent>
     </Drawer>

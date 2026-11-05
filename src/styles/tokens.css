@@ -1,31 +1,22 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
-/* Zcom design tokens v2.0 (Zcom-dashboard-handover/01-design-system.md, locked by Rohit 2026-10-30). v1 values
-   come from docs/design/tokens.css. They keep the --zc- prefix because the spec's bare names (--radius-sm,
-   --text-sm, --shadow-md, --font-sans) are Tailwind v4 theme namespaces; theme.css maps these into Tailwind
-   utilities. Never hard-code colours, sizes or radii elsewhere. */
+/* Zcom design tokens. Values follow docs/design-v2/README.md §2 (dashboard v2, 5 Nov 2026), which sits on top of
+   docs/design/ (v1.4) and the 30 Oct handover; where they differ, v2 wins. They keep the --zc- prefix because the
+   spec's bare names (--radius-sm, --text-sm, --shadow-md, --font-sans) are Tailwind v4 theme namespaces; theme.css
+   maps these into Tailwind utilities. Never hard-code colours, sizes or radii elsewhere. */
 
-/* Inter (v2 §4.1), self-hosted from @fontsource-variable/inter 5.3 (opsz files: weight 100-900 and optical-size
-   axes). Latin + Latin Extended only; latin-ext carries the ₹ sign. Geist Mono stays for codes and IDs (400). */
+/* Geist for the UI and Geist Mono for small uppercase labels, codes and timestamps (v2 §2.2). Self-hosted variable
+   fonts from the `geist` package 1.3.1 (weight 100-900; both carry the ₹ sign). SIL OFL: public/fonts/GEIST-LICENSE.txt. */
 @font-face {
-  font-family: "Inter Variable";
-  src: url("/fonts/inter-latin-opsz.woff2") format("woff2-variations"), url("/fonts/inter-latin-opsz.woff2") format("woff2");
+  font-family: "Geist";
+  src: url("/fonts/geist-variable.woff2") format("woff2-variations"), url("/fonts/geist-variable.woff2") format("woff2");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: "Inter Variable";
-  src: url("/fonts/inter-latin-ext-opsz.woff2") format("woff2-variations"), url("/fonts/inter-latin-ext-opsz.woff2") format("woff2");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: "Geist Mono";
-  src: url("/fonts/geist-mono-regular.woff2") format("woff2");
-  font-weight: 400;
+  src: url("/fonts/geist-mono-variable.woff2") format("woff2-variations"), url("/fonts/geist-mono-variable.woff2") format("woff2");
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
@@ -33,103 +24,143 @@
 @property --zc-ai-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 
 :root {
-  --zc-font-sans: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --zc-font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --zc-font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  /* ---------- v2 core palette (§2.1). Black, white and grey; blue for actions; one blue gradient for highlights
+     and AI; red, amber and green only for status. ---------- */
+  --zc-ink: #0B0C10;            /* text, sidebar, dark buttons, active tab, page-title icon tiles */
+  --zc-red: #D92D20;            /* failed, sold out, delete, overdue: only when something is wrong */
+  --zc-red-tint: #FDECEC;
+  --zc-red-on-dark: #FCA5A5;    /* attention tint on the summary panel (§4.2) */
+  --zc-amber: #F59E0B;          /* warnings: running low, needs a look soon */
+  --zc-amber-text: #A15C07;
+  --zc-amber-tint: #FFF4E0;
+  --zc-amber-on-dark: #FCD34D;
+  --zc-green: #16A34A;          /* paid, delivered, healthy */
+  --zc-green-tint: #E8F6EE;
+  --zc-green-on-dark: #86EFAC;
+  --zc-red-note-on-dark: #FECACA;
+  --zc-amber-note-on-dark: #FDE68A;
+  --zc-green-line: #BFE5CD;     /* wallet capsule edges */
+  --zc-amber-line: #F4DDB0;
+
   /* ---------- Surfaces ---------- */
-  --zc-bg: #E9ECEF;             /* spec --bg-canvas: page background behind cards (owner 2026-10-27: was #F6F7F9, darker so white cards stand out) */
+  --zc-bg: #EBECF0;             /* v2 --page: slightly darker, so white tables stand out */
   --zc-surface: #FFFFFF;        /* cards, tables, inputs, popovers */
-  --zc-surface-muted: #FAFAFB;  /* spec --bg-subtle: table header, row hover */
-  --zc-surface-sunken: #F2F3F5; /* spec --bg-muted: neutral badge, empty-state tile, skeleton */
-  /* added (owner 2026-10-27): table header row in a light blue with darker, bolder text (was surface-muted / fg-muted) */
-  --zc-table-head-bg: #EDF2FC;
-  --zc-table-head-fg: #2A3A5C;
+  --zc-surface-muted: #FAFAFB;  /* table header, row hover */
+  --zc-surface-sunken: #F2F3F5; /* neutral badge, empty-state tile, skeleton */
+  /* v2 §4.4: header #FAFAFB with 12px/500 grey text (the 27 Oct light-blue header is retired). */
+  --zc-table-head-bg: #FAFAFB;
+  --zc-table-head-fg: #5F646E;
 
   /* ---------- Text (all pass WCAG AA on white) ---------- */
-  --zc-fg: #111318;
-  --zc-fg-muted: #5F646E;       /* spec --text-secondary */
-  --zc-fg-subtle: #6F747E;      /* spec --text-tertiary: on white surfaces only */
-  --zc-fg-placeholder: #9599A2; /* input placeholders only */
+  --zc-fg: var(--zc-ink);
+  --zc-fg-muted: #5F646E;       /* labels */
+  --zc-fg-subtle: #6F747E;      /* secondary: on white surfaces only */
+  --zc-fg-faint: #8A8F9A;       /* faint: meta, hints, tab counts (not for body text) */
+  --zc-fg-placeholder: #8A8F9A; /* input placeholders only */
   --zc-fg-disabled: #B4B8C0;
 
   /* ---------- Borders ---------- */
-  --zc-border: #EBEBEF;         /* cards, section dividers */
-  --zc-border-strong: #E2E3E8;  /* inputs, secondary buttons */
+  --zc-border: #E3E4E9;         /* v2 --line: card and table borders */
+  --zc-border-strong: #E2E3E8;  /* inputs, secondary buttons, icon buttons */
   --zc-divider: #F1F1F4;        /* table row lines, list rows */
-  --zc-field-border: #E2E3E8;   /* was the light-blue search field border; now the input border */
+  --zc-field-border: #E2E3E8;   /* input border */
 
-  /* ---------- Brand / action (spec --accent) ---------- */
+  /* ---------- Brand / action (v2 --blue) ---------- */
   --zc-primary: #1F5EFF;
   --zc-primary-hover: #1A4FDB;
   --zc-primary-pressed: #1745C2;
   --zc-on-primary: #FFFFFF;
-  --zc-primary-text: #1747C7;   /* spec --accent-on-subtle */
-  --zc-primary-soft: #EEF3FF;   /* spec --accent-subtle: selected rows/states */
+  --zc-primary-text: #1F4FD6;   /* secondary button text, links on tints */
+  --zc-primary-soft: #EEF3FF;   /* secondary button fill, selected rows */
   --zc-primary-tint: #EEF3FF;
-  --zc-primary-soft-strong: #DCE6FF;
+  --zc-primary-soft-strong: #DCE5FF; /* secondary button border */
 
-  /* ---------- Status (fg on its own bg passes AA) ---------- */
-  --zc-danger: #B42318;         /* spec --critical-fg: text, outlines, filled confirm button */
+  /* ---------- Status. Text on a tint keeps the darker, AA-safe shade (v2's #D92D20 / #16A34A are 4.2:1 / 3.3:1
+     there); dots, fills, icons and charts use the v2 values above. ---------- */
+  --zc-danger: #B42318;         /* text, outlines, filled confirm button */
   --zc-danger-hover: #9A1E14;
   --zc-danger-text: #B42318;
-  --zc-danger-soft: #FDECEC;
+  --zc-danger-soft: var(--zc-red-tint);
   --zc-danger-border: #F3C7C3;
-  --zc-danger-dot: #D92D20;
+  --zc-danger-dot: var(--zc-red);
   --zc-success: #18794E;
-  --zc-success-soft: #EAF7EF;
-  --zc-warning: #A15C07;
-  --zc-warning-soft: #FFF4E5;
-  --zc-warning-dot: #E8890C;
-  --zc-info: #1747C7;
+  --zc-success-soft: var(--zc-green-tint);
+  --zc-success-dot: var(--zc-green);
+  --zc-warning: var(--zc-amber-text);
+  --zc-warning-soft: var(--zc-amber-tint);
+  --zc-warning-dot: var(--zc-amber);
+  --zc-info: #1F4FD6;
   --zc-info-soft: #EEF3FF;
   --zc-neutral-text: #5A5F69;
   --zc-neutral-soft: #F2F3F5;
 
-  /* ---------- Sidebar (dark rail) ---------- */
-  --zc-nav-bg: #0E1015;
-  --zc-nav-surface: #14171D;    /* search field */
+  /* ---------- Sidebar (240px, ink; v2 §3.1) ---------- */
+  --zc-nav-bg: var(--zc-ink);
+  --zc-nav-surface: #15171D;    /* search field */
   --zc-nav-border: #23262E;
   --zc-nav-divider: #1E2129;
-  --zc-nav-text: #A4A9B3;
+  --zc-nav-text: #A3A8B3;
   --zc-nav-text-strong: #FFFFFF;
-  --zc-nav-text-muted: #7C828E;
-  --zc-nav-icon: #7C828E;
-  --zc-nav-hover-bg: #181B22;
-  --zc-nav-active-bg: #1E2129;
-  --zc-nav-count-bg: #1F5EFF;   /* unread notification count pill */
-  /* added (owner 2026-10-26): an open section's sub-menu sits on a lighter panel; the selected item is darker */
-  --zc-nav-sub-bg: #1B1E26;
-  --zc-nav-sub-hover-bg: #14171D;
-  --zc-nav-sub-active-bg: #0B0D11;
+  --zc-nav-text-muted: #7B808B;
+  --zc-nav-icon: #7B808B;
+  --zc-nav-hover-bg: #17191F;
+  --zc-nav-active-bg: #20232B;
+  --zc-nav-count-bg: var(--zc-red); /* Notifications count is red (v2 §3.1) */
+  --zc-nav-store-badge: #23262E;    /* store switcher initials badge */
+  --zc-nav-kbd-bg: #20232B;
+  --zc-nav-kbd-fg: #9AA0AB;
+  /* An open section's sub-items; the selected one is darker. */
+  --zc-nav-sub-bg: #0B0C10;
+  --zc-nav-sub-hover-bg: #17191F;
+  --zc-nav-sub-active-bg: #17191F;
 
-  /* LEGACY: the top bar is removed in Phase 3 (shell). Until then it uses the sidebar colours. */
-  --zc-topbar: #0E1015;
+  /* LEGACY: the phone/tablet top bar (v2 §10 replaces it with the icon rail and phone top row in Phase 9). */
+  --zc-topbar: var(--zc-ink);
   --zc-topbar-fg: #FFFFFF;
-  --zc-topbar-fg-muted: #A4A9B3;
-  --zc-topbar-control: #14171D;
-  --zc-topbar-control-hover: #181B22;
-  --zc-topbar-badge: #1E2129;
-  --zc-topbar-badge-fg: #A4A9B3;
+  --zc-topbar-fg-muted: #A3A8B3;
+  --zc-topbar-control: #15171D;
+  --zc-topbar-control-hover: #17191F;
+  --zc-topbar-badge: #20232B;
+  --zc-topbar-badge-fg: #A3A8B3;
 
   --zc-focus: #1F5EFF;
   --zc-focus-ring: 0 0 0 3px rgba(31, 94, 255, 0.18);
-  --zc-overlay: rgba(17, 19, 24, 0.40);
-  --zc-media-scrim: rgba(17, 19, 24, 0.35);
+  --zc-overlay: rgba(11, 12, 16, 0.40);   /* plain scrim, no blur (v2 §4.6) */
+  --zc-overlay-ai: rgba(11, 12, 16, 0.28); /* page dim behind the Zcom AI half sheet (§3.3) */
+  --zc-media-scrim: rgba(11, 12, 16, 0.35);
   --zc-media-action: rgba(255, 255, 255, 0.30);
   --zc-scrollbar-thumb: rgba(95, 100, 110, 0.35);
 
-  /* ---------- AI spectrum: AI surfaces ONLY ---------- */
-  --zc-ai-1: #5B8CFF;
-  --zc-ai-2: #9D7BFF;
-  --zc-ai-3: #FF8FB8;
-  --zc-ai-4: #FFBE73;
-  --zc-ai-gradient: linear-gradient(115deg, var(--zc-ai-1), var(--zc-ai-2) 45%, var(--zc-ai-3) 78%, var(--zc-ai-4));
+  /* ---------- AI: one blue gradient (§2.1), the only gradient in the product. ---------- */
+  --zc-ai-gradient: radial-gradient(120% 120% at 100% 0%, #60A5FA 0%, #1D4ED8 38%, #0B1A4F 78%, #070E2B 100%);
+  --zc-ai-gradient-wide: radial-gradient(140% 180% at 100% 0%, #60A5FA 0%, #1D4ED8 32%, #0B1A4F 72%, #070E2B 100%); /* summary panel */
+  --zc-ai-light: radial-gradient(circle, rgba(147, 197, 253, 0.45), rgba(59, 130, 246, 0) 65%); /* the one slow drifting light */
+  --zc-ai-edge: linear-gradient(115deg, #BFD3FF, #2563EB 60%, #93B4F8); /* 1px edge of the AI suggestion banner */
+  --zc-ai-line-bg: linear-gradient(90deg, #EEF4FF, #FFFFFF);           /* insight line (§4.8) */
+  --zc-ai-line-border: #DCE7FF;
+  --zc-ai-divider: rgba(255, 255, 255, 0.12);                          /* summary panel cell dividers */
+  --zc-summary-toggle-pinned: rgba(29, 78, 216, 0.94);                 /* phone: the toggle pinned over the scrolling slim line */
+  /* Orb glyph layers (§3.4): deep blue base, soft blue / cyan / periwinkle light, white core. */
+  --zc-orb-base: #1E3A8A;
+  --zc-orb-cyan: #7DD3FC;
+  --zc-orb-periwinkle: #A5B4FC;
+  --zc-orb-blue: #3B82F6;
+  --zc-orb-deep: #1D4ED8;
+  --zc-orb-night: #172554;
+  /* Blue-only stops for the AI ring and "live" edge (were blue / violet / pink / orange). */
+  --zc-ai-1: #60A5FA;
+  --zc-ai-2: #1D4ED8;
+  --zc-ai-3: #7DD3FC;
+  --zc-ai-4: #A5B4FC;
   --zc-ai-conic: conic-gradient(from var(--zc-ai-angle), var(--zc-ai-1), var(--zc-ai-2), var(--zc-ai-3), var(--zc-ai-4), var(--zc-ai-1));
-  --zc-ai-tint: rgba(157, 123, 255, 0.07);
-  --zc-ai-tint-border: rgba(157, 123, 255, 0.35);
+  --zc-ai-tint: #F1F6FF;        /* light blue fill of AI banners and badges */
+  --zc-ai-tint-border: #DCE7FF;
 
-  /* ---------- Login (dark page, docs/design/02-components.md §17) ---------- */
-  --zc-auth-bg: #08090C;
+  /* ---------- Login (black, one question at a time; v2 §5) ---------- */
+  --zc-auth-bg: #000000;
   --zc-auth-card: #0C0D11;
   --zc-auth-field: #0F1115;
   --zc-auth-field-border: #262930;
@@ -139,8 +170,9 @@
   --zc-auth-focus-ring: 0 0 0 3px rgba(124, 155, 255, 0.22);
   --zc-auth-dot: rgba(255, 255, 255, 0.07);
   --zc-auth-error: #FF8A80; /* readable red on the dark card (8.1:1) */
+  --zc-auth-halo: radial-gradient(closest-side, rgba(59, 130, 246, 0.35), rgba(29, 78, 216, 0.12) 55%, rgba(29, 78, 216, 0) 100%);
 
-  /* ---------- Charts ---------- */
+  /* ---------- Charts: blue and navy for series, grey for comparison (v2 §6.11) ---------- */
   --zc-chart-1: #1F5EFF;        /* main series */
   --zc-chart-2: #9DB5FF;        /* projected / forecast (dashed outline) */
   --zc-chart-3: #B8BCC6;        /* previous period (dashed line) */
@@ -148,26 +180,32 @@
   --zc-chart-projected: #9DB5FF;
   --zc-chart-compare: #B8BCC6;
   --zc-chart-grid: #F0F0F3;
-  /* Categorical order (spec CHART_CATEGORICAL). Donuts only for <= 4 parts. */
+  --zc-chart-best: #1D4ED8;     /* the best day, solid */
+  --zc-chart-hatch: #93B4F8;    /* hatched bars */
+  --zc-chart-hatch-line: #C7D7FB;
+  --zc-chart-empty: #FECACA;    /* days with no sales */
+  /* Categorical order. Donuts only for <= 4 parts. */
   --zc-chart-cat-1: #1F5EFF;
-  --zc-chart-cat-2: #8B6CFF;
-  --zc-chart-cat-3: #14A3A3;
-  --zc-chart-cat-4: #E8890C;
-  --zc-chart-cat-5: #E5487A;
-  --zc-chart-cat-6: #6A6F79;
+  --zc-chart-cat-2: #0B1A4F;
+  --zc-chart-cat-3: #60A5FA;
+  --zc-chart-cat-4: #B8C9F5;
+  --zc-chart-cat-5: #6A6F79;
+  --zc-chart-cat-6: #C9CCD3;
 
-  /* ---------- Elevation (no shadows on cards) ---------- */
+  /* ---------- Elevation: cards have a border and no shadow; only floating things cast one (§2.3) ---------- */
   --zc-shadow-card: none;
-  --zc-shadow-sm: 0 1px 2px rgba(17, 19, 24, 0.06);
-  --zc-shadow-popover: 0 1px 2px rgba(17, 19, 24, 0.06), 0 8px 24px rgba(17, 19, 24, 0.08);
-  --zc-shadow-modal: 0 2px 4px rgba(17, 19, 24, 0.06), 0 24px 64px rgba(17, 19, 24, 0.16);
+  --zc-shadow-sm: 0 1px 2px rgba(11, 12, 16, 0.06);
+  --zc-shadow-float: 0 30px 70px -24px rgba(11, 12, 16, 0.35);
+  --zc-shadow-popover: 0 24px 60px -18px rgba(11, 12, 16, 0.35), 0 0 0 1px rgba(11, 12, 16, 0.06);
+  --zc-shadow-modal: var(--zc-shadow-float);
+  --zc-shadow-ask: 0 22px 50px -18px rgba(11, 26, 79, 0.35), 0 0 0 6px rgba(255, 255, 255, 0.55); /* Zcom AI bar */
 
   /* ---------- Sizes ---------- */
   --zc-control-h: 36px;
   --zc-control-h-sm: 32px;
   --zc-control-h-lg: 40px;
   --zc-table-head-h: 40px;
-  --zc-table-row-h: 52px; /* v2: was 56; fits 30 rows a page */
+  --zc-table-row-h: 60px;       /* v2 §4.4: rows 60-64px */
   --zc-table-toolbar-h: 52px;
   --zc-content-max: 1200px;
   --zc-content-max-wide: 1440px;
@@ -181,6 +219,13 @@
   --zc-dur-fast: 140ms;
   --zc-dur-base: 220ms;
   --zc-dur-slow: 320ms;
+  --zc-dur-popup: 160ms;        /* pop-ups fade in and rise 8px */
+  --zc-dur-sheet: 220ms;        /* the AI sheet rises */
+  --zc-dur-drift: 12s;          /* summary panel light */
+  --zc-dur-drift-card: 10s;     /* AI card light */
+  --zc-dur-orb: 5s;             /* orb colour layer, idle */
+  --zc-dur-orb-think: 1.1s;     /* orb colour layer, thinking */
+  --zc-dur-orb-breathe: 2.8s;   /* orb core */
   --zc-ease: cubic-bezier(0.2, 0, 0, 1);
   --zc-ease-enter: cubic-bezier(0, 0, 0.2, 1);
   --zc-ease-exit: cubic-bezier(0.4, 0, 1, 1);
@@ -194,11 +239,9 @@
   --zc-z-modal: 60;
   --zc-z-toast: 70;
 
-  /* ================= v2 (Zcom-dashboard-handover/tokens/zcom-tokens.css). New tokens; v1 values above stay. ================= */
-
-  /* ---------- Type scale (01 §4.2): size / line / weight / tracking. Phone overrides below. ---------- */
-  --zc-text-display-size: 40px;   --zc-text-display-line: 48px;   --zc-text-display-weight: 700;   --zc-text-display-tracking: -0.022em;  /* Home greeting only */
-  --zc-text-title-1-size: 24px;   --zc-text-title-1-line: 32px;   --zc-text-title-1-weight: 600;   --zc-text-title-1-tracking: -0.019em;  /* page title */
+  /* ---------- Type scale: size / line / weight / tracking. Phone overrides below. ---------- */
+  --zc-text-display-size: 46px;   --zc-text-display-line: 52px;   --zc-text-display-weight: 300;   --zc-text-display-tracking: -0.03em;   /* Home greeting: 300, the name in 600 */
+  --zc-text-title-1-size: 22px;   --zc-text-title-1-line: 30px;   --zc-text-title-1-weight: 600;   --zc-text-title-1-tracking: -0.018em;  /* page title (v2 §2.2) */
   --zc-text-title-2-size: 18px;   --zc-text-title-2-line: 26px;   --zc-text-title-2-weight: 600;   --zc-text-title-2-tracking: -0.014em;  /* section, drawer, modal titles */
   --zc-text-title-3-size: 15px;   --zc-text-title-3-line: 22px;   --zc-text-title-3-weight: 600;   --zc-text-title-3-tracking: -0.009em;  /* card titles */
   --zc-text-body-l-size: 15px;    --zc-text-body-l-line: 22px;    --zc-text-body-l-weight: 400;    --zc-text-body-l-tracking: -0.009em;   /* banner sub-line, onboarding copy */
@@ -208,14 +251,15 @@
   --zc-text-small-strong-size: 13px;   --zc-text-small-strong-line: 18px;   --zc-text-small-strong-weight: 600;   --zc-text-small-strong-tracking: -0.003em;   /* strong second lines */
   --zc-text-caption-size: 12px;   --zc-text-caption-line: 16px;   --zc-text-caption-weight: 500;   --zc-text-caption-tracking: 0em;       /* badges, column headers, meta (400) */
   --zc-text-caption-strong-size: 12px; --zc-text-caption-strong-line: 16px; --zc-text-caption-strong-weight: 600; --zc-text-caption-strong-tracking: 0em;      /* deltas, completion % */
-  --zc-text-micro-size: 11px;     --zc-text-micro-line: 14px;     --zc-text-micro-weight: 600;     --zc-text-micro-tracking: 0.04em;      /* UPPERCASE; exactly four uses (01 §4.2) */
+  --zc-text-micro-size: 11px;     --zc-text-micro-line: 14px;     --zc-text-micro-weight: 500;     --zc-text-micro-tracking: 0.06em;      /* UPPERCASE Geist Mono labels */
   --zc-text-kpi-xl-size: 32px;    --zc-text-kpi-xl-line: 40px;    --zc-text-kpi-xl-weight: 600;    --zc-text-kpi-xl-tracking: -0.021em;   /* KPI strips whose cells are all >= 200px */
-  --zc-text-kpi-banner-size: 28px; --zc-text-kpi-banner-line: 34px; --zc-text-kpi-banner-weight: 600; --zc-text-kpi-banner-tracking: -0.021em; /* banner glass tiles */
+  --zc-text-kpi-banner-size: 28px; --zc-text-kpi-banner-line: 34px; --zc-text-kpi-banner-weight: 600; --zc-text-kpi-banner-tracking: -0.021em; /* banner tiles */
+  --zc-text-kpi-panel-size: 26px; --zc-text-kpi-panel-line: 32px; --zc-text-kpi-panel-weight: 600; --zc-text-kpi-panel-tracking: -0.02em;   /* summary panel value (v2 §2.2) */
   --zc-text-kpi-l-size: 24px;     --zc-text-kpi-l-line: 32px;     --zc-text-kpi-l-weight: 600;     --zc-text-kpi-l-tracking: -0.019em;    /* metric cards, attention counts, narrow KPI cells */
-  --zc-text-display-size-phone: 28px;  --zc-text-display-line-phone: 34px;  --zc-text-display-tracking-phone: -0.021em;
+  --zc-text-display-size-phone: 30px;  --zc-text-display-line-phone: 36px;  --zc-text-display-tracking-phone: -0.025em;
   --zc-text-title-1-size-phone: 20px;  --zc-text-title-1-line-phone: 28px;  --zc-text-title-1-tracking-phone: -0.017em;
 
-  /* ---------- Colours (01 §3.4) ---------- */
+  /* ---------- Control colours ---------- */
   --zc-field-border-hover: #D0D3D9;
   --zc-check-border: #8D919A;        /* checkbox / radio outline, 3.16:1 */
   --zc-switch-off: #C4C7CE;
@@ -227,100 +271,148 @@
   --zc-control-pressed-bg: #EEEFF2;
   --zc-ghost-hover-bg: #F2F3F5;
   --zc-ghost-pressed-bg: #EAEBEE;
-  --zc-solid-dark: #111318;          /* AI send button, tooltips, toasts */
+  --zc-icon-btn-fg: #3D414B;         /* icon buttons: white, bordered; ink when active */
+  --zc-seg-bg: #DFE1E7;              /* segmented tabs above tables (§4.3) */
+  --zc-seg-count: #8A909B;
+  --zc-ring-track: #ECEEF2;          /* SEO ring and mini ring tracks */
+  --zc-seg-off: #E6E8EE;             /* empty segments in mini charts */
+  --zc-solid-dark: var(--zc-ink);    /* dark buttons, tooltips, toasts, active icon buttons */
   --zc-solid-dark-hover: #2A2D35;
   --zc-table-row-hover: #FAFAFB;
   --zc-table-row-selected: #EEF3FF;
-  /* Solid fills for the 40px page-header icon tile (white glyph, all >= 3:1), 01 §5.1. */
-  --zc-sec-ink-solid: #111318;       /* Home */
-  --zc-sec-blue-solid: #1F5EFF;      /* Orders, Returns, Stores */
-  --zc-sec-green-solid: #16A34A;     /* Payments, Refunds, Subscriptions */
-  --zc-sec-violet-solid: #7B5CFF;    /* Store: Products, Inventory, Collections, Lookbooks */
-  --zc-sec-teal-solid: #0F9F8F;      /* Customers, Inbox */
-  --zc-sec-coral-solid: #E2483C;     /* Marketing */
-  --zc-sec-amber-solid: #D97706;     /* Analytics */
-  --zc-sec-pink-solid: #DB2777;      /* Blogs */
-  --zc-sec-slate-solid: #64748B;     /* Apps & channels, Settings, Notifications, Help & learn */
-  --zc-ai-label: #6236D9;            /* the Zcom AI label text */
+  /* Light row tints for failing and past-due rows (boards 16, 59, 63): lighter than the badge tints. */
+  --zc-table-row-danger: #FFFBFB;
+  --zc-table-row-warning: #FFFCF5;
+  --zc-table-row-expanded: #FAFAFB;  /* the full-width detail row under an expanded row (board 59) */
+  /* Page-title icon tiles are ink with a white icon (§2.1). The section colours are retired: every *-solid
+     resolves to ink so old call sites render v2 until they are cleaned up. */
+  --zc-sec-ink-solid: var(--zc-ink);
+  --zc-sec-blue-solid: var(--zc-ink);
+  --zc-sec-green-solid: var(--zc-ink);
+  --zc-sec-violet-solid: var(--zc-ink);
+  --zc-sec-teal-solid: var(--zc-ink);
+  --zc-sec-coral-solid: var(--zc-ink);
+  --zc-sec-amber-solid: var(--zc-ink);
+  --zc-sec-pink-solid: var(--zc-ink);
+  --zc-sec-slate-solid: var(--zc-ink);
+  --zc-ai-label: #1D4ED8;            /* the Zcom AI label text */
   --zc-rating: #E8890C;              /* filled stars; always with the number */
-  --zc-toast-success: #34C38F;       /* toast icons on the dark toast (01 §7.19) */
+  --zc-toast-success: #34C38F;       /* toast icons on the dark toast */
   --zc-toast-error: #FF8A80;
   --zc-toast-info: #9DB5FF;
   --zc-toast-action: #9DB5FF;        /* "Undo", "View" on a toast */
   --zc-chart-baseline: #E2E3E8;
   --zc-chart-crosshair: #B4B8C0;
 
-  /* ---------- Glass and banner: only on video, photos and the Home banner ---------- */
-  --zc-glass-bg: rgba(255, 255, 255, 0.18);
-  --zc-glass-bg-hover: rgba(255, 255, 255, 0.26);
-  --zc-glass-bg-pressed: rgba(255, 255, 255, 0.32);
-  --zc-glass-tile-bg: rgba(255, 255, 255, 0.14);
-  --zc-glass-ring: inset 0 0 0 0.5px rgba(255, 255, 255, 0.35);
-  --zc-glass-blur: blur(20px) saturate(160%);
-  --zc-glass-blur-tile: blur(24px) saturate(160%);
-  --zc-banner-scrim: linear-gradient(90deg, rgba(12, 10, 30, 0.55) 0%, rgba(12, 10, 30, 0.18) 55%, rgba(12, 10, 30, 0.05) 100%);
-  --zc-banner-scrim-bottom: linear-gradient(180deg, rgba(12, 10, 30, 0) 40%, rgba(12, 10, 30, 0.35) 100%);
+  /* ---------- Translucent controls on video, photos and the Home hero. No backdrop blur (v2 §2.4). ---------- */
+  --zc-glass-bg: rgba(255, 255, 255, 0.14);
+  --zc-glass-bg-hover: rgba(255, 255, 255, 0.22);
+  --zc-glass-bg-pressed: rgba(255, 255, 255, 0.28);
+  --zc-glass-tile-bg: rgba(255, 255, 255, 0.12);
+  --zc-glass-ring: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  --zc-glass-blur: none;
+  --zc-glass-blur-tile: none;
+  /* The white "on dark" button (hero "Create store", boards 01/02): white fill, ink text. */
+  --zc-on-dark-bg: #FFFFFF;
+  --zc-on-dark-bg-hover: rgba(255, 255, 255, 0.88);
+  --zc-on-dark-bg-pressed: rgba(255, 255, 255, 0.78);
+  --zc-on-dark-ring: 0 0 0 3px rgba(255, 255, 255, 0.6);
+  --zc-banner-scrim: linear-gradient(90deg, rgba(7, 14, 43, 0.55) 0%, rgba(7, 14, 43, 0.18) 55%, rgba(7, 14, 43, 0.05) 100%);
+  --zc-banner-scrim-bottom: linear-gradient(180deg, rgba(7, 14, 43, 0) 40%, rgba(7, 14, 43, 0.35) 100%);
+  /* Home hero (§6.1): deep-blue linear base; its four drifting lights live in the Hero component. */
+  /* Video thumbnail looks (§4.8); the fourth look is --zc-ai-gradient. */
+  --zc-video-tilt: radial-gradient(120% 120% at 90% 10%, #FFFFFF 0%, #DCE6FB 45%, #AFC3EE 100%);
+  --zc-video-zoom: linear-gradient(160deg, #F4F6FB 0%, #E6EAF3 100%);
+  --zc-video-phone: radial-gradient(110% 120% at 15% 100%, #E9E4FF 0%, #F4F2FF 50%, #FFFFFF 100%);
+  --zc-hero-gradient: linear-gradient(118deg, #071233 0%, #0C2577 38%, #2353D6 70%, #7FA8F5 100%);
 
   /* ---------- Focus and elevation ---------- */
   --zc-focus-ring-strong: 0 0 0 2px #FFFFFF, 0 0 0 4px rgba(31, 94, 255, 0.55); /* buttons, icon buttons, tabs, checks, rows */
   --zc-focus-ring-danger: 0 0 0 3px rgba(217, 45, 32, 0.12);                  /* input in error */
-  --zc-shadow-seg-thumb: 0 1px 2px rgba(17, 19, 24, 0.08), 0 0 0 0.5px rgba(17, 19, 24, 0.06);
+  --zc-shadow-seg-thumb: 0 1px 2px rgba(11, 12, 16, 0.08);
+  --zc-shadow-composer: 0 4px 16px rgba(31, 94, 255, 0.08);            /* the Zcom AI reply box (board 46) */
+  --zc-route-progress-track: rgba(31, 94, 255, 0.12);                  /* the 2px route loading line (board 47) */
 
-  /* ---------- Radius (01 §6.5) ---------- */
-  --zc-radius-pill: 9999px;
+  /* ---------- Radius (v2 §2.3) ---------- */
+  --zc-radius-pill: 9999px;          /* buttons, tabs, chips, search */
   --zc-radius-circle: 50%;
   --zc-radius-checkbox: 4px;
   --zc-radius-badge: 6px;
-  --zc-radius-thumb: 8px;
+  --zc-radius-thumb: 9px;            /* product photos in rows */
   --zc-radius-tooltip: 8px;
-  --zc-radius-menu-item: 8px;
-  --zc-radius-field: 10px;
-  --zc-radius-menu: 12px;
-  --zc-radius-tile: 12px;
+  --zc-radius-menu-item: 10px;
+  --zc-radius-field: 12px;           /* inputs */
+  --zc-radius-menu: 16px;            /* ⋯ menus and popovers */
+  --zc-radius-tile: 12px;            /* icon tiles */
   --zc-radius-glass-tile: 14px;
-  --zc-radius-card: 16px;
-  --zc-radius-overlay: 20px;
-  --zc-radius-banner: 20px;
+  --zc-radius-card-sm: 18px;         /* small cards, stat tiles */
+  --zc-radius-card: 22px;            /* cards, tables, summary panel */
+  --zc-radius-overlay: 22px;         /* pop-ups; drawers on the open edge */
+  --zc-radius-sheet: 24px;           /* Zcom AI sheet top corners */
+  --zc-radius-banner: 28px;          /* Home hero */
+  --zc-radius-video: 20px;           /* video thumbnails */
+  --zc-radius-photo: 14px;           /* card and mosaic photos; inner detail cards */
+  --zc-radius-composer: 26px;        /* the Zcom AI reply box: a pill at one line, still round when it grows */
 
   /* ---------- Sizes ---------- */
   --zc-control-h-xs: 28px;           /* buttons inside dense table rows only */
-  --zc-control-h-touch: 40px;        /* md/sm controls on phone */
+  --zc-control-h-touch: 44px;        /* tap targets on phone (v2 §10) */
   --zc-btn-px-lg: 20px;  --zc-btn-px: 16px;  --zc-btn-px-sm: 14px;  --zc-btn-px-xs: 12px;
   --zc-icon-btn: 36px;   --zc-icon-btn-sm: 32px;   --zc-icon-btn-xs: 28px;
-  --zc-seg-h: 36px;      --zc-seg-h-sm: 32px;      --zc-seg-pad: 3px;
+  --zc-seg-h: 38px;      --zc-seg-h-sm: 32px;      --zc-seg-pad: 3px;
   --zc-table-row-h-tall: 64px;
   --zc-table-footer-h: 52px;
   --zc-table-action-col: 56px;
   --zc-table-check-col: 44px;
+  --zc-table-cell-px: 18px;          /* table cell padding 0 18px */
+  --zc-row-chevron: 30px;            /* round chevron at the row end */
+  --zc-title-tile: 44px;             /* page-title icon tile */
+  --zc-popup-tile: 36px;             /* pop-up title icon tile */
+  --zc-summary-h: 122px;             /* summary panel cell min height */
+  --zc-summary-h-collapsed: 48px;
+  --zc-summary-toggle: 28px;
+  --zc-ask-h: 54px;                  /* Zcom AI bar */
+  --zc-ask-w: 600px;
+  --zc-ask-bottom: 26px;
+  --zc-ask-clearance: 120px;         /* bottom padding so the bar never hides the last row */
+  --zc-ask-bottom-phone: 16px;       /* phone: the bar sits 16px above the safe area (v2 §10) */
+  /* Phone: the height the AI bar takes at the bottom of the screen, safe area included. Things that stick to the
+     bottom (PhoneActionBar) sit this far up, so they stack above the bar instead of under it. */
+  --zc-ask-stack: calc(var(--zc-ask-bottom-phone) + var(--zc-ask-h) + env(safe-area-inset-bottom));
+  --zc-wallet-h: 40px;
+  --zc-wallet-card-w: 380px;
+  --zc-orb: 18px;  --zc-orb-lg: 28px;  --zc-orb-bar: 30px;
+  --zc-seo-ring: 26px;
 
-  /* ---------- Layout (01 §6) ---------- */
+  /* ---------- Layout ---------- */
   --zc-page-pad-x-tablet: 24px;
-  --zc-sidebar-w: 248px;
-  --zc-sidebar-w-collapsed: 64px;
+  --zc-sidebar-w: 240px;
+  --zc-sidebar-w-collapsed: 72px;    /* laptop/tablet icon rail (v2 §10) */
   --zc-sidebar-drawer-w: 280px;
   --zc-topbar-h-mobile: 56px;
-  --zc-drawer-w: 400px;
-  --zc-drawer-w-md: 560px;
+  --zc-drawer-w: 420px;              /* filter drawer, notifications */
+  --zc-drawer-w-md: 460px;           /* order preview */
   --zc-drawer-w-lg: 640px;
-  --zc-sticky-top: 0px;              /* 0 on list pages; detail pages add their sticky header; +56px under 1024px */
+  --zc-sticky-top: 0px;              /* 0 on list pages; detail pages add their sticky header */
   --zc-side-col: 360px;
-  --zc-banner-h: 304px;
+  --zc-banner-h: 300px;
   --zc-banner-h-tablet: 264px;
+  --zc-banner-h-phone: 220px;
   --zc-gap-card: 16px;
   --zc-gap-section: 24px;
   --zc-card-pad: 20px;
-  --zc-card-pad-lg: 24px;
+  --zc-card-pad-lg: 22px;
   --zc-header-gap: 20px;
-  --zc-modal-sm: 480px;  --zc-modal-md: 640px;  --zc-modal-lg: 720px;
+  --zc-modal-sm: 420px;  --zc-modal-md: 640px;  --zc-modal-lg: 960px; /* the only three pop-up sizes */
 
-  /* ---------- Motion (01 §8) ---------- */
+  /* ---------- Motion ---------- */
   --zc-dur-video-fade: 0.6s;
   --zc-dur-shimmer: 1.2s;
   --zc-ease-press: cubic-bezier(0.34, 1.3, 0.64, 1);
   --zc-press-scale: 0.97;
   --zc-press-scale-icon: 0.94;
   --zc-press-scale-card: 0.99;
-  --zc-rise: 6px;
+  --zc-rise: 8px;
   --zc-spinner-delay: 250ms;
   --zc-spinner-min: 400ms;
   --zc-tooltip-delay: 400ms;
@@ -340,14 +432,10 @@
     --zc-text-title-1-tracking: var(--zc-text-title-1-tracking-phone);
     --zc-control-h: var(--zc-control-h-touch);
     --zc-control-h-sm: var(--zc-control-h-touch);
-  }
-}
-/* Below 1024px the 56px black top bar sits above everything, so sticky table heads stop under it.
-   A detail page sets --zc-sticky-top: calc(var(--zc-topbar-offset, 0px) + <its header height>). */
-@media (max-width: 1023px) {
-  :root {
-    --zc-topbar-offset: var(--zc-topbar-h-mobile);
-    --zc-sticky-top: var(--zc-topbar-h-mobile);
+    --zc-banner-h: var(--zc-banner-h-phone);
+    /* v2 §10: every tap target at least 44 × 44 (segmented tabs included). */
+    --zc-seg-h: var(--zc-control-h-touch);
+    --zc-seg-h-sm: var(--zc-control-h-touch);
   }
 }
 /* Reduced motion: keep opacity changes, remove movement. */
@@ -362,7 +450,7 @@
   }
 }
 
-html { font-family: var(--zc-font-sans); font-size: 16px; font-optical-sizing: auto; text-rendering: optimizeLegibility; }
+html { font-family: var(--zc-font-sans); font-size: 16px; text-rendering: optimizeLegibility; }
 body {
   background: var(--zc-bg);
   color: var(--zc-fg);
@@ -376,29 +464,26 @@ body {
 /* Numbers that get compared: tables, KPIs, money, counts. */
 .zc-num, table, [data-numeric] { font-variant-numeric: tabular-nums; }
 
-/* ---------- AI utilities (spec 02-components §16). The spectrum is reserved for AI. ---------- */
-.ai-edge { position: relative; border-radius: 12px; background: var(--zc-surface); }
+/* ---------- AI utilities. The gradient is reserved for AI and the summary panel. ---------- */
+.ai-edge { position: relative; border-radius: 12px; background: linear-gradient(90deg, var(--zc-ai-tint), var(--zc-surface) 70%); }
 .ai-edge::before {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: var(--zc-ai-gradient);
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: var(--zc-ai-edge);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
 }
+/* "AI is working" ring: a rotating blue edge. Transform/opacity-only rules (§2.4) allow the angle property
+   animation because it repaints a 1.5px ring only; no blurred halo. */
 .ai-live { position: relative; isolation: isolate; border-radius: 12px; background: var(--zc-surface); }
 .ai-live::before {
   content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; background: var(--zc-ai-conic);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude; animation: zc-ai-spin 2.4s linear infinite; pointer-events: none;
 }
-.ai-live::after {
-  content: ""; position: absolute; inset: 6px; border-radius: inherit; z-index: -1; background: var(--zc-ai-conic);
-  filter: blur(22px); opacity: 0.28; animation: zc-ai-spin 2.4s linear infinite; pointer-events: none;
-}
 .ai-shimmer {
   background: linear-gradient(90deg, #9A9EA7 35%, var(--zc-fg) 50%, #9A9EA7 65%); background-size: 250% 100%;
   -webkit-background-clip: text; background-clip: text; color: transparent; animation: zc-ai-sheen 2.2s linear infinite;
 }
-/* Login card: a soft spectrum arc travels round the edge (6s per turn) with a blurred halo behind the card.
-   The card surface is the child .auth-edge-body, inset 1px, so the halo never shows through it. Static under reduced motion. */
+/* Login card edge (kept until the Phase 4 sign-in rebuild): a soft blue arc travels round the edge. No blur. */
 .auth-edge { position: relative; isolation: isolate; border-radius: 16px; padding: 1px; }
 .auth-edge-body { position: relative; border-radius: 15px; background: var(--zc-auth-card); }
 .auth-edge::before {
@@ -406,11 +491,6 @@ body {
   background: conic-gradient(from var(--zc-ai-angle), transparent 0 50%, var(--zc-ai-1) 62%, var(--zc-ai-2) 72%, var(--zc-ai-3) 82%, var(--zc-ai-4) 88%, transparent 96%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude; animation: zc-ai-spin 6s linear infinite;
-}
-.auth-edge::after {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -1; pointer-events: none;
-  background: conic-gradient(from var(--zc-ai-angle), transparent 0 50%, var(--zc-ai-1) 62%, var(--zc-ai-2) 72%, var(--zc-ai-3) 82%, transparent 96%);
-  filter: blur(28px); opacity: 0.6; animation: zc-ai-spin 6s linear infinite;
 }
 /* Faint dot grid that fades into solid towards the edges. */
 .auth-dots {

@@ -4,7 +4,7 @@
  * Your account (platformMe, read-only: the API has no mutation for the name yet), two-step verification with
  * "Set up again" through /mfa, Change password (`platformChangePassword`: the server re-checks the current
  * password and signs out every other session; keeps its own button) and Sessions (`platformMySessions`, one
- * revoked at a time with `revokePlatformSession`; "Sign out everywhere" in the card header). Since PRD-033
+ * revoked at a time with `revokePlatformSession`; "Log out everywhere" in the card header). Since PRD-033
  * FR-2.8 also Browser notifications (`BrowserNotificationsCard`, hidden until the platform has push keys).
  */
 
@@ -106,7 +106,7 @@ export function ProfileSecuritySettings() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      addToast({ title: "Password changed. Your other sessions were signed out." });
+      addToast({ title: "Password changed. Your other sessions were logged out." });
       await sessions.refetch().catch(() => undefined);
     } catch (error) {
       const reason = errorReasonOf(error);
@@ -128,7 +128,7 @@ export function ProfileSecuritySettings() {
   const confirmRevoke = async (session: PlatformSessionInfo) => {
     try {
       await revokeSession({ variables: { id: session.id } });
-      addToast({ title: `Signed out ${deviceLabel(session.userAgent)}.` });
+      addToast({ title: `Logged out ${deviceLabel(session.userAgent)}.` });
       await sessions.refetch().catch(() => undefined);
     } catch (error) {
       const message = mutationFailureCopy(error);
@@ -151,7 +151,7 @@ export function ProfileSecuritySettings() {
       startIcon={<IconLogout aria-hidden />}
       onPress={() => setLogoutAllOpen(true)}
     >
-      Sign out everywhere
+      Log out everywhere
     </Button>
   );
 
@@ -198,7 +198,7 @@ export function ProfileSecuritySettings() {
           </FieldGrid>
         </Card>
 
-        <Card title="Change password" description="Your other sessions are signed out when the password changes.">
+        <Card title="Change password" description="Your other sessions are logged out when the password changes.">
           <form className="flex flex-col gap-4" onSubmit={(event) => void submitPassword(event)} noValidate>
             <FieldGrid>
               <Input
@@ -266,7 +266,7 @@ export function ProfileSecuritySettings() {
               rowHeight="tall"
               isLoading={sessions.loading && !sessions.data}
               rowActions={(session) =>
-                // This browser's own session ends with Sign out or Sign out everywhere.
+                // This browser's own session ends with Log out or Log out everywhere.
                 session.current
                   ? []
                   : [{ key: "revoke", label: "Revoke", icon: IconDelete, destructive: true, onSelect: () => setRevoking(session) }]
@@ -301,7 +301,7 @@ export function ProfileSecuritySettings() {
         title="Revoke this session?"
         description={
           revoking
-            ? `${deviceLabel(revoking.userAgent)}${revoking.ipAddress ? ` (${revoking.ipAddress})` : ""} is signed out. Its access ends within 15 minutes.`
+            ? `${deviceLabel(revoking.userAgent)}${revoking.ipAddress ? ` (${revoking.ipAddress})` : ""} is logged out. Its access ends within 15 minutes.`
             : ""
         }
         confirmLabel="Revoke session"
@@ -311,10 +311,11 @@ export function ProfileSecuritySettings() {
         isOpen={logoutAllOpen}
         onClose={() => setLogoutAllOpen(false)}
         onConfirm={confirmLogoutAll}
-        title="Sign out everywhere?"
+        title="Log out everywhere?"
         description="Every session, including this one, ends. You'll sign in again."
-        confirmLabel="Sign out everywhere"
-        confirmColor="danger"
+        confirmLabel="Log out everywhere"
+        confirmColor="primary"
+        icon={<IconLogout aria-hidden />}
       />
     </div>
   );

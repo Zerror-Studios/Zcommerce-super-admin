@@ -38,15 +38,19 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconExchange,
+  IconWallet,
   Select,
   SelectItem,
+  Skeleton,
   Textarea,
   formatMoney,
   toastError,
   type DataTableColumn,
 } from "../ui";
 import { IconPayments } from "../ui/icons";
-import { KeyValue, KeyValueGrid, StatTile } from "./StoreDetailParts";
+import { KeyValue, KeyValueGrid } from "./StoreDetailParts";
 
 const MONTH_YEAR = new Intl.DateTimeFormat("en-IN", { month: "short", year: "numeric" });
 
@@ -57,9 +61,16 @@ export interface PlanSubscriptionCardProps {
   subscription?: Subscription;
   /** Opens the live Create custom plan pop-up (shown with `platform:plans:manage`). */
   onCreateCustomPlan?: () => void;
+  /** Opens Change plan; the page passes it only when the role and the subscription allow it. */
+  onChangePlan?: () => void;
 }
 
-export function PlanSubscriptionCard({ client, subscription, onCreateCustomPlan }: PlanSubscriptionCardProps) {
+/**
+ * Billing › Current plan (board 61): "Current plan", the plan name with its billing state, the price line, Change
+ * plan (and Create custom plan), then the details row: renews, paid to date, customer since, scheduled change,
+ * credit balance and what happens to orders.
+ */
+export function PlanSubscriptionCard({ client, subscription, onCreateCustomPlan, onChangePlan }: PlanSubscriptionCardProps) {
   const { can } = useAuth();
   const { plans } = useClients();
   const canManagePlans = can(PLATFORM_PERMISSIONS.PLANS_MANAGE);
@@ -71,32 +82,51 @@ export function PlanSubscriptionCard({ client, subscription, onCreateCustomPlan 
   const scheduled = scheduledPlanChangeOf(subscription, plans);
   const planName = subscription ? subscription.planDisplayName || PLAN_LABELS[subscription.plan] : null;
 
+  const cycle = subscription ? (subscription.billingCycle === "YEARLY" ? "billed yearly" : "billed monthly") : null;
+  const showCustomPlan = canManagePlans && onCreateCustomPlan;
+
   return (
-    <Card title="Plan and subscription" actions={<Chip tone={state.tone}>{state.label}</Chip>}>
+    <Card aria-label="Current plan">
       <div className="flex flex-col gap-5">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <StatTile label="Price / month" value={formatMoney(subscription?.mrr ?? client.mrr, { whole: true })} />
-          <StatTile
-            label="Paid to date"
-            isLoading={canReadBilling && paid.loading}
-            value={canReadBilling ? `${formatMoney(paidToDate, { whole: true })}${paid.hasMore ? "+" : ""}` : "—"}
-          />
-          <StatTile label="Customer since" value={client.joinedDate ? MONTH_YEAR.format(new Date(client.joinedDate)) : "—"} />
+        <div className="flex flex-col gap-1">
+          <p className="text-label text-fg-muted">Current plan</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-title-2 text-fg">
+              {planName ?? "No plan"}
+              {subscription?.planVersion ? <span className="text-body font-normal text-fg-muted"> v{subscription.planVersion}</span> : null}
+            </h3>
+            <Chip tone={state.tone}>{state.label}</Chip>
+          </div>
+          <p className="text-body text-fg-muted num">
+            {formatMoney(subscription?.mrr ?? client.mrr, { whole: true })} a month{cycle ? ` · ${cycle}` : ""}
+          </p>
         </div>
 
-        <KeyValueGrid columns={3}>
-          <KeyValue label="Plan">
-            {planName ? (
-              <>
-                {planName}
-                {subscription?.planVersion ? <span className="text-fg-muted"> v{subscription.planVersion}</span> : null}
-              </>
+        {onChangePlan || showCustomPlan ? (
+          <div className="flex flex-wrap gap-2">
+            {showCustomPlan ? (
+              <UiButton variant="secondary" size="sm" onPress={onCreateCustomPlan}>
+                Create custom plan
+              </UiButton>
             ) : null}
-          </KeyValue>
-          <KeyValue label="Billing cycle">
-            {subscription ? (subscription.billingCycle === "YEARLY" ? "Yearly" : "Monthly") : null}
-          </KeyValue>
+            {onChangePlan ? (
+              <UiButton variant="primary" size="sm" onPress={onChangePlan}>
+                Change plan
+              </UiButton>
+            ) : null}
+          </div>
+        ) : null}
+
+        <KeyValueGrid columns={3} className="border-t border-line-subtle pt-4">
           <KeyValue label="Renews">{subscription?.renewalDate ? formatDate(subscription.renewalDate) : null}</KeyValue>
+          <KeyValue label="Paid to date">
+            {canReadBilling && paid.loading ? (
+              <Skeleton className="h-5 w-20 rounded-md" />
+            ) : (
+              <span className="num">{canReadBilling ? `${formatMoney(paidToDate, { whole: true })}${paid.hasMore ? "+" : ""}` : "—"}</span>
+            )}
+          </KeyValue>
+          <KeyValue label="Customer since">{client.joinedDate ? MONTH_YEAR.format(new Date(client.joinedDate)) : null}</KeyValue>
           <KeyValue label="Scheduled change">
             {scheduled ? (
               <>
@@ -112,14 +142,6 @@ export function PlanSubscriptionCard({ client, subscription, onCreateCustomPlan 
           </KeyValue>
           <KeyValue label="Orders">{state.detail ?? "Taking orders as normal."}</KeyValue>
         </KeyValueGrid>
-
-        {canManagePlans && onCreateCustomPlan ? (
-          <div className="flex justify-end">
-            <UiButton variant="secondary" size="sm" onPress={onCreateCustomPlan}>
-              Create custom plan
-            </UiButton>
-          </div>
-        ) : null}
       </div>
     </Card>
   );
@@ -133,7 +155,7 @@ const creditColumns: DataTableColumn[] = [
   { key: "reason", label: "Why" },
   { key: "amount", label: "Amount", width: 100 },
   { key: "remaining", label: "Left", width: 100 },
-  { key: "createdAt", label: "Issued", width: 110 },
+  { key: "createdAt", label: "Issued", width: 110, hideWhen: "narrow" },
 ];
 
 export function StoreCreditsCard({ client }: { client: Client }) {
@@ -188,6 +210,20 @@ export function StoreCreditsCard({ client }: { client: Client }) {
             return null;
         }
       }}
+      mobileRow={(credit) => (
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center justify-between gap-3">
+            <span className="min-w-0 truncate font-mono text-label text-fg">{credit.number}</span>
+            <span className="shrink-0 font-semibold text-fg num">{formatMoney(credit.amount)}</span>
+          </div>
+          <div className="mt-1 flex min-w-0 items-center justify-between gap-3 text-label text-fg-muted">
+            <span className="min-w-0 truncate">
+              {CREDIT_REASON_LABELS[credit.reason] ?? credit.reason} · {formatMoney(credit.remaining)} left
+            </span>
+            <span className="shrink-0 num">{formatDate(credit.createdAt)}</span>
+          </div>
+        </div>
+      )}
       emptyContent={
         <EmptyState icon={IconPayments} title="No credits" description="Plan changes, overpayments and credits you issue appear here." />
       }
@@ -251,7 +287,9 @@ export function IssueCreditDialog({ isOpen, client, onClose, onDone }: StoreDial
   return (
     <Modal isOpen={isOpen} onClose={close} width="sm">
       <ModalContent>
-        <ModalHeader>Issue credit to {client.storeName}?</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={<IconWallet aria-hidden />}>Issue credit to {client.storeName}?</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           <p className="text-body text-fg-muted">
             The credit reduces the store's next invoices. It is never paid out. Your name and the reason go to the
@@ -343,7 +381,9 @@ export function RecordRefundDialog({ isOpen, client, onClose, onDone }: StoreDia
   return (
     <Modal isOpen={isOpen} onClose={close} width="sm">
       <ModalContent>
-        <ModalHeader>Record a refund for {client.storeName}</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={<IconExchange aria-hidden />}>Record a refund for {client.storeName}</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           <p className="text-body text-fg-muted">
             For money you already returned outside the platform (bank transfer, UPI). Nothing is sent to a payment

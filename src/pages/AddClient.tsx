@@ -21,9 +21,9 @@ import {
 } from "../lib/store-setup.util";
 import { mutationFailureCopy } from "../lib/mutation-errors";
 import { PageHeader } from "../components/common/PageHeader";
+import { IconAdd } from "../components/ui/icons";
 import { OwnerCredentialsDialog } from "../components/clients/OwnerCredentialsDialog";
 import { BusinessDetailsSection } from "../components/clients/add-store/BusinessDetailsSection";
-import { FormFooter } from "../components/clients/add-store/FormFooter";
 import { useClients, type CreateStoreResult } from "../providers/ClientsProvider";
 import { toasts } from "../copy";
 import {
@@ -34,7 +34,6 @@ import {
   Select,
   SelectItem,
   Switch,
-  fieldSpanFull,
   formatMoney,
   toast,
   toastError,
@@ -83,10 +82,15 @@ function phoneValue(value: string): string | null {
 }
 
 /**
- * Add store (04 S-09): a detail header ("Back to Stores"), a centred 720px form column with three cards on the
- * two-column field grid, and the sticky form footer (Cancel / Add store). The AI bar is hidden on this page.
+ * Create store (04 S-09; design v2 §10A editor recipe, nearest boards 60 and 66): the detail header ("Back to
+ * Stores") stays on top while scrolling and holds Cancel and Create store (sticky Save in the title row). Below it
+ * the editor's two columns: the main column (Store details, Owner, Business details) and a 22rem side column with
+ * what decides the bill and the data's home (Subscription; Region and currency). One column under 64rem.
  * Time zone and Currency stay free text (05 #26) and the slug's live helper stays (05 #6) until confirmed.
  */
+
+/** Main column + 22rem side column once the content is 64rem wide; one column below (§10 detail pages). */
+const columnsClass = "grid grid-cols-1 items-start gap-4 @min-[64rem]:grid-cols-[minmax(0,1fr)_22rem]";
 export function AddClient() {
   const navigate = useNavigate();
   const { clients, plans: allPlans, createStore } = useClients();
@@ -234,206 +238,217 @@ export function AddClient() {
       <PageHeader
         type="detail"
         back={{ href: "/stores", label: "Stores" }}
-        title="Add store"
+        title="Create store"
         description="Create the store, invite its owner and start its plan."
+        actions={
+          <Button variant="secondary" onPress={() => navigate("/stores")} isDisabled={submitting}>
+            Cancel
+          </Button>
+        }
+        primaryAction={
+          <Button variant="primary" startIcon={<IconAdd aria-hidden />} isLoading={submitting} onPress={() => void handleSubmit()}>
+            Create store
+          </Button>
+        }
+        primaryShortLabel="Create"
       />
 
       <form
         ref={formRef}
         noValidate
         onSubmit={(event) => void handleSubmit(event)}
-        className="mx-auto flex w-full max-w-[var(--zc-content-max-form)] flex-col gap-4"
+        className="@container"
       >
-        <Card title="Store details" description="The slug names the database and the key prefix; it can't change later.">
-          <FieldGrid>
-            <Input
-              label="Store name"
-              isRequired
-              placeholder="Kesar & Kin"
-              value={storeName}
-              onValueChange={(value) => {
-                setStoreName(value);
-                edit("name");
-              }}
-              {...fieldProps("name")}
-            />
-            <Input
-              label="Slug"
-              isRequired
-              placeholder="kesar-kin"
-              value={effectiveSlug}
-              onValueChange={(value) => {
-                setSlugTouched(true);
-                setSlug(value.toLowerCase());
-                edit("slug");
-              }}
-              description="Database: zcom_<slug>"
-              autoComplete="off"
-              {...fieldProps("slug")}
-            />
-            <Input
-              label="Storefront domain (optional)"
-              placeholder="kesarandkin.in"
-              value={domain}
-              onValueChange={(value) => {
-                setDomain(value);
-                edit("domain");
-              }}
-              {...fieldProps("domain")}
-            />
-            <Select
-              label="Region"
-              isRequired
-              validationBehavior="aria"
-              selectedKeys={new Set([region])}
-              onSelectionChange={(keys) => {
-                const value = Array.from(keys)[0];
-                const match = REGIONS.find((item) => item.key === value);
-                if (match) setRegion(match.key);
-              }}
-              disallowEmptySelection
-            >
-              {REGIONS.map((item) => (
-                <SelectItem key={item.key}>{item.label}</SelectItem>
-              ))}
-            </Select>
-          </FieldGrid>
-        </Card>
+        <div className={columnsClass}>
+          <div className="flex min-w-0 flex-col gap-4">
+            <Card title="Store details" description="The slug names the database and the key prefix; it can't change later.">
+              <FieldGrid>
+                <Input
+                  label="Store name"
+                  isRequired
+                  placeholder="Kesar & Kin"
+                  value={storeName}
+                  onValueChange={(value) => {
+                    setStoreName(value);
+                    edit("name");
+                  }}
+                  {...fieldProps("name")}
+                />
+                <Input
+                  label="Slug"
+                  isRequired
+                  placeholder="kesar-kin"
+                  value={effectiveSlug}
+                  onValueChange={(value) => {
+                    setSlugTouched(true);
+                    setSlug(value.toLowerCase());
+                    edit("slug");
+                  }}
+                  description="Database: zcom_<slug>"
+                  autoComplete="off"
+                  {...fieldProps("slug")}
+                />
+                <Input
+                  label="Storefront domain (optional)"
+                  placeholder="kesarandkin.in"
+                  value={domain}
+                  onValueChange={(value) => {
+                    setDomain(value);
+                    edit("domain");
+                  }}
+                  {...fieldProps("domain")}
+                />
+              </FieldGrid>
+            </Card>
 
-        <Card title="Owner" description="Gets the owner login for the store dashboard.">
-          <FieldGrid>
-            <Input
-              label="Owner name"
-              isRequired
-              placeholder="Aarav Mehta"
-              value={ownerName}
-              onValueChange={(value) => {
-                setOwnerName(value);
-                edit("ownerName");
-              }}
-              {...fieldProps("ownerName")}
-            />
-            <Input
-              label="Owner email"
-              isRequired
-              type="email"
-              placeholder="aarav@kesarandkin.in"
-              value={ownerEmail}
-              onValueChange={(value) => {
-                setOwnerEmail(value);
-                edit("ownerEmail");
-              }}
-              {...fieldProps("ownerEmail")}
-            />
-            <Input
-              label="Owner phone (optional)"
-              type="tel"
-              inputMode="tel"
-              placeholder="98765 43210"
-              startContent={<span className="text-body text-fg-subtle">{PHONE_PREFIX}</span>}
-              value={ownerPhone}
-              onValueChange={(value) => {
-                setOwnerPhone(value);
-                edit("ownerPhone");
-              }}
-              {...fieldProps("ownerPhone")}
-            />
-          </FieldGrid>
-        </Card>
+            <Card title="Owner" description="Gets the owner login for the store dashboard.">
+              <FieldGrid>
+                <Input
+                  label="Owner name"
+                  isRequired
+                  placeholder="Aarav Mehta"
+                  value={ownerName}
+                  onValueChange={(value) => {
+                    setOwnerName(value);
+                    edit("ownerName");
+                  }}
+                  {...fieldProps("ownerName")}
+                />
+                <Input
+                  label="Owner email"
+                  isRequired
+                  type="email"
+                  placeholder="aarav@kesarandkin.in"
+                  value={ownerEmail}
+                  onValueChange={(value) => {
+                    setOwnerEmail(value);
+                    edit("ownerEmail");
+                  }}
+                  {...fieldProps("ownerEmail")}
+                />
+                <Input
+                  label="Owner phone (optional)"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="98765 43210"
+                  startContent={<span className="text-body text-fg-subtle">{PHONE_PREFIX}</span>}
+                  value={ownerPhone}
+                  onValueChange={(value) => {
+                    setOwnerPhone(value);
+                    edit("ownerPhone");
+                  }}
+                  {...fieldProps("ownerPhone")}
+                />
+              </FieldGrid>
+            </Card>
 
-        <BusinessDetailsSection
-          value={business}
-          onChange={setBusiness}
-          errors={businessErrors}
-          onClearError={(field) =>
-            setBusinessErrors((current) =>
-              field === "billingContactEmail" || field === "gstin" || field === "businessName"
-                ? { ...current, [field]: undefined }
-                : { ...current, profile: { ...current.profile, [field]: undefined } },
-            )
-          }
-        />
+            <BusinessDetailsSection
+              value={business}
+              onChange={setBusiness}
+              errors={businessErrors}
+              onClearError={(field) =>
+                setBusinessErrors((current) =>
+                  field === "billingContactEmail" || field === "gstin" || field === "businessName"
+                    ? { ...current, [field]: undefined }
+                    : { ...current, profile: { ...current.profile, [field]: undefined } },
+                )
+              }
+            />
+          </div>
 
-        <Card title="Subscription">
-          <FieldGrid>
-            <Select
-              label="Plan"
-              isRequired
-              selectedKeys={selectedPlanId ? new Set([selectedPlanId]) : new Set()}
-              onSelectionChange={(keys) => {
-                const value = Array.from(keys)[0];
-                if (typeof value === "string") setPlanId(value);
-                edit("planId");
-              }}
-              disallowEmptySelection
-              {...fieldProps("planId")}
-            >
-              {plans.map((plan) => {
-                const label = `${planOptionLabel(plan)} · ${planPriceHint(plan, billingCycle, formatPrice)}`;
-                return (
-                  <SelectItem key={plan.id} textValue={label}>
-                    {label}
-                  </SelectItem>
-                );
-              })}
-            </Select>
-            <Select
-              label="Billing cycle"
-              isRequired
-              validationBehavior="aria"
-              selectedKeys={new Set([billingCycle])}
-              onSelectionChange={(keys) => {
-                const value = Array.from(keys)[0];
-                if (value === "MONTHLY" || value === "YEARLY") setBillingCycle(value);
-              }}
-              disallowEmptySelection
-            >
-              <SelectItem key="MONTHLY">Monthly</SelectItem>
-              <SelectItem key="YEARLY">Yearly</SelectItem>
-            </Select>
-            <Input
-              label="Time zone"
-              isRequired
-              placeholder={DEFAULT_STORE_TIMEZONE}
-              value={timezone}
-              onValueChange={(value) => {
-                setTimezone(value);
-                edit("timezone");
-              }}
-              {...fieldProps("timezone")}
-            />
-            <Input
-              label="Currency"
-              isRequired
-              placeholder={DEFAULT_STORE_CURRENCY}
-              value={currency}
-              maxLength={3}
-              onValueChange={(value) => {
-                setCurrency(value.toUpperCase());
-                edit("currency");
-              }}
-              {...fieldProps("currency")}
-            />
-            <div className={fieldSpanFull}>
-              <Switch isSelected={startActive} onValueChange={setStartActive}>
-                Start live (skip the 14-day trial)
-              </Switch>
-            </div>
-          </FieldGrid>
-        </Card>
+          <div className="flex min-w-0 flex-col gap-4">
+            <Card title="Subscription" description="Starts with a 14-day trial unless it starts live.">
+              <div className="flex flex-col gap-4">
+                <Select
+                  label="Plan"
+                  isRequired
+                  selectedKeys={selectedPlanId ? new Set([selectedPlanId]) : new Set()}
+                  onSelectionChange={(keys) => {
+                    const value = Array.from(keys)[0];
+                    if (typeof value === "string") setPlanId(value);
+                    edit("planId");
+                  }}
+                  disallowEmptySelection
+                  {...fieldProps("planId")}
+                >
+                  {plans.map((plan) => {
+                    const label = `${planOptionLabel(plan)} · ${planPriceHint(plan, billingCycle, formatPrice)}`;
+                    return (
+                      <SelectItem key={plan.id} textValue={label}>
+                        {label}
+                      </SelectItem>
+                    );
+                  })}
+                </Select>
+                <Select
+                  label="Billing cycle"
+                  isRequired
+                  validationBehavior="aria"
+                  selectedKeys={new Set([billingCycle])}
+                  onSelectionChange={(keys) => {
+                    const value = Array.from(keys)[0];
+                    if (value === "MONTHLY" || value === "YEARLY") setBillingCycle(value);
+                  }}
+                  disallowEmptySelection
+                >
+                  <SelectItem key="MONTHLY">Monthly</SelectItem>
+                  <SelectItem key="YEARLY">Yearly</SelectItem>
+                </Select>
+                <Switch isSelected={startActive} onValueChange={setStartActive}>
+                  Start live (skip the 14-day trial)
+                </Switch>
+              </div>
+            </Card>
+
+            <Card title="Region and currency" description="Where the store's data lives and how it shows time and money.">
+              <div className="flex flex-col gap-4">
+                <Select
+                  label="Region"
+                  isRequired
+                  validationBehavior="aria"
+                  selectedKeys={new Set([region])}
+                  onSelectionChange={(keys) => {
+                    const value = Array.from(keys)[0];
+                    const match = REGIONS.find((item) => item.key === value);
+                    if (match) setRegion(match.key);
+                  }}
+                  disallowEmptySelection
+                >
+                  {REGIONS.map((item) => (
+                    <SelectItem key={item.key}>{item.label}</SelectItem>
+                  ))}
+                </Select>
+                <Input
+                  label="Time zone"
+                  isRequired
+                  placeholder={DEFAULT_STORE_TIMEZONE}
+                  value={timezone}
+                  onValueChange={(value) => {
+                    setTimezone(value);
+                    edit("timezone");
+                  }}
+                  {...fieldProps("timezone")}
+                />
+                <Input
+                  label="Currency"
+                  isRequired
+                  placeholder={DEFAULT_STORE_CURRENCY}
+                  value={currency}
+                  maxLength={3}
+                  onValueChange={(value) => {
+                    setCurrency(value.toUpperCase());
+                    edit("currency");
+                  }}
+                  {...fieldProps("currency")}
+                />
+              </div>
+            </Card>
+          </div>
+        </div>
 
         {/* Enter in any field submits. */}
         <button type="submit" hidden aria-hidden tabIndex={-1} />
       </form>
-
-      <FormFooter>
-        <Button variant="secondary" onPress={() => navigate("/stores")} isDisabled={submitting}>
-          Cancel
-        </Button>
-        <Button variant="primary" isLoading={submitting} onPress={() => void handleSubmit()}>
-          Add store
-        </Button>
-      </FormFooter>
 
       {created ? (
         <OwnerCredentialsDialog

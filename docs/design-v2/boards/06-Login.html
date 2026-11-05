@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in</title>
+
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#9DBBFF;text-decoration:none}
+.z{font-family:'Geist',ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:20px;color:#F2F4F8;-webkit-font-smoothing:antialiased;background:#050608;position:relative;overflow:hidden}
+.z *{box-sizing:border-box}
+.mono{font-family:'Geist Mono',ui-monospace,monospace}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes spinr{to{transform:rotate(-360deg)}}
+@keyframes breathe{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:.9;transform:scale(1.08)}}
+@keyframes rise{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes drift{0%,100%{transform:translate(0,0)}50%{transform:translate(40px,-30px)}}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes look{0%,40%,100%{transform:translateX(0)}50%,90%{transform:translateX(6px)}}
+.art{position:relative;overflow:hidden;background:radial-gradient(90% 70% at 40% 35%,#123A9E 0%,#0A1E5C 42%,#040A22 80%,#03050F 100%)}
+.art .beam{position:absolute;left:50%;top:-160px;width:620px;height:420px;margin-left:-310px;border-radius:50%;background:radial-gradient(closest-side,rgba(140,190,255,.75),rgba(59,130,246,.22) 55%,transparent);filter:blur(30px);animation:breathe 8s ease-in-out infinite}
+.art .bl2{position:absolute;width:520px;height:520px;right:-180px;bottom:-200px;border-radius:50%;background:radial-gradient(closest-side,rgba(96,165,250,.45),transparent);animation:drift 16s ease-in-out infinite}
+.orb{position:absolute;border-radius:50%;animation:rise 7s ease-in-out infinite}
+.orb .ring{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,rgba(10,20,60,.1) 56%,rgba(96,165,250,.35) 66%,rgba(219,234,254,.95) 70%,rgba(96,165,250,.2) 73%,transparent 76%);box-shadow:0 0 140px 14px rgba(59,130,246,.35)}
+.orb .sw{position:absolute;inset:4%;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 10%,rgba(147,197,253,.9) 22%,transparent 36%,rgba(129,140,248,.8) 58%,transparent 72%,rgba(125,211,252,.9) 88%,transparent 100%);-webkit-mask:radial-gradient(circle,transparent 38%,#000 52%,#000 66%,transparent 70%);mask:radial-gradient(circle,transparent 38%,#000 52%,#000 66%,transparent 70%);filter:blur(5px);animation:spin 10s linear infinite}
+.orb .sw2{position:absolute;inset:15%;border-radius:50%;background:conic-gradient(from 90deg,transparent 0 20%,rgba(191,219,254,.7) 35%,transparent 50%,rgba(59,130,246,.8) 75%,transparent 90%);-webkit-mask:radial-gradient(circle,transparent 40%,#000 60%,transparent 72%);mask:radial-gradient(circle,transparent 40%,#000 60%,transparent 72%);filter:blur(4px);animation:spinr 14s linear infinite}
+.orb .hl{position:absolute;left:24%;top:16%;width:34%;height:20%;border-radius:50%;background:radial-gradient(closest-side,rgba(255,255,255,.55),transparent);transform:rotate(-30deg)}
+.fld{display:flex;flex-direction:column;gap:8px}
+.fld label{font-size:13px;color:#9AA0AB}
+.in{display:flex;align-items:center;gap:10px;height:52px;padding:0 12px 0 16px;border-radius:14px;background:#111317;border:1px solid #23262D;color:#F2F4F8;font-size:15px}
+.in.on{border-color:#3B82F6;box-shadow:0 0 0 4px rgba(59,130,246,.16)}
+.cta{height:52px;border:0;border-radius:14px;font:inherit;font-weight:600;font-size:15px;color:#05070D;background:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.cta.b{background:linear-gradient(90deg,#1D4ED8,#3B82F6 60%,#60A5FA);color:#FFFFFF}
+
+.bot{position:relative;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 32% 26%,rgba(255,255,255,.85) 0,rgba(255,255,255,0) 26%),radial-gradient(circle at 60% 72%,#2563EB,#0B1A4F 72%);box-shadow:0 30px 80px -20px rgba(37,99,235,.7),inset 0 0 0 1px rgba(191,219,254,.5)}
+.bot::after{content:"";position:absolute;inset:-30%;background:conic-gradient(from 0deg,transparent 0 50%,rgba(147,197,253,.85) 68%,transparent 86%);animation:spin 5s linear infinite;mix-blend-mode:screen}
+.eyes{position:absolute;left:50%;top:38%;display:flex;gap:14%;width:56%;margin-left:-28%;justify-content:center;z-index:2;animation:look 6s ease-in-out infinite}
+.eyes i{display:block;width:22%;aspect-ratio:.6;border-radius:999px;background:#FFFFFF;box-shadow:0 0 12px rgba(255,255,255,.8);animation:blink 4s infinite}
+.eyes.shut{animation:none;transform:translateX(-14%)}
+.eyes.shut i{aspect-ratio:auto;height:9%;min-height:4px;width:26%;margin-top:18%;animation:none;transform:rotate(-8deg);opacity:.9}
+.eyes.think i{animation:blink 1.2s infinite}
+.q{font-size:40px;line-height:46px;font-weight:500;letter-spacing:-0.035em}
+.q span{color:#7C8494}
+.mini{flex:1;border-radius:22px;background:#0C0E12;border:1px solid #1C1F26;padding:22px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.st{font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#5C616C}
+
+
+.scr{position:relative;width:1440px;height:900px;background:#000000;overflow:hidden;color:#F2F4F8}
+.scr .halo{position:absolute;left:50%;top:150px;width:560px;height:560px;margin-left:-280px;border-radius:50%;background:radial-gradient(closest-side,rgba(59,91,234,.32),rgba(99,102,241,.12) 50%,rgba(0,0,0,0));animation:breathe 7s ease-in-out infinite}
+.blob{position:relative;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 30% 24%,rgba(255,255,255,.9) 0,rgba(255,255,255,0) 24%),radial-gradient(circle at 62% 74%,#3B5BEA 0,#1D2F9E 45%,#0A1240 80%);box-shadow:0 0 90px 10px rgba(59,91,234,.35),inset 0 0 0 1px rgba(191,210,255,.45),inset 0 -14px 30px rgba(129,140,248,.45)}
+.blob::before{content:"";position:absolute;inset:-35%;background:conic-gradient(from 0deg,rgba(96,165,250,0) 0 35%,rgba(147,197,253,.9) 48%,rgba(165,180,252,.0) 60%,rgba(129,140,248,.85) 78%,rgba(96,165,250,0) 92%);animation:spin 6s linear infinite;mix-blend-mode:screen;filter:blur(6px)}
+.blob::after{content:"";position:absolute;inset:16%;border-radius:50%;background:radial-gradient(circle at 50% 60%,rgba(191,219,254,.35),rgba(191,219,254,0) 70%)}
+.blob.think{box-shadow:0 0 0 2px rgba(147,197,253,.25),0 0 90px 10px rgba(59,91,234,.45)}
+.blob.think::before{animation-duration:1.4s}
+.eyes{position:absolute;left:50%;top:38%;display:flex;gap:16%;width:52%;margin-left:-26%;justify-content:center;z-index:2;animation:look 6s ease-in-out infinite}
+.eyes i{display:block;width:22%;aspect-ratio:.6;border-radius:999px;background:#FFFFFF;box-shadow:0 0 12px rgba(255,255,255,.8);animation:blink 4s infinite}
+.eyes.shut{animation:none;transform:translateX(-18%) translateY(6%)}
+.eyes.shut i{aspect-ratio:auto;height:8%;min-height:4px;width:26%;margin-top:18%;animation:none;transform:rotate(-10deg)}
+.eyes.sad i{aspect-ratio:auto;height:9%;min-height:4px;width:24%;margin-top:16%;border-radius:999px 999px 0 0;animation:none}
+.q{font-size:40px;line-height:46px;font-weight:500;letter-spacing:-0.035em;text-align:center}
+.q span{color:#7C8494}
+.in7{display:flex;align-items:center;gap:10px;height:58px;padding:0 8px 0 20px;border-radius:16px;background:#0D0E11;border:1px solid #23262D;color:#F2F4F8;font-size:16px;width:460px}
+.in7.on{border-color:#4F6BF0;box-shadow:0 0 0 4px rgba(79,107,240,.18)}
+.go7{width:42px;height:42px;border-radius:12px;border:0;background:#FFFFFF;color:#000000;display:inline-flex;align-items:center;justify-content:center}
+.wm{position:absolute;left:44px;top:36px;font-size:24px;font-weight:700;letter-spacing:-0.04em}
+.wl{position:absolute;right:44px;bottom:38px;text-align:right;font-size:15px;line-height:21px;color:#9AA0AB}
+.wl b{color:#F2F4F8;font-weight:500}
+.dots3{display:inline-flex;gap:6px}.dots3 i{width:8px;height:8px;border-radius:4px;background:#4F6BF0;animation:breathe 1.2s infinite}.dots3 i:nth-child(2){animation-delay:.2s}.dots3 i:nth-child(3){animation-delay:.4s}
+</style>
+</helmet>
+<div class="z" style="height: 900px; background: #000000;"><div class="scr"><span class="halo"></span><span class="wm">Zcom</span><div class="wl">Welcome to the new era<br><b>of e-commerce.</b></div><div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px;"><div class="blob " style="width: 150px; height: 150px;"><span class="eyes "><i></i><i></i></span></div><div class="q">Hi. What's your email?</div><div class="in7 on"><span style="flex: 1;">aarav@kesarandkin.example<span style="display: inline-block; width: 2px; height: 20px; background: #4F6BF0; vertical-align: middle; margin-left: 2px;"></span></span><button type="button" class="go7" aria-label="Continue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button></div><a href="#" style="font-size: 13px; color: #6E7480;">New to Zcom? Start a store</a></div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

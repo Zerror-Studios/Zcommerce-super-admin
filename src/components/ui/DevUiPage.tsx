@@ -66,6 +66,7 @@ import { toastError } from "./toast";
 import { AiInsightCard, AiSuggestion, AiThinking, TodaysBrief, WriteWithAiButton } from "./Ai";
 import { AskBar } from "../layout/Assistant";
 import DevUiV14 from "./DevUiV14";
+import DevUiV2 from "./DevUiV2";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -106,6 +107,8 @@ export default function DevUiPage() {
           </>
         }
       />
+
+      <DevUiV2 />
 
       <Section title="Buttons">
         <Button>Primary</Button>

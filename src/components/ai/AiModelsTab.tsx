@@ -10,7 +10,6 @@ import {
   Chip,
   DataTable,
   EmptyState,
-  SearchInput,
   TablePagination,
   formatCount,
   useTableUrlState,
@@ -20,10 +19,10 @@ import { AiToolbar } from "./ai-table";
 import { datedCsvName, useAiExport, type AiTabProps } from "./ai-export";
 
 const columns: DataTableColumn[] = [
-  { key: "model", label: "Model" },
-  { key: "role", label: "Role", width: 120, skeleton: "badge" },
-  { key: "calls", label: "Calls", width: 120 },
-  { key: "cost", label: "Cost", width: 140 },
+  { key: "model", label: "Model", mobile: "primary" },
+  { key: "role", label: "Role", width: 120, skeleton: "badge", mobile: "badge" },
+  { key: "calls", label: "Calls", width: 120, mobile: "title" },
+  { key: "cost", label: "Cost", width: 140, mobile: "value" },
 ];
 
 export interface AiModelsTabProps extends AiTabProps {
@@ -78,9 +77,7 @@ export function AiModelsTab({ tabs, exportRef, models, loading, defaultModel, re
       getRowKey={(row) => row.model}
       isLoading={loading}
       toolbar={
-        <AiToolbar tabs={tabs}>
-          <SearchInput placement="toolbar" placeholder="Search models" value={search} onValueChange={setSearch} onClear={() => setSearch("")} />
-        </AiToolbar>
+        <AiToolbar tabs={tabs} search={{ value: search, onValueChange: setSearch, placeholder: "Search models" }} />
       }
       renderCell={(row, key) => {
         switch (key) {

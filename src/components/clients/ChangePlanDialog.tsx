@@ -44,6 +44,8 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconPlans,
   SegmentedControl,
   Select,
   SelectItem,
@@ -176,7 +178,9 @@ export function ChangePlanDialog({ isOpen, onClose, client, subscription, onChan
   return (
     <Modal isOpen={isOpen} onClose={onClose} width="md">
       <ModalContent>
-        <ModalHeader>Change {client.storeName}'s plan</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={<IconPlans aria-hidden />}>Change {client.storeName}'s plan</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           <div className="flex flex-col gap-4">
             {plansQuery.error && !plansQuery.data ? (

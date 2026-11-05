@@ -4,7 +4,7 @@
  * for every reminder and no subject, so this edits that one text.
  */
 import { useEffect, useRef, useState } from "react";
-import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, OptionChip, Textarea } from "../ui";
+import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, PopupTitle, IconMessages, OptionChip, Textarea } from "../ui";
 import { REMINDER_PLACEHOLDERS as PLACEHOLDERS, previewReminder } from "./settings-form.util";
 
 const MAX_LENGTH = 2000;
@@ -40,7 +40,9 @@ export function ReminderTextModal({ isOpen, text, onClose, onApply }: ReminderTe
   return (
     <Modal isOpen={isOpen} onClose={onClose} width="md">
       <ModalContent>
-        <ModalHeader>Reminder text</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={<IconMessages aria-hidden />}>Reminder text</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="flex min-w-0 flex-col gap-2">

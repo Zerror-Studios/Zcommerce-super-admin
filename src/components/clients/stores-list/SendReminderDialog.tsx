@@ -30,6 +30,8 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconSend,
   Skeleton,
   toast,
   toastError,
@@ -119,7 +121,9 @@ export function SendReminderDialog({ stores, onClose }: SendReminderDialogProps)
     <Modal isOpen onClose={onClose} width="md">
       <ModalContent>
         <ModalHeader>
-          {many ? `Send reminders to ${plural(stores.length, "store", "stores")}?` : `Send a reminder to ${first.storeName}?`}
+          <PopupTitle icon={<IconSend aria-hidden />}>
+            {many ? `Send reminders to ${plural(stores.length, "store", "stores")}?` : `Send a reminder to ${first.storeName}?`}
+          </PopupTitle>
         </ModalHeader>
         <ModalBody>
           <p className="text-body text-fg-muted">

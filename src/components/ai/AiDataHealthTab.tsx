@@ -13,7 +13,6 @@ import {
   Chip,
   DataTable,
   EmptyState,
-  SearchInput,
   Switch,
   TablePagination,
   formatCount,
@@ -27,12 +26,12 @@ import { datedCsvName, useAiExport, type AiTabProps } from "./ai-export";
 
 /** Two flex columns (Store, Needs) share what the fixed 490 leave. */
 const columns: DataTableColumn[] = [
-  { key: "store", label: "Store" },
-  { key: "needs", label: "Needs" },
-  { key: "coverage", label: "Cost coverage", width: 110 },
-  { key: "months", label: "Spend months", width: 110 },
-  { key: "profit", label: "Profitability", width: 120, skeleton: "badge" },
-  { key: "run", label: "Last run", width: 150 },
+  { key: "store", label: "Store", mobile: "primary" },
+  { key: "needs", label: "Needs", mobile: "title" },
+  { key: "coverage", label: "Cost coverage", width: 110, mobile: "value" },
+  { key: "months", label: "Spend months", width: 110, hideWhen: "narrow", mobile: "hide" },
+  { key: "profit", label: "Profitability", width: 120, skeleton: "badge", mobile: "badge" },
+  { key: "run", label: "Last run", width: 150, mobile: "meta" },
 ];
 
 /**
@@ -77,8 +76,7 @@ export function AiDataHealthTab({ tabs, exportRef }: AiTabProps) {
   useAiExport(exportRef, runExport);
 
   const toolbar = (
-    <AiToolbar tabs={tabs}>
-      <SearchInput placement="toolbar" placeholder="Search stores" value={search} onValueChange={setSearch} onClear={() => setSearch("")} />
+    <AiToolbar tabs={tabs} search={{ value: search, onValueChange: setSearch, placeholder: "Search stores" }}>
       <Switch size="sm" isSelected={showAll} onValueChange={(on) => table.setFilter("all", on ? "1" : undefined)}>
         Show all stores
       </Switch>

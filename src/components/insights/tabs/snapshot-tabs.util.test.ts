@@ -8,6 +8,7 @@ import {
   isTabAvailable,
   itemDisplay,
   listValueText,
+  metricSummaryText,
   mrrMovementRows,
   splitMetrics,
   tabMetrics,
@@ -99,5 +100,29 @@ describe("snapshot tabs (PRD-026 FR-7.3)", () => {
     expect(listValueText(-34.5, "percent-change")).toBe("−34.5%");
     expect(listValueText(40, "percent-change")).toBe("+40%");
     expect(listValueText(null, "percent-change")).toBe("—");
+  });
+});
+
+describe("metricSummaryText (design v2 summary panel)", () => {
+  it("shows an OK value with its change, previous value and coverage", () => {
+    const text = metricSummaryText(
+      metric({ key: "mrr", unit: "COUNT", value: 12, previousValue: 10, changePercent: 20, coverage: { covered: 3, total: 4 } }),
+    );
+    expect(text.value).toBe("12");
+    expect(text.note).toBe("↑ 20% vs 10 · Based on 3 of 4 stores");
+    expect(text.tone).toBe("default");
+  });
+
+  it("tints a change that goes the wrong way for the metric", () => {
+    expect(metricSummaryText(metric({ key: "churned", changePercent: 50, previousValue: 2 })).tone).toBe("danger");
+    expect(metricSummaryText(metric({ key: "mrr", changePercent: -5, previousValue: 2 })).tone).toBe("danger");
+  });
+
+  it("explains small samples and unavailable metrics", () => {
+    const small = metricSummaryText(metric({ status: "SMALL_SAMPLE", value: null, count: 2, names: ["Nahara"] }), 20);
+    expect(small.value).toBe("2");
+    expect(small.note).toBe("2 stores: Nahara · Rates are shown from 20 stores");
+    const missing = metricSummaryText(metric({ status: "UNAVAILABLE", value: null, reason: "No data", fix: "Connect GA4" }));
+    expect(missing).toEqual({ value: "—", note: "No data · Connect GA4", tone: "default" });
   });
 });

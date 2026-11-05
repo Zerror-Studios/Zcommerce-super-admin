@@ -1,36 +1,32 @@
 /**
- * The Stores table card (04 S-02): status switch with counts, search, Filter (drawer) and Columns on one row;
- * Store · Plan · Status · <Month> payment · Health · Sales · 30d · Monthly fee · ⋯. Every action, Log in to store
- * first, is in the row's ⋯ menu. Needs-action rows come first. Tab, search, filters, sort and page live in the URL.
+ * The Stores list (design v2 §1A "SA Stores", §4.3, §4.4, §7; board 59-SA-Stores-Table). Table only, no cards view.
  *
- * PRD-026 FR-3.4 (guide §6): saved views (At risk, Overdue, Dormant, In development, Churned; `?view=`) and the
- * lifecycle, category, source, city, state, account manager, tag, age and at-risk / overdue / dormant filters run
- * on the server (`platformTenants(filter)`, `store-signals.util.ts`); the table shows the loaded stores whose ids
- * it returns, under the in-browser filters as before. Lifecycle and Risk columns; Export sends the same filter.
+ * Title row (from the page, with this table's ⋯: Export, Choose columns, Deleted stores) → summary panel (from
+ * the page) → the toolbar ABOVE the table (tabs All, Live, In setup, At risk, Paused with counts; search
+ * "Store, owner or domain", filter, sort) → the table: Store (name + status line), Owner, Plan, Health,
+ * Sales · 30d, Orders, Billing, Last active; Lifecycle, Risk, Monthly fee and Renewal under Choose columns.
+ *
+ * The row chevron (or a click on the row) opens the row IN PLACE (StoreRowDetail: sales, store numbers, apps,
+ * what to do); the store name goes into the store. Every row action stays in the row's ⋯ menu. Under 768px the
+ * rows are cards that open the store (§10).
+ *
+ * Today's tabs, saved views and filters are all kept (stores-tabs.util.ts): Trial and Unpaid are At risk slices,
+ * Suspended is Paused, Deleted is behind the title ⋯, saved views are in the filter drawer. PRD-026 FR-3.4: the
+ * lifecycle, profile and signal filters run on the server (`platformTenants(filter)`, `store-signals.util.ts`);
+ * tab, search, filters, sort and page live in the URL.
  */
 
 import { useApolloClient, useQuery } from "@apollo/client";
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { PLATFORM_STORE_PROFILE_OPTIONS } from "../../../graphql/store-profile";
 import { PLATFORM_TENANT_SIGNALS } from "../../../graphql/tenants";
-import { lifecycleLabel, lifecycleTone } from "../../../lib/platform-insights.util";
-import { downloadCsv, rowsToCsv } from "../../../lib/report-csv";
-import type { Client, Subscription } from "../../../types";
-import type { PlatformList } from "../../../types/platform-api";
 import { useUrlSearch } from "../../../hooks/use-url-search";
+import { lifecycleLabel, lifecycleTone } from "../../../lib/platform-insights.util";
 import { PLATFORM_PERMISSIONS } from "../../../lib/permissions";
 import { planFilterOptions } from "../../../lib/plan-identity.util";
-import {
-  healthBandEnum,
-  isStoreTab,
-  joinParam,
-  matchesTab,
-  splitParam,
-  storeTabEnum,
-  type HealthBandKey,
-  type StoreTab,
-} from "../../../lib/store-table.util";
+import { downloadCsv, rowsToCsv } from "../../../lib/report-csv";
+import { healthBandEnum, joinParam, splitParam, type HealthBandKey } from "../../../lib/store-table.util";
 import {
   STORE_LIFECYCLE_FILTERS,
   graceDaysFor,
@@ -44,24 +40,26 @@ import { formatDate } from "../../../lib/utils";
 import { useAuth } from "../../../providers/AuthProvider";
 import { useClients } from "../../../providers/ClientsProvider";
 import { usePlatformSettings } from "../../../providers/SettingsProvider";
+import type { Client, Subscription } from "../../../types";
+import type { PlatformList } from "../../../types/platform-api";
 import { AppliedFilters, type AppliedFilterItem } from "../../common/AppliedFilters";
 import {
   Avatar,
   Button,
   Chip,
   DataTable,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
   EmptyState,
-  FilterButton,
   FilterDrawer,
   IconButton,
-  SegmentedSwitch,
+  RowChevron,
+  RowMenu,
   TablePagination,
+  TableToolbar,
   Tooltip,
+  cx,
+  formatCount,
   formatMoney,
+  formatRelative,
   toast,
   toastError,
   usePersistentColumns,
@@ -70,13 +68,15 @@ import {
   type FilterGroup,
   type FilterValues,
   type RowMenuItem,
+  type SegmentedItem,
+  type SortOption,
 } from "../../ui";
 import {
   IconAdd,
-  IconDropdown,
+  IconCaret,
   IconColumns,
-  IconDownload,
   IconDelete,
+  IconDownload,
   IconEdit,
   IconLink,
   IconLogin,
@@ -85,14 +85,17 @@ import {
   IconPlay,
   IconSend,
   IconStore,
+  IconUndo,
 } from "../../ui/icons";
 import { useDeletedStoreCount } from "../RemovedStoresPanel";
 import { StoreActionDialog, type StoreAction } from "../storeActions";
 import { logInToStore } from "../storeLogin";
+import { ColumnsDialog } from "./ColumnsDialog";
 import { DeletedStoresTable } from "./DeletedStoresTable";
+import { InPlaceDetail } from "./InPlaceDetail";
 import { SendReminderDialog } from "./SendReminderDialog";
 import { StoreHealthBar } from "./StoreHealthBar";
-import { StoresToolbar } from "./StoresToolbar";
+import { StoreRowDetail } from "./StoreRowDetail";
 import {
   AGE_FILTER_OPTIONS,
   EMPTY_SERVER_PARAMS,
@@ -107,11 +110,13 @@ import {
   riskReasonsText,
   storeExportFilename,
   storeExportRow,
+  storeViewEnum,
   toServerFilter,
+  toStoreView,
   writeServerParams,
+  type StoreServerFilter,
   type StoreServerParams,
   type StoreSignal,
-  type StoreViewKey,
 } from "./store-signals.util";
 import { fetchAllStoreSignals, useStoreSignals } from "./use-store-signals";
 import {
@@ -133,53 +138,83 @@ import {
   type PaymentKind,
   type StoreListFilters,
 } from "./store-list.util";
+import {
+  AT_RISK_REASON_OPTIONS,
+  DELETED_TAB,
+  STORES_TABS,
+  atRiskReasonsOf,
+  isInSetup,
+  matchesStoresTab,
+  readStoresTabUrl,
+  storesTabEnum,
+  type AtRiskReason,
+  type StoresTab,
+  type StoresTabUrl,
+} from "./stores-tabs.util";
 
 // ─── Columns ──────────────────────────────────────────────────────────────
 
-const monthName = new Intl.DateTimeFormat("en-IN", { month: "long" }).format(new Date());
+const OPEN_KEY = "open";
 
-/** Fixed widths 756px → Store gets 204px at 960px; "tablet: hide" columns go under 956px (DataTable). */
+/** Fixed widths 916px → Store keeps 200px at 1,116px (a 1440px screen); "narrow" columns go below that. */
 const columns: DataTableColumn[] = [
   { key: "store", label: "Store", sortable: true, skeleton: "avatar", mobile: "primary" },
-  { key: "plan", label: "Plan", width: 100, hideWhen: "narrow", sortable: true },
-  { key: "status", label: "Status", width: 130, sortable: true, skeleton: "badge", mobile: "badge" },
-  // PRD-026 guide §6: the derived lifecycle and the risk score (reasons in a tooltip)
+  { key: "owner", label: "Owner", width: 180, hideWhen: "narrow", sortable: true },
+  { key: "plan", label: "Plan", width: 100, hideWhen: "narrow", sortable: true, skeleton: "badge" },
+  { key: "health", label: "Health", width: 100, sortable: true },
+  { key: "sales", label: "Sales · 30d", width: 120, sortable: true },
+  { key: "orders", label: "Orders", width: 80, hideWhen: "narrow", sortable: true },
+  { key: "payment", label: "Billing", width: 140, sortable: true, skeleton: "badge", mobile: "badge" },
+  { key: "lastActive", label: "Last active", width: 100, hideWhen: "narrow", sortable: true },
+  // Choose columns, off by default (§1A: Status and Lifecycle → the line under the name; Risk → At risk).
   { key: "lifecycle", label: "Lifecycle", width: 130, hideWhen: "narrow", skeleton: "badge" },
   { key: "risk", label: "Risk", width: 80, hideWhen: "narrow" },
-  { key: "payment", label: `${monthName} payment`, width: 140, sortable: true, skeleton: "badge" },
-  { key: "health", label: "Health", width: 110, hideWhen: "narrow", sortable: true },
-  { key: "sales", label: "Sales · 30d", width: 120, sortable: true },
-  { key: "fee", label: "Monthly fee", width: 100, hideWhen: "narrow", sortable: true },
-  // Optional (Columns menu, off by default), as live.
-  { key: "renewalDate", label: "Renewal", width: 130, hideWhen: "narrow", sortable: true },
+  { key: "fee", label: "Monthly fee", width: 110, hideWhen: "narrow", sortable: true },
+  { key: "renewalDate", label: "Renewal", width: 120, hideWhen: "narrow", sortable: true },
+  // The row end (§4.4): the ⋯ menu, then the chevron that opens the row in place.
+  { key: OPEN_KEY, label: "Open the row", hideLabel: true, width: 136, mobile: "hide" },
 ];
 
-const OPTIONAL_COLUMNS = columns.filter((column) => column.key !== "store");
-const DEFAULT_COLUMNS = ["plan", "status", "lifecycle", "risk", "payment", "health", "sales", "fee"];
+const OPTIONAL_COLUMNS = columns.filter((column) => column.key !== "store" && column.key !== OPEN_KEY);
+const DEFAULT_COLUMNS = ["owner", "plan", "health", "sales", "orders", "payment", "lastActive"];
 
-// ─── Tabs ─────────────────────────────────────────────────────────────────
-
-const TABS: { value: StoreTab; label: string }[] = [
-  { value: storeTabEnum.ALL, label: "All" },
-  { value: storeTabEnum.LIVE, label: "Live" },
-  { value: storeTabEnum.TRIAL, label: "Trial" },
-  { value: storeTabEnum.UNPAID, label: "Unpaid" },
-  { value: storeTabEnum.SUSPENDED, label: "Suspended" },
-  { value: storeTabEnum.DELETED, label: "Deleted" },
+const SORT_DEFAULT = "default";
+const SORT_OPTIONS: SortOption[] = [
+  { key: SORT_DEFAULT, label: "Needs action first" },
+  { key: "store:asc", label: "Store name, A to Z" },
+  { key: "health:asc", label: "Lowest health first" },
+  { key: "sales:desc", label: "Highest sales first" },
+  { key: "orders:desc", label: "Most orders first" },
+  { key: "lastActive:desc", label: "Active most recently" },
+  { key: "payment:asc", label: "Owing first" },
+  { key: "renewalDate:asc", label: "Renewing soonest" },
 ];
 
-const EMPTY_BY_TAB: Partial<Record<StoreTab, { title: string; description: string }>> = {
-  [storeTabEnum.LIVE]: { title: "No live stores yet", description: "Stores show here once they go live." },
-  [storeTabEnum.TRIAL]: { title: "No stores in trial", description: "Stores on a free trial show here." },
-  [storeTabEnum.UNPAID]: { title: "Everyone's paid", description: "No store owes a payment right now." },
-  [storeTabEnum.SUSPENDED]: {
-    title: "No suspended stores",
+const EMPTY_BY_TAB: Partial<Record<StoresTab, { title: string; description: string }>> = {
+  [storesTabEnum.LIVE]: { title: "No live stores yet", description: "Stores show here once they go live." },
+  [storesTabEnum.IN_SETUP]: { title: "No stores in setup", description: "New stores show here until they go live." },
+  [storesTabEnum.AT_RISK]: {
+    title: "Nothing at risk",
+    description: "Trials, stores that owe money and stores with warning signs show here.",
+  },
+  [storesTabEnum.PAUSED]: {
+    title: "No paused stores",
     description: "Suspended stores stay here until they're reactivated or deleted.",
   },
 };
 
+/** The server's warning signs (the old At risk saved view), read once for the At risk tab. */
+const AT_RISK_SIGNALS: StoreServerFilter = { atRisk: true };
+
 const PAYMENT_KINDS = new Set<string>(Object.values(paymentKindEnum));
 const HEALTH_KEYS = new Set<string>(Object.values(healthBandEnum));
+const PHONE_QUERY = "(max-width: 767px)";
+
+/** Saved views in the filter drawer; At risk is a tab now. */
+const VIEW_OPTIONS = STORE_VIEWS.filter((view) => view.key !== storeViewEnum.AT_RISK).map((view) => ({
+  value: view.key,
+  label: view.label,
+}));
 
 // ─── URL state ────────────────────────────────────────────────────────────
 
@@ -189,46 +224,61 @@ interface Row {
   payment: PaymentBadge;
 }
 
-/**
- * Tab and filters from the URL. Older links keep working: `?status=unpaid` opens Unpaid, `?overdue=1` and
- * `?tab=overdue` filter overdue payments, `?tab=setup` filters Set up, `?tab=trials-week` opens Trial renewing
- * within 7 days.
- */
-function readUrl(params: Record<string, string>): { tab: StoreTab; filters: StoreListFilters; legacy: string[] } {
-  const legacy: string[] = [];
-  const statusParam = splitParam(params.status);
-  let tab: StoreTab = isStoreTab(params.tab) ? params.tab : storeTabEnum.ALL;
+/** The extra row under an opened row; it holds StoreRowDetail. */
+interface DetailRow {
+  detailOf: Row;
+}
+
+type TableRow = Row | DetailRow;
+
+const isDetailRow = (row: TableRow): row is DetailRow => "detailOf" in row;
+
+/** The in-browser filters from the URL; older links (`?overdue=1`, `?tab=overdue`, `?tab=trials-week`) included. */
+function readFilters(params: Record<string, string>, tabUrl: StoresTabUrl): StoreListFilters {
   const filters: StoreListFilters = {
     plans: splitParam(params.plan),
-    statuses: statusParam,
+    statuses: tabUrl.unpaidStatus ? [] : splitParam(params.status),
     health: splitParam(params.health).filter((key) => HEALTH_KEYS.has(key)) as HealthBandKey[],
     payment: splitParam(params.payment).filter((key) => PAYMENT_KINDS.has(key)) as PaymentKind[],
     renews: params.renews === "7" || params.renews === "30" ? params.renews : "",
     joined: JOINED_OPTIONS.some((option) => option.value === params.joined) ? params.joined : "",
   };
-  if (statusParam.length === 1 && statusParam[0] === "unpaid") {
-    tab = storeTabEnum.UNPAID;
-    filters.statuses = [];
-    legacy.push("status");
-  }
-  if (params.overdue === "1") {
+  if (params.overdue === "1" || tabUrl.overdue) {
     filters.payment = Array.from(new Set([...filters.payment, paymentKindEnum.GRACE, paymentKindEnum.OVERDUE]));
-    legacy.push("overdue");
   }
-  if (tab === storeTabEnum.OVERDUE) {
-    filters.payment = Array.from(new Set([...filters.payment, paymentKindEnum.GRACE, paymentKindEnum.OVERDUE]));
-    tab = storeTabEnum.ALL;
-    legacy.push("tab");
-  } else if (tab === storeTabEnum.SET_UP) {
-    filters.statuses = Array.from(new Set([...filters.statuses, storeLifecycleEnum.SET_UP]));
-    tab = storeTabEnum.ALL;
-    legacy.push("tab");
-  } else if (tab === storeTabEnum.TRIALS_WEEK) {
-    filters.renews = "7";
-    tab = storeTabEnum.TRIAL;
-    legacy.push("tab");
+  if (tabUrl.renewsWithinWeek) filters.renews = "7";
+  return filters;
+}
+
+function useIsPhone(): boolean {
+  const [phone, setPhone] = useState(() =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia(PHONE_QUERY).matches : false,
+  );
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return undefined;
+    const query = window.matchMedia(PHONE_QUERY);
+    const onChange = () => setPhone(query.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  return phone;
+}
+
+/** "Live · no products yet", "In setup · joined Oct 2026", else the status and the domain. */
+function storeLine(client: Client): string {
+  const status = storeStatusBadge(client).label;
+  if (isInSetup(client)) {
+    const joined = new Date(client.joinedDate);
+    const month = Number.isNaN(joined.getTime())
+      ? null
+      : new Intl.DateTimeFormat("en-IN", { month: "short", year: "numeric" }).format(joined);
+    return month ? `In setup · joined ${month}` : "In setup";
   }
-  return { tab, filters, legacy };
+  if (storeLifecycleKey(client) === storeLifecycleEnum.LIVE && client.hasUsage !== false && client.usage.products === 0) {
+    return `${status} · no products yet`;
+  }
+  const where = client.domain || client.slug;
+  return where ? `${status} · ${where}` : status;
 }
 
 // ─── Table ────────────────────────────────────────────────────────────────
@@ -236,10 +286,15 @@ function readUrl(params: Record<string, string>): { tab: StoreTab; filters: Stor
 export interface StoresTableProps {
   clients: Client[];
   isLoading?: boolean;
+  /** The title row; the table hands it the ⋯ items (Export, Choose columns, Deleted stores). */
+  renderHeader: (more: RowMenuItem[]) => ReactNode;
+  /** Between the title row and the toolbar: the summary panel and the loading notices. */
+  beforeTable?: ReactNode;
 }
 
-export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
+export function StoresTable({ clients, isLoading = false, renderHeader, beforeTable }: StoresTableProps) {
   const navigate = useNavigate();
+  const isPhone = useIsPhone();
   const { subscriptions, plans } = useClients();
   const { settings } = usePlatformSettings();
   const { can, user } = useAuth();
@@ -250,32 +305,39 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
   const canDelete = canManage && user?.role === "PLATFORM_OWNER";
 
   const url = useTableUrlState();
-  const { tab, filters, legacy } = readUrl(url.filters);
+  const tabUrl = readStoresTabUrl(url.filters);
+  const { tab, why, deleted } = tabUrl;
+  const filters = readFilters(url.filters, tabUrl);
   const filtersKey = JSON.stringify(filters);
+  const whyKey = why.join(",");
   const [searchInput, setSearchInput] = useUrlSearch(url.search, url.setSearch);
-  // v3: the PRD-026 Lifecycle and Risk columns are on by default
-  const [savedColumns, setSavedColumns] = usePersistentColumns("stores.v3", DEFAULT_COLUMNS);
+  // v4 (design v2 columns): Owner, Orders and Last active on; Lifecycle, Risk and Monthly fee under Choose columns.
+  const [savedColumns, setSavedColumns] = usePersistentColumns("stores.v4", DEFAULT_COLUMNS);
   const apollo = useApolloClient();
-  const server = readServerParams(url.filters);
+  // `view=at-risk` is the At risk tab now (its Warning signs slice), not a saved view.
+  const rawServer = readServerParams(url.filters);
+  const server: StoreServerParams = tabUrl.atRiskView ? { ...rawServer, view: "" } : rawServer;
   const serverKey = JSON.stringify(server);
-  const serverFilter = useMemo(
-    () => toServerFilter(JSON.parse(serverKey) as StoreServerParams),
-    [serverKey],
-  );
-  // Every store's signals (columns, option lists), and the filter's matches
+  const serverFilter = useMemo(() => toServerFilter(JSON.parse(serverKey) as StoreServerParams), [serverKey]);
+  // Every store's signals (columns, option lists), the filter's matches, and the stores with warning signs.
   const allSignals = useStoreSignals(null);
   const matched = useStoreSignals(serverFilter, { skip: !serverFilter });
+  const flagged = useStoreSignals(AT_RISK_SIGNALS);
   const profileOptionsQuery = useQuery<{ platformStoreProfileOptions: { categories: string[]; sources: string[] } }>(
     PLATFORM_STORE_PROFILE_OPTIONS,
   );
   const [exporting, setExporting] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [pending, setPending] = useState<{ client: Client; action: StoreAction } | null>(null);
   const [reminding, setReminding] = useState<Client[]>([]);
   const deletedCount = useDeletedStoreCount(false);
   const now = useMemo(() => new Date(), []);
 
-  const visibleColumns = useMemo(() => new Set(["store", ...savedColumns]), [savedColumns]);
+  const visibleColumns = useMemo(() => new Set(["store", ...savedColumns, OPEN_KEY]), [savedColumns]);
+  const flaggedIds = flagged.matchingIds;
+  const isFlagged = (id: string) => flaggedIds?.has(id) ?? false;
 
   // Every active plan (custom plans included, so a store on one can be found).
   const planOptions = useMemo(
@@ -310,55 +372,72 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
   );
 
   const tabCounts = useMemo(() => {
-    const counts: Partial<Record<StoreTab, number>> = {};
-    TABS.forEach(({ value }) => {
-      if (value !== storeTabEnum.DELETED) {
-        counts[value] = searched.filter((row) => matchesTab(value, row.client, row.subscription, now)).length;
-      }
+    const counts: Partial<Record<StoresTab, number>> = {};
+    STORES_TABS.forEach(({ value }) => {
+      counts[value] = searched.filter((row) =>
+        matchesStoresTab(value, row.client, row.subscription, flaggedIds?.has(row.client.id) ?? false, value === storesTabEnum.AT_RISK ? why : []),
+      ).length;
     });
     return counts;
-  }, [now, searched]);
+    // whyKey stands for `why`, rebuilt from the URL each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searched, flaggedIds, whyKey]);
 
   const sorted = useMemo(() => {
-    const items = searched.filter((row) => matchesTab(tab, row.client, row.subscription, now));
+    const items = searched.filter((row) =>
+      matchesStoresTab(tab, row.client, row.subscription, flaggedIds?.has(row.client.id) ?? false, why),
+    );
     const sort = url.sort;
     if (!sort) return items.sort(compareNeedsAction);
     items.sort((a, b) => compareByColumn(a, b, sort.column));
     return sort.direction === "desc" ? items.reverse() : items;
-  }, [now, searched, tab, url.sort]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searched, tab, whyKey, flaggedIds, url.sort]);
 
   const pageCount = Math.max(1, Math.ceil(sorted.length / url.pageSize));
   const page = Math.min(url.page, pageCount);
   const pageRows = sorted.slice((page - 1) * url.pageSize, page * url.pageSize);
+  // The opened row gets its detail row right under it (desktop only; phone rows open the store).
+  const tableRows: TableRow[] = isPhone
+    ? pageRows
+    : pageRows.flatMap((row) => (row.client.id === openId ? [row, { detailOf: row }] : [row]));
 
   // ─── Changing the URL ───────────────────────────────────────────────────
 
-  const legacyCleared = Object.fromEntries(legacy.map((key) => [key, undefined]));
-  const writeServer = (next: StoreServerParams) => url.setParams(writeServerParams(next));
-  const setView = (view: StoreViewKey | "") => writeServer({ ...server, view });
-  const writeFilters = (next: StoreListFilters) =>
+  /** Older links are written back the new way (tab + why) on the next change. */
+  const canonical: Record<string, string | undefined> = {
+    tab: deleted ? DELETED_TAB : tab === storesTabEnum.ALL ? undefined : tab,
+    why: joinParam(why),
+    overdue: undefined,
+    ...(tabUrl.atRiskView ? { view: undefined } : {}),
+  };
+  const filterParams = (next: StoreListFilters) => ({
+    plan: joinParam(next.plans),
+    status: joinParam(next.statuses),
+    health: joinParam(next.health),
+    payment: joinParam(next.payment),
+    renews: next.renews || undefined,
+    joined: next.joined || undefined,
+  });
+  // The derived filters (Unpaid's status, Overdue's payment, a week's renewals) are written out with the tab.
+  const writeFilters = (next: StoreListFilters) => url.setParams({ ...canonical, ...filterParams(next) });
+  const writeServer = (next: StoreServerParams) => url.setParams({ ...canonical, ...writeServerParams(next) });
+  const setWhy = (next: AtRiskReason[]) => url.setParams({ ...canonical, ...filterParams(filters), why: joinParam(next) });
+  const setTab = (next: string) => {
+    setOpenId(null);
     url.setParams({
-      ...legacyCleared,
-      // A legacy tab is written back as the tab it opened.
-      ...(legacy.includes("tab") ? { tab: tab === storeTabEnum.ALL ? undefined : tab } : {}),
-      plan: joinParam(next.plans),
-      status: joinParam(next.statuses),
-      health: joinParam(next.health),
-      payment: joinParam(next.payment),
-      renews: next.renews || undefined,
-      joined: next.joined || undefined,
+      ...canonical,
+      ...(tabUrl.legacy ? filterParams(filters) : {}),
+      tab: next === storesTabEnum.ALL ? undefined : next,
+      why: undefined,
     });
-  const setTab = (next: StoreTab) =>
-    url.setParams({
-      tab: next === storeTabEnum.ALL ? undefined : next,
-      ...(legacy.includes("status") ? { status: undefined } : {}),
-    });
+  };
   const clearFilters = () => {
     setSearchInput("");
     url.setParams({
+      ...canonical,
       q: undefined,
-      ...legacyCleared,
-      ...(legacy.includes("tab") ? { tab: tab === storeTabEnum.ALL ? undefined : tab } : {}),
+      why: undefined,
       plan: undefined,
       status: undefined,
       health: undefined,
@@ -367,6 +446,12 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
       joined: undefined,
       ...Object.fromEntries(SERVER_PARAM_KEYS.map((key) => [key, undefined])),
     });
+  };
+  const sortValue = url.sort ? `${url.sort.column}:${url.sort.direction}` : SORT_DEFAULT;
+  const setSortKey = (key: string) => {
+    if (key === SORT_DEFAULT) return url.setSort(undefined);
+    const [column, direction] = key.split(":");
+    url.setSort({ column, direction: direction === "desc" ? "desc" : "asc" });
   };
 
   // ─── PRD-026: option lists and export ───────────────────────────────────
@@ -380,6 +465,9 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
     };
   }, [allSignals.signals, profileOptionsQuery.data]);
   const asOption = (value: string) => ({ value, label: value });
+
+  // A server filter's matches arrive after the stores themselves
+  const serverLoading = isLoading || (serverFilter !== null && matched.loading);
 
   /** Guide §6: the rows shown (same server filter, read 100 a page), as CSV. */
   const exportCsv = async () => {
@@ -402,6 +490,12 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
 
   const groups = useMemo<FilterGroup[]>(
     () => [
+      // The At risk slices (today's Trial and Unpaid tabs, and the At risk saved view).
+      ...(tab === storesTabEnum.AT_RISK
+        ? [{ key: "why", label: "At risk because", type: "options" as const, options: AT_RISK_REASON_OPTIONS }]
+        : []),
+      // Saved views (guide §6), the old "All stores ▾" button.
+      { key: "view", label: "Saved view", type: "single", options: VIEW_OPTIONS },
       ...(planOptions.length
         ? [{ key: "plan", label: "Plan", type: "options" as const, options: planOptions.map((o) => ({ value: o.key, label: o.label })) }]
         : []),
@@ -443,11 +537,13 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
         : []),
       { key: "age", label: "Age since go-live", type: "options", options: AGE_FILTER_OPTIONS },
     ],
-    [planOptions, profileChoices],
+    [planOptions, profileChoices, tab],
   );
 
   const drawerValue = useMemo<FilterValues>(
     () => ({
+      why,
+      view: server.view,
       lifecycle: server.lifecycle,
       signal: server.signal,
       category: server.category,
@@ -465,58 +561,55 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
       joined: filters.joined,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filtersKey, serverKey],
+    [filtersKey, serverKey, whyKey],
   );
 
-  /** The drawer's server-side groups; the saved view is kept. */
-  const serverFromDrawer = (values: FilterValues): StoreServerParams => {
-    const list = (key: string) => (Array.isArray(values[key]) ? (values[key] as string[]) : []);
-    const one = (key: string) => (typeof values[key] === "string" ? (values[key] as string) : "");
-    return readServerParams(
+  const listOf = (values: FilterValues, key: string) => (Array.isArray(values[key]) ? (values[key] as string[]) : []);
+  const oneOf = (values: FilterValues, key: string) => (typeof values[key] === "string" ? (values[key] as string) : "");
+
+  /** The drawer's server-side groups, the saved view among them. */
+  const serverFromDrawer = (values: FilterValues): StoreServerParams =>
+    readServerParams(
       Object.fromEntries(
         Object.entries(
           writeServerParams({
             ...EMPTY_SERVER_PARAMS,
-            view: server.view,
-            lifecycle: list("lifecycle") as StoreServerParams["lifecycle"],
-            signal: list("signal") as StoreServerParams["signal"],
-            category: list("category"),
-            source: list("source"),
-            manager: list("manager"),
-            tag: list("tag"),
-            age: list("age") as StoreServerParams["age"],
-            city: one("city"),
-            state: one("state"),
+            view: toStoreView(oneOf(values, "view")),
+            lifecycle: listOf(values, "lifecycle") as StoreServerParams["lifecycle"],
+            signal: listOf(values, "signal") as StoreServerParams["signal"],
+            category: listOf(values, "category"),
+            source: listOf(values, "source"),
+            manager: listOf(values, "manager"),
+            tag: listOf(values, "tag"),
+            age: listOf(values, "age") as StoreServerParams["age"],
+            city: oneOf(values, "city"),
+            state: oneOf(values, "state"),
           }),
         ).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
       ),
     );
-  };
 
-  const fromDrawer = (values: FilterValues): StoreListFilters => {
-    const list = (key: string) => (Array.isArray(values[key]) ? (values[key] as string[]) : []);
-    const one = (key: string) => (typeof values[key] === "string" ? (values[key] as string) : "");
-    return {
-      plans: list("plan"),
-      statuses: list("status"),
-      health: list("health") as HealthBandKey[],
-      payment: list("payment") as PaymentKind[],
-      renews: one("renews"),
-      joined: one("joined"),
-    };
-  };
+  const fromDrawer = (values: FilterValues): StoreListFilters => ({
+    plans: listOf(values, "plan"),
+    statuses: listOf(values, "status"),
+    health: listOf(values, "health") as HealthBandKey[],
+    payment: listOf(values, "payment") as PaymentKind[],
+    renews: oneOf(values, "renews"),
+    joined: oneOf(values, "joined"),
+  });
 
   const countResults = async (draft: FilterValues) => {
     const next = fromDrawer(draft);
+    const nextWhy = listOf(draft, "why") as AtRiskReason[];
     const nextServer = toServerFilter(serverFromDrawer(draft));
     let ids: Set<string> | null = null;
     if (nextServer) {
       const result = await fetchAllStoreSignals(async (offset) => {
-        const page = await apollo.query<{ platformTenants: PlatformList<StoreSignal> }>({
+        const answer = await apollo.query<{ platformTenants: PlatformList<StoreSignal> }>({
           query: PLATFORM_TENANT_SIGNALS,
           variables: { filter: nextServer, limit: 100, offset },
         });
-        return page.data.platformTenants;
+        return answer.data.platformTenants;
       });
       ids = new Set(result.items.map((item) => item.id));
     }
@@ -528,11 +621,11 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
       })
       .filter((row) => !ids || ids.has(row.client.id))
       .filter(
-      (row) =>
-        matchesSearch(row.client, query) &&
-        matchesListFilters(next, row.client, row.subscription, row.payment.kind, now) &&
-        matchesTab(tab, row.client, row.subscription, now),
-    ).length;
+        (row) =>
+          matchesSearch(row.client, query) &&
+          matchesListFilters(next, row.client, row.subscription, row.payment.kind, now) &&
+          matchesStoresTab(tab, row.client, row.subscription, isFlagged(row.client.id), nextWhy),
+      ).length;
   };
 
   const statusLabel = (value: string) => {
@@ -543,6 +636,11 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
     options.find((option) => option.value === value)?.label ?? value;
 
   const chips: AppliedFilterItem[] = [
+    ...why.map((reason) => ({
+      key: `why-${reason}`,
+      label: `At risk: ${optionLabel(AT_RISK_REASON_OPTIONS, reason).toLowerCase()}`,
+      onRemove: () => setWhy(why.filter((value) => value !== reason)),
+    })),
     ...filters.plans.map((plan) => ({
       key: `plan-${plan}`,
       label: `Plan: ${planLabel.get(plan) ?? plan}`,
@@ -571,7 +669,7 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
       : []),
     // PRD-026 guide §6: the server-side filters
     ...(server.view
-      ? [{ key: "view", label: `View: ${STORE_VIEWS.find((view) => view.key === server.view)?.label ?? server.view}`, onRemove: () => setView("") }]
+      ? [{ key: "view", label: `View: ${STORE_VIEWS.find((view) => view.key === server.view)?.label ?? server.view}`, onRemove: () => writeServer({ ...server, view: "" }) }]
       : []),
     ...server.lifecycle.map((value) => ({
       key: `lifecycle-${value}`,
@@ -629,6 +727,15 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
     if (canImpersonate) {
       items.push({ key: "login", label: "Log in to store", icon: IconLogin, onSelect: () => void logInToStore(client) });
     }
+    // In setup (the old Onboarding page): the setup checklist, provisioning and Go live are on the store page.
+    if (isInSetup(client)) {
+      items.push({
+        key: "setup",
+        label: "Set up and go live",
+        icon: IconStore,
+        onSelect: () => navigate(`/stores/${client.id}/overview#setup`),
+      });
+    }
     items.push({
       key: "subscription",
       label: "View subscription",
@@ -643,7 +750,7 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
         key: "edit",
         label: "Edit store details",
         icon: IconEdit,
-        onSelect: () => navigate(`/stores/${client.id}/details?edit=1`),
+        onSelect: () => navigate(`/stores/${client.id}/settings?edit=1`),
       });
     }
     items.push({
@@ -679,36 +786,69 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
     return items;
   };
 
-  const salesText = (client: Client) => (client.revenue > 0 ? formatMoney(client.revenue, { whole: true }) : "—");
+  const toggleRow = (id: string) => setOpenId((current) => (current === id ? null : id));
+  const measured = (client: Client) => client.hasUsage !== false;
+  const dash = <span className="text-fg-subtle">—</span>;
 
-  const renderCell = (row: Row, key: string) => {
-    const { client, payment, subscription } = row;
+  /** Words for the opened row's "what to do" when there is no insight: why it's at risk. */
+  const riskTextOf = (row: Row): string | undefined => {
+    const reasons = atRiskReasonsOf(row.client, row.subscription, isFlagged(row.client.id));
+    if (!reasons.length) return undefined;
+    const words = reasons
+      .filter((reason) => reason !== "signals")
+      .map((reason) => optionLabel(AT_RISK_REASON_OPTIONS, reason));
+    const signs = riskReasonsText(allSignals.byId.get(row.client.id)?.riskReasons);
+    if (reasons.includes("signals")) words.push(signs ? `Warning signs: ${signs.toLowerCase()}` : "Warning signs");
+    return `${words.join(" · ")}.`;
+  };
+
+  const renderCell = (item: TableRow, key: string) => {
+    if (isDetailRow(item)) {
+      if (key !== "store") return null;
+      const { client, subscription } = item.detailOf;
+      return (
+        <InPlaceDetail label={`${client.storeName} at a glance`}>
+          <StoreRowDetail client={client} subscription={subscription} riskText={riskTextOf(item.detailOf)} />
+        </InPlaceDetail>
+      );
+    }
+    const { client, payment, subscription } = item;
     switch (key) {
       case "store":
         return (
           <div className="flex min-w-0 items-center gap-3">
             <Avatar name={client.storeName} size="md" className="shrink-0" />
             <div className="min-w-0">
-              <p className="truncate text-body font-medium text-fg" title={client.storeName}>
+              {/* The name goes into the store; the rest of the row opens in place. Keep the press off the row. */}
+              <Link
+                to={`/stores/${client.id}/overview`}
+                onPointerDown={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+                className="block truncate text-body font-medium text-fg hover:underline"
+                title={client.storeName}
+              >
                 {client.storeName}
-              </p>
-              {client.slug ? <p className="truncate text-label text-fg-muted">{client.slug}</p> : null}
+              </Link>
+              <p className="truncate text-label text-fg-muted">{storeLine(client)}</p>
             </div>
           </div>
         );
+      case "owner":
+        return (
+          <div className="min-w-0">
+            <p className="truncate text-body text-fg">{client.ownerName || "—"}</p>
+            <p className="truncate text-label text-fg-muted">{client.ownerEmail}</p>
+          </div>
+        );
       case "plan":
-        return <span className="block truncate">{planShortName(client)}</span>;
-      case "status": {
-        const status = storeStatusBadge(client);
-        return <Chip tone={status.tone}>{status.label}</Chip>;
-      }
+        return <Chip tone="neutral">{planShortName(client)}</Chip>;
       case "lifecycle": {
         const status = allSignals.byId.get(client.id)?.lifecycleStatus;
-        return status ? <Chip tone={lifecycleTone(status)}>{lifecycleLabel(status)}</Chip> : <span className="text-fg-subtle">—</span>;
+        return status ? <Chip tone={lifecycleTone(status)}>{lifecycleLabel(status)}</Chip> : dash;
       }
       case "risk": {
         const signal = allSignals.byId.get(client.id);
-        if (!signal || signal.riskScore == null) return <span className="text-fg-subtle">—</span>;
+        if (!signal || signal.riskScore == null) return dash;
         if (signal.riskScore === 0) return <span className="num text-fg-muted">0</span>;
         return (
           <Tooltip content={riskReasonsText(signal.riskReasons) || "Warning signs"} placement="top-start">
@@ -728,7 +868,20 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
       case "health":
         return <StoreHealthBar client={client} />;
       case "sales":
-        return client.revenue > 0 ? <span className="num">{salesText(client)}</span> : <span className="text-fg-subtle">—</span>;
+        return client.revenue > 0 ? (
+          <span className="num">{formatMoney(client.revenue, { whole: true })}</span>
+        ) : (
+          <span className="text-fg-muted">No sales yet</span>
+        );
+      case "orders":
+        return measured(client) ? <span className="num">{formatCount(client.orders30d)}</span> : dash;
+      case "lastActive":
+        // No activity snapshot falls back to the epoch in the adapter: show nothing then.
+        return client.lastActive && !client.lastActive.startsWith("1970") ? (
+          <span className="num">{formatRelative(client.lastActive, now)}</span>
+        ) : (
+          dash
+        );
       case "fee":
         return client.mrr > 0 ? (
           <span className="num">{formatMoney(client.mrr, { whole: true })}</span>
@@ -736,68 +889,117 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
           <span className="text-fg-muted">No fee</span>
         );
       case "renewalDate":
-        return subscription?.renewalDate ? (
-          <span className="num">{formatDate(subscription.renewalDate)}</span>
-        ) : (
-          <span className="text-fg-subtle">—</span>
+        return subscription?.renewalDate ? <span className="num">{formatDate(subscription.renewalDate)}</span> : dash;
+      case OPEN_KEY: {
+        const open = openId === client.id;
+        return (
+          <div className="flex items-center justify-end gap-1">
+            <RowMenu items={rowActions(item)} label={`Actions for ${client.storeName}`} />
+            <IconButton
+              aria-label={open ? `Close ${client.storeName}` : `Open ${client.storeName} here`}
+              aria-expanded={open}
+              variant="default"
+              size="sm"
+              showTooltip={false}
+              className={cx(open && "zc-icon-btn--active")}
+              onPress={() => toggleRow(client.id)}
+            >
+              <IconCaret aria-hidden className={cx("transition-transform duration-fast", open && "rotate-180")} />
+            </IconButton>
+            {/* Board 59: the caret opens the row here, the chevron goes into the store. */}
+            <Link
+              to={`/stores/${client.id}/overview`}
+              aria-label={`Go to ${client.storeName}`}
+              onPointerDown={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+              className="rounded-full outline-none focus-visible:shadow-focus-strong"
+            >
+              <RowChevron />
+            </Link>
+          </div>
         );
+      }
       default:
         return null;
     }
   };
 
-  // Phone row (S-02): store name + status badge; "Plus · Due 15 Nov · ₹18,22,511".
-  const mobileRow = (row: Row) => {
-    const status = storeStatusBadge(row.client);
-    const line2 = [planShortName(row.client), row.payment.label, row.client.revenue > 0 ? salesText(row.client) : null]
+  // Phone row (§10): store name + billing badge; "In setup · joined Oct 2026 · Plus · ₹18,22,511".
+  const mobileRow = (item: TableRow) => {
+    if (isDetailRow(item)) return null;
+    const line2 = [storeLine(item.client), planShortName(item.client), item.client.revenue > 0 ? formatMoney(item.client.revenue, { whole: true }) : null]
       .filter(Boolean)
       .join(" · ");
     return (
       <>
         <div className="flex min-w-0 items-center justify-between gap-3">
-          <span className="min-w-0 truncate text-body font-medium text-fg">{row.client.storeName}</span>
-          <Chip tone={status.tone}>{status.label}</Chip>
+          <span className="min-w-0 truncate text-body font-medium text-fg">{item.client.storeName}</span>
+          <Chip tone={item.payment.tone}>{item.payment.label}</Chip>
         </div>
         <p className="mt-1 truncate text-label text-fg-muted num">{line2}</p>
       </>
     );
   };
 
-  // ─── Toolbar, empty states ──────────────────────────────────────────────
+  // ─── Title ⋯, toolbar, empty states ─────────────────────────────────────
 
-  const tabsNode = (
-    <SegmentedSwitch<StoreTab>
-      ariaLabel="Store status"
-      value={tab}
-      onChange={setTab}
-      items={TABS.map((item) => ({
-        value: item.value,
-        label: item.label,
-        count: item.value === storeTabEnum.DELETED ? (deletedCount ?? null) : (tabCounts[item.value] ?? 0),
-      }))}
-    />
-  );
+  const more: RowMenuItem[] = deleted
+    ? [{ key: "all", label: "Back to all stores", icon: IconUndo, onSelect: () => setTab(storesTabEnum.ALL) }]
+    : [
+        {
+          key: "export",
+          label: "Export these stores (CSV)",
+          icon: IconDownload,
+          disabled: exporting || serverLoading,
+          onSelect: () => void exportCsv(),
+        },
+        { key: "columns", label: "Choose columns", icon: IconColumns, onSelect: () => setColumnsOpen(true) },
+        {
+          key: "deleted",
+          label: "Deleted stores",
+          icon: IconDelete,
+          description: deletedCount ? `${formatCount(deletedCount)} restorable or purged` : "Restore or see purged stores",
+          onSelect: () => setTab(DELETED_TAB),
+        },
+      ];
 
-  if (tab === storeTabEnum.DELETED) {
-    return <DeletedStoresTable tabs={tabsNode} search={searchInput} onSearchChange={setSearchInput} query={url.search} />;
+  const tabItems: SegmentedItem<string>[] = [
+    ...STORES_TABS.map((item) => ({ value: item.value, label: item.label, count: tabCounts[item.value] ?? 0 })),
+    // Deleted shows as a tab only while its list is open (from the ⋯ menu).
+    ...(deleted ? [{ value: DELETED_TAB, label: "Deleted", count: deletedCount ?? null }] : []),
+  ];
+
+  if (deleted) {
+    return (
+      <>
+        {renderHeader(more)}
+        {beforeTable}
+        <DeletedStoresTable
+          tabs={tabItems}
+          tab={DELETED_TAB}
+          onTabChange={setTab}
+          search={searchInput}
+          onSearchChange={setSearchInput}
+          query={url.search}
+        />
+      </>
+    );
   }
 
-  const activeFilters = countFilters(filters) + countServerFilters(server);
-  // A server filter's matches arrive after the stores themselves
-  const serverLoading = isLoading || (serverFilter !== null && matched.loading);
+  const activeFilters = countFilters(filters) + countServerFilters(server) + why.length + (server.view ? 1 : 0);
   const hasFilters = query !== "" || activeFilters > 0 || !!server.view;
   const tabEmpty = EMPTY_BY_TAB[tab];
   const emptyContent = hasFilters ? (
     <EmptyState kind="no-results" title="No stores match these filters" onClearFilters={clearFilters} />
-  ) : tab === storeTabEnum.ALL ? (
+  ) : tab === storesTabEnum.ALL ? (
     <EmptyState
       icon={IconStore}
       title="No stores yet"
-      description="Add your first store to start billing it."
+      description="Create your first store to start billing it."
       action={
         canManage ? (
           <Button variant="primary" startIcon={<IconAdd aria-hidden />} onPress={() => navigate("/stores/new")}>
-            Add store
+            Create store
           </Button>
         ) : undefined
       }
@@ -807,108 +1009,90 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
   );
 
   const toolbar = (
-    <StoresToolbar tabs={tabsNode} search={searchInput} onSearchChange={setSearchInput}>
-      <Dropdown placement="bottom-end">
-        <DropdownTrigger>
-          <Button variant="secondary" size="sm" endIcon={<IconDropdown aria-hidden />}>
-            {STORE_VIEWS.find((view) => view.key === server.view)?.label ?? "All stores"}
-          </Button>
-        </DropdownTrigger>
-        <DropdownMenu
-          aria-label="Saved views"
-          selectionMode="single"
-          selectedKeys={new Set([server.view || "all"])}
-          onAction={(key) => setView(key === "all" ? "" : (String(key) as StoreViewKey))}
-        >
-          {[{ key: "all", label: "All stores" }, ...STORE_VIEWS].map((view) => (
-            <DropdownItem key={view.key}>{view.label}</DropdownItem>
-          ))}
-        </DropdownMenu>
-      </Dropdown>
-      <FilterButton count={activeFilters} onPress={() => setFiltersOpen(true)} />
-      <IconButton
-        aria-label="Export these stores as CSV"
-        variant="default"
-        size="sm"
-        isDisabled={exporting || serverLoading}
-        onPress={() => void exportCsv()}
-      >
-        <IconDownload aria-hidden />
-      </IconButton>
-      <Dropdown placement="bottom-end">
-        <DropdownTrigger>
-          <IconButton aria-label="Choose columns" variant="default" size="sm" showTooltip={false}>
-            <IconColumns aria-hidden />
-          </IconButton>
-        </DropdownTrigger>
-        <DropdownMenu
-          aria-label="Choose columns"
-          closeOnSelect={false}
-          selectionMode="multiple"
-          selectedKeys={savedColumns}
-          onSelectionChange={(keys) => {
-            const selected = keys === "all" ? OPTIONAL_COLUMNS.map((column) => column.key) : Array.from(keys).map(String);
-            if (selected.length > 0) setSavedColumns(new Set(selected));
-          }}
-        >
-          {OPTIONAL_COLUMNS.map((column) => (
-            <DropdownItem key={column.key}>{column.label}</DropdownItem>
-          ))}
-        </DropdownMenu>
-      </Dropdown>
-    </StoresToolbar>
+    <TableToolbar<string>
+      tabs={tabItems}
+      tab={tab}
+      onTabChange={setTab}
+      tabsLabel="Store status"
+      search={searchInput}
+      onSearchChange={setSearchInput}
+      searchPlaceholder="Store, owner or domain"
+      onOpenFilters={() => setFiltersOpen(true)}
+      filterCount={activeFilters}
+      sort={{ options: SORT_OPTIONS, value: sortValue, onChange: setSortKey, label: "Sort stores" }}
+    />
   );
 
   return (
     <>
-      <DataTable
-        aria-label="Stores"
-        columns={columns}
-        visibleColumns={visibleColumns}
-        rows={pageRows}
-        getRowKey={(row) => row.client.id}
-        renderCell={renderCell}
-        isLoading={serverLoading}
-        rowHeight="tall"
-        stickyFirstColumn
-        toolbar={toolbar}
-        chips={
-          <>
-            <AppliedFilters items={chips} onClearAll={clearFilters} />
-            {serverFilter && matched.error ? (
-              <p role="alert" className="px-4 py-2 text-label text-tone-danger-text">
-                Couldn&apos;t apply these filters on the server.{" "}
-                <button type="button" className="underline" onClick={matched.refetch}>
-                  Try again
-                </button>
-              </p>
-            ) : null}
-            {serverFilter && !matched.loading && !matched.error && matched.totalCount != null && matched.totalCount > rows.length ? (
-              <p role="status" className="px-4 py-2 text-label text-fg-muted">
-                {matched.totalCount - rows.length} matching {matched.totalCount - rows.length === 1 ? "store isn't" : "stores aren't"} in the loaded list (deleted, or still loading).
-              </p>
-            ) : null}
-          </>
-        }
-        footer={
-          !serverLoading && sorted.length > 0 ? (
-            <TablePagination
-              page={page}
-              pageSize={url.pageSize}
-              total={sorted.length}
-              onPageChange={url.setPage}
-              onPageSizeChange={url.setPageSize}
-            />
-          ) : null
-        }
-        sort={url.sort}
-        onSortChange={url.setSort}
-        onRowAction={(row) => navigate(`/stores/${row.client.id}/overview`)}
-        rowActions={rowActions}
-        rowActionsLabel={(row) => `Actions for ${row.client.storeName}`}
-        mobileRow={mobileRow}
-        emptyContent={emptyContent}
-      />
+      {renderHeader(more)}
+      {beforeTable}
+
+      {/* The @container lets a row opened in place span the card's full width (InPlaceDetail). */}
+      <div className="@container">
+        <DataTable<TableRow>
+          aria-label="Stores"
+          columns={columns}
+          visibleColumns={visibleColumns}
+          rows={tableRows}
+          getRowKey={(item) => (isDetailRow(item) ? `${item.detailOf.client.id}:detail` : item.client.id)}
+          renderCell={renderCell}
+          isLoading={serverLoading}
+          rowHeight="tall"
+          stickyFirstColumn
+          toolbar={toolbar}
+          chips={
+            <>
+              <AppliedFilters items={chips} onClearAll={clearFilters} />
+              {serverFilter && matched.error ? (
+                <p role="alert" className="px-4 py-2 text-label text-tone-danger-text">
+                  Couldn&apos;t apply these filters on the server.{" "}
+                  <button type="button" className="underline" onClick={matched.refetch}>
+                    Try again
+                  </button>
+                </p>
+              ) : null}
+              {tab === storesTabEnum.AT_RISK && flagged.error ? (
+                <p role="alert" className="px-4 py-2 text-label text-tone-danger-text">
+                  Couldn&apos;t load the stores with warning signs.{" "}
+                  <button type="button" className="underline" onClick={flagged.refetch}>
+                    Try again
+                  </button>
+                </p>
+              ) : null}
+              {serverFilter && !matched.loading && !matched.error && matched.totalCount != null && matched.totalCount > rows.length ? (
+                <p role="status" className="px-4 py-2 text-label text-fg-muted">
+                  {matched.totalCount - rows.length} matching {matched.totalCount - rows.length === 1 ? "store isn't" : "stores aren't"} in the loaded list (deleted, or still loading).
+                </p>
+              ) : null}
+            </>
+          }
+          footer={
+            !serverLoading && sorted.length > 0 ? (
+              <TablePagination
+                page={page}
+                pageSize={url.pageSize}
+                total={sorted.length}
+                onPageChange={url.setPage}
+                onPageSizeChange={url.setPageSize}
+              />
+            ) : null
+          }
+          sort={url.sort}
+          onSortChange={url.setSort}
+          rowChevron={false}
+          // Desktop: the row opens in place; phone: the card opens the store (§10).
+          onRowAction={(item) => {
+            if (isDetailRow(item)) return;
+            if (isPhone) navigate(`/stores/${item.client.id}/overview`);
+            else toggleRow(item.client.id);
+          }}
+          rowActions={isPhone ? (item) => (isDetailRow(item) ? [] : rowActions(item)) : undefined}
+          rowActionsLabel={(item) => `Actions for ${isDetailRow(item) ? item.detailOf.client.storeName : item.client.storeName}`}
+          mobileRow={mobileRow}
+          emptyContent={emptyContent}
+        />
+      </div>
 
       <FilterDrawer
         isOpen={filtersOpen}
@@ -919,18 +1103,21 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
           const next = fromDrawer(values);
           const nextServer = serverFromDrawer(values);
           url.setParams({
-            ...legacyCleared,
-            ...(legacy.includes("tab") ? { tab: tab === storeTabEnum.ALL ? undefined : tab } : {}),
-            plan: joinParam(next.plans),
-            status: joinParam(next.statuses),
-            health: joinParam(next.health),
-            payment: joinParam(next.payment),
-            renews: next.renews || undefined,
-            joined: next.joined || undefined,
+            ...canonical,
+            ...filterParams(next),
             ...writeServerParams(nextServer),
+            why: tab === storesTabEnum.AT_RISK ? joinParam(listOf(values, "why")) : undefined,
           });
         }}
         countResults={countResults}
+      />
+
+      <ColumnsDialog
+        isOpen={columnsOpen}
+        columns={OPTIONAL_COLUMNS}
+        selected={savedColumns}
+        onSave={setSavedColumns}
+        onClose={() => setColumnsOpen(false)}
       />
 
       <StoreActionDialog client={pending?.client ?? null} action={pending?.action ?? null} onClose={() => setPending(null)} />
@@ -942,3 +1129,4 @@ export function StoresTable({ clients, isLoading = false }: StoresTableProps) {
     </>
   );
 }
+

@@ -151,7 +151,7 @@ export function CopyableId({ value, children, className }: CopyableIdProps) {
         )}
       >
         {children ?? value}
-        <Icon aria-hidden className={cx("size-3.5 text-fg-subtle", !copied && "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100")} />
+        <Icon aria-hidden className={cx("size-3.5 text-fg-subtle", !copied && "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 [@media(hover:none)]:opacity-100")} />
       </button>
     </Tooltip>
   );

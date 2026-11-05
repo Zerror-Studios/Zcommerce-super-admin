@@ -7,6 +7,11 @@
  *   exports. The Payment badge is the server's judgement for today (the live behaviour; 06 Q30 is open).
  * - A row opens the store's Billing & plan (`/stores/:id/billing?from=subscriptions`); Send reminder opens S-04c.
  * - Search runs on the server (store, owner name and email); the other filters run on the loaded rows.
+ *
+ * Design v2 (§4.1–§4.4, §10A list recipe; no SA Billing board): the menu's "Billing" page. Title row with the
+ * period as the one secondary control and ⋯ (the three CSV exports, Choose columns); the summary panel (Paid,
+ * Due, Past due in red, To collect); the standard toolbar above the table (status tabs, search, filter; no sort
+ * button, because the server doesn't sort this list).
  */
 
 import { useApolloClient, useQuery } from "@apollo/client";
@@ -52,26 +57,22 @@ import { usePlatformSettings } from "../providers/SettingsProvider";
 import type { Client } from "../types";
 import type { PlatformList, PlatformPayment, StalePendingPaymentList } from "../types/platform-api";
 import { toasts } from "../copy";
+import { useSummaryKey } from "../hooks/use-summary-key";
 import {
   Button,
   Chip,
   DataTable,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
   EmptyState,
   ErrorState,
-  FilterButton,
   FilterDrawer,
-  IconButton,
-  SearchInput,
-  SegmentedSwitch,
   SelectionBar,
+  SummaryPanel,
   TablePagination,
+  TableToolbar,
   countActiveFilters,
   formatCount,
   formatMoney,
+  formatRange,
   toastError,
   usePersistentColumns,
   useTableUrlState,
@@ -79,12 +80,13 @@ import {
   type FilterGroup,
   type FilterValues,
   type RowMenuItem,
+  type SummaryCell,
 } from "../components/ui";
 import {
-  IconCaret,
+  IconCheck,
   IconColumns,
-  IconDownload,
   IconExchange,
+  IconExport,
   IconLogin,
   IconPayments,
   IconRevenue,
@@ -153,6 +155,7 @@ export function Subscriptions() {
   const { clients, subscriptions, loading: clientsLoading } = useClients();
   const { settings } = usePlatformSettings();
 
+  const summaryKey = useSummaryKey("billing");
   const url = useTableUrlState({ ignore: NOT_FILTERS });
   const [searchInput, setSearchInput] = useUrlSearch(url.search, url.setSearch);
   const setParamsRaw = url.setParams;
@@ -565,84 +568,81 @@ export function Subscriptions() {
   const hasFilters = url.search.trim() !== "" || activeFilters > 0;
   const selectable = tab === subscriptionTabEnum.DUE && canManageBilling;
 
+  const periodLabel = isDefaultPeriod ? "this month" : formatRange(range.startDate, range.endDate);
+
+  // ⋯ (v2 §4.1): the three exports, then Choose columns (the optional columns as on/off items).
+  const moreItems: RowMenuItem[] = [
+    { key: "export-subscriptions", label: "Export subscriptions (CSV)", icon: IconExport, onSelect: () => void runExport("subscriptions") },
+    { key: "export-invoices", label: "Export invoices (CSV)", icon: IconExport, onSelect: () => void runExport("invoices") },
+    {
+      key: "export-payments",
+      label: "Export payments (CSV)",
+      icon: IconExport,
+      disabled: exporting,
+      description: exporting ? "Exporting…" : undefined,
+      onSelect: () => void runExport("payments"),
+    },
+    ...OPTIONAL_COLUMNS.map((column) => {
+      const shown = savedColumns.has(column.key);
+      return {
+        key: `column-${column.key}`,
+        label: `${shown ? "Hide" : "Show"} ${column.label.toLowerCase()} column`,
+        icon: shown ? IconCheck : IconColumns,
+        onSelect: () => {
+          const next = new Set([...savedColumns].filter((key) => OPTIONAL_COLUMNS.some((c) => c.key === key)));
+          if (shown) next.delete(column.key);
+          else next.add(column.key);
+          setSavedColumns(next);
+        },
+      };
+    }),
+  ];
+
   const header = (
     <PageHeader
       type="list"
       icon={<IconPayments aria-hidden />}
-      section="green"
-      title="Subscriptions"
+      title="Billing"
       count={loading ? undefined : allRows.length}
-      description={
-        loading
-          ? "Who has paid, who is due and who is overdue"
-          : `${formatCount(summary.paid)} paid ${isDefaultPeriod ? "this month" : "in this period"} · ${formatCount(summary.due)} due · ${formatCount(summary.overdue)} overdue · ${money(summary.toCollect)} to collect`
-      }
-      actions={
-        <>
-          <DateRangeComparison value={range} onChange={setRange} compare={false} />
-          <Dropdown placement="bottom-end">
-            <DropdownTrigger>
-              <Button
-                variant="secondary"
-                startIcon={<IconDownload aria-hidden />}
-                endIcon={<IconCaret aria-hidden />}
-                isLoading={exporting}
-              >
-                Export
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu aria-label="Export" onAction={(key) => void runExport(String(key))}>
-              <DropdownItem key="subscriptions">Subscriptions (CSV)</DropdownItem>
-              <DropdownItem key="invoices">Invoices (CSV)</DropdownItem>
-              <DropdownItem key="payments">Payments (CSV)</DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-        </>
-      }
+      description={`Subscriptions · ${periodLabel}`}
+      actions={<DateRangeComparison value={range} onChange={setRange} compare={false} />}
+      more={moreItems}
+      moreLabel="More billing actions"
     />
   );
 
+  // v2 §4.2: four numbers; past due is the one that tints red when there is any.
+  const summaryCells: SummaryCell[] = [
+    {
+      key: "paid",
+      label: "Paid",
+      value: formatCount(summary.paid),
+      note: `Stores that paid ${periodLabel}`,
+      chart: allRows.length ? { kind: "ring", percent: (summary.paid / allRows.length) * 100 } : undefined,
+    },
+    { key: "due", label: "Due", value: formatCount(summary.due), note: "Payment due, not late yet" },
+    {
+      key: "overdue",
+      label: "Past due",
+      value: formatCount(summary.overdue),
+      note: summary.overdue > 0 ? "Late, in grace or overdue" : "No one is late",
+      tone: summary.overdue > 0 ? "danger" : "default",
+    },
+    { key: "collect", label: "To collect", value: money(summary.toCollect), note: "Owed by stores due or late" },
+  ];
+
   const toolbar = (
-    <div className="flex min-h-[var(--zc-table-toolbar-h)] flex-col gap-2 border-b border-line-subtle bg-surface px-4 py-2 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-      <div className="flex min-w-0 items-center overflow-x-auto">
-        <SegmentedSwitch<SubscriptionTab>
-          ariaLabel="Subscription status"
-          value={tab}
-          onChange={setTab}
-          items={SUBSCRIPTION_TABS.map((item) => ({ value: item.value, label: item.label, count: loading ? null : tabCounts[item.value] }))}
-        />
-      </div>
-      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-        <SearchInput
-          placement="toolbar"
-          placeholder="Search stores"
-          value={searchInput}
-          onValueChange={setSearchInput}
-          onClear={() => setSearchInput("")}
-        />
-        <FilterButton count={activeFilters} onPress={() => setFiltersOpen(true)} />
-        <Dropdown placement="bottom-end">
-          <DropdownTrigger>
-            <IconButton aria-label="Choose columns" variant="default" size="sm" showTooltip={false}>
-              <IconColumns aria-hidden />
-            </IconButton>
-          </DropdownTrigger>
-          <DropdownMenu
-            aria-label="Choose columns"
-            closeOnSelect={false}
-            selectionMode="multiple"
-            selectedKeys={new Set([...savedColumns].filter((key) => OPTIONAL_COLUMNS.some((c) => c.key === key)))}
-            onSelectionChange={(keys) =>
-              setSavedColumns(new Set(keys === "all" ? OPTIONAL_COLUMNS.map((c) => c.key) : Array.from(keys).map(String)))
-            }
-          >
-            {OPTIONAL_COLUMNS.map((column) => (
-              <DropdownItem key={column.key}>{column.label}</DropdownItem>
-            ))}
-          </DropdownMenu>
-        </Dropdown>
-      </div>
-    </div>
+    <TableToolbar<SubscriptionTab>
+      tabs={SUBSCRIPTION_TABS.map((item) => ({ value: item.value, label: item.label, count: loading ? null : tabCounts[item.value] }))}
+      tab={tab}
+      onTabChange={setTab}
+      tabsLabel="Subscription status"
+      search={searchInput}
+      onSearchChange={setSearchInput}
+      searchPlaceholder="Search stores"
+      onOpenFilters={() => setFiltersOpen(true)}
+      filterCount={activeFilters}
+    />
   );
 
   const emptyContent = hasFilters ? (
@@ -656,6 +656,13 @@ export function Subscriptions() {
   return (
     <div>
       {header}
+      <SummaryPanel
+        cells={summaryCells}
+        isLoading={loading}
+        storageKey={summaryKey}
+        aria-label="Billing summary"
+        className="mb-4"
+      />
       {api.error ? (
         <ErrorState
           className="rounded-card border border-line bg-surface"

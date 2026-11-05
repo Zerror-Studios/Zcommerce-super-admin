@@ -11,7 +11,7 @@ export interface EmptyStateProps {
   description?: ReactNode;
   /** LEGACY: ignored. Illustrations (the cactus) are removed everywhere; pass the section's icon instead. */
   illustration?: string;
-  /** The section's icon: 22px in a 48px circle tinted with the page's section colour (`.zc-sec-*`). */
+  /** The page's icon, white in a 44px ink tile (v2 §10A empty state). */
   icon?: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   /** Custom media element (takes precedence over the icon circle). */
   media?: ReactNode;
@@ -32,8 +32,8 @@ export interface EmptyStateProps {
 }
 
 /**
- * Empty state (01 §7.20): centred, padding 48 24 — 48px circle (section soft) with a 22px section glyph, title
- * 15/600 16px below, one line 13px muted (max 360px), one action 16px below.
+ * Empty state (v2 §10A): centred, padding 48 24 — one 44px ink icon tile with a white glyph, the title 15/600 16px
+ * below, one sentence 13px muted (max 360px) that says what goes here, one primary action 16px below.
  */
 export function EmptyState({
   title,
@@ -58,8 +58,8 @@ export function EmptyState({
   return (
     <div className={cx("flex flex-col items-center justify-center px-6 py-12 text-center", className)}>
       {media ?? (
-        <span aria-hidden className="flex size-12 items-center justify-center rounded-full bg-sec-soft text-sec-fg">
-          <Icon aria-hidden className="size-5.5" />
+        <span aria-hidden className="flex size-[var(--zc-title-tile)] items-center justify-center rounded-tile bg-ink text-white">
+          <Icon aria-hidden className="size-5" />
         </span>
       )}
       {heading ? <p className="mt-4 text-title-3 text-fg">{heading}</p> : null}

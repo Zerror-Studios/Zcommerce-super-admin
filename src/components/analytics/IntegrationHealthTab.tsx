@@ -16,13 +16,11 @@ import {
   DropdownMenu,
   EmptyState,
   ErrorState,
-  FilterButton,
   FilterDrawer,
   IconButton,
-  KpiStrip,
-  SearchInput,
-  StatCard,
+  SummaryPanel,
   TablePagination,
+  TableToolbar,
   Tooltip,
   countActiveFilters,
   cx,
@@ -35,7 +33,9 @@ import {
   type DataTableColumn,
   type FilterGroup,
   type FilterValues,
+  type SummaryCell,
 } from "../ui";
+import { useSummaryKey } from "../../hooks/use-summary-key";
 import { AnalyticsHealthChip, IntegrationStatusChip } from "./AnalyticsHealthChip";
 import {
   LogoTile,
@@ -56,19 +56,19 @@ const TYPE_OPTIONS = Object.entries(CHANNEL_TYPE_LABELS).map(([value, label]) =>
 
 /** Fixed 710 → Store 250px at 960px. "Analytics" is in the Columns menu, off by default. */
 const COLUMNS: DataTableColumn[] = [
-  { key: "store", label: "Store" },
-  { key: "app", label: "App", width: 150 },
-  { key: "status", label: "Status", width: 150, skeleton: "badge" },
-  { key: "lastSync", label: "Last sync", width: 150 },
-  { key: "lastTest", label: "Last test", width: 150 },
-  { key: "dataThrough", label: "Data through", width: 110, hideWhen: "narrow" },
-  { key: "analytics", label: "Analytics", width: 130, hideWhen: "narrow", skeleton: "badge" },
+  { key: "store", label: "Store", mobile: "primary" },
+  { key: "app", label: "App", width: 150, mobile: "title" },
+  { key: "status", label: "Status", width: 150, skeleton: "badge", mobile: "badge" },
+  { key: "lastSync", label: "Last sync", width: 150, mobile: "meta" },
+  { key: "lastTest", label: "Last test", width: 150, hideWhen: "narrow", mobile: "hide" },
+  { key: "dataThrough", label: "Data through", width: 110, hideWhen: "narrow", mobile: "hide" },
+  { key: "analytics", label: "Analytics", width: 130, hideWhen: "narrow", skeleton: "badge", mobile: "badge" },
 ];
 const DEFAULT_COLUMNS = COLUMNS.map((column) => column.key).filter((key) => key !== "analytics");
 
 const providerColumns: DataTableColumn[] = [
-  { key: "provider", label: "Provider" },
-  { key: "count", label: "Installations", width: 120 },
+  { key: "provider", label: "Provider", mobile: "primary" },
+  { key: "count", label: "Installations", width: 120, mobile: "value" },
   { key: "errors", label: "Errors", width: 90 },
 ];
 
@@ -85,6 +85,7 @@ interface ProviderRow {
  */
 export function IntegrationHealthTab({ tabRow }: AnalyticsTabProps) {
   const navigate = useNavigate();
+  const summaryKey = useSummaryKey("analytics-integrations");
   const table = useTableUrlState();
   // One query per pause in typing, not per keystroke (review C-M6).
   const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
@@ -181,19 +182,19 @@ export function IntegrationHealthTab({ tabRow }: AnalyticsTabProps) {
     }
   };
 
+  // v2 §4.3: the standard toolbar above the table; Choose columns stays beside it (this view has no title-row ⋯
+  // of its own: the Analytics ⋯ holds the page exports).
   const toolbar = (
-    <div className="flex min-h-[var(--zc-table-toolbar-h)] flex-wrap items-center gap-2 border-b border-line-subtle px-4 py-2">
-      <SearchInput
-        placement="toolbar"
-        placeholder="Search stores or apps"
-        value={search}
-        onValueChange={setSearch}
-        onClear={() => setSearch("")}
-      />
-      <FilterButton count={countActiveFilters(filterValues)} onPress={() => setFiltersOpen(true)} />
+    <TableToolbar
+      search={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Search stores or apps"
+      onOpenFilters={() => setFiltersOpen(true)}
+      filterCount={countActiveFilters(filterValues)}
+    >
       <Dropdown placement="bottom-end">
         <DropdownTrigger>
-          <IconButton aria-label="Choose columns" variant="default" size="sm" showTooltip={false}>
+          <IconButton aria-label="Choose columns" variant="default" showTooltip={false}>
             <IconColumns aria-hidden />
           </IconButton>
         </DropdownTrigger>
@@ -213,8 +214,22 @@ export function IntegrationHealthTab({ tabRow }: AnalyticsTabProps) {
           ))}
         </DropdownMenu>
       </Dropdown>
-    </div>
+    </TableToolbar>
   );
+
+  const errors = countOf("ERROR");
+  const summaryCells: SummaryCell[] = [
+    { key: "installations", label: "Installations", value: formatCount(installations), note: "Across all stores" },
+    { key: "active", label: "Active", value: formatCount(countOf("ACTIVE")), note: "Connected and working" },
+    {
+      key: "error",
+      label: "Error",
+      value: formatCount(errors),
+      note: "Failed the last test or sync",
+      tone: errors > 0 ? "danger" : "default",
+    },
+    { key: "inactive", label: "Inactive", value: formatCount(countOf("INACTIVE")), note: "Installed but switched off" },
+  ];
 
   return (
     <div>
@@ -224,19 +239,7 @@ export function IntegrationHealthTab({ tabRow }: AnalyticsTabProps) {
         <ErrorState title="Couldn't load integration health." description={toasts.genericError} onRetry={() => void api.refetch()} />
       ) : (
         <div className="space-y-4">
-          <KpiStrip>
-            <StatCard bare isLoading={api.loading} label="Installations" value={installations} deltaLabel="Across all stores" />
-            <StatCard bare isLoading={api.loading} label="Active" value={countOf("ACTIVE")} deltaLabel="Connected and working" />
-            <StatCard
-              bare
-              isLoading={api.loading}
-              label="Error"
-              value={countOf("ERROR")}
-              valueTone={countOf("ERROR") > 0 ? "danger" : "default"}
-              deltaLabel="Failed the last test or sync"
-            />
-            <StatCard bare isLoading={api.loading} label="Inactive" value={countOf("INACTIVE")} deltaLabel="Installed but switched off" />
-          </KpiStrip>
+          <SummaryPanel cells={summaryCells} isLoading={api.loading} storageKey={summaryKey} aria-label="Integration health summary" />
 
           <TableCard<ProviderRow>
             title="By provider"

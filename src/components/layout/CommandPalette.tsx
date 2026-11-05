@@ -12,10 +12,8 @@ import { useNavigate } from "react-router-dom";
 import { cx } from "../ui/cx";
 import { IconSearch } from "../ui/icons";
 import { Modal } from "../ui/Modal";
-import { Sparkle } from "../ui/Ai";
 import { Kbd } from "../ui/Primitives";
 
-const AskIcon = ({ className }: { className?: string }) => <Sparkle className={className} />;
 import type { CommandGroup, CommandItem } from "./types";
 
 export interface CommandPaletteProps {
@@ -23,7 +21,7 @@ export interface CommandPaletteProps {
   onClose: () => void;
   groups: CommandGroup[];
   placeholder?: string;
-  /** When the `ai` flag is on: last row "Ask AI: ‹query›" opens the assistant with the query. */
+  /** LEGACY: ignored. v2 §3.1: search is search only; the Zcom AI bar is the one place to ask. */
   onAskAi?: (query: string) => void;
   /** Server search; resolves to groups with up to 5 items (and total / showAllHref). */
   onSearch?: (query: string) => Promise<CommandGroup[]>;
@@ -81,7 +79,6 @@ export function CommandPalette({
   onClose,
   groups,
   placeholder = "Search pages and actions",
-  onAskAi,
   onSearch,
   recentKey,
 }: CommandPaletteProps) {
@@ -131,15 +128,8 @@ export function CommandPalette({
       ? serverGroups.map((group) => ({ ...group, items: withShowAll(group) })).filter((group) => group.items.length > 0)
       : [];
     const recentGroup: CommandGroup[] = !asked && recent.length ? [{ title: "Recent", items: recent }] : [];
-    const found = [...recentGroup, ...remote, ...local];
-    if (onAskAi && asked) {
-      found.push({
-        title: "Assistant",
-        items: [{ id: "ask-ai", label: `Ask Zcom AI: ${asked}`, icon: AskIcon, onSelect: () => onAskAi(asked) }],
-      });
-    }
-    return found;
-  }, [groups, query, onAskAi, serverGroups, recent]);
+    return [...recentGroup, ...remote, ...local];
+  }, [groups, query, serverGroups, recent]);
   const flat = useMemo(() => visible.flatMap((group) => group.items), [visible]);
 
   useEffect(() => {

@@ -31,6 +31,9 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconArchive,
+  IconExchange,
   Select,
   SelectItem,
   toastError,
@@ -97,7 +100,9 @@ export function ArchivePlanDialog({ plan, plans, onClose }: PlanDialogProps) {
   return (
     <Modal isOpen onClose={onClose} width="sm">
       <ModalContent>
-        <ModalHeader>Archive {planVersionLabel(plan)}?</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={<IconArchive aria-hidden />}>Archive {planVersionLabel(plan)}?</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           <p className="text-body text-fg-muted">
             An archived plan is never deleted and can't be sold or assigned again.
@@ -222,7 +227,9 @@ export function MigratePlanDialog({ plan, plans, onClose }: PlanDialogProps) {
   return (
     <Modal isOpen onClose={onClose} width="sm">
       <ModalContent>
-        <ModalHeader>Migrate stores on {planVersionLabel(plan)}</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={<IconExchange aria-hidden />}>Migrate stores on {planVersionLabel(plan)}</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           {result ? (
             <div className="flex flex-col gap-2 text-body text-fg" role="status">

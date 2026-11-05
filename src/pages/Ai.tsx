@@ -8,20 +8,20 @@ import { AiUsageTab } from "../components/ai/AiUsageTab";
 import type { AiExportRef } from "../components/ai/ai-export";
 import { PageHeader } from "../components/common/PageHeader";
 import {
-  AiAvatar,
   ButtonLink,
-  Button,
   Card,
   EmptyState,
   ErrorState,
-  KpiStrip,
   SegmentedSwitch,
-  StatCard,
+  SummaryPanel,
   cx,
   formatCount,
   toneTextClasses,
+  type RowMenuItem,
+  type SummaryCell,
 } from "../components/ui";
-import { IconDownload, IconLock, IconSettings, IconWarning } from "../components/ui/icons";
+import { IconAi, IconChartBar, IconExport, IconLock, IconSettings, IconWarning } from "../components/ui/icons";
+import { useSummaryKey } from "../hooks/use-summary-key";
 import { useAiConfig, useAiDataHealth, useAiPlatformTotals, useAiTopUpRequests } from "../hooks/use-platform-ai";
 import { aiInrRate, formatRate, formatUsd, formatUsdInr } from "../lib/platform-ai.util";
 import { PLATFORM_PERMISSIONS } from "../lib/permissions";
@@ -33,6 +33,13 @@ import { toasts } from "../copy";
  * whose tabs are `?tab=`: Usage by store (default), Spend by model, Top-up requests, Data health and Benchmarks.
  * The `ai_config` settings live in Settings › ZCOM AI settings. Everything needs `platform:ai:read`; changes also
  * need `platform:ai:manage`. The old /ai/overview and /ai/usage?view=… URLs redirect here (App.tsx).
+ *
+ * Design v2 (board 69, menu Analytics ▸ AI usage): title "Analytics · AI usage" with the ink tile, AI settings as
+ * the one secondary button and ⋯ (Export of the current tab; the AI cost snapshot under Analytics); the summary
+ * panel replaces the KPI strip; the five tabs stay as the standard toolbar above each table, so Top-up requests
+ * (with its open count), Data health, Benchmarks and Spend by model keep their place. Board 69's "Actions taken"
+ * and "Marked helpful" have no data (no per-answer rating or action log on the platform AI API), so the panel
+ * shows the four figures the API has.
  */
 type AiTab = "usage" | "models" | "top-ups" | "data-health" | "benchmarks";
 
@@ -48,11 +55,14 @@ const TAB_LABELS: Record<AiTab, string> = {
 
 const isAiTab = (value: string | null | undefined): value is AiTab => !!value && value in TAB_LABELS;
 
-/** The page tile: the AI gradient with a white sparkle (01 §7.23), filling the 40px header tile. */
-const aiTile = <AiAvatar className="size-10 rounded-xl" />;
+/** v2 §2.1: every page-title tile is ink with a white glyph (the AI gradient is for AI suggestions only). */
+const aiTile = <IconAi aria-hidden />;
+
+const PAGE_TITLE = "Analytics · AI usage";
 
 export function Ai() {
   const { can } = useAuth();
+  const summaryKey = useSummaryKey("analytics-ai");
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const tab: AiTab = isAiTab(tabParam) ? tabParam : "usage";
@@ -71,7 +81,7 @@ export function Ai() {
   if (!can(PLATFORM_PERMISSIONS.AI_READ)) {
     return (
       <div>
-        <PageHeader type="page" icon={aiTile} title="ZCOM AI" />
+        <PageHeader type="page" icon={aiTile} title={PAGE_TITLE} />
         <Card>
           <EmptyState icon={IconLock} title="AI usage isn't available to your role" description="Ask a platform owner for AI access." />
         </Card>
@@ -108,23 +118,68 @@ export function Ai() {
   const crossed = totals?.alertsCrossed ?? [];
   const usdInr = (usd: number | null | undefined) => formatUsdInr(usd, inrRate != null && usd != null ? usd * inrRate : null);
 
+  // ⋯ (v2 §4.1): Export of the visible tab, then the AI cost view of the platform snapshot.
+  const more: RowMenuItem[] = [
+    {
+      key: "export",
+      label: `Export ${TAB_LABELS[tab].toLowerCase()} (CSV)`,
+      icon: IconExport,
+      disabled: exporting,
+      description: exporting ? "Exporting…" : undefined,
+      onSelect: () => void runExport(),
+    },
+    ...(can(PLATFORM_PERMISSIONS.REPORTS_READ)
+      ? [{ key: "ai-cost", label: "AI cost in the platform snapshot", icon: IconChartBar, href: "/analytics/ai-cost" }]
+      : []),
+  ];
+
+  // v2 §4.2: four numbers. Today's spend is red once the daily cap is reached; the month's spend amber once it
+  // passes a budget alert.
+  const budgetPercent = totals?.budgetUsedPercent;
+  const summaryCells: SummaryCell[] = [
+    {
+      key: "questions",
+      label: "Questions this month",
+      value: formatCount(totals?.answeredQuestions),
+      note: `${formatCount(totals?.cachedAnswers)} from cache · ${formatUsd(totals?.avgCostPerQuestionUsd)} per question`,
+    },
+    {
+      key: "month",
+      label: "Spend this month",
+      value: formatUsdInr(totals?.spendMonthUsd, totals?.spendMonthInr),
+      note: `${formatCount(budgetPercent)}% of ${formatUsd(totals?.monthlyBudgetUsd)} budget`,
+      tone: crossed.length > 0 ? "warning" : "default",
+      chart: budgetPercent != null && Number.isFinite(budgetPercent) ? { kind: "ring", percent: budgetPercent } : undefined,
+    },
+    {
+      key: "today",
+      label: "Spend today",
+      value: usdInr(totals?.spendTodayUsd),
+      note: `Cap ${formatUsd(totals?.dailyCapUsd)}`,
+      tone: totals?.dailyCapReached ? "danger" : "default",
+    },
+    {
+      key: "cache",
+      label: "Cache hit rate",
+      value: formatRate(totals?.cacheHitRate),
+      note: `${formatCount(totals?.refusals)} refused · ${formatCount(totals?.failures)} failed`,
+    },
+  ];
+
   return (
     <div>
       <PageHeader
         type="page"
         icon={aiTile}
-        title="ZCOM AI"
-        description="Spend, questions and data health across every store."
+        title={PAGE_TITLE}
+        description="What ZCOM AI is asked, what it costs, and the data it answers from."
         actions={
-          <>
-            <ButtonLink to="/settings/ai" variant="secondary" startIcon={<IconSettings aria-hidden />}>
-              AI settings
-            </ButtonLink>
-            <Button variant="secondary" startIcon={<IconDownload aria-hidden />} isLoading={exporting} onPress={() => void runExport()}>
-              Export
-            </Button>
-          </>
+          <ButtonLink to="/settings/ai" variant="secondary" startIcon={<IconSettings aria-hidden />}>
+            AI settings
+          </ButtonLink>
         }
+        more={more}
+        moreLabel="More AI usage actions"
       />
 
       <div className="space-y-4">
@@ -148,37 +203,7 @@ export function Ai() {
           </Card>
         ) : null}
 
-        <KpiStrip>
-          <StatCard
-            bare
-            isLoading={totalsApi.loading}
-            label="Spend today"
-            value={usdInr(totals?.spendTodayUsd)}
-            deltaLabel={`Cap ${formatUsd(totals?.dailyCapUsd)}`}
-            valueTone={totals?.dailyCapReached ? "danger" : "default"}
-          />
-          <StatCard
-            bare
-            isLoading={totalsApi.loading}
-            label="Spend this month"
-            value={formatUsdInr(totals?.spendMonthUsd, totals?.spendMonthInr)}
-            deltaLabel={`${formatCount(totals?.budgetUsedPercent)}% of ${formatUsd(totals?.monthlyBudgetUsd)} budget`}
-          />
-          <StatCard
-            bare
-            isLoading={totalsApi.loading}
-            label="Questions this month"
-            value={formatCount(totals?.answeredQuestions)}
-            deltaLabel={`${formatCount(totals?.cachedAnswers)} from cache · ${formatUsd(totals?.avgCostPerQuestionUsd)} per question`}
-          />
-          <StatCard
-            bare
-            isLoading={totalsApi.loading}
-            label="Cache hit rate"
-            value={formatRate(totals?.cacheHitRate)}
-            deltaLabel={`${formatCount(totals?.refusals)} refused · ${formatCount(totals?.failures)} failed`}
-          />
-        </KpiStrip>
+        <SummaryPanel cells={summaryCells} isLoading={totalsApi.loading} storageKey={summaryKey} aria-label="AI usage summary" />
 
         {tab === "models" ? (
           <AiModelsTab

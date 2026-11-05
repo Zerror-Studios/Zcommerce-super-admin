@@ -20,7 +20,8 @@ import { NOT_RECORDED_COPY, firstRecordedDay, mrrByMonth, type MrrMonthRow } fro
 import { downloadCsv, rowsToCsv } from "../../lib/report-csv";
 import type { GatewayBreakdownRow, MonthlyPlanRevenue, PlanBreakdownRow, TopStoreRevenueRow } from "../../types/reports";
 import { toasts } from "../../copy";
-import { DateRangeComparison, type DateRangeValue } from "../common/DateRangeComparison";
+import type { DateRangeValue } from "../common/DateRangeComparison";
+import { useSummaryKey } from "../../hooks/use-summary-key";
 import {
   ChartEmpty,
   ChartTooltip,
@@ -31,21 +32,23 @@ import {
   type AnalyticsTabProps,
 } from "../analytics/analytics-shared";
 import { MONEY_AXIS_WIDTH, legendProps, moneyAxis, storeHref, useRegisterExport } from "../analytics/analytics-tab.util";
-import { areaGradientStops, chartColors, planColors, recharts } from "../ui/chart-theme";
+import { areaGradientStops, chartColors, planColors, pointsForViewport, recharts, rechartsEndTicks } from "../ui/chart-theme";
+import { useIsPhone } from "../ui/use-media";
 import {
   Card,
   ErrorState,
-  KpiStrip,
   Skeleton,
-  StatCard,
+  SummaryPanel,
   Tooltip,
   cx,
   formatCount,
   formatDate,
   formatMoney,
+  formatDelta,
   formatPercent,
   toneTextClasses,
   type DataTableColumn,
+  type SummaryCell,
 } from "../ui";
 
 // Every backend tier: the server books Starter revenue too, and the CSV total includes it.
@@ -53,45 +56,45 @@ const PLAN_KEYS = ["STARTER", "PREMIUM", "PLUS", "ENTERPRISE"] as const;
 
 /** Fixed 680 → Month 280px at 960px. */
 const mrrColumns: DataTableColumn[] = [
-  { key: "month", label: "Month" },
-  { key: "mrr", label: "MRR at month end", width: 140 },
+  { key: "month", label: "Month", mobile: "primary" },
+  { key: "mrr", label: "MRR at month end", width: 140, mobile: "value" },
   { key: "paying", label: "Paying stores", width: 120 },
   { key: "new", label: "New", width: 100 },
-  { key: "expansion", label: "Expansion", width: 110 },
-  { key: "contraction", label: "Contraction", width: 110 },
+  { key: "expansion", label: "Expansion", width: 110, hideWhen: "narrow" },
+  { key: "contraction", label: "Contraction", width: 110, hideWhen: "narrow" },
   { key: "churned", label: "Churned", width: 100 },
 ];
 
 const planColumns: DataTableColumn[] = [
-  { key: "plan", label: "Plan" },
-  { key: "revenue", label: "Revenue", width: 100 },
-  { key: "share", label: "Share", width: 64 },
-  { key: "stores", label: "Stores", width: 64 },
-  { key: "mrr", label: "Monthly billing", width: 110 },
+  { key: "plan", label: "Plan", mobile: "primary" },
+  { key: "revenue", label: "Revenue", width: 100, mobile: "value" },
+  { key: "share", label: "Share", width: 64, mobile: "meta" },
+  { key: "stores", label: "Stores", width: 64, mobile: "hide" },
+  { key: "mrr", label: "Monthly billing", width: 110, hideWhen: "narrow", mobile: "hide" },
 ];
 
 const gatewayColumns: DataTableColumn[] = [
-  { key: "gateway", label: "Gateway" },
-  { key: "collected", label: "Collected", width: 100 },
+  { key: "gateway", label: "Gateway", mobile: "primary" },
+  { key: "collected", label: "Collected", width: 100, mobile: "value" },
   { key: "failed", label: "Failed", width: 90 },
-  { key: "pending", label: "Pending", width: 90 },
-  { key: "share", label: "Share", width: 64 },
+  { key: "pending", label: "Pending", width: 90, hideWhen: "narrow" },
+  { key: "share", label: "Share", width: 64, mobile: "meta" },
 ];
 
 /** Fixed 430 → Store 530px. */
 const topStoreColumns: DataTableColumn[] = [
-  { key: "store", label: "Store" },
-  { key: "plan", label: "Plan", width: 110 },
-  { key: "collected", label: "Collected", width: 120 },
+  { key: "store", label: "Store", mobile: "primary" },
+  { key: "plan", label: "Plan", width: 110, mobile: "title" },
+  { key: "collected", label: "Collected", width: 120, mobile: "value" },
   { key: "failed", label: "Failed", width: 110, mobile: "hide" },
-  { key: "charges", label: "Charges", width: 90 },
+  { key: "charges", label: "Charges", width: 90, hideWhen: "narrow", mobile: "hide" },
 ];
 
-/** A label with a dotted underline that explains itself on hover. */
+/** A label with a dotted underline that explains itself on hover (in the summary panel's own text colour). */
 function Explained({ children, tip }: { children: ReactNode; tip: ReactNode }) {
   return (
     <Tooltip content={tip}>
-      <span className="cursor-help border-b border-dashed border-line-strong">{children}</span>
+      <span className="cursor-help border-b border-dashed border-current">{children}</span>
     </Tooltip>
   );
 }
@@ -103,20 +106,25 @@ const tooltipMoney = (value: number | null | undefined) =>
 /** A month's MRR movement; "—" when no recorded day had one (the first day has none). */
 const movement = (value: number | null) => (value == null ? "—" : formatMoney(value, { whole: true }));
 
+/** Phone charts show the last six months (v2 §10: fewer bars, the same shape). */
+const PHONE_MONTHS = 6;
+
 /** Money that may have paise: whole rupees show no ".00" (01 §4.4). */
 const money = (value: number) => formatMoney(value);
 
 export interface RevenueReportsTabProps extends AnalyticsTabProps {
+  /** The period; its picker sits in the Analytics title row. */
   range: DateRangeValue;
-  onRangeChange: (range: DateRangeValue) => void;
 }
 
 /**
  * Analytics › Platform revenue (04 S-05a): what stores pay Zcom for their plans. Every figure is the server
  * rollup for the chosen range (PRD-005 FR-5.3); MRR comes from the daily snapshot (PRD-024 FR-3.1).
  */
-export function RevenueReportsTab({ tabRow, registerExport, range, onRangeChange }: RevenueReportsTabProps) {
+export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueReportsTabProps) {
   const navigate = useNavigate();
+  const isPhone = useIsPhone();
+  const summaryKey = useSummaryKey("analytics-revenue");
 
   const api = useRevenueOverview(range);
   const { monthly, trend, kpis, planRows, gatewayRows, topStores, summary } = api.data;
@@ -131,11 +139,14 @@ export function RevenueReportsTab({ tabRow, registerExport, range, onRangeChange
     () => trend.map((point, index) => ({ ...point, mrr: mrrMonths[index]?.mrr ?? null })),
     [trend, mrrMonths],
   );
+  // v2 §10: phones keep the shape with fewer months, labelled at the start and end only.
+  const trendShown = useMemo(() => pointsForViewport(trendWithMrr, isPhone, PHONE_MONTHS), [trendWithMrr, isPhone]);
 
   const monthlyLabelled = useMemo(
     () => monthly.map((row) => ({ ...row, short: row.label.replace(/ 20\d\d$/, "") })),
     [monthly],
   );
+  const monthlyShown = useMemo(() => pointsForViewport(monthlyLabelled, isPhone, PHONE_MONTHS), [monthlyLabelled, isPhone]);
 
   const exportCsv = useCallback(() => {
     const columns = [
@@ -169,7 +180,59 @@ export function RevenueReportsTab({ tabRow, registerExport, range, onRangeChange
   const chartBody = (empty: boolean, chart: ReactNode) =>
     api.loading ? <Skeleton className="h-full w-full rounded-xl" /> : empty ? <ChartEmpty /> : chart;
 
-  const row = tabRow(<DateRangeComparison value={range} onChange={onRangeChange} />);
+  const row = tabRow();
+
+  // Design v2 §4.2: the summary panel replaces the five-number strip. Failed charges and the past-due MRR ride in
+  // the notes, so every figure the strip had is still on the page (failed per gateway is in Gateway split too).
+  const bookingsSeries = monthly.map(monthTotal);
+  const mrrSeries = mrrMonths.map((month) => month.mrr ?? 0);
+  const summaryCells: SummaryCell[] = [
+    {
+      key: "bookings",
+      label: <Explained tip="Plan bookings for the months in this period">Subscription revenue</Explained>,
+      value: formatMoney(kpis.planRevenue, { whole: true }),
+      note: kpis.momChangePercent == null ? "Plan bookings" : `${formatDelta(kpis.momChangePercent)} · ${momLabel}`,
+      chart: bookingsSeries.length > 1 ? { kind: "bars", values: bookingsSeries } : undefined,
+    },
+    {
+      key: "collected",
+      label: (
+        <Explained tip="Successful payments minus refunds in this period. It can be below zero when refunds are larger than new payments.">
+          Collected
+        </Explained>
+      ),
+      value: formatMoney(kpis.netCollected, { whole: true }),
+      note: kpis.refundedAmount > 0 ? `After ${formatMoney(kpis.refundedAmount, { whole: true })} refunded` : "Successful payments",
+      tone: kpis.netCollected < 0 ? "danger" : "default",
+    },
+    {
+      key: "mrr",
+      label: (
+        <Explained
+          tip={`Monthly recurring revenue from paying (ACTIVE) subscriptions. Not included: ${formatMoney(summary.trialPipeline, { whole: true })} a month in trials and ${formatMoney(summary.atRiskMrr, { whole: true })} a month past due.`}
+        >
+          Monthly billing
+        </Explained>
+      ),
+      value: formatMoney(kpis.activeMrr, { whole: true }),
+      note:
+        summary.atRiskMrr > 0
+          ? `${formatCount(kpis.payingStores)} paying · ${formatMoney(summary.atRiskMrr, { whole: true })} past due`
+          : `${formatCount(kpis.payingStores)} paying ${kpis.payingStores === 1 ? "store" : "stores"}`,
+      tone: summary.atRiskMrr > 0 ? "danger" : "default",
+      chart: mrrSeries.some((value) => value > 0) ? { kind: "bars", values: mrrSeries } : undefined,
+    },
+    {
+      key: "open",
+      label: <Explained tip="Invoices still open whose due date is in this period">Open invoices</Explained>,
+      value: formatMoney(kpis.pendingAmount, { whole: true }),
+      note:
+        kpis.failedAmount > 0
+          ? `Due, unpaid · ${formatMoney(kpis.failedAmount, { whole: true })} failed charges`
+          : "Due in this period, unpaid · no failed charges",
+      tone: kpis.failedAmount > 0 ? "danger" : "default",
+    },
+  ];
 
   // On error show only the error, not a page of zeros (the figures below would read as real).
   if (api.error) {
@@ -185,62 +248,7 @@ export function RevenueReportsTab({ tabRow, registerExport, range, onRangeChange
     <div>
       {row}
       <div className="space-y-4">
-        <KpiStrip>
-          <StatCard
-            bare
-            isLoading={api.loading}
-            label={<Explained tip="Plan bookings for the months in this period">Bookings</Explained>}
-            value={formatMoney(kpis.planRevenue, { whole: true })}
-            delta={kpis.momChangePercent}
-            deltaLabel={kpis.momChangePercent == null ? "Plan bookings" : momLabel}
-          />
-          <StatCard
-            bare
-            isLoading={api.loading}
-            label={
-              <Explained tip="Successful payments minus refunds in this period. It can be below zero when refunds are larger than new payments.">
-                Collected
-              </Explained>
-            }
-            value={formatMoney(kpis.netCollected, { whole: true })}
-            valueTone={kpis.netCollected < 0 ? "danger" : "default"}
-            deltaLabel={
-              kpis.refundedAmount > 0 ? `After ${formatMoney(kpis.refundedAmount, { whole: true })} refunded` : "Successful payments"
-            }
-          />
-          <StatCard
-            bare
-            isLoading={api.loading}
-            label={<Explained tip="Invoices still open whose due date is in this period">Open invoices</Explained>}
-            value={formatMoney(kpis.pendingAmount, { whole: true })}
-            deltaLabel="Due in this period, unpaid"
-          />
-          <StatCard
-            bare
-            isLoading={api.loading}
-            label="Failed"
-            value={formatMoney(kpis.failedAmount, { whole: true })}
-            valueTone={kpis.failedAmount > 0 ? "danger" : "default"}
-            deltaLabel="Charge failures"
-          />
-          <StatCard
-            bare
-            isLoading={api.loading}
-            label={
-              <Explained
-                tip={`Monthly recurring revenue from paying (ACTIVE) subscriptions. Not included: ${formatMoney(summary.trialPipeline, { whole: true })} a month in trials and ${formatMoney(summary.atRiskMrr, { whole: true })} a month past due.`}
-              >
-                Monthly billing
-              </Explained>
-            }
-            value={formatMoney(kpis.activeMrr, { whole: true })}
-            deltaLabel={
-              summary.atRiskMrr > 0
-                ? `${formatCount(kpis.payingStores)} paying · ${formatMoney(summary.atRiskMrr, { whole: true })} past due`
-                : `${formatCount(kpis.payingStores)} paying ${kpis.payingStores === 1 ? "store" : "stores"}`
-            }
-          />
-        </KpiStrip>
+        <SummaryPanel cells={summaryCells} isLoading={api.loading} storageKey={summaryKey} aria-label="Revenue summary" />
 
         {/* 50/50; the two cards stack when the row is under 720px (01 §7.25: 280px charts). */}
         <div className="@container">
@@ -258,7 +266,7 @@ export function RevenueReportsTab({ tabRow, registerExport, range, onRangeChange
                 {chartBody(
                   trend.length === 0,
                   <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={trendWithMrr} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                    <ComposedChart data={trendShown} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="reportsRevenueFill" x1="0" y1="0" x2="0" y2="1">
                           {areaGradientStops.map((stop) => (
@@ -267,7 +275,7 @@ export function RevenueReportsTab({ tabRow, registerExport, range, onRangeChange
                         </linearGradient>
                       </defs>
                       <CartesianGrid {...recharts.grid} />
-                      <XAxis dataKey="month" {...recharts.axis} />
+                      <XAxis dataKey="month" {...(isPhone ? rechartsEndTicks(trendShown, (point) => point.month) : recharts.axis)} />
                       <YAxis {...recharts.axis} width={MONEY_AXIS_WIDTH} tickFormatter={moneyAxis} />
                       <ChartTooltipSlot content={<ChartTooltip formatValue={tooltipMoney} />} />
                       <Legend {...legendProps} />
@@ -292,9 +300,9 @@ export function RevenueReportsTab({ tabRow, registerExport, range, onRangeChange
                 {chartBody(
                   monthly.length === 0,
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={monthlyLabelled} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                    <BarChart data={monthlyShown} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                       <CartesianGrid {...recharts.grid} />
-                      <XAxis dataKey="short" {...recharts.axis} />
+                      <XAxis dataKey="short" {...(isPhone ? rechartsEndTicks(monthlyShown, (row) => row.short) : recharts.axis)} />
                       <YAxis {...recharts.axis} width={MONEY_AXIS_WIDTH} tickFormatter={moneyAxis} />
                       <ChartTooltipSlot content={<ChartTooltip formatValue={tooltipMoney} />} cursor={{ fill: chartColors.grid }} />
                       <Legend {...legendProps} />
@@ -365,6 +373,20 @@ export function RevenueReportsTab({ tabRow, registerExport, range, onRangeChange
                 return null;
             }
           }}
+          mobileRow={(month) => (
+            <div className="min-w-0">
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <span className="min-w-0 truncate font-medium text-fg">{month.label}</span>
+                <span className="shrink-0 font-semibold text-fg num">
+                  {month.recordedDays === 0 ? NOT_RECORDED_COPY : formatMoney(month.mrr, { whole: true })}
+                </span>
+              </div>
+              <p className="mt-1 truncate text-label text-fg-muted num">
+                {month.payingStores == null ? "—" : formatCount(month.payingStores)} paying · New {movement(month.newMrr)} ·
+                Churned {movement(month.churnedMrr)}
+              </p>
+            </div>
+          )}
         />
 
         <div className="@container">

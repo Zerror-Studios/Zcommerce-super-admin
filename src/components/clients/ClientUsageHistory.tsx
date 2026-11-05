@@ -27,9 +27,9 @@ const columns: DataTableColumn[] = [
   { key: "month", label: "Month", mobile: "primary" },
   { key: "products", label: "Products", width: 90 },
   { key: "orders30d", label: "Orders · 30 days", width: 110 },
-  { key: "revenue30d", label: "Net sales · 30 days", width: 130 },
-  { key: "storageMb", label: "Storage", width: 90 },
-  { key: "staffCount", label: "Staff", width: 70 },
+  { key: "revenue30d", label: "Net sales · 30 days", width: 130, mobile: "value" },
+  { key: "storageMb", label: "Storage", width: 90, hideWhen: "narrow" },
+  { key: "staffCount", label: "Staff", width: 70, hideWhen: "narrow" },
 ];
 
 const MONTH_FORMAT = new Intl.DateTimeFormat("en-IN", { month: "short", year: "numeric", timeZone: "UTC" });
@@ -74,6 +74,18 @@ export function ClientUsageHistory({ tenantId }: { tenantId: string }) {
             return null;
         }
       }}
+      mobileRow={(row) => (
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center justify-between gap-3">
+            <span className="min-w-0 truncate font-medium text-fg">{MONTH_FORMAT.format(new Date(`${row.month}-01T00:00:00Z`))}</span>
+            <span className="shrink-0 font-semibold text-fg num">{formatMoney(row.revenue30d, { whole: true })}</span>
+          </div>
+          <p className="mt-1 truncate text-label text-fg-muted num">
+            {formatNumber(row.products)} products · {formatNumber(row.orders30d)} orders · {formatNumber(row.staffCount)} staff ·{" "}
+            {formatNumber(row.storageMb)} MB
+          </p>
+        </div>
+      )}
       footer={
         rows.length > DEFAULT_PAGE_SIZE ? (
           <TablePagination page={page} pageSize={DEFAULT_PAGE_SIZE} total={rows.length} onPageChange={setPage} />

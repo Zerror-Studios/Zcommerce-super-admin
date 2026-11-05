@@ -20,6 +20,8 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconFlag,
   Select,
   SelectItem,
   Skeleton,
@@ -120,7 +122,9 @@ export function StoreFlaggedPaymentDialog({ target, onClose, onResolved }: Store
   return (
     <Modal isOpen onClose={close} width="sm">
       <ModalContent>
-        <ModalHeader>{TITLES[action]}</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={<IconFlag aria-hidden />}>{TITLES[action]}</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           <p className="text-body text-fg-muted">{FLAGGED_ACTION_COPY[action].description}</p>
           {action === "APPLY" ? (

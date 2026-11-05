@@ -11,8 +11,7 @@ import {
   Button,
   EmptyState,
   ErrorState,
-  KpiStrip,
-  StatCard,
+  SummaryPanel,
   Tooltip,
   cx,
   formatCount,
@@ -22,7 +21,10 @@ import {
   toneTextClasses,
   type DataTableColumn,
   type RowMenuItem,
+  type SummaryCell,
 } from "../ui";
+import { useIsPhone } from "../ui/use-media";
+import { useSummaryKey } from "../../hooks/use-summary-key";
 import { AnalyticsHealthChip } from "./AnalyticsHealthChip";
 import { RerunPendingChip, RerunSyncButton, RerunSyncDialog } from "./RerunSyncButton";
 import {
@@ -43,30 +45,30 @@ function formatDuration(ms: number): string {
 
 /** Fixed 700 → Store 260px at 960px. */
 const failingColumns: DataTableColumn[] = [
-  { key: "store", label: "Store" },
-  { key: "health", label: "Health", width: 150, skeleton: "badge" },
-  { key: "failures", label: "Failures in a row", width: 100 },
-  { key: "lastSuccess", label: "Last success", width: 150 },
-  { key: "quota", label: "Quota paused until", width: 150 },
+  { key: "store", label: "Store", mobile: "primary" },
+  { key: "health", label: "Health", width: 150, skeleton: "badge", mobile: "badge" },
+  { key: "failures", label: "Failures in a row", width: 100, mobile: "value" },
+  { key: "lastSuccess", label: "Last success", width: 150, mobile: "meta" },
+  { key: "quota", label: "Quota paused until", width: 150, hideWhen: "narrow", mobile: "hide" },
   { key: "action", label: "Action", width: 150, mobile: "hide" },
 ];
 
 const backfillColumns: DataTableColumn[] = [
-  { key: "store", label: "Store" },
-  { key: "progress", label: "Progress", width: 220 },
-  { key: "dataThrough", label: "Data through", width: 110 },
-  { key: "lastRun", label: "Last run", width: 150 },
+  { key: "store", label: "Store", mobile: "primary" },
+  { key: "progress", label: "Progress", width: 220, mobile: "title" },
+  { key: "dataThrough", label: "Data through", width: 110, hideWhen: "narrow", mobile: "hide" },
+  { key: "lastRun", label: "Last run", width: 150, mobile: "meta" },
   { key: "action", label: "Action", width: 150, mobile: "hide" },
 ];
 
 /** Fixed 676 → Store 284px at 960px. */
 const installationColumns: DataTableColumn[] = [
-  { key: "store", label: "Store" },
-  { key: "health", label: "Health", width: 110, skeleton: "badge" },
-  { key: "lastRun", label: "Last run", width: 150 },
-  { key: "runs", label: "Runs · 24h", width: 100 },
-  { key: "sessions", label: "Sessions · 7d / 30d", width: 150 },
-  { key: "dataThrough", label: "Data through", width: 110, hideWhen: "narrow" },
+  { key: "store", label: "Store", mobile: "primary" },
+  { key: "health", label: "Health", width: 110, skeleton: "badge", mobile: "badge" },
+  { key: "lastRun", label: "Last run", width: 150, mobile: "meta" },
+  { key: "runs", label: "Runs · 24h", width: 100, hideWhen: "narrow", mobile: "hide" },
+  { key: "sessions", label: "Sessions · 7d / 30d", width: 150, mobile: "hide" },
+  { key: "dataThrough", label: "Data through", width: 110, hideWhen: "narrow", mobile: "hide" },
 ];
 
 function StoreCell({ row }: { row: SyncMonitorRow }) {
@@ -112,8 +114,12 @@ function ActionCell({ row }: { row: SyncMonitorRow }) {
  */
 export function SyncMonitorTab({ tabRow }: AnalyticsTabProps) {
   const navigate = useNavigate();
+  const summaryKey = useSummaryKey("analytics-sync");
   const { can } = useAuth();
   const canManage = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
+  // Phone cards hide the Action column (the Re-run button), so its action moves into ⋯ there (v2 §10).
+  const isPhone = useIsPhone();
+  const phoneRerun = canManage && isPhone ? (row: SyncMonitorRow) => installationActions(row) : undefined;
   const [refreshing, setRefreshing] = useState(false);
   const [rerunning, setRerunning] = useState<SyncMonitorRow | null>(null);
 
@@ -155,6 +161,37 @@ export function SyncMonitorTab({ tabRow }: AnalyticsTabProps) {
     );
   };
 
+  // Design v2 §4.2: four numbers; the p95 run time and today's quota tokens ride in the notes.
+  const failedRuns = summary?.runs24hFailed ?? 0;
+  const summaryCells: SummaryCell[] = [
+    {
+      key: "installations",
+      label: "Installations",
+      value: formatCount(summary?.installations ?? 0),
+      note: `${formatCount(summary?.healthy ?? 0)} synced on the last run`,
+    },
+    {
+      key: "runs",
+      label: "Runs · 24h",
+      value: formatCount((summary?.runs24hCompleted ?? 0) + failedRuns),
+      note: `${formatCount(failedRuns)} failed · p95 ${formatDuration(summary?.durationMsP95 ?? 0)}`,
+      tone: failedRuns > 0 ? "danger" : "default",
+    },
+    {
+      key: "attention",
+      label: "Needs attention",
+      value: formatCount(needsAttention),
+      note: `${formatCount(summary?.error ?? 0)} failing · ${formatCount(summary?.quotaPaused ?? 0)} quota paused`,
+      tone: needsAttention > 0 ? "danger" : "default",
+    },
+    {
+      key: "backfills",
+      label: "Importing history",
+      value: formatCount(summary?.backfilling ?? 0),
+      note: `Backfills in progress · ${formatCount(summary?.quotaTokensToday ?? 0)} quota tokens today`,
+    },
+  ];
+
   return (
     <div>
       {tabRow(
@@ -173,42 +210,7 @@ export function SyncMonitorTab({ tabRow }: AnalyticsTabProps) {
         <ErrorState title="Couldn't load the sync monitor." description={toasts.genericError} onRetry={() => void api.refetch()} />
       ) : (
         <div className="space-y-4">
-          <KpiStrip>
-            <StatCard
-              bare
-              isLoading={api.loading}
-              label="Installations"
-              value={summary?.installations ?? 0}
-              deltaLabel={`${formatCount(summary?.healthy ?? 0)} synced on the last run`}
-            />
-            <StatCard
-              bare
-              isLoading={api.loading}
-              label="Runs · 24h"
-              value={(summary?.runs24hCompleted ?? 0) + (summary?.runs24hFailed ?? 0)}
-              deltaLabel={
-                <span className={cx((summary?.runs24hFailed ?? 0) > 0 && toneTextClasses.danger)}>
-                  {formatCount(summary?.runs24hFailed ?? 0)} failed
-                </span>
-              }
-            />
-            <StatCard
-              bare
-              isLoading={api.loading}
-              label="Needs attention"
-              value={needsAttention}
-              valueTone={needsAttention > 0 ? "danger" : "default"}
-              deltaLabel={`${formatCount(summary?.error ?? 0)} failing · ${formatCount(summary?.quotaPaused ?? 0)} quota paused`}
-            />
-            <StatCard bare isLoading={api.loading} label="Importing history" value={summary?.backfilling ?? 0} deltaLabel="Backfills in progress" />
-            <StatCard
-              bare
-              isLoading={api.loading}
-              label="Run time · p95"
-              value={formatDuration(summary?.durationMsP95 ?? 0)}
-              deltaLabel={`${formatCount(summary?.quotaTokensToday ?? 0)} quota tokens today`}
-            />
-          </KpiStrip>
+          <SummaryPanel cells={summaryCells} isLoading={api.loading} storageKey={summaryKey} aria-label="Sync monitor summary" />
 
           <TableCard<SyncMonitorRow>
             title="Failing"
@@ -220,6 +222,8 @@ export function SyncMonitorTab({ tabRow }: AnalyticsTabProps) {
             isLoading={api.loading}
             rowHeight="tall"
             onRowAction={openStore}
+            rowActions={phoneRerun}
+            rowActionsLabel={(row) => `Actions for ${row.name}`}
             emptyContent={<EmptyState icon={IconCheck} title="Nothing failing" description="Every connection synced on its last run." />}
             renderCell={(row, key) => {
               switch (key) {
@@ -253,6 +257,8 @@ export function SyncMonitorTab({ tabRow }: AnalyticsTabProps) {
             isLoading={api.loading}
             rowHeight="tall"
             onRowAction={openStore}
+            rowActions={phoneRerun}
+            rowActionsLabel={(row) => `Actions for ${row.name}`}
             emptyContent={<EmptyState icon={IconRefresh} title="No imports running" description="No history imports running." />}
             renderCell={(row, key) => {
               switch (key) {

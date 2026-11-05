@@ -31,7 +31,7 @@ export function PlanCard({ plan, canManage, onEdit, onMigrate, onArchive }: Plan
   const menu = canManage ? planActions(plan, { edit: onEdit, migrate: onMigrate, archive: onArchive }, { includeEdit: false }) : [];
 
   return (
-    <article className="flex flex-col rounded-[var(--zc-radius-card)] border border-line bg-surface p-5">
+    <article className="flex flex-col rounded-card-lg border border-line bg-surface p-5">
       <div className="flex flex-wrap items-center gap-2">
         <h4 className="min-w-0 truncate text-title-3 text-fg">{planTitle(plan)}</h4>
         <Chip tone="neutral" dot={false}>

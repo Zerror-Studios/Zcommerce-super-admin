@@ -31,6 +31,9 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconAddUser,
+  IconLink,
   Select,
   SelectItem,
   StatusChip,
@@ -50,10 +53,10 @@ const ROLE_LABELS = PLATFORM_ROLE_LABELS;
 
 /** Fixed 476 → Member 208px in the 684px column (04 S-07b). */
 const columns: DataTableColumn[] = [
-  { key: "name", label: "Member" },
-  { key: "role", label: "Role", width: 140 },
+  { key: "name", label: "Member", mobile: "primary" },
+  { key: "role", label: "Role", width: 140, mobile: "title" },
   { key: "status", label: "Status", width: 130, skeleton: "badge", mobile: "badge" },
-  { key: "lastLoginAt", label: "Last login", width: 150 },
+  { key: "lastLoginAt", label: "Last login", width: 150, hideWhen: "narrow", mobile: "hide" },
 ];
 
 /**
@@ -276,7 +279,9 @@ export function TeamSettings() {
 
       <Modal isOpen={createOpen} onClose={() => { onCreateOpenChange(false); setSetupUrl(null); }} width="sm">
         <ModalContent>
-          <ModalHeader>{setupUrl ? "Invite link" : "Invite a team member"}</ModalHeader>
+          <ModalHeader>
+            <PopupTitle icon={setupUrl ? <IconLink aria-hidden /> : <IconAddUser aria-hidden />}>{setupUrl ? "Invite link" : "Invite a team member"}</PopupTitle>
+          </ModalHeader>
           <ModalBody>
             {setupUrl ? (
               <div className="flex flex-col gap-3">
@@ -315,7 +320,7 @@ export function TeamSettings() {
         }
         description={
           confirmTarget?.action === "disable"
-            ? "They are signed out everywhere and can't log in again. Store sessions they opened with Log in end too."
+            ? "They are logged out everywhere and can't log in again. Store sessions they opened with Log in end too."
             : "Their authenticator and recovery codes stop working. They set up two-step verification again at their next login."
         }
         confirmLabel={confirmTarget?.action === "disable" ? "Disable member" : "Reset two-step"}
@@ -324,7 +329,9 @@ export function TeamSettings() {
 
       <Modal isOpen={roleTarget != null} onClose={() => setRoleTarget(null)} width="sm">
         <ModalContent>
-          <ModalHeader>Change role for {roleTarget?.email}</ModalHeader>
+          <ModalHeader>
+            <PopupTitle icon={<IconUser aria-hidden />}>Change role for {roleTarget?.email}</PopupTitle>
+          </ModalHeader>
           <ModalBody>
             <Select label="Role" selectedKeys={new Set([nextRole])} onSelectionChange={(keys) => { const value = Array.from(keys)[0]; if (typeof value === "string") setNextRole(value as PlatformRole); }} disallowEmptySelection>
               {roleOptions.map((key) => (

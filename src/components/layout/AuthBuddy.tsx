@@ -1,10 +1,13 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
- * The login helper (owner, 2026-11-04, from a reference recording): a small dark tile with two eyes that follow
- * the pointer anywhere on the page and blink now and then, and a speech bubble that types out one short line per
- * step ("What's your email?", "That looks right.", "I'm not looking."). While the password is typed the eyes
- * close. Screen readers get each line once, politely; with reduced motion the eyes stay still and the line shows
- * at once.
+ * The orb character on the sign-in screen (docs/design-v2/README.md §5): the Zcom AI orb, large, with two eyes on
+ * its bright core, in a soft blue halo. It asks one question at a time and its line types out under it.
+ * - idle: the eyes follow the pointer, and with `follow` (0–1, how far along the field the caret is) they follow
+ *   the typing; a blink now and then.
+ * - shy (password): the eyes close and turn away ("I'm not looking.").
+ * - thinking (signing in): the orb spins fast and three dots follow the line.
+ * - sad (failed): drooping eyes. happy: a smile of the eyes.
+ * Screen readers get each line once, politely; with reduced motion the eyes stay still and the line shows at once.
  */
 import { forwardRef, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { cx } from "../ui/cx";
@@ -12,40 +15,40 @@ import { cx } from "../ui/cx";
 export type AuthBuddyMood = "idle" | "happy" | "shy" | "thinking" | "sad";
 
 export interface AuthBuddyProps {
-  /** The line in the bubble. A new line is typed out again. */
+  /** The question or line under the orb. A new line is typed out again. */
   message: string;
-  /** shy: eyes shut (password); thinking: eyes look up (signing in); sad: drooping eyes (an error). */
   mood?: AuthBuddyMood;
+  /** 0–1: where the caret is in the field being typed; the eyes follow it. */
+  follow?: number;
   className?: string;
 }
 
-/** How far the eyes move towards the pointer, in px. */
-const EYE_TRAVEL = 3;
-const TYPE_MS = 28;
+/** How far the eyes move, in px. */
+const EYE_TRAVEL = 5;
+const TYPE_MS = 24;
 
 const prefersReducedMotion = () =>
   typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-export function AuthBuddy({ message, mood = "idle", className }: AuthBuddyProps) {
-  const tileRef = useRef<HTMLDivElement>(null);
+export function AuthBuddy({ message, mood = "idle", follow, className }: AuthBuddyProps) {
+  const orbRef = useRef<HTMLSpanElement>(null);
   const [look, setLook] = useState({ x: 0, y: 0 });
   const [blink, setBlink] = useState(false);
   const [typed, setTyped] = useState(message);
 
-  // Eyes follow the pointer anywhere on the page.
+  // Eyes follow the pointer anywhere on the page (the typing wins while `follow` is set).
   useEffect(() => {
     if (prefersReducedMotion()) return;
     let frame = 0;
     const onMove = (event: PointerEvent) => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const box = tileRef.current?.getBoundingClientRect();
+        const box = orbRef.current?.getBoundingClientRect();
         if (!box) return;
         const dx = event.clientX - (box.left + box.width / 2);
         const dy = event.clientY - (box.top + box.height / 2);
         const distance = Math.hypot(dx, dy) || 1;
-        // Full travel from ~120px away; closer in, the eyes move less.
-        const reach = Math.min(1, distance / 120);
+        const reach = Math.min(1, distance / 160);
         setLook({ x: (dx / distance) * EYE_TRAVEL * reach, y: (dy / distance) * EYE_TRAVEL * reach });
       });
     };
@@ -88,38 +91,40 @@ export function AuthBuddy({ message, mood = "idle", className }: AuthBuddyProps)
   }, [message]);
 
   const shut = mood === "shy" || blink;
+  const typing = follow != null && mood === "idle";
   const offset =
-    mood === "thinking" ? { x: 3, y: -EYE_TRAVEL } : mood === "shy" ? { x: 0, y: 2 } : look;
+    mood === "thinking"
+      ? { x: 0, y: -EYE_TRAVEL }
+      : mood === "shy"
+        ? { x: -EYE_TRAVEL, y: 1 }
+        : typing
+          ? { x: (Math.max(0, Math.min(1, follow)) * 2 - 1) * EYE_TRAVEL, y: EYE_TRAVEL * 0.6 }
+          : look;
 
   return (
-    <div className={cx("flex items-center gap-2.5", className)}>
-      <div
-        ref={tileRef}
-        aria-hidden
-        className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-auth-field-line bg-auth-field shadow-[0_6px_16px_rgba(0,0,0,0.35)]"
-      >
-        <div
-          className="flex items-center gap-1.5 transition-transform duration-150 ease-out"
-          style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
+    <div className={cx("flex flex-col items-center gap-5 text-center", className)}>
+      <span ref={orbRef} aria-hidden className="zc-orb-wrap zc-auth-orb" data-state={mood === "thinking" ? "thinking" : "idle"}>
+        <span className="zc-orb zc-orb--auth" />
+        <span
+          className="zc-auth-orb__eyes"
+          style={{ transform: `translate(${offset.x}px, ${offset.y}px)${mood === "shy" ? " rotate(-8deg)" : ""}` }}
         >
           {[0, 1].map((eye) => (
             <span
               key={eye}
               className={cx(
-                "block w-1.5 rounded-full bg-brand-on transition-[height,transform] duration-100 ease-out",
-                shut ? "h-0.5" : "h-2.5",
+                "zc-auth-orb__eye",
+                shut && "zc-auth-orb__eye--shut",
                 mood === "sad" && !shut && (eye === 0 ? "-rotate-12" : "rotate-12"),
-                mood === "happy" && !shut && "h-2",
+                mood === "happy" && !shut && "zc-auth-orb__eye--happy",
               )}
             />
           ))}
-        </div>
-      </div>
-      <p
-        aria-hidden
-        className="relative min-h-7 max-w-full rounded-2xl bg-surface px-3 py-1 text-label font-medium text-fg shadow-[0_6px_16px_rgba(0,0,0,0.25)]"
-      >
+        </span>
+      </span>
+      <p aria-hidden className="min-h-8 text-title-1 text-brand-on">
         {typed || " "}
+        {mood === "thinking" ? <span className="zc-auth-dots" /> : null}
       </p>
       <span className="sr-only" aria-live="polite">
         {message}
@@ -245,7 +250,7 @@ export const AuthCodeInput = forwardRef<HTMLInputElement, AuthCodeInputProps>(fu
               write(index, event.clipboardData.getData("text"));
             }}
             className={cx(
-              "auth-field h-12 w-full min-w-0 rounded-lg border bg-auth-field text-center text-title-3 font-semibold text-brand-on outline-hidden transition-colors duration-instant num",
+              "auth-field h-12 w-full min-w-0 rounded-field border bg-auth-field text-center text-title-3 font-semibold text-brand-on outline-hidden transition-colors duration-instant num",
               "focus:border-auth-focus focus:shadow-auth-focus",
               error ? "border-auth-error" : "border-auth-field-line",
             )}

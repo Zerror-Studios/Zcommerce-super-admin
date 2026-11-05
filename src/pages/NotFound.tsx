@@ -1,21 +1,20 @@
 import { useNavigate } from "react-router-dom";
-import { Button, EmptyState, IconSearch } from "../components/ui";
+import { ErrorState } from "../components/ui";
 import { emptyStates } from "../copy";
 
-/** 404 inside the app shell (docs/design/02-components.md §9): "Page not found", "Go to Home". */
+/**
+ * 404 inside the app shell, as the v2 error state (docs/design-v2/README.md §10A): what happened in plain words,
+ * what to do next, one button. Red only on the icon tile. The ⌘K search in the menu stays the way to find a page.
+ */
 export function NotFound() {
   const navigate = useNavigate();
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
-      <EmptyState
-        icon={IconSearch}
+      <ErrorState
         title={emptyStates.notFound.title}
         description={emptyStates.notFound.description}
-        action={
-          <Button variant="secondary" onPress={() => navigate("/")}>
-            {emptyStates.notFound.action}
-          </Button>
-        }
+        retryLabel={emptyStates.notFound.action}
+        onRetry={() => navigate("/")}
       />
     </div>
   );

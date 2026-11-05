@@ -206,15 +206,20 @@
 
   --radius-xs: 4px;     /* checkbox, kbd */
   --radius-sm: 6px;     /* badges, chips, tooltips */
-  --radius-field: 8px;  /* buttons, inputs, nav items, thumbnails, menu items */
-  --radius-tile: 12px;  /* cards, tables, popovers, toasts */
-  --radius-card: 12px;
-  --radius-modal: 16px; /* modals, login card */
-  --radius-pane-item: 10px; /* settings menu rows (01 §6.2) */
-  --radius-thumb: 10px;     /* image tiles, ask input */
-  --radius-panel: 14px;     /* two-pane card, AI chat card */
-  --radius-banner: 20px;    /* Home welcome banner */
-  /* v2 (01 §6.5). field / card / thumb keep their v1 values until the Phase 2 components move to 10 / 16 / 8. */
+  /* v2 §2.3: cards, tables and the summary panel 22; small cards and stat tiles 18; inputs 12; buttons, tabs and
+     chips are pills; icon tiles 12; pop-ups 22. */
+  --radius-field: var(--zc-radius-field);       /* inputs, nav items, menu rows */
+  --radius-tile: var(--zc-radius-tile);         /* icon tiles */
+  --radius-card: var(--zc-radius-card-sm);      /* small cards, stat tiles, inner cards */
+  --radius-card-lg: var(--zc-radius-card);      /* page cards, tables, summary panel */
+  --radius-modal: var(--zc-radius-overlay);     /* pop-ups */
+  --radius-pane-item: 10px;                     /* settings menu rows */
+  --radius-thumb: var(--zc-radius-thumb);       /* product photos in rows */
+  --radius-panel: var(--zc-radius-card);        /* two-pane card, AI chat card */
+  --radius-banner: var(--zc-radius-banner);     /* Home hero */
+  --radius-sheet: var(--zc-radius-sheet);       /* Zcom AI sheet */
+  --radius-video: var(--zc-radius-video);       /* video thumbnails */
+  --radius-photo: var(--zc-radius-photo);       /* card and mosaic photos (rounded-photo) */
   --radius-pill: var(--zc-radius-pill);
   --radius-checkbox: var(--zc-radius-checkbox);
   --radius-badge: var(--zc-radius-badge);
@@ -232,6 +237,8 @@
   --shadow-auth-focus: var(--zc-auth-focus-ring);
   --shadow-popover: var(--zc-shadow-popover);
   --shadow-modal: var(--zc-shadow-modal);
+  --shadow-float: var(--zc-shadow-float);
+  --shadow-ask: var(--zc-shadow-ask);
 
   --ease-standard: var(--zc-ease);
   --ease-enter: var(--zc-ease-enter);
@@ -271,10 +278,47 @@
   --color-row-hover: var(--zc-table-row-hover);
   --color-row-selected: var(--zc-table-row-selected);
   --color-rating: var(--zc-rating);
+
+  /* v2 (docs/design-v2 §2.1). */
+  --color-ink: var(--zc-ink);
+  --color-fg-faint: var(--zc-fg-faint);
+  --color-red: var(--zc-red);
+  --color-red-tint: var(--zc-red-tint);
+  --color-red-on-dark: var(--zc-red-on-dark);
+  --color-amber: var(--zc-amber);
+  --color-amber-text: var(--zc-amber-text);
+  --color-amber-tint: var(--zc-amber-tint);
+  --color-amber-on-dark: var(--zc-amber-on-dark);
+  --color-green: var(--zc-green);
+  --color-green-tint: var(--zc-green-tint);
+  --color-green-on-dark: var(--zc-green-on-dark);
+  --color-tone-success-dot: var(--zc-success-dot);
+  --color-avatar: var(--zc-avatar-bg);
+  --color-avatar-fg: var(--zc-avatar-fg);
+  --color-channel-dot: var(--zc-channel-dot);
+  --color-seg: var(--zc-seg-bg);
+  --color-seg-count: var(--zc-seg-count);
+  --color-icon-btn-fg: var(--zc-icon-btn-fg);
+  --color-nav-store-badge: var(--zc-nav-store-badge);
+  --color-nav-kbd: var(--zc-nav-kbd-bg);
+  --color-nav-kbd-fg: var(--zc-nav-kbd-fg);
+  --color-ai-divider: var(--zc-ai-divider);
+  --color-ai-line-border: var(--zc-ai-line-border);
+  --color-orb-base: var(--zc-orb-base);
+  --color-chart-best: var(--zc-chart-best);
+  --color-chart-hatch: var(--zc-chart-hatch);
+  --color-chart-empty: var(--zc-chart-empty);
+  --color-step-complete: var(--zc-step-complete);
+
+  --text-kpi-panel: var(--zc-text-kpi-panel-size);
+  --text-kpi-panel--line-height: var(--zc-text-kpi-panel-line);
+  --text-kpi-panel--font-weight: var(--zc-text-kpi-panel-weight);
+  --text-kpi-panel--letter-spacing: var(--zc-text-kpi-panel-tracking);
 }
 
-/* Group labels: banner eyebrow, section-menu groups, filter-drawer groups, "Folders" in Choose media (01 §4.2). */
+/* Small uppercase labels in Geist Mono (v2 §2.2): banner eyebrow, section-menu groups, filter-drawer groups. */
 @utility text-micro {
+  font-family: var(--zc-font-mono);
   font-size: var(--zc-text-micro-size);
   line-height: var(--zc-text-micro-line);
   font-weight: var(--zc-text-micro-weight);
@@ -352,8 +396,8 @@
 /* Layout sizes (design-system §3, §8). Not inline, so they also exist as CSS variables. */
 @theme {
   --spacing-topbar: 64px;
-  --spacing-sidebar: 248px;
-  --spacing-sidebar-collapsed: 64px;
+  --spacing-sidebar: var(--zc-sidebar-w);                     /* 240 (v2 §3.1) */
+  --spacing-sidebar-collapsed: var(--zc-sidebar-w-collapsed); /* 72 icon rail (v2 §10) */
   --spacing-drawer: 280px;
   --spacing-pane: var(--zc-pane-w);
   --spacing-support: var(--zc-support-h);
@@ -379,6 +423,22 @@
   --spacing-drawer-lg: var(--zc-drawer-w-lg);
   --spacing-side-col: var(--zc-side-col);
   --spacing-banner: var(--zc-banner-h);
+  --spacing-title-tile: var(--zc-title-tile);
+  --spacing-popup-tile: var(--zc-popup-tile);
+  --spacing-row-chevron: var(--zc-row-chevron);
+  --spacing-summary: var(--zc-summary-h);
+  --spacing-summary-collapsed: var(--zc-summary-h-collapsed);
+  --spacing-summary-toggle: var(--zc-summary-toggle);
+  --spacing-ask: var(--zc-ask-h);
+  --spacing-ask-w: var(--zc-ask-w);
+  --spacing-ask-clearance: var(--zc-ask-clearance);
+  --spacing-wallet: var(--zc-wallet-h);
+  --spacing-wallet-card: var(--zc-wallet-card-w);
+  --spacing-orb: var(--zc-orb);
+  --spacing-orb-lg: var(--zc-orb-lg);
+  --spacing-orb-bar: var(--zc-orb-bar);
+  --spacing-seo-ring: var(--zc-seo-ring);
+  --spacing-cell-x: var(--zc-table-cell-px);
 
   --animate-shimmer: zc-shimmer var(--zc-dur-shimmer) linear infinite;
   --animate-spin-slow: zc-spin 0.8s linear infinite;

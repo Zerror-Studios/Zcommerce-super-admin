@@ -18,6 +18,8 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconGift,
   Textarea,
   formatCount,
   formatDate,
@@ -93,7 +95,9 @@ function GrantTopUpForm({
   return (
     <Modal isOpen onClose={onClose} width="sm">
       <ModalContent>
-        <ModalHeader>Grant AI questions to {store.name}</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={<IconGift aria-hidden />}>Grant AI questions to {store.name}</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           <div className="flex flex-col gap-3">
             <Input

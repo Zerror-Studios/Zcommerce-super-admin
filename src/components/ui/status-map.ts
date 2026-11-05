@@ -141,8 +141,10 @@ export const STATUS_MAP: Record<StatusDomain, Record<string, StatusInfo>> = {
     canceled: s("Cancelled", "danger"), // added: US spelling
   },
   product: {
-    published: s("Active", "success"),
-    active: s("Active", "success"),
+    // v2 status words (§1A, §6.5, board 16): a published product is "Live" (summary "Live products").
+    published: s("Live", "success"),
+    active: s("Live", "success"),
+    live: s("Live", "success"),
     draft: s("Draft", "neutral"),
     scheduled: s("Scheduled", "info"),
     archived: s("Archived", "neutral"),

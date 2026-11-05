@@ -1,31 +1,32 @@
-import {
-  Button,
-  ConfirmDialog,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-} from "../ui";
+import type { ReactNode } from "react";
+import { ConfirmDialog } from "../ui";
+import { IconInfo, IconWarning } from "../ui/icons";
 
 export interface ConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  /** Names the thing and asks one question (v2 §4.6): "Revoke this session?". */
   title: string;
   description: string;
   confirmLabel?: string;
   cancelLabel?: string;
   /**
-   * danger → destructive ConfirmDialog (docs/design/02-components.md §11).
-   * warning → filled red confirm (the design system has no warning button).
-   * primary / success → primary confirm (the design system has no success button).
-   * Cancel is always ghost, never red.
+   * danger → destructive (red bin tile, red action).
+   * warning → destructive action with a red warning tile (switching a safeguard off, cancelling).
+   * primary / success → neutral (grey tile, dark action), for yes/no questions that change nothing irreversibly.
+   * Cancel always comes first and is never red.
    */
   confirmColor?: "danger" | "primary" | "warning" | "success";
+  /** The title-row icon; defaults by `confirmColor`. */
+  icon?: ReactNode;
   isLoading?: boolean;
 }
 
+/**
+ * The console's yes/no pop-up: always the kit ConfirmDialog (v2 §4.6: small 420, a 36px icon tile in the title
+ * row, one sentence of consequence, Cancel then the action, focus on Cancel; a bottom sheet on phone).
+ */
 export function ConfirmModal({
   isOpen,
   onClose,
@@ -35,50 +36,29 @@ export function ConfirmModal({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   confirmColor = "danger",
+  icon,
   isLoading = false,
 }: ConfirmModalProps) {
   const confirmAndClose = () => {
     onConfirm();
     onClose();
   };
-
-  if (confirmColor === "danger") {
-    return (
-      <ConfirmDialog
-        isOpen={isOpen}
-        onClose={onClose}
-        onConfirm={confirmAndClose}
-        title={title}
-        description={description}
-        confirmLabel={confirmLabel}
-        cancelLabel={cancelLabel}
-        isLoading={isLoading}
-      />
-    );
-  }
-
-  const destructive = confirmColor === "warning";
+  const destructive = confirmColor === "danger" || confirmColor === "warning";
+  const defaultIcon =
+    confirmColor === "warning" ? <IconWarning aria-hidden /> : confirmColor === "danger" ? undefined : <IconInfo aria-hidden />;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} width="sm">
-      <ModalContent>
-        <ModalHeader>{title}</ModalHeader>
-        <ModalBody>
-          <p className="text-body text-fg-muted">{description}</p>
-        </ModalBody>
-        <ModalFooter>
-          <Button variant="secondary" onPress={onClose}>
-            {cancelLabel}
-          </Button>
-          <Button
-            variant={destructive ? "destructive" : "primary"}
-            isLoading={isLoading}
-            onPress={confirmAndClose}
-          >
-            {confirmLabel}
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+    <ConfirmDialog
+      isOpen={isOpen}
+      onClose={onClose}
+      onConfirm={confirmAndClose}
+      title={title}
+      description={description}
+      confirmLabel={confirmLabel}
+      cancelLabel={cancelLabel}
+      isLoading={isLoading}
+      tone={destructive ? "destructive" : "neutral"}
+      icon={icon ?? defaultIcon}
+    />
   );
 }

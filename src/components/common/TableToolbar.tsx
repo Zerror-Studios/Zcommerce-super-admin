@@ -1,7 +1,9 @@
 import { Checkbox, CheckboxGroup, DropdownItem, DropdownTrigger } from "@heroui/react";
 import { useState, type ReactNode } from "react";
+import { cx } from "../ui/cx";
 import { SearchInput } from "../ui/SearchInput";
-import { IconColumns } from "../ui/icons";
+import { IconColumns, IconSearch } from "../ui/icons";
+import { useIsPhone } from "../ui/use-media";
 import {
   FilterButton,
   FilterDrawer,
@@ -34,6 +36,47 @@ export interface TableToolbarProps {
   tabs?: ReactNode;
 }
 
+export interface ToolbarSearchProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  /** Page-specific placeholder; also names the phone search icon. */
+  placeholder?: string;
+}
+
+/**
+ * The toolbar search with the kit TableToolbar's phone rule (v2 §10): under 768px it is an icon that opens a
+ * full-width field, and it folds back when it is empty and loses focus. An active search always shows its field.
+ */
+export function ToolbarSearch({ value, onValueChange, placeholder = "Search" }: ToolbarSearchProps) {
+  const isPhone = useIsPhone();
+  const [open, setOpen] = useState(false);
+  if (isPhone && !open && !value) {
+    return (
+      <UiIconButton aria-label={placeholder} variant="default" showTooltip={false} onPress={() => setOpen(true)}>
+        <IconSearch aria-hidden />
+      </UiIconButton>
+    );
+  }
+  return (
+    <SearchInput
+      placement="toolbar"
+      placeholder={placeholder}
+      value={value}
+      onValueChange={onValueChange}
+      onClear={() => onValueChange("")}
+      autoFocus={isPhone && open && !value}
+      onBlur={isPhone ? (event) => !(event.target as HTMLInputElement).value && setOpen(false) : undefined}
+      classNames={{ base: "zc-toolbar__search" }}
+    />
+  );
+}
+
+/** The toolbar row, laid out like the kit TableToolbar's: one row from 768px up; on phone the tabs get their own row. */
+export function ToolbarRow({ children, className }: { children: ReactNode; className?: string }) {
+  const isPhone = useIsPhone();
+  return <div className={cx("zc-toolbar zc-toolbar--row", isPhone && "zc-toolbar--phone", className)}>{children}</div>;
+}
+
 export function TableToolbar({
   search,
   onSearchChange,
@@ -48,24 +91,18 @@ export function TableToolbar({
   tabs,
 }: TableToolbarProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const searchField = (
-    <SearchInput
-      placement="toolbar"
-      placeholder={searchPlaceholder}
-      value={search}
-      onValueChange={onSearchChange}
-      onClear={() => onSearchChange("")}
-    />
-  );
 
-  /* Row 1 of the table card (01 §7.14): 52px, the segmented status switch left; search (32px × 240), Filter and
-     the Columns circle right, 8px apart. Without tabs the search sits left. Wraps to a second row when it can't fit. */
+  /* Design v2 §4.3: the standard toolbar row ABOVE the table card (`.zc-toolbar`, the kit TableToolbar's layout):
+     tabs on the left; on the right, in order, any extra control, search, the filter icon and the columns icon.
+     Phone (v2 §10, same rules as the kit): the tabs scroll sideways in their own row, the search is an icon that
+     opens a full-width field, filter and columns stay icons. */
   return (
-    <div className="flex min-h-[var(--zc-table-toolbar-h)] flex-col gap-2 border-b border-line-subtle bg-surface px-4 py-2 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-      {tabs ? <div className="flex min-w-0 items-center">{tabs}</div> : searchField}
+    <ToolbarRow>
+      {tabs ? <div className="zc-toolbar__tabs">{tabs}</div> : null}
 
-      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-        {tabs ? searchField : null}
+      <div className="zc-toolbar__end flex-wrap">
+        {endContent}
+        <ToolbarSearch value={search} onValueChange={onSearchChange} placeholder={searchPlaceholder} />
         {filterContent ? (
           <>
             <FilterButton count={filterCount} onPress={() => setFiltersOpen(true)} />
@@ -78,7 +115,7 @@ export function TableToolbar({
         {columns && visibleColumns && onVisibleColumnsChange ? (
           <UiDropdown placement="bottom-end">
             <DropdownTrigger>
-              <UiIconButton aria-label="Choose columns" variant="default" size="sm" showTooltip={false}>
+              <UiIconButton aria-label="Choose columns" variant="default" showTooltip={false}>
                 <IconColumns aria-hidden />
               </UiIconButton>
             </DropdownTrigger>
@@ -98,10 +135,8 @@ export function TableToolbar({
             </UiDropdownMenu>
           </UiDropdown>
         ) : null}
-
-        {endContent}
       </div>
-    </div>
+    </ToolbarRow>
   );
 }
 

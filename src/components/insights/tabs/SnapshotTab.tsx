@@ -5,7 +5,9 @@
  * - The page passes the snapshot of the chosen period (`platformMetrics`).
  *   Before the first snapshot the tab says when it runs; a tab whose
  *   section didn't come back for this viewer explains why (guide §2).
- * - KPI cells (`MetricCard`: OK / SMALL_SAMPLE / UNAVAILABLE), then
+ * - KPI cells (OK / SMALL_SAMPLE / UNAVAILABLE, as `MetricCard`): the first
+ *   four in the summary panel, the rest in white "lite" rows of four
+ *   (design v2 §4.2), then
  *   breakdown cards, then the tab's store lists (each row links to the
  *   store; risk reasons as tags; lifecycle as a chip).
  * - Merchant sales says when sales are known only from a date (`gmv`'s
@@ -14,19 +16,21 @@
 
 import { Link } from "react-router-dom";
 
-import { Card, Chip, EmptyState, ErrorState, KpiStrip, Skeleton, Tooltip } from "../../ui";
+import { Card, Chip, EmptyState, ErrorState, Skeleton, SummaryPanel, Tooltip, type SummaryCell } from "../../ui";
 import { IconLock } from "../../ui/icons";
 import { toneTextClasses } from "../../ui/tones";
 import { TableCard } from "../../analytics/analytics-shared";
-import { MetricCard } from "../MetricCard";
+import { useSummaryKey } from "../../../hooks/use-summary-key";
 import {
   FIRST_SNAPSHOT_COPY,
   findMetric,
   lifecycleLabel,
   lifecycleTone,
+  metricHelp,
   riskReasonLabel,
 } from "../../../lib/platform-insights.util";
 import type {
+  PlatformMetric,
   PlatformMetricsSnapshot,
   PlatformMetricsStoreRow,
 } from "../../../types/platform-insights";
@@ -36,6 +40,8 @@ import {
   daysText,
   isTabAvailable,
   listValueText,
+  metricSummaryText,
+  SUMMARY_CELLS,
   snapshotTabConfig,
   splitMetrics,
   tabMetrics,
@@ -114,16 +120,38 @@ function StoreListCard({ config, rows }: { config: SnapshotListConfig; rows: Pla
   );
 }
 
+// ─── Summary cells ────────────────────────────────────────────────────────
+
+/** A metric as a summary cell; its definition and formula stay on the label's tooltip. */
+function metricCell(metric: PlatformMetric, threshold: number | null | undefined): SummaryCell {
+  const text = metricSummaryText(metric, threshold);
+  const help = metricHelp(metric);
+  return {
+    key: metric.key,
+    label: help ? (
+      <Tooltip content={<span className="whitespace-pre-line">{help}</span>} placement="top-start">
+        <span className="cursor-help border-b border-dashed border-current">{metric.label}</span>
+      </Tooltip>
+    ) : (
+      metric.label
+    ),
+    value: text.value,
+    note: text.note ?? undefined,
+    tone: text.tone,
+  };
+}
+
 // ─── Tab ──────────────────────────────────────────────────────────────────
 
 export function SnapshotTab({ tab, snapshot, loading, error, onRetry }: SnapshotTabProps) {
   const config = snapshotTabConfig(tab);
+  const summaryKey = useSummaryKey(`analytics-${tab}`);
 
   if (loading && !snapshot) {
     return (
       <div className="flex flex-col gap-4">
-        <Skeleton className="h-28 w-full rounded-[var(--zc-radius-card)]" />
-        <Skeleton className="h-64 w-full rounded-[var(--zc-radius-card)]" />
+        <Skeleton className="h-28 w-full rounded-card-lg" />
+        <Skeleton className="h-64 w-full rounded-card-lg" />
       </div>
     );
   }
@@ -161,12 +189,20 @@ export function SnapshotTab({ tab, snapshot, loading, error, onRetry }: Snapshot
         </p>
       ) : null}
 
-      {chunkCells(cells).map((row, index) => (
-        <KpiStrip key={`strip-${index}`}>
-          {row.map((metric) => (
-            <MetricCard key={metric.key} bare metric={metric} smallSampleThreshold={threshold} />
-          ))}
-        </KpiStrip>
+      {cells.length ? (
+        <SummaryPanel
+          cells={cells.slice(0, SUMMARY_CELLS).map((metric) => metricCell(metric, threshold))}
+          storageKey={summaryKey}
+          aria-label={`${config.label} summary`}
+        />
+      ) : null}
+      {chunkCells(cells.slice(SUMMARY_CELLS), SUMMARY_CELLS).map((row, index) => (
+        <SummaryPanel
+          key={`lite-${index}`}
+          variant="lite"
+          cells={row.map((metric) => metricCell(metric, threshold))}
+          aria-label={`${config.label}: more figures`}
+        />
       ))}
 
       {breakdowns.length ? (

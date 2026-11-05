@@ -10,8 +10,7 @@
  */
 
 import { addToast } from "@heroui/react";
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, type ReactNode } from "react";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import {
   lifecycleFailureCopy,
@@ -27,6 +26,7 @@ import { useClients } from "../../providers/ClientsProvider";
 import type { Client } from "../../types";
 import {
   Button as UiButton,
+  ButtonLink,
   Card,
   Input,
   Modal,
@@ -34,10 +34,10 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
   toastError,
 } from "../ui";
 import { IconEdit } from "../ui/icons";
-import { KeyValue, KeyValueGrid } from "./StoreDetailParts";
 
 export interface StoreDetailsCardProps {
   client: Client;
@@ -45,7 +45,28 @@ export interface StoreDetailsCardProps {
   goLiveHref: string;
 }
 
-/** Store detail › Store details (04 S-03b): one card, a 2-column key/value grid, "Edit" opens the md pop-up. */
+/** One setting row (board 66): what it is, its value under it, and an action on the right. */
+function SettingRow({ label, value, mono = false, action }: { label: string; value: ReactNode; mono?: boolean; action?: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2 border-t border-line-subtle px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-body font-medium text-fg">{label}</p>
+        <p className={mono ? "mt-0.5 font-mono text-label text-fg-muted wrap-anywhere" : "mt-0.5 text-label text-fg-muted wrap-anywhere"}>
+          {value}
+        </p>
+      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </div>
+  );
+}
+
+/** Joins the parts that are set ("Aarav Mehta · aarav@…"), or "Not set". */
+const joined = (...parts: (string | null | undefined)[]) => parts.filter((part) => part && part.trim()).join(" · ") || "Not set";
+
+/**
+ * Store detail › Settings › Store (board 66; 04 S-03b): one row each for the web address (changed in Go live),
+ * the name, the owner, the billing contact and the region; "Edit" opens the md pop-up.
+ */
 export function StoreDetailsCard({ client, goLiveHref }: StoreDetailsCardProps) {
   const { can } = useAuth();
   const canManage = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
@@ -55,7 +76,8 @@ export function StoreDetailsCard({ client, goLiveHref }: StoreDetailsCardProps) 
   return (
     <>
       <Card
-        title="Store details"
+        title="Store"
+        padding="none"
         actions={
           canManage ? (
             <UiButton variant="secondary" size="sm" startIcon={<IconEdit aria-hidden />} onPress={() => setOpen(true)}>
@@ -64,25 +86,20 @@ export function StoreDetailsCard({ client, goLiveHref }: StoreDetailsCardProps) 
           ) : null
         }
       >
-        <KeyValueGrid columns={2}>
-          <KeyValue label="Store name">{draft.name}</KeyValue>
-          <KeyValue label="Slug">{client.slug}</KeyValue>
-          <KeyValue label="Domain">
-            <span className="flex flex-wrap items-center gap-x-2">
-              {client.domain ? <span>{client.domain}</span> : <span className="text-fg-subtle">Not set</span>}
-              <Link to={goLiveHref} className="text-label text-brand hover:underline">
-                Change in Go live
-              </Link>
-            </span>
-          </KeyValue>
-          <KeyValue label="Owner">{draft.ownerName}</KeyValue>
-          <KeyValue label="Owner email">{draft.ownerEmail}</KeyValue>
-          <KeyValue label="Owner phone">{draft.ownerPhone}</KeyValue>
-          <KeyValue label="Billing email">{draft.billingContactEmail}</KeyValue>
-          <KeyValue label="GSTIN">{draft.gstin}</KeyValue>
-          <KeyValue label="Time zone">{draft.timezone}</KeyValue>
-          <KeyValue label="Currency">{draft.currency}</KeyValue>
-        </KeyValueGrid>
+        <SettingRow
+          label="Web address"
+          mono
+          value={joined(client.slug, client.domain)}
+          action={
+            <ButtonLink to={goLiveHref} variant="secondary" size="sm">
+              Change in Go live
+            </ButtonLink>
+          }
+        />
+        <SettingRow label="Store name" value={joined(draft.name)} />
+        <SettingRow label="Store owner" value={joined(draft.ownerName, draft.ownerEmail, draft.ownerPhone)} />
+        <SettingRow label="Billing contact" value={joined(draft.billingContactEmail, draft.gstin ? `GSTIN ${draft.gstin}` : null)} />
+        <SettingRow label="Region and currency" value={joined(draft.timezone, draft.currency)} />
       </Card>
 
       {open ? <StoreDetailsDialog client={client} onClose={() => setOpen(false)} /> : null}
@@ -149,7 +166,9 @@ export function StoreDetailsDialog({ client, onClose }: { client: Client; onClos
   return (
     <Modal isOpen onClose={() => !saving && onClose()} width="md">
       <ModalContent>
-        <ModalHeader>Edit {client.storeName}</ModalHeader>
+        <ModalHeader>
+          <PopupTitle icon={<IconEdit aria-hidden />}>Edit {client.storeName}</PopupTitle>
+        </ModalHeader>
         <ModalBody>
           <div className="flex flex-col gap-4">
             {errors.form ? (

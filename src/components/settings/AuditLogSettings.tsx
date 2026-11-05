@@ -24,10 +24,9 @@ import {
   DrawerHeader,
   EmptyState,
   ErrorState,
-  FilterButton,
   FilterDrawer,
-  SearchInput,
   TablePagination,
+  TableToolbar,
   countActiveFilters,
   formatDateTime,
   toastError,
@@ -54,10 +53,10 @@ interface AuditEntry {
 
 /** Fixed 466 → Action 218px in the 684px column. */
 const columns: DataTableColumn[] = [
-  { key: "at", label: "When", width: 140 },
-  { key: "who", label: "Who", width: 140 },
-  { key: "action", label: "Action" },
-  { key: "target", label: "Target", width: 130 },
+  { key: "at", label: "When", width: 140, mobile: "meta" },
+  { key: "who", label: "Who", width: 140, mobile: "title" },
+  { key: "action", label: "Action", mobile: "primary" },
+  { key: "target", label: "Target", width: 130, hideWhen: "narrow", mobile: "hide" },
 ];
 
 /** Action areas with one action prefix each (Billing spans several prefixes, so it isn't offered yet). */
@@ -172,23 +171,20 @@ export function AuditLogSettings() {
           ]}
           rowActionsLabel={(row) => `Actions for ${row.action}`}
           toolbar={
-            <>
-              <div className="flex min-h-[var(--zc-table-toolbar-h)] flex-wrap items-center gap-2 border-b border-line-subtle px-4 py-2">
-                <SearchInput
-                  placement="toolbar"
-                  placeholder="Search actions, e.g. tenant."
-                  value={search}
-                  onValueChange={setSearch}
-                  onClear={() => setSearch("")}
-                />
-                <FilterButton count={countActiveFilters(filterValues)} onPress={() => setFiltersOpen(true)} />
-              </div>
-              {searchError ? (
-                <p role="alert" className="px-4 py-2 text-label text-tone-danger-text">
-                  {searchError}
-                </p>
-              ) : null}
-            </>
+            <TableToolbar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder="Search actions, e.g. tenant."
+              onOpenFilters={() => setFiltersOpen(true)}
+              filterCount={countActiveFilters(filterValues)}
+            />
+          }
+          chips={
+            searchError ? (
+              <p role="alert" className="text-label text-tone-danger-text">
+                {searchError}
+              </p>
+            ) : null
           }
           renderCell={(row, key) => {
             switch (key) {

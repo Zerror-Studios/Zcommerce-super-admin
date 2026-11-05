@@ -44,6 +44,8 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  PopupTitle,
+  IconPlans,
   Select,
   SelectItem,
   Switch,
@@ -136,11 +138,13 @@ export function PlanEditorModal({ isOpen, onClose, plan, tenantId = null, tenant
     <Modal isOpen={isOpen} onClose={onClose} width="lg">
       <ModalContent>
         <ModalHeader>
-          {editing
-            ? `Edit ${plan?.displayName || PLAN_LABELS[plan!.name]} v${plan?.version ?? 1}`
-            : isCustom
-              ? `New custom plan${tenantName ? ` for ${tenantName}` : ""}`
-              : "New plan"}
+          <PopupTitle icon={<IconPlans aria-hidden />}>
+            {editing
+              ? `Edit ${plan?.displayName || PLAN_LABELS[plan!.name]} v${plan?.version ?? 1}`
+              : isCustom
+                ? `New custom plan${tenantName ? ` for ${tenantName}` : ""}`
+                : "New plan"}
+          </PopupTitle>
         </ModalHeader>
         <ModalBody>
           <div className="flex flex-col gap-5">

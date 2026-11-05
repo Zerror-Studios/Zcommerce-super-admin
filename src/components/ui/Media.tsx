@@ -21,7 +21,10 @@ export interface ImageControlProps {
   className?: string;
 }
 
-/** Tiny control on an image: white at 92%, radius 6, icon 12px. Usually shown on tile hover only. */
+/**
+ * Tiny control on an image: white at 92%, radius 6, icon 12px. Shown on tile hover with a mouse, always on touch,
+ * where its hit area is 44px (keep 22px between two controls there).
+ */
 export function ImageControl({ onPress, children, size = "md", destructive, className, ...rest }: ImageControlProps) {
   return (
     <button
@@ -32,7 +35,8 @@ export function ImageControl({ onPress, children, size = "md", destructive, clas
         onPress();
       }}
       className={cx(
-        "inline-flex items-center justify-center rounded-sm bg-image-control text-fg shadow-sticky transition-colors duration-instant [&_svg]:size-3",
+        // zc-hit: a 44px hit area on touch screens, same look (v2 §10).
+        "zc-hit inline-flex items-center justify-center rounded-sm bg-image-control text-fg shadow-sticky transition-colors duration-instant [&_svg]:size-3",
         size === "md" ? "size-image-control" : "size-image-control-sm",
         destructive ? "hover:text-tone-danger" : "hover:bg-surface",
         className,
@@ -82,33 +86,27 @@ export function useViewMode(pageId: string, initial: ViewMode = "grid"): [ViewMo
   return [mode, save];
 }
 
-/** 28px two-icon segmented toggle, top-right of a card that shows tiles. */
+/** Two-icon view switch (v2 §4.8 `.zc-view`): white pill, the selected icon on ink. Same look as TableToolbar's ViewSwitch. */
 export function ViewToggle({ value, onChange, className }: { value: ViewMode; onChange: (mode: ViewMode) => void; className?: string }) {
   const options: { mode: ViewMode; label: string; icon: ReactNode }[] = [
     { mode: "grid", label: "Grid view", icon: <IconGridView aria-hidden /> },
     { mode: "list", label: "List view", icon: <IconListView aria-hidden /> },
   ];
   return (
-    <div role="radiogroup" aria-label="View" className={cx("inline-flex h-7 items-center gap-0.5 rounded-field bg-surface-sunken p-0.5", className)}>
-      {options.map((option) => {
-        const selected = option.mode === value;
-        return (
-          <button
-            key={option.mode}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            aria-label={option.label}
-            onClick={() => onChange(option.mode)}
-            className={cx(
-              "inline-flex h-6 w-7 items-center justify-center rounded-md transition-colors duration-fast [&_svg]:size-3.5",
-              selected ? "bg-surface text-fg shadow-sticky" : "text-fg-muted hover:text-fg",
-            )}
-          >
-            {option.icon}
-          </button>
-        );
-      })}
+    <div role="radiogroup" aria-label="View" className={cx("zc-view", className)}>
+      {options.map((option) => (
+        <button
+          key={option.mode}
+          type="button"
+          role="radio"
+          aria-checked={option.mode === value}
+          aria-label={option.label}
+          onClick={() => onChange(option.mode)}
+          className="zc-view__item"
+        >
+          {option.icon}
+        </button>
+      ))}
     </div>
   );
 }
@@ -138,14 +136,7 @@ export function initials(name: string): string {
   return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
-/** One of the six avatar gradients, stable per name. */
-function gradientFor(name: string): string {
-  let hash = 0;
-  for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  return `var(--zc-avatar-${(hash % 6) + 1})`;
-}
-
-/** Photo when there is one; otherwise white initials on a gradient (customers, team, the user row). */
+/** Photo when there is one; otherwise dark initials on neutral grey (v2 §2.1: no coloured or gradient avatars). */
 export function Avatar({ name, src, size = "md", className }: AvatarProps) {
   const [failed, setFailed] = useState(false);
   const base = cx("inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full", avatarSizes[size], className);
@@ -153,7 +144,7 @@ export function Avatar({ name, src, size = "md", className }: AvatarProps) {
     return <img src={src} alt="" className={cx(base, "object-cover")} onError={() => setFailed(true)} loading="lazy" />;
   }
   return (
-    <span aria-hidden className={cx(base, "font-semibold text-brand-on")} style={{ background: gradientFor(name) }}>
+    <span aria-hidden className={cx(base, "bg-avatar font-semibold text-avatar-fg")}>
       {initials(name)}
     </span>
   );

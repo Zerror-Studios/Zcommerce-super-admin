@@ -1,30 +1,30 @@
 import { useMutation, useQuery } from "@apollo/client";
 import { addToast } from "@heroui/react";
-import { useEffect, useMemo, useState, useSyncExternalStore, type ComponentType, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ClientActivityCard } from "../components/clients/ClientActivityCard";
 import { ClientAiCard } from "../components/clients/ClientAiCard";
-import { ClientAnalyticsCard } from "../components/clients/ClientAnalyticsCard";
 import { ClientOverviewTab } from "../components/clients/ClientOverviewTab";
 import { IssueCreditDialog, RecordRefundDialog } from "../components/clients/ClientPlatformBilling";
 import { ClientUsageHistory } from "../components/clients/ClientUsageHistory";
 import { OnboardingCard } from "../components/clients/OnboardingCard";
+import { StoreAppsTab } from "../components/clients/StoreAppsTab";
 import { StoreBillingSection } from "../components/clients/StoreBillingSection";
-import { StoreBillingStateCard } from "../components/clients/StoreBillingStateCard";
 import { InlineNotice } from "../components/clients/StoreDetailParts";
 import { StoreDetailsCard, StoreDetailsDialog } from "../components/clients/StoreDetailsCard";
 import { StoreGoLiveCard } from "../components/clients/StoreGoLiveCard";
 import { StoreSetupCard } from "../components/clients/StoreSetupCard";
-import { StoreHealthCard } from "../components/clients/StoreHealthCard";
 import { StoreHistoryCard } from "../components/clients/StoreHistoryCard";
 import { StoreLifecycleCard } from "../components/clients/StoreLifecycleCard";
 import { StoreProfileCard } from "../components/clients/StoreProfileCard";
+import { StoreTeamTab } from "../components/clients/StoreTeamTab";
 import {
   SubscriptionDialogs,
   subscriptionActionsFor,
   type SubscriptionDialog,
 } from "../components/clients/SubscriptionActions";
-import { paymentBadge, storeStatusBadge } from "../components/clients/stores-list/store-list.util";
+import { paymentBadge, planShortName, storeStatusBadge } from "../components/clients/stores-list/store-list.util";
+import { isInSetup } from "../components/clients/stores-list/stores-tabs.util";
 import { StoreActionDialog, type StoreAction } from "../components/clients/storeActions";
 import { logInToStore } from "../components/clients/storeLogin";
 import { useStoreBillingRefresh } from "../components/clients/useStoreBillingRefresh";
@@ -46,24 +46,17 @@ import { usePlatformSettings } from "../providers/SettingsProvider";
 import { toasts } from "../copy";
 import type { PlatformTenant } from "../types/platform-api";
 import {
-  IconAnalytics,
   IconBilling,
-  IconBolt,
-  IconCalendarDays,
-  IconChartBar,
   IconDelete,
   IconEdit,
-  IconGlobe,
-  IconHome,
+  IconExternalArrow,
   IconLink,
-  IconLogin,
+  IconMessages,
   IconPause,
   IconPayments,
-  IconPlans,
   IconPower,
   IconSend,
   IconStore,
-  IconTags,
   IconTime,
 } from "../components/ui/icons";
 import {
@@ -73,117 +66,69 @@ import {
   Chip,
   EmptyState,
   ErrorState,
-  PaneHeader,
-  RowMenu,
-  SettingsShell,
+  IconTile,
+  SegmentedSwitch,
   toast,
   toastError,
   type RowMenuItem,
-  type SettingsMenuGroup,
 } from "../components/ui";
 
-// ─── Sections ────────────────────────────────────────────────────────────────
+// ─── Tabs ────────────────────────────────────────────────────────────────────
 
-/** The store page's sections, one per URL (/stores/:id/:section), in the shared section-menu card (04 S-03). */
-type StoreSection =
-  | "overview"
-  | "details"
-  | "profile"
-  | "go-live"
-  | "billing"
-  | "usage"
-  | "analytics"
-  | "ai"
-  | "activity"
-  | "history"
-  | "lifecycle";
+/**
+ * The store page's tabs (design v2 §7, boards 60–66), one URL each (/stores/:id/:tab). The 11 sections of the old
+ * two-pane card live inside them: Profile, Go live and Performance on Overview; History on Activity log; Usage
+ * history on AI usage; Analytics (GA4 sync) on Apps; Store details and Lifecycle on Settings.
+ */
+type StoreTab = "overview" | "billing" | "team" | "apps" | "ai" | "activity" | "settings";
 
-interface StoreSectionMeta {
-  title: string;
-  description: string;
-  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
-}
-
-const storeSections: Record<StoreSection, StoreSectionMeta> = {
-  overview: {
-    title: "Overview",
-    description: "Sales, health and plan usage at a glance, with the owner's profile and notes.",
-    icon: IconHome,
-  },
-  // PRD-017 FR-4.5
-  details: {
-    title: "Store details",
-    description: "Name, owner, contacts, GSTIN, time zone and currency. The domain changes in Go live.",
-    icon: IconStore,
-  },
-  // PRD-025 FR-6.1
-  profile: {
-    title: "Profile",
-    description: "Category, source, location, account manager, tags and the planned go-live date.",
-    icon: IconTags,
-  },
-  // PRD-018 FR-4
-  "go-live": {
-    title: "Go live",
-    description: "Verify the store's domain and check everything it needs before going live.",
-    icon: IconGlobe,
-  },
-  // PRD-016 FR-26, PRD-017 FR-4.2, PRD-024 FR-3.9; the old Subscription section merged in (04 S-03d).
-  billing: {
-    title: "Billing & plan",
-    description: "The plan, payments, invoices, credits and reminders, and every billing action.",
-    icon: IconBilling,
-  },
-  // PRD-014 PLT-13
-  usage: {
-    title: "Usage history",
-    description: "The monthly usage snapshots: the last daily snapshot of each month.",
-    icon: IconChartBar,
-  },
-  // PRD-012 FR-8.3
-  analytics: {
-    title: "Analytics",
-    description: "Whether this store's Google Analytics data is syncing and how fresh it is.",
-    icon: IconAnalytics,
-  },
-  // PRD-021 FR-6.4
-  ai: {
-    title: "ZCOM AI",
-    description: "This store's AI status, limits, use this month and most-asked questions.",
-    icon: IconBolt,
-  },
-  // PRD-024 FR-1.12
-  activity: {
-    title: "Activity",
-    description: "Every change made to this store from the console, newest first.",
-    icon: IconTime,
-  },
-  // PRD-025 FR-6.2
-  history: {
-    title: "History",
-    description: "The store's lifecycle: created, went live, suspended, reactivated, deleted, restored.",
-    icon: IconCalendarDays,
-  },
-  // PRD-018 FR-1, FR-2
-  lifecycle: {
-    title: "Lifecycle",
-    description: "Suspend, reactivate, delete or restore the store, after checking money in flight.",
-    icon: IconPower,
-  },
-};
-
-/** Menu groups (04 S-03): Store · Billing · Insights · Manage. */
-const sectionGroups: { label: string; keys: StoreSection[] }[] = [
-  { label: "Store", keys: ["overview", "details", "profile", "go-live"] },
-  { label: "Billing", keys: ["billing", "usage"] },
-  { label: "Insights", keys: ["analytics", "ai", "activity", "history"] },
-  { label: "Manage", keys: ["lifecycle"] },
+const STORE_TABS: { key: StoreTab; label: string }[] = [
+  { key: "overview", label: "Overview" },
+  { key: "billing", label: "Billing" },
+  { key: "team", label: "Team" },
+  { key: "apps", label: "Apps" },
+  { key: "ai", label: "AI usage" },
+  { key: "activity", label: "Activity log" },
+  { key: "settings", label: "Settings" },
 ];
 
-const DEFAULT_SECTION: StoreSection = "overview";
+/** Old section URLs → the tab, and the spot on it (#hash), that hold them now. Old links keep working. */
+const LEGACY_SECTIONS: Record<string, { tab: StoreTab; hash?: string }> = {
+  details: { tab: "settings", hash: "details" },
+  profile: { tab: "overview", hash: "profile" },
+  "go-live": { tab: "overview", hash: "go-live" },
+  usage: { tab: "ai", hash: "usage-history" },
+  analytics: { tab: "apps", hash: "analytics" },
+  history: { tab: "activity", hash: "history" },
+  lifecycle: { tab: "settings", hash: "lifecycle" },
+  // The Subscription section merged into Billing (04 S-03 change 2); App.tsx redirects it too.
+  subscription: { tab: "billing" },
+};
 
-function isStoreSection(value: string | undefined): value is StoreSection {
-  return value != null && value in storeSections;
+const DEFAULT_TAB: StoreTab = "overview";
+
+function isStoreTab(value: string | undefined): value is StoreTab {
+  return STORE_TABS.some((tab) => tab.key === value);
+}
+
+/** Settings tab: the store's settings + a 22rem side column of careful actions once the content is 64rem wide. */
+const settingsColumnsClass = "grid grid-cols-1 items-start gap-4 @min-[64rem]:grid-cols-[minmax(0,1fr)_22rem]";
+
+/** Sections a #hash points at sit below the sticky header when scrolled to. */
+const anchorClass = "scroll-mt-[calc(var(--zc-sticky-header-h,4.5rem)+1rem)]";
+
+function Section({ id, title, description, children }: { id: string; title?: string; description?: string; children: ReactNode }) {
+  return (
+    <section id={id} className={anchorClass}>
+      {title ? (
+        <div className="mb-3">
+          <h2 className="text-title-3 text-fg">{title}</h2>
+          {description ? <p className="text-label text-fg-muted">{description}</p> : null}
+        </div>
+      ) : null}
+      <div className="flex min-w-0 flex-col gap-4">{children}</div>
+    </section>
+  );
 }
 
 type BillingDialog = SubscriptionDialog | "credit" | "refund" | "customPlan";
@@ -196,7 +141,7 @@ function subscribePhone(onChange: () => void) {
   return () => query.removeEventListener("change", onChange);
 }
 
-/** Phone: header actions other than "Log in to store" move into ⋯ (04 S-03d). */
+/** Phone: header actions other than "Open store admin" move into ⋯ (04 S-03d). */
 function useIsPhone() {
   return useSyncExternalStore(subscribePhone, () => window.matchMedia(PHONE_QUERY).matches, () => false);
 }
@@ -213,18 +158,35 @@ function backTarget(fromSubscriptions: boolean, from: string | undefined): { hre
   return { href: from?.startsWith("/stores") ? from : "/stores", label: "Stores" };
 }
 
-/** The store header is sticky: table heads in the sections stick just under it (01 §7.14, 02 §8). */
-const stickyTopStyle = {
-  "--zc-sticky-top": "calc(var(--zc-topbar-offset, 0rem) + var(--zc-sticky-header-h, 4.5rem))",
-} as CSSProperties;
+/**
+ * The store header is sticky from 768px up: table heads in the tabs stick just under it (01 §7.14, 02 §8). The
+ * phone top row sits outside the scrolling main, so nothing else offsets it. On phone the header (title, badges,
+ * meta line, tabs) scrolls away instead of covering half the screen; tables are cards there, with no sticky head.
+ */
+const stickyTopStyle = { "--zc-sticky-top": "var(--zc-sticky-header-h, 4.5rem)" } as CSSProperties;
+const phoneStickyTopStyle = { "--zc-sticky-top": "0px" } as CSSProperties;
+
+/** "Kesar & Kin" → "KK" for the neutral title tile (§2.1: no coloured or gradient avatars). */
+function initialsOf(name: string): string {
+  return (
+    name
+      .split(/\s+/)
+      .filter((word) => /\w/.test(word))
+      .slice(0, 2)
+      .map((word) => word[0]?.toUpperCase())
+      .join("") || "?"
+  );
+}
+
+const sinceFormat = new Intl.DateTimeFormat("en-IN", { month: "short", year: "numeric" });
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 /**
- * Store detail (04 S-03): the sticky detail header (back, store name with status and payment badges, meta line,
- * ⋯ and "Log in to store"), the missing-owner notice, then the shared section menu card (220px, sticky under the
- * header) and the chosen section. Each section keeps its URL (/stores/:id/:section); sections the user can't see
- * (ZCOM AI and Lifecycle by permission, Go live once deleted) go back to Overview.
+ * Store detail (design v2 §7, boards 60–66): the sticky detail header (back, a neutral initials tile, the store
+ * name with status, plan and payment badges, a meta line, **Message owner** + **Open store admin** + ⋯) with the
+ * horizontal tabs under it, the missing-owner notice, then the chosen tab. Each tab keeps its URL
+ * (/stores/:id/:tab); the old section URLs redirect to the tab and the spot that holds them.
  */
 export function ClientDetail() {
   const { id, section } = useParams<{ id: string; section: string }>();
@@ -240,7 +202,7 @@ export function ClientDetail() {
   const [confirmInvite, setConfirmInvite] = useState(false);
   const [editingDetails, setEditingDetails] = useState(false);
   const [billingDialog, setBillingDialog] = useState<BillingDialog | null>(null);
-  // The list URL the user came from survives section switches (the page stays mounted between sections).
+  // The list URL the user came from survives tab switches (the page stays mounted between tabs).
   const [cameFrom] = useState(() => (location.state as { from?: string } | null)?.from);
   const [resendOwnerInvite] = useMutation<{ resendOwnerInvite: boolean }>(RESEND_OWNER_INVITE);
   const refreshBilling = useStoreBillingRefresh();
@@ -252,9 +214,9 @@ export function ClientDetail() {
   const fromSubscriptions = searchParams.get("from") === "subscriptions";
   const back = backTarget(fromSubscriptions, cameFrom);
 
-  // The Stores row menu's "Edit store details" opens /stores/:id/details?edit=1: open the Edit pop-up once, then
-  // drop the param so a reload or Back doesn't open it again.
-  const wantsEdit = section === "details" && searchParams.get("edit") === "1";
+  // The Stores row menu's "Edit store details" opens /stores/:id/settings?edit=1 (the old /details?edit=1 lands
+  // there too): open the Edit pop-up once, then drop the param so a reload or Back doesn't open it again.
+  const wantsEdit = section === "settings" && searchParams.get("edit") === "1";
   useEffect(() => {
     if (!wantsEdit) return;
     if (canManage) setEditingDetails(true);
@@ -268,6 +230,14 @@ export function ClientDetail() {
     );
   }, [canManage, setSearchParams, wantsEdit]);
 
+  // A #hash (an old section's link, or the Stores row's "Setup checklist") scrolls to its spot on the tab.
+  const hash = location.hash.slice(1);
+  useEffect(() => {
+    if (!hash) return;
+    const frame = window.requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView({ block: "start" }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [hash, section]);
+
   const listedClient = id ? getClient(id) : undefined;
   // PRD-014 FE-09: a store that isn't in the loaded list (a deep link while
   // later pages load) is read on its own; NOT_FOUND means it doesn't exist.
@@ -280,6 +250,7 @@ export function ClientDetail() {
   // through the cache (one extra query per store, kept off the shared tenant fragment).
   const profileRead = useTenantProfile(id ?? "", { skip: !id });
   const paymentProvider = paymentProviderLabel(profileRead.tenant?.paymentProvider);
+  const city = profileRead.tenant?.profile?.city;
   const client = useMemo(
     () => listedClient ?? (fetchedTenant ? toClient(fetchedTenant) : undefined),
     [fetchedTenant, listedClient],
@@ -294,6 +265,12 @@ export function ClientDetail() {
 
   if (!id) {
     return <Navigate to="/stores" replace />;
+  }
+
+  // Old section URLs (/details, /lifecycle, /usage…) open the tab that holds them, at the right spot.
+  const legacy = section ? LEGACY_SECTIONS[section] : undefined;
+  if (legacy) {
+    return <Navigate to={`/stores/${id}/${legacy.tab}${location.search}${legacy.hash ? `#${legacy.hash}` : location.hash}`} replace />;
   }
 
   // Deep links land here before `platformTenants` has answered: wait, don't say "not found".
@@ -343,37 +320,13 @@ export function ClientDetail() {
   // Q10 / PRD-018 FR-2.1: only the platform owner deletes a store.
   const isOwner = user?.role === "PLATFORM_OWNER";
 
-  // Client-side mirror of the guards above; a hidden section's URL goes back to Overview.
-  const visible: Record<StoreSection, boolean> = {
-    overview: true,
-    details: true,
-    profile: true,
-    "go-live": !isDeleted,
-    billing: true,
-    usage: true,
-    analytics: true,
-    ai: canReadAi,
-    activity: true,
-    history: true,
-    lifecycle: canManage,
-  };
   const base = `/stores/${client.id}`;
-  // Opened from Subscriptions: every section keeps "Back to Subscriptions".
+  // Opened from Subscriptions: every tab keeps "Back to Subscriptions".
   const query = fromSubscriptions ? "?from=subscriptions" : "";
-  const hrefOf = (key: StoreSection) => `${base}/${key}${query}`;
+  const hrefOf = (key: StoreTab, spot?: string) => `${base}/${key}${query}${spot ? `#${spot}` : ""}`;
 
-  // The Subscription section merged into Billing & plan (04 S-03 change 2); App.tsx redirects it too.
-  if (section === "subscription") return <Navigate to={hrefOf("billing")} replace />;
-  if (section && !(isStoreSection(section) && visible[section])) return <Navigate to={hrefOf(DEFAULT_SECTION)} replace />;
-
-  const active: StoreSection = isStoreSection(section) ? section : DEFAULT_SECTION;
-  const meta = storeSections[active];
-  const menuGroups: SettingsMenuGroup[] = sectionGroups.map((group) => ({
-    label: group.label,
-    items: group.keys
-      .filter((key) => visible[key])
-      .map((key) => ({ key, label: storeSections[key].title, href: hrefOf(key), icon: storeSections[key].icon })),
-  }));
+  if (section && !isStoreTab(section)) return <Navigate to={hrefOf(DEFAULT_TAB)} replace />;
+  const active: StoreTab = isStoreTab(section) ? section : DEFAULT_TAB;
 
   // PRD-024 FR-1.4 (D-04): resolves true only once the server saved it; a failure is shown (review C-L6).
   const onSaveGracePeriod = (days: number | undefined): Promise<boolean> =>
@@ -406,15 +359,16 @@ export function ClientDetail() {
     }
   };
 
-  // ── Header actions ──
-  const logIn =
+  const messageOwner = () => {
+    window.location.href = `mailto:${client.ownerEmail}`;
+  };
+  const canMessage = !!client.ownerEmail && contactGaps.isMissingEmail !== true;
+
+  // ── Header actions (§4.1: at most one secondary and one primary, then ⋯) ──
+  const openAdmin =
     canImpersonate && !isDeleted ? (
-      <UiButton
-        variant={active === "billing" && !isPhone ? "secondary" : "primary"}
-        startIcon={<IconLogin aria-hidden />}
-        onPress={() => void logInToStore(client)}
-      >
-        Log in to store
+      <UiButton variant="primary" endIcon={<IconExternalArrow aria-hidden />} onPress={() => void logInToStore(client)}>
+        Open store admin
       </UiButton>
     ) : null;
 
@@ -440,12 +394,12 @@ export function ClientDetail() {
     }
   }
 
-  // Billing & plan: Change plan, then ⋯ with the subscription actions (04 S-03d header actions).
+  // Billing (board 61): Change plan sits in the Current plan card and the other subscription actions in its
+  // Adjust card, so the header keeps the same buttons on every tab.
   const subActions = subscriptionActionsFor(subscription, canManageBilling);
   const openBilling = (dialog: BillingDialog) => () => setBillingDialog(dialog);
   const billingMenu: RowMenuItem[] = [];
   if (canManageBilling) {
-    if (isPhone && subActions.plan) billingMenu.push({ key: "plan", label: "Change plan", icon: IconPlans, onSelect: openBilling("plan") });
     if (subActions.payment) billingMenu.push({ key: "payment", label: "Record payment", icon: IconPayments, onSelect: openBilling("payment") });
     billingMenu.push({ key: "credit", label: "Issue credit", icon: IconBilling, onSelect: openBilling("credit") });
     billingMenu.push({ key: "refund", label: "Record refund", icon: IconPayments, onSelect: openBilling("refund") });
@@ -462,25 +416,16 @@ export function ClientDetail() {
     }
   }
 
-  const headerActions =
-    active === "billing" ? (
-      <>
-        {logIn}
-        {canManageBilling && subActions.plan && !isPhone ? (
-          <UiButton variant="secondary" onPress={openBilling("plan")}>
-            Change plan
-          </UiButton>
-        ) : null}
-        {billingMenu.length ? <RowMenu items={billingMenu} label={`Billing actions for ${client.storeName}`} size="md" /> : null}
-      </>
-    ) : (
-      <>
-        {storeMenu.length ? <RowMenu items={storeMenu} label={`Actions for ${client.storeName}`} size="md" /> : null}
-        {logIn}
-      </>
-    );
+  // Message owner is the secondary; under 1024px the title row moves it into ⋯ with the store menu (v2 §10).
+  const messageButton = canMessage ? (
+    <UiButton variant="secondary" startIcon={<IconMessages aria-hidden />} onPress={messageOwner}>
+      Message owner
+    </UiButton>
+  ) : null;
 
-  // Meta line: owner name · owner email · domain ↗ (as live; leaving out missing parts is Check first 05 #24).
+  // Meta line: owner name · owner email · domain ↗ · city · on Zcom since (leaving out missing parts: Check first 05 #24).
+  const joined = new Date(client.joinedDate);
+  const since = Number.isNaN(joined.getTime()) || joined.getTime() === 0 ? null : sinceFormat.format(joined);
   const metaLine = (
     <span className="wrap-anywhere">
       {`${client.ownerName} · ${client.ownerEmail}`}
@@ -492,35 +437,66 @@ export function ClientDetail() {
           </a>
         </>
       ) : null}
+      {city ? ` · ${city}` : null}
+      {since ? ` · on Zcom since ${since}` : null}
     </span>
   );
 
+  // A store in setup sees its checklist first; a live one has it lower down (it still holds the domain).
+  const setupFirst = isInSetup(client) || (client.onboarding != null && client.onboarding.status !== "READY");
+  const setupSection = (
+    <Section id="setup">
+      <OnboardingCard client={client} />
+      {/* PRD-031 FR-D3: what the store still needs (a new store lands here after Create store). */}
+      <StoreSetupCard tenantId={client.id} />
+    </Section>
+  );
+
   return (
-    <div className="w-full" style={stickyTopStyle}>
+    <div className="w-full" style={isPhone ? phoneStickyTopStyle : stickyTopStyle}>
       <PageHeader
         type="detail"
         back={back}
+        leading={
+          <IconTile tone="neutral" size="lg">
+            <span className="text-body font-semibold">{initialsOf(client.storeName)}</span>
+          </IconTile>
+        }
         title={<span className="wrap-anywhere">{client.storeName}</span>}
         badges={
           <>
             <Chip tone={status.tone}>{status.label}</Chip>
+            <Chip tone="neutral">{planShortName(client)}</Chip>
             <Chip tone={payment.tone}>{payment.label}</Chip>
             {/* PRD-025 FR-6.3: the payment app the store takes payments with; hidden when none is set. */}
             {paymentProvider ? <Chip tone="neutral">{paymentProvider}</Chip> : null}
           </>
         }
         description={metaLine}
-        actions={headerActions}
-      />
+        actions={messageButton ?? undefined}
+        primaryAction={openAdmin ?? undefined}
+        primaryShortLabel="Open admin"
+        more={storeMenu.length ? storeMenu : undefined}
+        moreLabel={`Actions for ${client.storeName}`}
+        sticky={!isPhone}
+      >
+        {/* The tabs (§7), the kit's one tab style; each keeps its URL. */}
+        <SegmentedSwitch<StoreTab>
+          ariaLabel="Store sections"
+          value={active}
+          onChange={(key) => navigate(hrefOf(key))}
+          items={STORE_TABS.map((tab) => ({ value: tab.key, label: tab.label }))}
+        />
+      </PageHeader>
 
       {/* PRD-024 FR-4.4 (D9): migrated stores get their owner contact by hand in Store details. */}
       {contactGaps.isMissingEmail && !isDeleted ? (
         <InlineNotice
           className="mb-4"
           action={
-            active === "details" ? undefined : (
-              <ButtonLink to={hrefOf("details")} variant="tertiary" size="sm">
-                Add it in Store details
+            active === "settings" ? undefined : (
+              <ButtonLink to={hrefOf("settings", "details")} variant="tertiary" size="sm">
+                Add it in Settings
               </ButtonLink>
             )
           }
@@ -530,75 +506,89 @@ export function ClientDetail() {
         </InlineNotice>
       ) : null}
 
-      <SettingsShell
-        aria-label="Store sections"
-        groups={menuGroups}
-        activeKey={active}
-        menuWidth="sm"
-        stickyClassName="top-[calc(var(--zc-sticky-header-h,4.5rem)+1rem)]"
-      >
-        {/* Only the section content crossfades; the menu never re-renders its animation (01 §8.2). */}
-        <div key={active} className="animate-rise-in">
-          <PaneHeader title={meta.title} description={meta.description} />
-
-          <div className="flex min-w-0 flex-col gap-4">
-            {active === "overview" ? (
-              <>
-                <OnboardingCard client={client} />
-                {/* PRD-031 FR-D3: what the store still needs (a new store lands here after Add store). */}
-                <StoreSetupCard tenantId={client.id} />
-                <ClientOverviewTab client={client} subscription={subscription} />
-              </>
-            ) : null}
-
-            {active === "details" ? <StoreDetailsCard client={client} goLiveHref={hrefOf("go-live")} /> : null}
-
-            {/* PRD-025 FR-6.1: category, source, location, account manager, tags, planned go-live. */}
-            {active === "profile" ? <StoreProfileCard client={client} /> : null}
-
-            {active === "go-live" ? (
-              <>
-                <StoreSetupCard tenantId={client.id} />
+      {/* Only the tab content crossfades (01 §8.2). */}
+      <div key={active} className="flex min-w-0 animate-rise-in flex-col gap-6">
+        {active === "overview" ? (
+          <>
+            {setupFirst ? setupSection : null}
+            <ClientOverviewTab client={client} subscription={subscription} />
+            {setupFirst ? null : setupSection}
+            {/* PRD-018 FR-4: domain verification, the go-live checklist and Mark live (the old Go live section). */}
+            {isDeleted ? null : (
+              <Section id="go-live" title="Go live" description="Verify the store's domain and check everything it needs before going live.">
                 <StoreGoLiveCard client={client} />
-              </>
-            ) : null}
+              </Section>
+            )}
+            {/* PRD-025 FR-6.1: category, source, location, account manager, tags, planned go-live. */}
+            <Section id="profile">
+              <StoreProfileCard client={client} />
+            </Section>
+          </>
+        ) : null}
 
-            {active === "billing" ? (
-              <>
-                {/* PRD-025 FR-6.3: why the store is in its billing state, since when, and its payment app. */}
-                <StoreBillingStateCard tenantId={client.id} subscription={subscription} />
-                <StoreBillingSection
-                  client={client}
-                  subscription={subscription}
-                  defaultGracePeriodDays={defaultGracePeriodDays}
-                  onSaveGracePeriod={onSaveGracePeriod}
-                  onCreateCustomPlan={openBilling("customPlan")}
-                  lifecycleHref={hrefOf("lifecycle")}
-                />
-              </>
-            ) : null}
+        {active === "billing" ? (
+          <StoreBillingSection
+            client={client}
+            subscription={subscription}
+            defaultGracePeriodDays={defaultGracePeriodDays}
+            onSaveGracePeriod={onSaveGracePeriod}
+            onCreateCustomPlan={openBilling("customPlan")}
+            onChangePlan={canManageBilling && subActions.plan ? openBilling("plan") : undefined}
+            actions={billingMenu}
+            lifecycleHref={hrefOf("settings", "lifecycle")}
+          />
+        ) : null}
 
-            {active === "usage" ? <ClientUsageHistory tenantId={client.id} /> : null}
+        {active === "team" ? <StoreTeamTab client={client} /> : null}
 
-            {/* PRD-012 FR-8.3 beside PRD-025 FR-6.3: the nightly snapshot's store-health signals. */}
-            {active === "analytics" ? (
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <ClientAnalyticsCard client={client} />
-                <StoreHealthCard tenantId={client.id} />
-              </div>
-            ) : null}
+        {active === "apps" ? <StoreAppsTab client={client} /> : null}
 
-            {active === "ai" ? <ClientAiCard client={client} /> : null}
+        {active === "ai" ? (
+          <>
+            {/* PRD-021 FR-6.4: status, pause, the per-store limit, use this month and the most-asked questions. */}
+            {canReadAi ? (
+              <ClientAiCard client={client} />
+            ) : (
+              <Card>
+                <EmptyState icon={IconStore} title="Your role can't see AI usage" description="Ask a platform owner for AI access." />
+              </Card>
+            )}
+            {/* PRD-014 PLT-13: the monthly usage snapshots (the old Usage history section). */}
+            <Section id="usage-history" title="Usage history" description="The monthly usage snapshots: the last daily snapshot of each month.">
+              <ClientUsageHistory tenantId={client.id} />
+            </Section>
+          </>
+        ) : null}
 
-            {active === "activity" ? <ClientActivityCard tenantId={client.id} /> : null}
-
+        {active === "activity" ? (
+          <>
+            {/* PRD-024 FR-1.12: every change made to this store from the console, newest first. */}
+            <ClientActivityCard tenantId={client.id} />
             {/* PRD-025 FR-6.2: the lifecycle history (created, live, suspended…), newest first. */}
-            {active === "history" ? <StoreHistoryCard tenantId={client.id} /> : null}
+            <Section id="history">
+              <StoreHistoryCard tenantId={client.id} />
+            </Section>
+          </>
+        ) : null}
 
-            {active === "lifecycle" ? <StoreLifecycleCard client={client} onDeleted={() => navigate("/stores")} /> : null}
+        {active === "settings" ? (
+          // Board 66: the store's settings on the left, the careful actions on the right.
+          <div className="@container">
+            <div className={canManage ? settingsColumnsClass : undefined}>
+              {/* PRD-017 FR-4.5: name, owner, contacts, GSTIN, time zone and currency; the domain changes in Go live. */}
+              <Section id="details">
+                <StoreDetailsCard client={client} goLiveHref={hrefOf("overview", "go-live")} />
+              </Section>
+              {/* PRD-018 FR-1, FR-2: suspend (pause), reactivate, delete or restore, after checking money in flight. */}
+              {canManage ? (
+                <Section id="lifecycle">
+                  <StoreLifecycleCard client={client} onDeleted={() => navigate("/stores")} />
+                </Section>
+              ) : null}
+            </div>
           </div>
-        </div>
-      </SettingsShell>
+        ) : null}
+      </div>
 
       <ConfirmModal
         isOpen={confirmInvite}
@@ -614,7 +604,7 @@ export function ClientDetail() {
 
       <StoreActionDialog client={client} action={action} onClose={() => setAction(null)} onDeleted={() => navigate("/stores")} />
 
-      {/* Billing & plan pop-ups, opened from the header menu and the Plan and subscription card. */}
+      {/* Billing pop-ups, opened from the header menu and the Plan and subscription card. */}
       <SubscriptionDialogs
         client={client}
         subscription={subscription}

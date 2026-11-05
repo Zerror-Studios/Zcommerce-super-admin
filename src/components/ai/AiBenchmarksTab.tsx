@@ -11,7 +11,6 @@ import {
   Button,
   DataTable,
   EmptyState,
-  SearchInput,
   SegmentedSwitch,
   TablePagination,
   formatCount,
@@ -24,12 +23,12 @@ import { datedCsvName, useAiExport, type AiTabProps } from "./ai-export";
 
 /** Fixed 570 → Metric 390px at 960px. */
 const columns: DataTableColumn[] = [
-  { key: "metric", label: "Metric" },
-  { key: "section", label: "Section", width: 130 },
-  { key: "stores", label: "Stores", width: 90 },
-  { key: "p25", label: "25th percentile", width: 120 },
-  { key: "median", label: "Median", width: 110 },
-  { key: "p75", label: "75th percentile", width: 120 },
+  { key: "metric", label: "Metric", mobile: "primary" },
+  { key: "section", label: "Section", width: 130, hideWhen: "narrow", mobile: "badge" },
+  { key: "stores", label: "Stores", width: 90, hideWhen: "narrow", mobile: "meta" },
+  { key: "p25", label: "25th percentile", width: 120, mobile: "title" },
+  { key: "median", label: "Median", width: 110, mobile: "value" },
+  { key: "p75", label: "75th percentile", width: 120, mobile: "title" },
 ];
 
 const PERIODS: { value: PlatformAiBenchmarkPeriod; label: string }[] = [
@@ -74,8 +73,7 @@ export function AiBenchmarksTab({ tabs, exportRef }: AiTabProps) {
   useAiExport(exportRef, runExport);
 
   const toolbar = (
-    <AiToolbar tabs={tabs}>
-      <SearchInput placement="toolbar" placeholder="Search metrics" value={search} onValueChange={setSearch} onClear={() => setSearch("")} />
+    <AiToolbar tabs={tabs} search={{ value: search, onValueChange: setSearch, placeholder: "Search metrics" }}>
       <SegmentedSwitch
         size="sm"
         ariaLabel="Benchmark period"
@@ -114,6 +112,18 @@ export function AiBenchmarksTab({ tabs, exportRef }: AiTabProps) {
             return null;
         }
       }}
+      mobileRow={(row) => (
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center justify-between gap-3">
+            <p className="min-w-0 truncate font-medium text-fg">{metricKeyLabel(row.metricKey)}</p>
+            <span className="shrink-0 font-semibold text-fg num">{formatMetricValue(row.median, row.unit)}</span>
+          </div>
+          <p className="mt-1 truncate text-label text-fg-muted num">
+            {metricKeyLabel(row.category)} · 25th {formatMetricValue(row.p25, row.unit)} · 75th{" "}
+            {formatMetricValue(row.p75, row.unit)} · {formatCount(row.stores)} stores
+          </p>
+        </div>
+      )}
       footer={
         <>
           {computedFor ? (

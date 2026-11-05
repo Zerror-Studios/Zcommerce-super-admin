@@ -1,17 +1,29 @@
 /**
- * Shared pieces of the ZCOM AI table card (04 S-06): the toolbar row (tab switch on the left, search and the
+ * Shared pieces of the ZCOM AI tables (04 S-06): the toolbar row (tab switch on the left, search and the
  * tab's own controls on the right), the store cell and the error card.
+ *
+ * Design v2 §4.3: the toolbar is the standard one (`.zc-toolbar`, the kit TableToolbar's layout) and sits ABOVE
+ * the table card: DataTable renders its `toolbar` outside the card, and the error card does the same.
  */
 import type { ReactNode } from "react";
+import { ToolbarRow, ToolbarSearch, type ToolbarSearchProps } from "../common/TableToolbar";
 import { Card, ErrorState } from "../ui";
 
-/** Toolbar row: the tab switch left, the search and per-tab controls right; they wrap under it when narrow. */
-export function AiToolbar({ tabs, children }: { tabs: ReactNode; children?: ReactNode }) {
+/**
+ * Toolbar row: the tab switch left; right, the search then the tab's own controls. Phone (v2 §10, the kit rules):
+ * the tabs scroll sideways in their own row and the search is an icon that opens a full-width field.
+ */
+export function AiToolbar({ tabs, search, children }: { tabs: ReactNode; search?: ToolbarSearchProps; children?: ReactNode }) {
   return (
-    <div className="flex min-h-[var(--zc-table-toolbar-h)] flex-wrap items-center gap-2 border-b border-line-subtle px-4 py-2">
-      <div className="min-w-0 max-w-full">{tabs}</div>
-      <div className="flex min-w-0 flex-wrap items-center gap-2 md:ml-auto">{children}</div>
-    </div>
+    <ToolbarRow>
+      <div className="zc-toolbar__tabs">{tabs}</div>
+      {search || children ? (
+        <div className="zc-toolbar__end flex-wrap">
+          {search ? <ToolbarSearch {...search} /> : null}
+          {children}
+        </div>
+      ) : null}
+    </ToolbarRow>
   );
 }
 
@@ -25,12 +37,14 @@ export function StoreCell({ name, slug }: { name: string; slug?: string | null }
   );
 }
 
-/** The table card when its read failed: the toolbar stays so the tabs still work. */
+/** The table card when its read failed: the toolbar stays above it so the tabs still work. */
 export function AiErrorCard({ tabs, title, description, onRetry }: { tabs: ReactNode; title: string; description: string; onRetry: () => void }) {
   return (
-    <Card padding="none" className="overflow-hidden">
+    <div className="zc-table-wrap">
       <AiToolbar tabs={tabs} />
-      <ErrorState title={title} description={description} onRetry={onRetry} />
-    </Card>
+      <Card padding="none" className="overflow-hidden">
+        <ErrorState title={title} description={description} onRetry={onRetry} />
+      </Card>
+    </div>
   );
 }
