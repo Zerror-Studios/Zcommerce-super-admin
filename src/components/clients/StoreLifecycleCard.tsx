@@ -83,7 +83,7 @@ export function StoreLifecycleCard({ client, onDeleted }: StoreLifecycleCardProp
             title="Suspend store"
             description="Take the storefront offline. Payments already started still settle; orders and data are kept."
             action={
-              <UiButton size="sm" variant="destructive-secondary" onPress={() => setAction("suspend")}>
+              <UiButton size="sm" variant="secondary" onPress={() => setAction("suspend")}>
                 Suspend store
               </UiButton>
             }
@@ -100,7 +100,7 @@ export function StoreLifecycleCard({ client, onDeleted }: StoreLifecycleCardProp
             }
             action={
               isOwner ? (
-                <UiButton size="sm" variant="destructive-secondary" onPress={() => setAction("delete")}>
+                <UiButton size="sm" variant="secondary" onPress={() => setAction("delete")}>
                   Delete store
                 </UiButton>
               ) : null

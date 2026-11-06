@@ -42,7 +42,8 @@ export const STORE_LIFECYCLE_FILTERS: StoreLifecycleKey[] = [
 
 const LIFECYCLE_BADGES: Record<StoreLifecycleKey, StatusBadge> = {
   live: { label: "Live", tone: "success" },
-  setup: { label: "Set up", tone: "neutral" },
+  // Round 2 D11: "In setup" (the review's wording)
+  setup: { label: "In setup", tone: "neutral" },
   trial: { label: "Trial", tone: "neutral" },
   past_due: { label: "Past due", tone: "danger" },
   cancelled: { label: "Cancelled", tone: "neutral" },

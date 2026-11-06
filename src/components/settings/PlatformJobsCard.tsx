@@ -22,9 +22,6 @@ import {
   Card,
   Chip,
   Drawer,
-  DrawerBody,
-  DrawerContent,
-  DrawerHeader,
   ErrorState,
   Skeleton,
   Tooltip,
@@ -145,7 +142,7 @@ export function PlatformJobsCard() {
       <div className="mt-3 border-t border-line-subtle pt-3">
         <div className="flex items-center justify-between gap-3">
           <Button
-            variant="tertiary"
+            variant="ghost"
             size="sm"
             endIcon={<IconCaret aria-hidden className={showRuns ? "rotate-180" : undefined} />}
             onPress={() => setShowRuns((open) => !open)}
@@ -154,7 +151,7 @@ export function PlatformJobsCard() {
             {showRuns ? "Hide recent runs" : "Show recent runs"}
           </Button>
           {showRuns && runs.data.length > 0 ? (
-            <Button variant="tertiary" size="sm" endIcon={<IconExpand aria-hidden />} onPress={() => setAllOpen(true)}>
+            <Button variant="ghost" size="sm" endIcon={<IconExpand aria-hidden />} onPress={() => setAllOpen(true)}>
               Show all
             </Button>
           ) : null}
@@ -172,11 +169,8 @@ export function PlatformJobsCard() {
         ) : null}
       </div>
 
-      <Drawer isOpen={allOpen} onOpenChange={setAllOpen} size="sm">
-        <DrawerContent>
-          <DrawerHeader>Job runs</DrawerHeader>
-          <DrawerBody>{allOpen ? <AllRuns /> : null}</DrawerBody>
-        </DrawerContent>
+      <Drawer isOpen={allOpen} onOpenChange={setAllOpen} size="sm" title="Job runs">
+        {allOpen ? <AllRuns /> : null}
       </Drawer>
 
       <ConfirmModal

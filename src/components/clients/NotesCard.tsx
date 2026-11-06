@@ -81,7 +81,7 @@ function NoteDialog({ client, isEdit, onClose }: { client: Client; isEdit: boole
   };
 
   return (
-    <Modal isOpen onClose={() => !busy && onClose()} width="sm">
+    <Modal isOpen onClose={() => !busy && onClose()} size="md">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={isEdit ? <IconEdit aria-hidden /> : <IconAdd aria-hidden />}>{isEdit ? "Edit note" : "Add note"}</PopupTitle>

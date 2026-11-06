@@ -1,14 +1,23 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
-/** Number formatting (docs/design/05-wording.md §2): en-IN grouping (₹4,82,650), INR by default. */
+/**
+ * Number formatting (docs/design/05-wording.md §2, round 2 G13): en-IN grouping (₹4,82,650), INR by default.
+ * Money is whole rupees by default (lists, cards, KPIs: ₹2,039, not ₹2,039.15). Detail pages pass `exact` where the
+ * money is settled (payment amount, fees, refunds), and finance tables `paise`. Zero is always "₹0", never "₹0.00".
+ */
 export interface FormatMoneyOptions {
   currency?: string;
   /** ₹25k / ₹1.2L / ₹3.4Cr for chart axes and tight spaces. */
   compact?: boolean;
   /** "+₹1,200" / "−₹300" for deltas. */
   showSign?: boolean;
-  /** Always 2 decimals (finance, invoices, transactions): ₹49.50. */
+  /** Always 2 decimals (finance tables, invoices): ₹49.50. Zero still prints "₹0". */
   paise?: boolean;
-  /** Whole rupees only (summaries, KPIs): ₹52,500. */
+  /**
+   * Detail pages, settled money only (payment amount, fees, refunds): the paise when there are any (₹2,039.15),
+   * none when the amount is whole (₹2,039).
+   */
+  exact?: boolean;
+  /** Whole rupees (the default since round 2; kept so existing calls read the same): ₹52,500. */
   whole?: boolean;
 }
 
@@ -22,7 +31,7 @@ function withMinus(text: string): string {
 
 export function formatMoney(
   amount: number | null | undefined,
-  { currency = "INR", compact = false, showSign = false, paise = false, whole = false }: FormatMoneyOptions = {},
+  { currency = "INR", compact = false, showSign = false, paise = false, exact = false, whole = false }: FormatMoneyOptions = {},
 ): string {
   const value = Number(amount ?? 0);
   const safe = Number.isFinite(value) ? value : 0;
@@ -31,8 +40,9 @@ export function formatMoney(
     const sign = safe < 0 ? MINUS : showSign ? "+" : "";
     return `${sign}₹${formatCount(Math.round(Math.abs(safe) / 1e7))}Cr`;
   }
-  // Fractions are either none or exactly two digits: ₹49.5 is never shown.
-  const fraction = compact ? 1 : whole ? 0 : paise || !Number.isInteger(safe) ? 2 : 0;
+  // Fractions are either none or exactly two digits: ₹49.5 is never shown. Whole rupees unless asked; zero is "₹0".
+  const precise = !whole && safe !== 0 && (paise || (exact && !Number.isInteger(safe)));
+  const fraction = compact ? 1 : precise ? 2 : 0;
   const text = new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency,

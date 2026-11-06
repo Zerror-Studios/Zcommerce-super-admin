@@ -19,7 +19,7 @@ export interface ColumnsDialogProps {
 
 export function ColumnsDialog({ isOpen, columns, selected, onSave, onClose }: ColumnsDialogProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} width="sm">
+    <Modal isOpen={isOpen} onClose={onClose} size="md">
       <ModalContent>
         {(close) => <ColumnsForm columns={columns} selected={selected} onSave={onSave} onClose={close} />}
       </ModalContent>

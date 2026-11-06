@@ -198,7 +198,7 @@ export function StoreActionDialog({ client, action, onClose, onDeleted }: StoreA
     (action === "restore" && !!countdown?.expired);
 
   return (
-    <Modal isOpen={open} onClose={onClose} width="sm">
+    <Modal isOpen={open} onClose={onClose} size="sm">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={STORE_ACTION_ICONS[action]} tone={action === "delete" ? "danger" : "neutral"}>{copy.title}</PopupTitle>
@@ -348,7 +348,7 @@ export function StoreActionDialog({ client, action, onClose, onDeleted }: StoreA
             Cancel
           </UiButton>
           <UiButton
-            variant={action === "reactivate" || action === "restore" ? "primary" : "destructive"}
+            variant={action === "reactivate" || action === "restore" ? "primary" : "danger"}
             isLoading={busy}
             isDisabled={confirmDisabled}
             onPress={() => void run()}

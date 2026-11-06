@@ -1,13 +1,14 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 export { AppShell, ShortcutsList } from "./AppShell";
+export { DOCUMENT_TITLE_BRAND, formatDocumentTitle, useDocumentTitle, useShellDocumentTitle } from "./document-title";
 export { isSameDay, readStoredFlag, relativeTime, storeFlag, useShellHotkeys } from "./shell-utils";
 export type { AppShellProps } from "./AppShell";
 export { AskBar, AssistantPanel } from "./Assistant";
 export type { AiAnswer, AssistantPanelProps } from "./Assistant";
 export { CommandPalette } from "./CommandPalette";
 export type { CommandPaletteProps } from "./CommandPalette";
-export { NotificationsPanel } from "./NotificationsPanel";
-export type { NotificationsPanelProps } from "./NotificationsPanel";
+export { NotificationsPopup } from "./NotificationsPanel";
+export type { NotificationPopupItem, NotificationPopupTab, NotificationsPopupProps } from "./NotificationsPanel";
 export { PageHeader, TitleActions } from "./PageHeader";
 export type { PageHeaderProps, TitleActionsProps } from "./PageHeader";
 export { PhoneActionBar } from "./PhoneActionBar";

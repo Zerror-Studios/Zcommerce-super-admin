@@ -97,11 +97,11 @@ export function AttentionList({
   const shown = [...items].sort((a, b) => ORDER[a.urgency] - ORDER[b.urgency]).slice(0, MAX_ITEMS[layout]);
   const seeAllButton = seeAll ? (
     seeAll.href ? (
-      <ButtonLink variant="tertiary" size="sm" to={seeAll.href} endIcon={<IconExpand aria-hidden />}>
+      <ButtonLink variant="ghost" size="sm" to={seeAll.href} endIcon={<IconExpand aria-hidden />}>
         {seeAll.label}
       </ButtonLink>
     ) : (
-      <Button variant="tertiary" size="sm" onPress={seeAll.onPress} endIcon={<IconExpand aria-hidden />}>
+      <Button variant="ghost" size="sm" onPress={seeAll.onPress} endIcon={<IconExpand aria-hidden />}>
         {seeAll.label}
       </Button>
     )
@@ -209,11 +209,11 @@ export function AttentionList({
           </Tooltip>
           {footerNote.actionLabel ? (
             footerNote.href ? (
-              <ButtonLink variant="tertiary" size="sm" to={footerNote.href} endIcon={<IconExpand aria-hidden />}>
+              <ButtonLink variant="ghost" size="sm" to={footerNote.href} endIcon={<IconExpand aria-hidden />}>
                 {footerNote.actionLabel}
               </ButtonLink>
             ) : (
-              <Button variant="tertiary" size="sm" onPress={footerNote.onPress} endIcon={<IconExpand aria-hidden />}>
+              <Button variant="ghost" size="sm" onPress={footerNote.onPress} endIcon={<IconExpand aria-hidden />}>
                 {footerNote.actionLabel}
               </Button>
             )

@@ -19,6 +19,11 @@ describe("stores list: payment badge", () => {
     expect(paymentBadge(sub(state("Trial", "info")), 7)).toMatchObject({ kind: "none", label: "No fee" });
     expect(paymentBadge(undefined, 7)).toMatchObject({ kind: "none", label: "No fee" });
     expect(paymentBadge(sub({ ...state("Paid", "success"), mrr: 0 }), 7)).toMatchObject({ kind: "none" });
+    // PRD-036 round 2 gaps: the server reads a ₹0 past-due subscription "No fee" (never "Due"), so nothing is owed
+    expect(paymentBadge(sub({ ...state("No fee", "neutral"), status: "PAST_DUE" as Subscription["status"], mrr: 0 }), 7)).toMatchObject({
+      kind: "none",
+      label: "No fee",
+    });
   });
 
   it("reads an overdue payment inside the grace period as In grace with the days left", () => {

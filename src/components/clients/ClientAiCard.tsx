@@ -103,7 +103,7 @@ export function ClientAiCard({ client }: ClientAiCardProps) {
           description={
             setting?.paused && setting.pausedReason
               ? setting.pausedReason
-              : "Ask ZCOM limits for this store. Empty limits use the plan's values."
+              : "Ask Zcom limits for this store. Empty limits use the plan's values."
           }
           actions={
             canManage && setting ? (
@@ -276,7 +276,7 @@ function PauseDialog({ onClose, storeName, setting }: SettingDialogProps) {
   };
 
   return (
-    <Modal isOpen onClose={onClose} width="sm">
+    <Modal isOpen onClose={onClose} size="sm">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={pausing ? <IconPause aria-hidden /> : <IconPlay aria-hidden />}>{pausing ? `Pause AI for ${storeName}?` : `Resume AI for ${storeName}?`}</PopupTitle>
@@ -297,14 +297,14 @@ function PauseDialog({ onClose, storeName, setting }: SettingDialogProps) {
               />
             </>
           ) : (
-            <p className="text-body text-fg-muted">Ask ZCOM works again for the store, within its plan's limits.</p>
+            <p className="text-body text-fg-muted">Ask Zcom works again for the store, within its plan's limits.</p>
           )}
         </ModalBody>
         <ModalFooter>
           <UiButton variant="secondary" onPress={onClose} isDisabled={busy}>
             Cancel
           </UiButton>
-          <UiButton variant={pausing ? "destructive" : "primary"} onPress={() => void run()} isLoading={busy}>
+          <UiButton variant={pausing ? "danger" : "primary"} onPress={() => void run()} isLoading={busy}>
             {pausing ? "Pause AI" : "Resume AI"}
           </UiButton>
         </ModalFooter>
@@ -356,7 +356,7 @@ function OverrideDialog({ onClose, storeName, setting }: SettingDialogProps) {
   };
 
   return (
-    <Modal isOpen onClose={onClose} width="md">
+    <Modal isOpen onClose={onClose} size="md">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={<IconAi aria-hidden />}>AI limits for {storeName}</PopupTitle>

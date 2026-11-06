@@ -1,40 +1,45 @@
 /**
- * Home › Needs you (design v2 §7, board 02-V4-SA-Home): three cards in a row.
+ * Home › three action cards (design v2 §7, board 02-V4-SA-Home; round 2 §6.1).
  *
- * - `NeedsYouAiCard`: What needs attention (backend PRD-026 FR-5), the
- *   bullets Zcom AI writes each morning (about 08:45 IST). Light blue, the
- *   orb; the first bullet is the headline, the rest follow, and the stores a
- *   bullet names link to their pages. "Written <IST>", and "from <date>" in
- *   amber when the summary is from an earlier IST day.
- * - `NeedsYouBillingCard`: money due this week (read live: open invoices due
- *   within 7 days, overdue included, most overdue first). White with a red dot
- *   when anything is overdue, amber otherwise. The caller hides it without
- *   `platform:billing:read`.
- * - `NeedsYouStoresCard`: stores at risk (score and reasons) and stores in
- *   setup (days since creation, planned go-live), the first three of each,
- *   with "+ N more" into the Stores views.
+ * Three equal cards in a row, each an eyebrow with a coloured dot, one bold
+ * headline, one sentence and one or two buttons:
+ *
+ * - `NeedsYouAiCard` (ZCOM AI · URGENT): the first item of What needs
+ *   attention (the daily Zcom AI summary, or the backend's attention rules
+ *   when there is no summary, PRD-036 D15). The second item is the sentence;
+ *   any others open under "+ N more". "Book the call" writes to the store's
+ *   owner, "Open store" opens its page. "Written 5 Nov, 10:36 AM", and
+ *   "from 4 Nov" in amber when the summary is from an earlier day.
+ * - `NeedsYouBillingCard` (BILLING): the most overdue invoice due this week
+ *   (read live), with Send reminder. Red dot when overdue, amber when due.
+ *   The caller hides it without `platform:billing:read`.
+ * - `NeedsYouOnboardingCard` (ONBOARDING): the store longest in setup ("stuck"
+ *   after 7 days), with "Book a setup call" (writes to the owner).
+ *
+ * The "Book" buttons compose an email to the owner: there is no booking
+ * calendar in the console. Without an owner email they open the store.
  */
 
-import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { useState, type ReactNode } from "react";
 
-import { ButtonLink, Orb, Skeleton, StatusChip, cx, formatMoney, toneDotClasses, toneTextClasses } from "../../ui";
-import { bulletStoreLinks, developmentDetail, moreCount, sortAtRisk, summaryState } from "../../../lib/home-attention.util";
-import { FIRST_SUMMARY_COPY, formatIst, moneyDueWhen, riskReasonLabel } from "../../../lib/platform-insights.util";
+import { Button, ButtonLink, Orb, Skeleton, cx, formatDate, formatMoney, toneDotClasses, toneTextClasses } from "../../ui";
+import { SendReminderDialog } from "../../clients/stores-list/SendReminderDialog";
+import { bulletStoreLinks, developmentDetail, summaryState } from "../../../lib/home-attention.util";
+import { FIRST_SUMMARY_COPY, formatIst, moneyDueWhen } from "../../../lib/platform-insights.util";
+import { SETUP_STALLED_DAYS } from "../../../lib/sa-home.util";
+import { useClients } from "../../../providers/ClientsProvider";
+import type { Client } from "../../../types";
 import type { PlatformAttention, PlatformAttentionSummary, PlatformMetricsStoreRow } from "../../../types/platform-insights";
 
 /** The Stores page's saved views. */
 export const AT_RISK_STORES_HREF = "/stores?view=at-risk";
 export const IN_SETUP_STORES_HREF = "/stores?tab=setup";
 
-/** Rows shown per list before "+ N more". */
-const ROWS_SHOWN = 3;
-
 // ─── Frame ────────────────────────────────────────────────────────────────
 
 type Dot = "danger" | "warning" | null;
 
-function NeedsCard({
+function ActionCard({
   eyebrow,
   dot,
   ai = false,
@@ -51,17 +56,34 @@ function NeedsCard({
     <section
       aria-label={label}
       className={cx(
-        "flex min-w-0 flex-col gap-2 rounded-card-lg border px-5 py-4.5",
+        "flex h-full min-w-0 flex-col gap-2 rounded-card-lg border px-5 py-4.5",
         ai ? "border-ai-tint-border bg-linear-to-b from-ai-tint to-surface to-60%" : "border-line bg-surface",
       )}
     >
-      <span className={cx("flex items-center gap-2 text-micro", ai ? "text-brand-text" : "text-fg-muted")}>
+      <span className={cx("flex items-center gap-2 font-mono text-micro uppercase", ai ? "text-brand-text" : "text-fg-muted")}>
         {ai ? <Orb /> : dot ? <span aria-hidden className={cx("size-1.5 shrink-0 rounded-full", toneDotClasses[dot])} /> : null}
         {eyebrow}
       </span>
       {children}
     </section>
   );
+}
+
+function Headline({ children, title }: { children: ReactNode; title?: string }) {
+  return (
+    <h3 className="text-title-3 text-fg" title={title}>
+      {children}
+    </h3>
+  );
+}
+
+function Sentence({ children }: { children: ReactNode }) {
+  return <p className="text-label text-fg-muted">{children}</p>;
+}
+
+/** The buttons sit at the bottom so the three cards line up. */
+function Actions({ children }: { children: ReactNode }) {
+  return <div className="mt-auto flex flex-wrap gap-2 pt-2">{children}</div>;
 }
 
 function LoadingBody() {
@@ -74,9 +96,50 @@ function LoadingBody() {
   );
 }
 
-const storeCount = (count: number) => `${count} ${count === 1 ? "store" : "stores"}`;
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
-// ─── Zcom AI: What needs attention ────────────────────────────────────────
+/** An email to the store's owner about a call; null without an owner email. */
+function callHref(client: Client | undefined, subject: string): string | null {
+  const email = client?.ownerEmail?.trim();
+  if (!email || email === "—" || !email.includes("@")) return null;
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+}
+
+/** "Book the call" / "Book a setup call": the owner email, else the store page. */
+function BookCallButton({
+  client,
+  storeId,
+  subject,
+  label,
+  variant,
+}: {
+  client: Client | undefined;
+  storeId: string;
+  subject: string;
+  label: string;
+  variant: "primary" | "secondary";
+}) {
+  const href = callHref(client, subject);
+  if (!href) {
+    return (
+      <ButtonLink variant={variant} size="sm" to={`/stores/${storeId}`}>
+        {label}
+      </ButtonLink>
+    );
+  }
+  return (
+    <Button variant={variant} size="sm" onPress={() => (window.location.href = href)}>
+      {label}
+    </Button>
+  );
+}
+
+/** "2026-11-05" (the summary's IST day) as "5 Nov"; never an ISO date in the UI (G13). */
+function dayOf(value: string): string {
+  return formatDate(new Date(`${value}T00:00:00`));
+}
+
+// ─── Zcom AI · Urgent ─────────────────────────────────────────────────────
 
 export function NeedsYouAiCard({
   summary,
@@ -87,66 +150,79 @@ export function NeedsYouAiCard({
   storeNames: Map<string, string>;
   isLoading?: boolean;
 }) {
+  const { getClient } = useClients();
+  const [showAll, setShowAll] = useState(false);
   const state = summaryState(summary);
-  const [first, ...rest] = state.kind === "bullets" ? state.items : [];
-  const firstLinks = first ? bulletStoreLinks(first.storeIds, storeNames) : [];
+  const items = state.kind === "bullets" ? state.items : [];
+  const [first, second, ...rest] = items;
+  const store = first ? bulletStoreLinks(first.storeIds, storeNames)[0] : undefined;
+  const client = store ? getClient(store.tenantId) : undefined;
+  const storeName = client?.storeName ?? (store && store.name !== "Open store" ? store.name : undefined);
 
   return (
-    <NeedsCard ai eyebrow="Zcom AI · What needs attention" label="What needs attention">
+    <ActionCard ai eyebrow={items.length ? "Zcom AI · Urgent" : "Zcom AI"} label="What needs attention">
       {isLoading ? (
         <LoadingBody />
       ) : state.kind === "none" ? (
-        <p className="text-label text-fg-muted">{FIRST_SUMMARY_COPY}.</p>
+        <>
+          <Headline>Nothing to report yet.</Headline>
+          <Sentence>{FIRST_SUMMARY_COPY}.</Sentence>
+        </>
       ) : state.kind === "empty" ? (
-        <h3 className="text-title-3 text-fg">Nothing needs attention today.</h3>
+        <>
+          <Headline>Nothing needs attention today.</Headline>
+          <Sentence>Zcom AI checks payments, setup and checkouts every morning.</Sentence>
+        </>
       ) : (
         <>
-          <h3 className="text-title-3 text-fg" title={first.metricKeys.length ? `Metrics: ${first.metricKeys.join(", ")}` : undefined}>
-            {first.text}
-          </h3>
+          <Headline title={first.metricKeys.length ? `Metrics: ${first.metricKeys.join(", ")}` : undefined}>{first.text}</Headline>
+          <Sentence>{second ? second.text : "Nothing else is flagged today."}</Sentence>
           {rest.length ? (
-            <ul className="flex flex-col gap-1.5">
-              {rest.map((item, index) => {
-                const links = bulletStoreLinks(item.storeIds, storeNames);
-                return (
+            showAll ? (
+              <ul className="flex flex-col gap-1.5">
+                {rest.map((item, index) => (
                   <li key={index} className="text-label text-fg-muted">
-                    <span title={item.metricKeys.length ? `Metrics: ${item.metricKeys.join(", ")}` : undefined}>{item.text}</span>
-                    {links.map((link) => (
-                      <Link
-                        key={link.tenantId}
-                        to={`/stores/${link.tenantId}`}
-                        className="ml-2 font-medium text-brand-text underline-offset-2 hover:underline"
-                      >
-                        {link.name}
-                      </Link>
-                    ))}
+                    {item.text}
                   </li>
-                );
-              })}
-            </ul>
+                ))}
+              </ul>
+            ) : (
+              <button
+                type="button"
+                className="self-start text-caption font-medium text-brand-text underline-offset-2 hover:underline"
+                onClick={() => setShowAll(true)}
+              >
+                + {plural(rest.length, "more thing", "more things")}
+              </button>
+            )
           ) : null}
-          {firstLinks.length ? (
-            <div className="mt-auto flex flex-wrap gap-2 pt-1">
-              {firstLinks.map((link) => (
-                <ButtonLink key={link.tenantId} variant="secondary" size="sm" to={`/stores/${link.tenantId}`}>
-                  {link.name}
-                </ButtonLink>
-              ))}
-            </div>
+          {store ? (
+            <Actions>
+              <BookCallButton
+                client={client}
+                storeId={store.tenantId}
+                subject={`A quick call about ${storeName ?? "your store"}`}
+                label="Book the call"
+                variant="primary"
+              />
+              <ButtonLink variant="secondary" size="sm" to={`/stores/${store.tenantId}`}>
+                {storeName ? `Open ${storeName}` : "Open store"}
+              </ButtonLink>
+            </Actions>
           ) : null}
         </>
       )}
       {!isLoading && summary && state.kind !== "none" ? (
-        <p className={cx("text-caption text-fg-subtle", !firstLinks.length && "mt-auto")}>
+        <p className={cx("text-caption text-fg-subtle", !store && "mt-auto")}>
           {summary.generatedAt ? `Written ${formatIst(summary.generatedAt)}` : "Written this morning"}
-          {state.fromDate ? <span className={cx("ml-1", toneTextClasses.warning)}>· from {state.fromDate}</span> : null}
+          {state.fromDate ? <span className={cx("ml-1", toneTextClasses.warning)}>· from {dayOf(state.fromDate)}</span> : null}
         </p>
       ) : null}
-    </NeedsCard>
+    </ActionCard>
   );
 }
 
-// ─── Billing: money due this week ─────────────────────────────────────────
+// ─── Billing ──────────────────────────────────────────────────────────────
 
 export function NeedsYouBillingCard({
   moneyDue,
@@ -155,159 +231,125 @@ export function NeedsYouBillingCard({
   moneyDue: NonNullable<PlatformAttention["moneyDue"]> | null;
   isLoading?: boolean;
 }) {
+  const { getClient } = useClients();
+  const [remind, setRemind] = useState<Client[]>([]);
   const rows = moneyDue?.items ?? [];
   const overdue = rows.filter((row) => row.overdue).length;
-  const shown = rows.slice(0, ROWS_SHOWN);
-  const more = rows.length - shown.length;
   const dot: Dot = overdue ? "danger" : rows.length ? "warning" : null;
+  // The server sends the most overdue first.
+  const top = rows[0];
+  const client = top ? getClient(top.tenantId) : undefined;
+  const others = rows.length - 1;
 
   return (
-    <NeedsCard eyebrow="Billing" dot={isLoading ? null : dot} label="Money due this week">
+    <ActionCard eyebrow="Billing" dot={isLoading ? null : dot} label="Money due this week">
       {isLoading ? (
         <LoadingBody />
-      ) : !moneyDue || rows.length === 0 ? (
+      ) : !top ? (
         <>
-          <h3 className="text-title-3 text-fg">Nothing due this week.</h3>
-          <p className="text-label text-fg-muted">Invoices due in the next 7 days, and any overdue, show up here.</p>
+          <Headline>Nothing due this week.</Headline>
+          <Sentence>Invoices due in the next 7 days, and any overdue, show up here.</Sentence>
+          <Actions>
+            <ButtonLink variant="secondary" size="sm" to="/subscriptions">
+              Open billing
+            </ButtonLink>
+          </Actions>
         </>
       ) : (
         <>
-          <div>
-            <h3 className="text-title-3 text-fg">
-              <span className="num">{formatMoney(moneyDue.total, { whole: true })}</span> due this week
-            </h3>
-            <p className="text-label text-fg-muted">
-              From {storeCount(moneyDue.storeCount)}
-              {overdue ? (
-                <>
-                  {" · "}
-                  <span className={cx("font-medium", toneTextClasses.danger)}>{overdue} overdue</span>
-                </>
-              ) : null}
-            </p>
-          </div>
-          <ul className="flex flex-col">
-            {shown.map((row) => (
-              <li key={row.tenantId} className="border-t border-line-subtle first:border-t-0">
-                <Link
-                  to={`/stores/${row.tenantId}/billing`}
-                  className="group flex items-center gap-3 rounded-field py-2 outline-none focus-visible:shadow-focus-strong"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-label-strong text-fg group-hover:text-brand-text">{row.name}</span>
-                    <span className="block truncate text-caption text-fg-subtle">
-                      {moneyDueWhen(row)}
-                      {row.invoiceCount > 1 ? ` · ${row.invoiceCount} invoices` : ""}
-                    </span>
-                  </span>
-                  {row.overdue ? <StatusChip domain="payment" status="overdue" /> : null}
-                  <span className="num shrink-0 text-label-strong text-fg">{formatMoney(row.amount, { whole: true })}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          {more > 0 ? (
-            <div className="mt-auto pt-1">
-              <ButtonLink variant="secondary" size="sm" to="/subscriptions">
-                See all {rows.length}
+          <Headline>
+            {top.overdue
+              ? `${top.name}'s payment is ${plural(top.daysOverdue, "day", "days")} late`
+              : `${top.name}'s ${formatMoney(top.amount, { whole: true })} is ${moneyDueWhen(top).replace(/^Due on/, "due")}`}
+          </Headline>
+          <Sentence>
+            {top.overdue
+              ? `${formatMoney(top.amount, { whole: true })} is overdue${top.invoiceCount > 1 ? ` on ${top.invoiceCount} invoices` : ""}.`
+              : "Send a reminder before it's late."}
+            {others > 0 ? ` ${plural(others, "more store", "more stores")} due this week · ${formatMoney(moneyDue!.total, { whole: true })} in all.` : ""}
+          </Sentence>
+          <Actions>
+            {client ? (
+              <Button variant="secondary" size="sm" onPress={() => setRemind([client])}>
+                Send reminder
+              </Button>
+            ) : null}
+            {others > 0 || !client ? (
+              <ButtonLink variant={client ? "ghost" : "secondary"} size="sm" to={client ? "/subscriptions" : `/stores/${top.tenantId}/billing`}>
+                {client ? `See all ${rows.length}` : "Open billing"}
               </ButtonLink>
-            </div>
-          ) : null}
+            ) : null}
+          </Actions>
+          <SendReminderDialog key={remind.map((store) => store.id).join(",")} stores={remind} onClose={() => setRemind([])} />
         </>
       )}
-    </NeedsCard>
+    </ActionCard>
   );
 }
 
-// ─── Stores: at risk and in setup ─────────────────────────────────────────
+// ─── Onboarding ───────────────────────────────────────────────────────────
 
-type StoreList = PlatformAttention["atRisk"];
-
-function StoreGroup({
-  title,
-  list,
-  href,
-  empty,
-  detail,
-}: {
-  title: string;
-  list: StoreList;
-  href: string;
-  empty: string;
-  detail: (row: PlatformMetricsStoreRow) => string;
-}) {
-  const shown = list.items.slice(0, ROWS_SHOWN);
-  const more = moreCount(list.totalCount, shown.length);
-  return (
-    <div className="flex flex-col">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-label-strong text-fg">
-          {title} <span className="num text-fg-subtle">· {list.totalCount}</span>
-        </h3>
-        {more > 0 ? (
-          <Link to={href} className="text-caption font-medium text-brand-text underline-offset-2 hover:underline">
-            + {more} more
-          </Link>
-        ) : null}
-      </div>
-      {shown.length === 0 ? (
-        <p className="py-1.5 text-caption text-fg-subtle">{empty}</p>
-      ) : (
-        <ul className="flex flex-col">
-          {shown.map((row) => (
-            <li key={row.tenantId} className="flex min-w-0 items-baseline gap-2 py-1">
-              <Link
-                to={`/stores/${row.tenantId}`}
-                className="min-w-0 shrink truncate text-label font-medium text-fg underline-offset-2 hover:underline"
-              >
-                {row.name}
-              </Link>
-              <span className="min-w-0 flex-1 truncate text-caption text-fg-subtle" title={detail(row)}>
-                {detail(row)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+/** The store longest in setup (the server's `days` since it was created). */
+function longestInSetup(rows: readonly PlatformMetricsStoreRow[]): PlatformMetricsStoreRow | undefined {
+  return [...rows].sort((a, b) => (b.days ?? 0) - (a.days ?? 0) || a.name.localeCompare(b.name))[0];
 }
 
-const riskDetail = (row: PlatformMetricsStoreRow) =>
-  [`Score ${row.score ?? 0}`, ...(row.reasons ?? []).map(riskReasonLabel)].join(" · ");
-
-const setupDetail = (row: PlatformMetricsStoreRow) =>
-  [row.days == null ? null : `${row.days} ${row.days === 1 ? "day" : "days"}`, developmentDetail(row)].filter(Boolean).join(" · ");
-
-export function NeedsYouStoresCard({
-  atRisk,
+export function NeedsYouOnboardingCard({
   development,
+  atRiskCount = 0,
   isLoading = false,
 }: {
-  atRisk: StoreList | null;
-  development: StoreList | null;
+  development: PlatformAttention["development"] | null;
+  /** Shown as a link so the at-risk list stays one click from Home. */
+  atRiskCount?: number;
   isLoading?: boolean;
 }) {
-  const risk: StoreList = { totalCount: atRisk?.totalCount ?? 0, items: sortAtRisk(atRisk?.items ?? []) };
-  const setup: StoreList = { totalCount: development?.totalCount ?? 0, items: development?.items ?? [] };
-  const dot: Dot = risk.totalCount || setup.totalCount ? "warning" : null;
+  const { getClient } = useClients();
+  const rows = development?.items ?? [];
+  const total = development?.totalCount ?? 0;
+  const top = longestInSetup(rows);
+  const client = top ? getClient(top.tenantId) : undefined;
+  const name = client?.storeName ?? top?.name;
+  const days = top?.days ?? null;
+  const stuck = days != null && days > SETUP_STALLED_DAYS;
 
   return (
-    <NeedsCard eyebrow="Stores · At risk and in setup" dot={isLoading ? null : dot} label="Stores at risk and in setup">
+    <ActionCard eyebrow="Onboarding" dot={isLoading || !top ? null : "warning"} label="Stores in setup">
       {isLoading ? (
         <LoadingBody />
+      ) : !top ? (
+        <>
+          <Headline>No stores in setup.</Headline>
+          <Sentence>New stores show here until they go live.</Sentence>
+        </>
       ) : (
-        <div className="flex flex-col gap-3">
-          <StoreGroup title="At risk" list={risk} href={AT_RISK_STORES_HREF} empty="No stores at risk." detail={riskDetail} />
-          <StoreGroup
-            title="In setup"
-            list={setup}
-            href={IN_SETUP_STORES_HREF}
-            empty="No stores in development."
-            detail={setupDetail}
-          />
-        </div>
+        <>
+          <Headline>{stuck ? `${name} is stuck at setup` : `${name} is in setup`}</Headline>
+          <Sentence>
+            {[days != null ? `${plural(days, "day", "days")} in setup` : null, developmentDetail(top)].filter(Boolean).join(" · ")}.
+            {total > 1 ? ` ${plural(total - 1, "more store", "more stores")} in setup.` : ""}
+          </Sentence>
+          <Actions>
+            <BookCallButton
+              client={client}
+              storeId={top.tenantId}
+              subject={`A setup call for ${name ?? "your store"}`}
+              label="Book a setup call"
+              variant="secondary"
+            />
+            {total > 1 ? (
+              <ButtonLink variant="ghost" size="sm" to={IN_SETUP_STORES_HREF}>
+                See all {total}
+              </ButtonLink>
+            ) : null}
+          </Actions>
+        </>
       )}
-    </NeedsCard>
+      {!isLoading && atRiskCount > 0 ? (
+        <ButtonLink variant="ghost" size="sm" to={AT_RISK_STORES_HREF} className={cx("self-start", !top && "mt-auto")}>
+          {plural(atRiskCount, "store", "stores")} at risk
+        </ButtonLink>
+      ) : null}
+    </ActionCard>
   );
 }

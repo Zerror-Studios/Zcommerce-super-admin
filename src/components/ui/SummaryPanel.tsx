@@ -70,7 +70,8 @@ function MiniChart({ chart }: { chart: SummaryChart }) {
   if (chart.kind === "dots") return <span className="zc-mini-dots" />;
   if (chart.kind === "ring") {
     const percent = Math.max(0, Math.min(100, chart.percent));
-    return <span className="zc-mini-ring" style={{ ["--_p" as string]: percent }} />;
+    // Round 2 §6.4: no empty ring at 0; a 0 reads as a grey full ring.
+    return <span className="zc-mini-ring" data-zero={percent === 0 || undefined} style={{ ["--_p" as string]: percent }} />;
   }
   if (chart.kind === "segments") {
     const total = chart.total ?? 10;
@@ -157,7 +158,11 @@ export function SummaryPanel({
           ) : (
             <span className="zc-summary__value">{cell.value}</span>
           )}
-          {cell.note != null && !isLoading ? <span className="zc-summary__note">{cell.note}</span> : null}
+          {cell.note != null && !isLoading ? (
+            <span className="zc-summary__note" title={typeof cell.note === "string" ? cell.note : undefined}>
+              {cell.note}
+            </span>
+          ) : null}
           {cell.chart && !isLoading ? (
             <span aria-hidden className="zc-summary__chart">
               <MiniChart chart={cell.chart} />

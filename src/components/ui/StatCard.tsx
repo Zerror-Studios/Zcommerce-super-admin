@@ -83,7 +83,7 @@ export function StatCard({
   const classes = cx(
     "zc-kpi-cell block min-w-0 bg-surface px-5 py-4",
     !bare && "rounded-[var(--zc-radius-card)] border border-line",
-    href && "transition-colors duration-fast ease-standard hover:bg-row-hover focus-visible:shadow-focus-strong focus-visible:outline-none",
+    href && "zc-press hover:bg-row-hover focus-visible:shadow-focus-strong focus-visible:outline-none",
     className,
   );
   return href ? (

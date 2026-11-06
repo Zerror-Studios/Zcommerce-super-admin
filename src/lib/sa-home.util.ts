@@ -11,7 +11,7 @@
 
 import type { HomeHeroChip, HomeHeroPeriod, SummaryCell, SummaryTone } from "../components/ui";
 import { formatCount, formatMoney, formatPercent } from "../components/ui/money";
-import { formatDate } from "../components/ui/format-date";
+import { formatDate, formatTime } from "../components/ui/format-date";
 import { getHealthBand } from "../components/ui/status-map";
 import { formatMetricValue } from "./platform-insights.util";
 import { storeLifecycleEnum, storeLifecycleKey } from "./storeStatus";
@@ -41,10 +41,13 @@ export const SA_HOME_COMPARISON: Partial<Record<PlatformMetricsPeriod, string>> 
   LAST_12M: "vs the 12 months before",
 };
 
-/** The greeting's name: the viewer's first name, else the studio. */
+/**
+ * The greeting's name (round 2 §6.1, board 02 "Good morning, Zerror Studios"):
+ * the viewer's whole display name, so the studio account reads "Zerror
+ * Studios"; the studio when the name is blank.
+ */
 export function greetingName(name: string | null | undefined): string {
-  const first = name?.trim().split(/\s+/)[0];
-  return first || "Zerror Studios";
+  return name?.trim().replace(/\s+/g, " ") || "Zerror Studios";
 }
 
 /** "Thursday, 5 November · Platform" (the hero shows it in mono capitals). */
@@ -137,6 +140,80 @@ export function heroSummary(input: { pastDue: PastDue | null; atRisk: number; in
   return `This week: ${list}.`;
 }
 
+/** Stores in setup longer than this are "stuck" (the backend's SETUP_STALLED_DAYS, PRD-036 D15). */
+export const SETUP_STALLED_DAYS = 7;
+
+/**
+ * The hero's line from the attention engine (round 2 §6.1): how many stores
+ * need the team this week and why, e.g. "2 stores need you this week: a
+ * past-due payment and a store stuck in setup." The stores are the union of
+ * those Zcom AI's attention items name (PRD-036 D15 rules), money due this
+ * week, stores at risk and stores in setup for more than 7 days. When the
+ * items name no store, the first item is the line.
+ */
+/** PRD-036 round 2 gaps: the attention rule keys the hero can name ("the payment app shutdown"). */
+const RULE_REASONS: Record<string, { one: string; many: string }> = {
+  PAYMENT_APP_RETIRING: { one: "a store on a payment app that is shutting down", many: "stores on a payment app that is shutting down" },
+  PAYMENTS_FAILING: { one: "a store with payments failing", many: "stores with payments failing" },
+  CHECKOUT_FAILURES: { one: "a store with checkouts failing", many: "stores with checkouts failing" },
+  ANALYTICS_STALE: { one: "a store whose Google Analytics stopped syncing", many: "stores whose Google Analytics stopped syncing" },
+  TRIAL_ENDING: { one: "a trial ending soon", many: "trials ending soon" },
+  INVOICE_PAST_DUE: { one: "a past-due invoice", many: "past-due invoices" },
+  INVOICE_DUE_SOON: { one: "an invoice due soon", many: "invoices due soon" },
+  SETUP_STALLED: { one: "a store stuck in setup", many: "stores stuck in setup" },
+};
+
+export function heroAttentionLine(attention: PlatformAttention | null | undefined): string {
+  if (!attention) return "";
+  const items = attention.whatNeedsAttention?.items ?? [];
+  const money = attention.moneyDue?.items ?? [];
+  const pastDue = money.filter((row) => row.overdue).length;
+  const dueSoon = money.length - pastDue;
+  const stalled = attention.development.items.filter((row) => (row.days ?? 0) > SETUP_STALLED_DAYS);
+  const atRisk = attention.atRisk.items;
+
+  const stores = new Set<string>();
+  for (const item of items) for (const id of item.storeIds) stores.add(id);
+  for (const row of money) stores.add(row.tenantId);
+  for (const row of stalled) stores.add(row.tenantId);
+  for (const row of atRisk) stores.add(row.tenantId);
+
+  const a = (count: number, one: string, many: string) => (count === 1 ? `a ${one}` : `${formatCount(count)} ${many}`);
+  const parts: string[] = [];
+  if (pastDue) parts.push(a(pastDue, "past-due payment", "past-due payments"));
+  if (dueSoon) parts.push(a(dueSoon, "payment due soon", "payments due soon"));
+  if (stalled.length) parts.push(stalled.length === 1 ? "a store stuck in setup" : `${formatCount(stalled.length)} stores stuck in setup`);
+  if (atRisk.length) parts.push(atRisk.length === 1 ? "a store at risk" : `${formatCount(atRisk.length)} stores at risk`);
+  // Stores only the rules name (payment app retiring, checkouts failing, sync stale): named by the item's rule key
+  // (PRD-036 round 2 gaps), else "flagged by Zcom AI".
+  const covered = new Set([...money, ...stalled, ...atRisk].map((row) => row.tenantId));
+  const extraStores = Array.from(stores).filter((id) => !covered.has(id));
+  const byReason = new Map<string, number>();
+  for (const id of extraStores) {
+    const rule = items.find((item) => item.storeIds.includes(id) && item.rule && RULE_REASONS[item.rule])?.rule;
+    const key = rule ?? "AI";
+    byReason.set(key, (byReason.get(key) ?? 0) + 1);
+  }
+  for (const [key, count] of byReason) {
+    if (key === "AI") continue;
+    const reason = RULE_REASONS[key];
+    parts.push(count === 1 ? reason.one : `${formatCount(count)} ${reason.many}`);
+  }
+  const unnamed = byReason.get("AI") ?? 0;
+  if (unnamed) {
+    const more = parts.length ? "more " : "";
+    parts.push(unnamed === 1 ? `one ${more}flagged by Zcom AI` : `${formatCount(unnamed)} ${more}flagged by Zcom AI`);
+  }
+
+  if (stores.size === 0) {
+    if (items.length) return items[0].text;
+    return "Nothing needs you today. Every store is paid up and on track.";
+  }
+  const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0];
+  const who = stores.size === 1 ? "1 store needs you this week" : `${formatCount(stores.size)} stores need you this week`;
+  return list ? `${who}: ${list}.` : `${who}.`;
+}
+
 // ─── Summary panel ────────────────────────────────────────────────────────
 
 export interface HealthSummary {
@@ -197,13 +274,19 @@ export function summaryCells(input: SummaryInput): SummaryCell[] {
   // GMV
   const gmv = input.gmv;
   const orders = usable(input.orders) ? input.orders.value! : null;
+  // Round 2 D3: a partial figure says so (the server's coverage reason), never looks complete
   const gmvNote = usable(gmv)
     ? [
-        orders != null ? plural(orders, "order", "orders") : null,
-        input.activeStores != null ? `across ${plural(input.activeStores, "store", "stores")}` : null,
+        [
+          orders != null ? plural(orders, "order", "orders") : null,
+          input.activeStores != null ? `across ${plural(input.activeStores, "store", "stores")}` : null,
+        ]
+          .filter(Boolean)
+          .join(" "),
+        gmv?.reason ?? null,
       ]
         .filter(Boolean)
-        .join(" ")
+        .join(" · ")
     : (input.gmv?.reason ?? snapshotNote);
   const gmvCell: SummaryCell = {
     key: "gmv",
@@ -329,14 +412,12 @@ export function activityIconKey(action: string): ActivityIconKey {
   return ACTIVITY_PREFIXES.find(([prefix]) => lower.startsWith(prefix))?.[1] ?? "other";
 }
 
-const timeOfDay = new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit" });
-
-/** "10:42 am" today, "Yesterday", else "2 Nov". */
+/** "10:42 AM" today (upper-case AM/PM, round 2 G13), "Yesterday", else "2 Nov". */
 export function activityWhen(at: string, now: Date = new Date()): string {
   const date = new Date(at);
   if (Number.isNaN(date.getTime())) return EMPTY;
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  if (date.getTime() >= startOfToday) return timeOfDay.format(date);
+  if (date.getTime() >= startOfToday) return formatTime(date);
   if (date.getTime() >= startOfToday - 86_400_000) return "Yesterday";
   return formatDate(date, now);
 }

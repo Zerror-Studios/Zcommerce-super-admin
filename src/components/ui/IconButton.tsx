@@ -6,17 +6,18 @@ import { cx } from "./cx";
 import { Tooltip } from "./Tooltip";
 
 /**
- * Circle icon button (01 §7.2, styles in src/styles/components.css `.zc-icon-btn`). Never a rounded square.
- * - default: white, 1px border (row ⋯ menus, pagination arrows, back button, carousel arrows)
- * - ghost: transparent (modal and drawer close, in-card actions)
- * - danger: transparent, red on hover (remove / delete in rows and cards)
- * - on-dark: black menu and top bar
- * - glass: on the banner and on media
- * - solid-dark: the AI ask bar's send button
+ * Circle icon button: the G10 `icon` variant (round 2, styles in src/styles/components.css `.zc-icon-btn`). 36px
+ * round, white, 1px line, ink icon; ink fill while active (an open menu, `aria-expanded`, or `active`). Never a
+ * rounded square. If a row or card has edit and delete, both are icon buttons with a tooltip (on by default).
+ * - default: the icon button (⋯, filter, sort, edit, close, pagination, carousel arrows)
+ * - danger: the icon button with a red hover (remove / delete in rows and cards)
+ * - on-dark: the black menu and the phone top bar only
+ * - glass: on photos and video only
+ * LEGACY: ghost renders as default; solid-dark renders as default + active. Sizes md 36 (default) and sm 32
+ * (inside cards and tables); lg 44 only in the phone top row; xs renders as sm. sm and md are 44 on phone.
  */
-export type IconButtonVariant = "default" | "ghost" | "danger" | "on-dark" | "glass" | "solid-dark";
-/** md 36 (default), sm 32, xs 28 (inside chips and dense rows), lg 40 (top bar). sm and md are 40 on phone. */
-export type IconButtonSize = "xs" | "sm" | "md" | "lg";
+export type IconButtonVariant = "default" | "danger" | "on-dark" | "glass" | "ghost" | "solid-dark";
+export type IconButtonSize = "md" | "sm" | "lg" | "xs";
 
 export interface IconButtonProps
   extends Omit<HeroButtonProps, "variant" | "color" | "size" | "radius" | "isIconOnly" | "aria-label"> {
@@ -24,6 +25,8 @@ export interface IconButtonProps
   "aria-label": string;
   variant?: IconButtonVariant;
   size?: IconButtonSize;
+  /** Ink fill: the control's menu is open or its filter is applied (also set by `aria-expanded`). */
+  active?: boolean;
   /** Show a tooltip with the aria-label on hover/focus (default true). */
   showTooltip?: boolean;
   /** LEGACY alias for isDisabled, accepted during migration. */
@@ -32,8 +35,9 @@ export interface IconButtonProps
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
   {
-    variant = "ghost",
+    variant = "default",
     size = "md",
+    active = false,
     showTooltip = true,
     disabled,
     isDisabled,
@@ -52,8 +56,10 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       isDisabled={isDisabled ?? disabled}
       className={cx(
         "zc-icon-btn",
-        variant !== "default" && `zc-icon-btn--${variant}`,
-        size !== "md" && `zc-icon-btn--${size}`,
+        (variant === "danger" || variant === "on-dark" || variant === "glass") && `zc-icon-btn--${variant}`,
+        (size === "sm" || size === "xs") && "zc-icon-btn--sm",
+        size === "lg" && "zc-icon-btn--lg",
+        (active || variant === "solid-dark") && "zc-icon-btn--active",
         className,
       )}
       {...rest}

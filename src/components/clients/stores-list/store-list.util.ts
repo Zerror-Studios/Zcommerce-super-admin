@@ -10,7 +10,7 @@ import { getStoreHealth } from "../../../lib/storeHealth";
 import { healthBandOf, healthBandEnum, type HealthBandKey } from "../../../lib/store-table.util";
 import { normaliseLifecycleKey, storeLifecycleKey, type StoreLifecycleKey } from "../../../lib/storeStatus";
 import { daysUntil } from "../../../lib/utils";
-import { getPlanLabel } from "../../../lib/display-labels.util";
+import { clientPlanName } from "../../../lib/plan-identity.util";
 
 // ─── Badges ───────────────────────────────────────────────────────────────
 
@@ -24,7 +24,7 @@ export interface RowBadge {
 /** Store status in the S-00b words and tones (Trial neutral, Past due danger). */
 const STATUS_BADGES: Record<StoreLifecycleKey, RowBadge> = {
   live: { label: "Live", tone: "success" },
-  setup: { label: "Set up", tone: "neutral" },
+  setup: { label: "In setup", tone: "neutral" },
   trial: { label: "Trial", tone: "neutral" },
   past_due: { label: "Past due", tone: "danger" },
   suspended: { label: "Suspended", tone: "danger" },
@@ -98,9 +98,9 @@ export function isPaymentOwed(kind: PaymentKind): boolean {
   return kind === paymentKindEnum.DUE || kind === paymentKindEnum.GRACE || kind === paymentKindEnum.OVERDUE;
 }
 
-/** The plan's short name ("Plus"), never the version. */
+/** The plan's short name ("Plus"), never the version (round 2 D16: the same `planLabel` everywhere). */
 export function planShortName(client: Client): string {
-  return client.planRef?.displayName || getPlanLabel(client.plan);
+  return clientPlanName(client);
 }
 
 // ─── Health ───────────────────────────────────────────────────────────────

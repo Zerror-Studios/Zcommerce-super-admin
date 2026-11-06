@@ -260,12 +260,12 @@ function AiConfigForm({ config, canManage }: { config: PlatformAiConfig; canMana
       {errors.form ? <p className="text-body text-tone-danger-text" role="alert">{errors.form}</p> : null}
       {!canManage ? <p className="text-label text-fg-muted">Changing AI settings needs the AI manage permission.</p> : null}
 
-      <Card id="assistant" data-settings-field title="Assistant" description="Switch ZCOM AI off for every store, and pick the models it may use.">
+      <Card id="assistant" data-settings-field title="Assistant" description="Switch Zcom AI off for every store, and pick the models it may use.">
         <div className="flex flex-col gap-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-body font-medium text-fg">ZCOM AI for every store</p>
+                <p className="text-body font-medium text-fg">Zcom AI for every store</p>
                 <Chip tone={draft.enabled ? "success" : "neutral"}>{draft.enabled ? "AI on" : "AI off"}</Chip>
               </div>
               <p className="mt-0.5 text-label text-fg-muted">
@@ -275,7 +275,7 @@ function AiConfigForm({ config, canManage }: { config: PlatformAiConfig; canMana
               </p>
             </div>
             <Switch
-              aria-label="ZCOM AI for every store"
+              aria-label="Zcom AI for every store"
               isSelected={draft.enabled}
               isReadOnly={readOnly}
               onValueChange={(on) => setDraft((current) => ({ ...current, enabled: on }))}
@@ -384,7 +384,7 @@ function AiConfigForm({ config, canManage }: { config: PlatformAiConfig; canMana
                     className="w-24"
                     classNames={{ input: "num" }}
                   />
-                  <Button variant="tertiary" size="sm" startIcon={<IconAdd aria-hidden />} onPress={addAlert} isDisabled={!newAlert.trim()}>
+                  <Button variant="ghost" size="sm" startIcon={<IconAdd aria-hidden />} onPress={addAlert} isDisabled={!newAlert.trim()}>
                     Add
                   </Button>
                 </span>
@@ -469,7 +469,7 @@ function AiConfigForm({ config, canManage }: { config: PlatformAiConfig; canMana
           id="superadmin"
           data-settings-field
           title="Super Admin AI"
-          description="The nightly platform snapshot, Refresh now and Ask ZCOM for Zerror staff."
+          description="The nightly platform snapshot, Refresh now and Ask Zcom for Zerror staff."
         >
           <FieldGrid>
             {superInput("superadmin.manualRefreshCooldownMin", "Refresh now cooldown", {

@@ -38,7 +38,7 @@ export function ReminderTextModal({ isOpen, text, onClose, onApply }: ReminderTe
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} width="md">
+    <Modal isOpen={isOpen} onClose={onClose} size="md">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={<IconMessages aria-hidden />}>Reminder text</PopupTitle>

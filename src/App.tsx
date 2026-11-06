@@ -21,6 +21,11 @@ const ForgotPassword = lazy(() => import("./pages/ForgotPassword").then((m) => (
 const SetPassword = lazy(() => import("./pages/SetPassword").then((m) => ({ default: m.SetPassword })));
 const Subscriptions = lazy(() => import("./pages/Subscriptions").then((m) => ({ default: m.Subscriptions })));
 const Settings = lazy(() => import("./pages/Settings").then((m) => ({ default: m.Settings })));
+// Round 2 §6.4 (PRD-036 R2-8/R2-9): Support and System health.
+const SupportTickets = lazy(() => import("./pages/SupportTickets").then((m) => ({ default: m.SupportTickets })));
+const SupportAnnouncements = lazy(() => import("./pages/SupportAnnouncements").then((m) => ({ default: m.SupportAnnouncements })));
+const SupportGuides = lazy(() => import("./pages/SupportGuides").then((m) => ({ default: m.SupportGuides })));
+const SystemHealth = lazy(() => import("./pages/SystemHealth").then((m) => ({ default: m.SystemHealth })));
 const SignIn = lazy(() => import("./pages/SignIn").then((m) => ({ default: m.SignIn })));
 // The component showcase ships in development builds only (docs/design/README.md Phase 10).
 const DevUiPage = import.meta.env.DEV ? lazy(() => import("./components/ui/DevUiPage")) : null;
@@ -134,6 +139,13 @@ export default function App() {
           {/* AI settings moved to Settings › ZCOM AI settings (04 S-06 change 2): ?section=x → #x. */}
           <Route path="ai/settings" element={<LegacyAiSettingsRedirect />} />
           <Route path="ai/:section" element={<LegacyAiRedirect />} />
+
+          {/* Round 2 §6.4: every store's tickets, release notes (What's new), ticket topics, system health. */}
+          <Route path="support" element={<Navigate to="/support/tickets" replace />} />
+          <Route path="support/tickets" element={<SupportTickets />} />
+          <Route path="support/announcements" element={<SupportAnnouncements />} />
+          <Route path="support/guides" element={<SupportGuides />} />
+          <Route path="system-health" element={<SystemHealth />} />
 
           <Route path="settings" element={<Settings />} />
           {/* Payment reminders moved from Settings to its own page. */}

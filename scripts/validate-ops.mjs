@@ -11,13 +11,18 @@ const require = createRequire(
 );
 const { buildASTSchema, parse, validate } = require("graphql");
 
-const schemaFile = process.env.PLATFORM_SCHEMA ??
-  path.resolve("../zcom-backend/services/platform-admin/src/graphql/schemas/index.ts");
+// PLATFORM_SCHEMA may name one schema file; by default every file in the
+// schemas folder is read (index.ts exports [baseTypeDefs, supportTypeDefs]
+// since PRD-036 R2-8, support.schema.ts holds the support types).
+const schemaDir = path.resolve("../zcom-backend/services/platform-admin/src/graphql/schemas");
+const schemaFiles = process.env.PLATFORM_SCHEMA
+  ? [process.env.PLATFORM_SCHEMA]
+  : readdirSync(schemaDir).filter((f) => f.endsWith(".ts")).map((f) => path.join(schemaDir, f));
 const opsDir = path.resolve("src/graphql");
 
-const schemaSrc = readFileSync(schemaFile, "utf8");
-const sdl = schemaSrc
-  .slice(schemaSrc.indexOf("gql`") + 4, schemaSrc.lastIndexOf("`"))
+const sdl = schemaFiles
+  .flatMap((file) => [...readFileSync(file, "utf8").matchAll(/gql`([\s\S]*?)`;/g)].map((m) => m[1]))
+  .join("\n")
   .replace(/extend schema\s*@link\([^)]*\)\s*/s, "");
 const schema = buildASTSchema(parse(sdl));
 
@@ -25,7 +30,8 @@ const schema = buildASTSchema(parse(sdl));
 const consts = new Map();
 for (const f of readdirSync(opsDir)) {
   const src = readFileSync(path.join(opsDir, f), "utf8");
-  const re = /export const (\w+) = gql`([\s\S]*?)`;/g;
+  // Module-private fragments (e.g. support.ts TICKET_FIELDS) are collected too
+  const re = /(?:export )?const (\w+) = gql`([\s\S]*?)`;/g;
   let m;
   while ((m = re.exec(src))) consts.set(m[1], { file: f, body: m[2] });
 }

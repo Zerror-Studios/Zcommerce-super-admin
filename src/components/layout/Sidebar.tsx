@@ -1,7 +1,8 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * The black menu (docs/design-v2/README.md §3.1). Top to bottom: the store switcher (neutral initials badge, store
- * name, domain), or the wordmark with its label in the Super Admin ("Platform") → the search box with the ⌘K hint
+ * name, domain, switch chevron), or the brand block in the Super Admin (round 2 §6.1: Z tile, "Zcom", "Platform
+ * admin" in purple) → the search box with the ⌘K hint
  * (search only, it never asks AI) → one flat list with no group headings → pushed to the bottom: Notifications (red
  * count), Settings → one divider → the profile row, whose menu ends with the Zcom version and a What's new link.
  * 240px, or a 72px icon rail when collapsed (labels as tooltips, counts as 8px dots). A chevron opens a section in
@@ -77,6 +78,11 @@ export interface SidebarProps {
   isActive: (to: string, end?: boolean) => boolean;
   /** Called after any link is clicked (closes the menu drawer). */
   onNavigate?: () => void;
+  /**
+   * Round 2 §2 prefetch: called with a menu link's path when the pointer rests on it or it takes focus, so the
+   * layout can warm the page's code and its first list query (Apollo cache-first) before the click.
+   */
+  onPrefetch?: (path: string) => void;
   /** Shows a close button (menu drawer under 1024px). */
   onClose?: () => void;
   className?: string;
@@ -156,6 +162,7 @@ export function Sidebar({
   onNavigate,
   onClose,
   className,
+  onPrefetch,
 }: SidebarProps) {
   const mainItems = [...items, ...secondaryItems];
   // v2 §3.1: Settings sits at the bottom with Notifications, not in the main list.
@@ -208,17 +215,23 @@ export function Sidebar({
         collapsed ? "w-sidebar-collapsed px-2" : "w-sidebar px-3",
         className,
       )}
+      onPointerOver={onPrefetch ? (event) => prefetchFromEvent(event.target, onPrefetch) : undefined}
+      onFocus={onPrefetch ? (event) => prefetchFromEvent(event.target, onPrefetch) : undefined}
     >
       {/* The store switcher (merchant admin) or the wordmark with its label (Super Admin "Platform"). */}
       <div className={cx("flex min-h-9 items-center gap-2 pb-3", collapsed ? "justify-center" : store ? "px-0.5" : "px-2.5")}>
         {store ? (
           <StoreSwitcher store={store} collapsed={collapsed} />
         ) : collapsed ? (
-          <span aria-label="Zcom" className="text-[17px] font-semibold leading-none tracking-[-0.04em] text-nav-fg-strong">Z</span>
+          <span aria-label="Zcom" className="zc-brand-tile">Z</span>
         ) : (
-          <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
-            <span className="text-[19px] font-semibold leading-none tracking-[-0.04em] text-nav-fg-strong">Zcom</span>
-            {productLabel ? <span className="truncate text-caption text-nav-fg-muted">{productLabel}</span> : null}
+          // Round 2 §6.1: the Z tile, "Zcom", and the product label ("Platform admin") in the console purple, 12px.
+          <span className="flex min-w-0 flex-1 items-center gap-2.5">
+            <span aria-hidden className="zc-brand-tile">Z</span>
+            <span className="flex min-w-0 flex-col leading-none">
+              <span className="zc-brand-word">Zcom</span>
+              {productLabel ? <span className="mt-1 truncate text-caption text-nav-product">{productLabel}</span> : null}
+            </span>
           </span>
         )}
         {onClose ? (
@@ -410,6 +423,13 @@ export function StoreSwitcher({ store, collapsed = false, className: extra }: { 
   ) : (
     <div className={className}>{body}</div>
   );
+}
+
+/** The menu link under the pointer or in focus → its in-app path (round 2 §2 prefetch). */
+function prefetchFromEvent(target: EventTarget, onPrefetch: (path: string) => void) {
+  const link = target instanceof Element ? target.closest<HTMLAnchorElement>("a[href]") : null;
+  if (!link || link.origin !== window.location.origin) return;
+  onPrefetch(link.pathname);
 }
 
 interface NavListProps {

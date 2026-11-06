@@ -188,7 +188,7 @@ export function AiUsageTab({ tabs, exportRef }: AiTabProps) {
               }
             />
           ) : (
-            <EmptyState icon={IconAi} title="No AI use yet" description="Stores appear here once they ask Ask ZCOM a question." />
+            <EmptyState icon={IconAi} title="No AI use yet" description="Stores appear here once they ask Ask Zcom a question." />
           )
         }
       />

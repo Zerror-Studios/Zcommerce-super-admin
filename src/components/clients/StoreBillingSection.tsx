@@ -3,15 +3,15 @@
  * section; also the page a Subscriptions row opens. Two columns:
  * - main: Current plan (with Change plan), why the store is in its billing state, payments, invoices and
  *   reminders, and credits;
- * - side: Plan limits (usage against the plan), Adjust (every subscription action, Issue credit and Record
- *   refund, which used to sit in the header ⋯), Payment status and the grace period.
+ * - side: Plan limits (usage against the plan), Adjust (round 2 §6.3: a list of rows, Cancel subscription set
+ *   apart in red), Payment status and the grace period.
  * The grace period stages in the page's one save bar (02 §7.1); leaving with unsaved changes asks first.
  */
 import type { Client, Subscription } from "../../types";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { useAuth } from "../../providers/AuthProvider";
 import { SettingsSaveBar } from "../settings/SettingsSaveBar";
-import { Button, Card, type RowMenuItem } from "../ui";
+import { Card, RowChevron, cx, toneTextClasses, type RowMenuItem } from "../ui";
 import { ClientUsageTab } from "./ClientUsageTab";
 import { GracePeriodCard, PaymentStatusCard, useGracePeriodDraft } from "./ClientBillingTab";
 import { PlanSubscriptionCard, StoreCreditsCard } from "./ClientPlatformBilling";
@@ -34,29 +34,48 @@ export interface StoreBillingSectionProps {
 /** Main column + 22rem side column once the content is 64rem wide; one column below (§10 detail pages). */
 const columnsClass = "grid grid-cols-1 items-start gap-4 @min-[64rem]:grid-cols-[minmax(0,1fr)_22rem]";
 
-/** Board 61 "Adjust": one full-width light-blue button per action; the destructive ones in red text. */
+/**
+ * Adjust (round 2 §6.3): a list of rows (icon, label, ›): Record payment, Issue credit, Record refund, Mark past
+ * due (and Extend trial / Activate / Reactivate when they apply), then, set apart, a red text row "Cancel
+ * subscription" that opens its sm confirm.
+ */
 function AdjustCard({ actions }: { actions: RowMenuItem[] }) {
   if (!actions.length) return null;
+  const safe = actions.filter((item) => !item.destructive);
+  const risky = actions.filter((item) => item.destructive);
+  const row = (item: RowMenuItem, danger = false) => {
+    const Icon = item.icon;
+    return (
+      <li key={item.key}>
+        <button
+          type="button"
+          disabled={item.disabled}
+          onClick={() => item.onSelect?.()}
+          className={cx(
+            "flex min-h-12 w-full items-center gap-3 px-5 text-left text-body outline-none transition-colors duration-fast",
+            "hover:bg-row-hover focus-visible:bg-row-hover disabled:pointer-events-none disabled:opacity-40",
+            danger ? toneTextClasses.danger : "text-fg",
+          )}
+        >
+          {Icon && !danger ? (
+            <span aria-hidden className="flex size-5 shrink-0 items-center justify-center text-fg-muted">
+              <Icon aria-hidden />
+            </span>
+          ) : null}
+          <span className="min-w-0 flex-1 truncate">{item.label}</span>
+          {danger ? null : <RowChevron />}
+        </button>
+      </li>
+    );
+  };
   return (
-    <Card title="Adjust">
-      <div className="flex flex-col gap-2">
-        {actions.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Button
-              key={item.key}
-              variant={item.destructive ? "destructive-secondary" : "secondary"}
-              size="sm"
-              className="w-full justify-start"
-              startIcon={Icon ? <Icon aria-hidden /> : undefined}
-              isDisabled={item.disabled}
-              onPress={() => item.onSelect?.()}
-            >
-              {item.label}
-            </Button>
-          );
-        })}
-      </div>
+    <Card title="Adjust" padding="none">
+      {safe.length ? <ul className="divide-y divide-line-subtle border-t border-line-subtle">{safe.map((item) => row(item))}</ul> : null}
+      {risky.length ? (
+        <ul className="mt-2 border-t border-line pb-1">{risky.map((item) => row(item, true))}</ul>
+      ) : (
+        <div className="pb-1" />
+      )}
     </Card>
   );
 }

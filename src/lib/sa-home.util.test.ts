@@ -5,6 +5,7 @@ import {
   greetingName,
   healthSummary,
   heroChips,
+  heroAttentionLine,
   heroSummary,
   pastDueOf,
   storeCounts,
@@ -52,7 +53,7 @@ const baseInput = (patch: Partial<SummaryInput> = {}): SummaryInput => ({
 
 describe("SA Home (design v2 §7)", () => {
   it("greets by first name, else the studio", () => {
-    expect(greetingName("Mehak Arora")).toBe("Mehak");
+    expect(greetingName("Zerror  Studios")).toBe("Zerror Studios");
     expect(greetingName("  ")).toBe("Zerror Studios");
     expect(greetingName(undefined)).toBe("Zerror Studios");
   });
@@ -121,6 +122,10 @@ describe("SA Home (design v2 §7)", () => {
     expect(cells[3].value).toBe("4");
     expect(cells[3].tone).toBe("danger");
 
+    // Round 2 D3: a partial GMV says so, even when the number is usable
+    const partial = summaryCells(baseInput({ gmv: metric("gmv", { unit: "CURRENCY", value: 601428, reason: "Some stores have no usage snapshot with sales yet." }) }));
+    expect(partial[0].note).toBe("190 orders across 3 stores · Some stores have no usage snapshot with sales yet.");
+
     const clear = summaryCells(baseInput({ pastDue: { count: 0, amount: 0 }, mrr: null }));
     expect(clear[1].tone).toBe("default");
     expect(clear[1].note).toBe("Needs billing access");
@@ -138,5 +143,53 @@ describe("SA Home (design v2 §7)", () => {
     expect(activityWhen(new Date(2026, 10, 4, 18, 0).toISOString(), now)).toBe("Yesterday");
     expect(activityWhen(new Date(2026, 10, 2, 9, 0).toISOString(), now)).toBe("2 Nov");
     expect(activityWhen("nope", now)).toBe("—");
+  });
+
+  it("writes the hero line from the attention engine (round 2 §6.1)", () => {
+    const base = {
+      computedAt: "2026-11-06T03:00:00Z",
+      stale: false,
+      activeStores: 3,
+      smallSample: true,
+      smallSampleThreshold: 10,
+      thisMonth: { mrr: null, collected: null, outstanding: null, newStoresLive: null, churned: null, aiCostUsd: null },
+    };
+    const line = heroAttentionLine({
+      ...base,
+      moneyDue: {
+        total: 999,
+        storeCount: 1,
+        items: [{ tenantId: "na", name: "Nahara", slug: "na", amount: 999, dueAt: "2026-11-15", daysOverdue: 0, invoiceCount: 1, overdue: false }],
+      },
+      atRisk: { totalCount: 0, items: [] },
+      development: { totalCount: 2, items: [{ tenantId: "dd", name: "deveshe", slug: "dd", days: 9 }, { tenantId: "na", name: "Nahara", slug: "na", days: 3 }] },
+      whatNeedsAttention: {
+        date: "2026-11-06",
+        generatedAt: null,
+        bullets: [],
+        items: [{ text: "Kesar & Kin still takes payments through Nimbbl.", storeIds: ["kk"], metricKeys: [] }],
+      },
+    });
+    expect(line).toBe("3 stores need you this week: a payment due soon, a store stuck in setup and one more flagged by Zcom AI.");
+    // PRD-036 round 2 gaps: the item's rule key names the reason
+    const named = heroAttentionLine({
+      ...base,
+      moneyDue: null,
+      atRisk: { totalCount: 0, items: [] },
+      development: { totalCount: 0, items: [] },
+      whatNeedsAttention: {
+        date: "2026-11-06",
+        generatedAt: null,
+        bullets: [],
+        items: [
+          { text: "Kesar & Kin still takes payments through Nimbbl.", storeIds: ["kk"], metricKeys: [], rule: "PAYMENT_APP_RETIRING" },
+          { text: "Something else.", storeIds: ["zz"], metricKeys: [], rule: null },
+        ],
+      },
+    });
+    expect(named).toBe("2 stores need you this week: a store on a payment app that is shutting down and one more flagged by Zcom AI.");
+    expect(
+      heroAttentionLine({ ...base, moneyDue: null, atRisk: { totalCount: 0, items: [] }, development: { totalCount: 0, items: [] }, whatNeedsAttention: null }),
+    ).toMatch(/^Nothing needs you today/);
   });
 });

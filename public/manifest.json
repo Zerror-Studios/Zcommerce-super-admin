@@ -1,13 +1,13 @@
 {
-  "name": "ZCommerce Platform Console",
+  "name": "Zcom Super admin",
   "short_name": "Zcom Console",
-  "description": "Zerror's console for ZCommerce stores, billing and platform health.",
+  "description": "Zerror's console for Zcom stores, billing and platform health.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#0B0C10",
+  "theme_color": "#0B0C10",
   "icons": [
     {
       "src": "/icons/icon-192.png",

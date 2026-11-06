@@ -12,7 +12,7 @@ import { SnapshotTab } from "../components/insights/tabs/SnapshotTab";
 import { SNAPSHOT_TABS, isSnapshotTab, isTabAvailable } from "../components/insights/tabs/snapshot-tabs.util";
 import { DateRangeComparison, type DateRangeValue } from "../components/common/DateRangeComparison";
 import { PageHeader } from "../components/common/PageHeader";
-import { Card, EmptyState, SegmentedSwitch, Select, SelectItem, type RowMenuItem, type SegmentedItem } from "../components/ui";
+import { Card, EmptyState, Select, SelectItem, type RowMenuItem } from "../components/ui";
 import { IconChartBar, IconExport, IconLock, IconStore, IconStoreHealth } from "../components/ui/icons";
 import { DEFAULT_PERFORMANCE_RANGE_DAYS, type PerformanceRangeDays } from "../lib/analytics-health";
 import { DEFAULT_METRICS_PERIOD, PERIOD_LABELS, PERIOD_ORDER } from "../lib/platform-insights.util";
@@ -25,8 +25,9 @@ import { useAuth } from "../providers/AuthProvider";
  * Analytics (04 S-05; design v2 §7, boards 67 Revenue, 68 Stores, 70 System). Every view keeps its own route
  * (/analytics/:section). The menu links three of them directly (Revenue → revenue, Stores → store-sales,
  * System → performance; AI usage is the ZCOM AI page at /ai), so the page is three sub-pages, each with its own
- * title ("Analytics · Revenue"), its period control in the title row, Export in ⋯, and a tab row for the other
- * views that belong to it, so nothing is dropped:
+ * title ("Analytics · Revenue"), its period control in the title row and Export in ⋯. Round 2 §6.4: one level of
+ * tabs only (the menu); the sub-tabs that repeated it are gone, and the other views of each page open from its ⋯
+ * ("Open Money", …) and keep their URLs, so nothing is dropped:
  * - Revenue: Platform revenue, Money, AI cost (snapshot).
  * - Stores: Store sales, Merchant sales, Retention, Usage (snapshot).
  * - System: Performance, Integration health, Sync monitor, Platform health (snapshot).
@@ -117,37 +118,17 @@ export function Analytics() {
   const active = isSection(section) ? section : null;
   const group = GROUPS[groupOf(active ?? "revenue")];
 
-  const visibleTabs = useMemo<SegmentedItem<AnalyticsSection>[]>(
-    () =>
-      group.sections
-        .filter((key) => !isSnapshotTab(key) || isTabAvailable(snapshot.data, key))
-        .map((key) => ({ value: key, label: SECTION_LABELS[key] })),
-    [group, snapshot.data],
+  // The group's other views this viewer may open (a snapshot view only when its section came back).
+  const otherViews = useMemo(
+    () => group.sections.filter((key) => key !== active && (!isSnapshotTab(key) || isTabAvailable(snapshot.data, key))),
+    [active, group, snapshot.data],
   );
 
+  // Round 2 §6.4: no sub-tab row; only the tab's own right-hand controls (Last updated · Refresh now…).
   const tabRow = useMemo<AnalyticsTabRow>(
-    () =>
-      (right?: ReactNode) => {
-        const showTabs = visibleTabs.length > 1;
-        if (!showTabs && !right) return null;
-        return (
-          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            {showTabs ? (
-              <SegmentedSwitch
-                ariaLabel={`Analytics · ${group.title}`}
-                items={visibleTabs}
-                value={active ?? "revenue"}
-                onChange={(next) => navigate(`/analytics/${next}`)}
-                className="min-w-0 max-w-full"
-              />
-            ) : (
-              <span />
-            )}
-            {right ? <div className="flex shrink-0 flex-wrap items-center gap-2">{right}</div> : null}
-          </div>
-        );
-      },
-    [active, group.title, navigate, visibleTabs],
+    () => (right?: ReactNode) =>
+      right ? <div className="mb-4 flex flex-wrap items-center justify-end gap-2">{right}</div> : null,
+    [],
   );
 
   if (!active) {
@@ -187,16 +168,23 @@ export function Analytics() {
   }
 
   const exportLabel = EXPORT_LABELS[active];
-  const more: RowMenuItem[] | undefined =
-    exportLabel && canRead
+  const moreItems: RowMenuItem[] = [
+    ...(exportLabel && canRead
       ? [{ key: "export", label: exportLabel, icon: IconExport, disabled: !canExport, onSelect: () => exportRef.current?.() }]
-      : undefined;
+      : []),
+    ...(canRead
+      ? otherViews.map((key) => ({ key: `view-${key}`, label: `Open ${SECTION_LABELS[key]}`, icon: IconChartBar, onSelect: () => navigate(`/analytics/${key}`) }))
+      : []),
+  ];
+  const more = moreItems.length ? moreItems : undefined;
+  // The group's first view is the menu's page; the others name themselves ("Analytics · Revenue · Money").
+  const title = active === group.sections[0] ? `Analytics · ${group.title}` : `Analytics · ${group.title} · ${SECTION_LABELS[active]}`;
 
   const header = (
     <PageHeader
       type="page"
       icon={group.icon}
-      title={`Analytics · ${group.title}`}
+      title={title}
       description={group.description}
       actions={period ?? undefined}
       more={more}

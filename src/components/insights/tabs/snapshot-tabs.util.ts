@@ -106,7 +106,7 @@ export const SNAPSHOT_TABS: readonly SnapshotTabConfig[] = [
     gate: "USAGE",
     sections: ["USAGE", "PORTFOLIO"],
     lists: [{ key: "dormant", title: "Dormant", description: "No dashboard login for 30 days", value: "none", daysLabel: "Days since login" }],
-    description: "Who uses ZCOM, the portfolio and adoption.",
+    description: "Who uses Zcom, the portfolio and adoption.",
   },
   {
     key: snapshotTabEnum.MERCHANT_SALES,
@@ -127,7 +127,7 @@ export const SNAPSHOT_TABS: readonly SnapshotTabConfig[] = [
     gate: "AI_COST",
     sections: ["AI_COST"],
     lists: [],
-    description: "What ZCOM AI costs, by store and in total.",
+    description: "What Zcom AI costs, by store and in total.",
   },
 ];
 

@@ -21,7 +21,6 @@ import { cx } from "../ui/cx";
 import { IconButton } from "../ui/IconButton";
 import { IconMore, IconPrevPage } from "../ui/icons";
 import { RowMenu, type RowMenuItem } from "../ui/RowMenu";
-import { Tooltip } from "../ui/Tooltip";
 import { useViewportBand } from "../ui/use-media";
 import type { Crumb } from "./types";
 import { PageIconContext } from "./page-icon";
@@ -32,9 +31,10 @@ import { PageIconContext } from "./page-icon";
  *   (22/600, 20 on phone) with its count (14px muted) 8px after it, one line of plain-language status (14px muted),
  *   and on the right at most one secondary and one primary button, then the ⋯ menu (`more`) that holds Export,
  *   Import, Print and Choose columns. No Export or Import buttons anywhere else.
- * - "detail": records with a parent (order, product, customer, store). A 32px circle back button ("Back to
- *   Orders"), an optional leading visual, the title with its badges, one meta line (13px muted); sticky on the
- *   page background. The back button never points to the page itself.
+ * - "detail": records with a parent (order, product, customer, store). Round 2 G12: the text breadcrumb
+ *   "‹ Orders" above the title (13px muted, ink on hover; no round back button), an optional leading visual, the
+ *   title with its badges, one meta line (13px muted); sticky on the page background. The breadcrumb never points
+ *   to the page itself, and menu-level pages have none.
  * 20px between the header and the content.
  *
  * Responsive (v2 §10). The primary action is `primaryAction`, or else found in `actions`: a kit <Button> with the
@@ -343,15 +343,17 @@ function Title({ title, count, badges }: Pick<PageHeaderProps, "title" | "count"
   );
 }
 
-/** The detail page's circle back button (01 §7.27): 32px, chevron-left, "Back to <parent>". */
-function BackButton({ href, label }: { href: string; label: ReactNode }) {
-  const name = `Back to ${typeof label === "string" ? label : "the list"}`;
+/** The detail page's breadcrumb (round 2 G12): "‹ Orders" above the title, 13px muted, ink on hover. */
+function Breadcrumb({ href, label }: { href: string; label: ReactNode }) {
   return (
-    <Tooltip content={name}>
-      <Link to={href} aria-label={name} className="zc-icon-btn zc-icon-btn--sm shrink-0">
-        <IconPrevPage aria-hidden />
-      </Link>
-    </Tooltip>
+    <Link
+      to={href}
+      aria-label={typeof label === "string" ? `Back to ${label}` : undefined}
+      className="zc-crumb mb-1.5 inline-flex max-w-full items-center gap-0.5 rounded-sm text-label text-fg-muted transition-colors duration-1 hover:text-fg focus-visible:shadow-focus-strong focus-visible:outline-none"
+    >
+      <IconPrevPage aria-hidden className="size-3.5 shrink-0" />
+      <span className="truncate">{label}</span>
+    </Link>
   );
 }
 
@@ -385,9 +387,11 @@ export function PageHeader({
   const backLink = back ?? backFromCrumbs(breadcrumbs);
   const kind: PageHeaderType | undefined = type ?? (backLink ? "detail" : icon ? "page" : undefined);
   const hasActions = actions != null || primaryAction != null;
-  const isSticky = sticky ?? (kind === "detail" && hasActions);
+  // Round 2 §8.2: on a phone only the 56px top bar stays; the title row scrolls with the page.
+  const isPhone = useViewportBand() === "phone";
+  const isSticky = !isPhone && (sticky ?? (kind === "detail" && hasActions));
   // List and page headers carry the section's icon tile (PageIconContext supplies it when the page passes none);
-  // detail headers have the back button instead (01 §6.4: one icon only).
+  // detail headers have the breadcrumb instead (01 §6.4: one icon only).
   const sectionIcon = useContext(PageIconContext);
   const tileIcon = icon ?? sectionIcon;
   const showTile = tileIcon != null && kind !== "detail" && !hideTile;
@@ -422,7 +426,6 @@ export function PageHeader({
       )}
     >
       <div className={cx("flex min-w-0 items-center", collapseActions && "flex-1", isDetail ? "gap-3" : "gap-3.5")}>
-        {isDetail && backLink ? <BackButton href={backLink.href} label={backLink.label} /> : null}
         {showTile ? <IconTile className="max-md:hidden">{tileIcon}</IconTile> : null}
         {isDetail && leading ? <span className="shrink-0">{leading}</span> : null}
         <div className="min-w-0">
@@ -456,6 +459,7 @@ export function PageHeader({
         className,
       )}
     >
+      {isDetail && backLink ? <Breadcrumb href={backLink.href} label={backLink.label} /> : null}
       {body}
       {children ? <div className="mt-4">{children}</div> : null}
     </div>

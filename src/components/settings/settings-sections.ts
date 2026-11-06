@@ -55,7 +55,7 @@ export const SETTINGS_SECTIONS: Record<SettingsSectionKey, SettingsSectionMeta> 
     keywords: ["payment gateway", "provider", "grace period", "reminders", "overdue", "jobs"],
   },
   ai: {
-    label: "ZCOM AI settings",
+    label: "Zcom AI settings",
     description: "Models, prices, spend caps and limits for every store's AI. Changes reach every service within 60 seconds.",
     icon: IconAi,
     keywords: ["ai", "models", "spend", "budget"],

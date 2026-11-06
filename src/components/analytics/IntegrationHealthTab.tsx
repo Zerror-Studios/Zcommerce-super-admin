@@ -301,7 +301,7 @@ export function IntegrationHealthTab({ tabRow }: AnalyticsTabProps) {
                   title="No results"
                   description="Try a different search or clear the filters."
                   action={
-                    <Button variant="tertiary" size="sm" onPress={clearAll}>
+                    <Button variant="ghost" size="sm" onPress={clearAll}>
                       Clear filters
                     </Button>
                   }

@@ -9,25 +9,32 @@
  * - Phone (under 768): a 56px row with the store switcher, search, the layout's extra icons (`mobileActions`, the
  *   bell) and the menu icon; the menu opens as a full-height drawer from the left.
  * Page padding: 32px (≥1024), 24px (768–1023), 16px (<768). "Skip to content" is the first focusable element.
+ * Scroll (round 2 G9): `main` goes back to the top when a link or redirect changes the path (not on hash- or
+ * query-only changes), and Back/Forward restore the position saved for that history entry.
+ * Motion: framer-motion follows the user's reduced-motion setting inside the shell (MotionConfig).
  *
  * `sidebar` must be a <Sidebar> element (or a wrapper that passes its props through): in the rail band its
  * `collapsed` and `onToggleCollapse` are overridden, and the phone row reads its `store`.
  */
 import { Drawer, DrawerBody, DrawerContent } from "@heroui/react";
+import { MotionConfig } from "framer-motion";
 import {
   cloneElement,
   isValidElement,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { useLocation, useNavigationType } from "react-router-dom";
 import { cx } from "../ui/cx";
 import { IconButton } from "../ui/IconButton";
 import { IconMenu, IconSearch } from "../ui/icons";
+import { usePresetMotion } from "../ui/motion";
 import { Kbd } from "../ui/Primitives";
 import { useViewportBand } from "../ui/use-media";
 import { StoreSwitcher, type SidebarProps } from "./Sidebar";
@@ -57,8 +64,9 @@ export interface AppShellProps {
   /** Full-width strip at the very top of the window, above the menu and the page. */
   topBanner?: ReactNode;
   /**
-   * Floating element at the bottom centre of `main` (the AI ask bar). Receives `hidden`, true while the user
-   * scrolls down. Pages get bottom padding so it never covers save bars or table footers.
+   * Floating element fixed at the bottom centre of the viewport (the Zcom AI bar, round 2 G3). Receives `hidden`,
+   * true while the user scrolls down (the slot slides it away). Pages get 112px bottom padding so it never covers
+   * save bars, the last row or the pagination. Return null to hide it on a page (Inbox, editors, own composer).
    */
   floating?: (hidden: boolean) => ReactNode;
   children: ReactNode;
@@ -72,8 +80,95 @@ const HOVER_CLOSE_MS = 240;
 /** Portalled layers opened from the menu (account menu, notifications drawer) keep the overlay open. */
 const LAYER_SELECTOR = '[role="menu"], [role="dialog"]:not(.zc-rail-overlay), [role="alertdialog"], [role="listbox"]';
 
+/** Back/Forward: keep trying to restore the saved position for this many frames while the page loads its content. */
+const RESTORE_MAX_FRAMES = 60;
+
 const sidebarProps = (node: ReactNode): Partial<SidebarProps> | undefined =>
   isValidElement<Partial<SidebarProps>>(node) ? node.props : undefined;
+
+/**
+ * Round 2 G9: the app scrolls inside `main`, so the router's own restoration never touches it. A PUSH or REPLACE
+ * that changes the pathname scrolls to the top; a POP (Back/Forward) restores the position saved for that history
+ * entry (`location.key`), retrying for a few frames while lazy pages and data fill in. Hash- and query-only
+ * changes leave the scroll alone. Returns the scroll handler that records the current entry's position.
+ */
+function useMainScrollRestoration(mainRef: { current: HTMLElement | null }) {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  const positions = useRef(new Map<string, number>());
+  const currentKey = useRef(location.key);
+  const lastPath = useRef(location.pathname);
+
+  // A fresh load or reload always opens at the top: turn off the browser's own restoration (it would put the
+  // page back mid-scroll), then hold the top for a few frames while the lazy page and its data fill in.
+  useLayoutEffect(() => {
+    if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+    const main = mainRef.current;
+    let frame = 0;
+    let handle = 0;
+    const toTop = () => {
+      window.scrollTo(0, 0);
+      if (main) main.scrollTop = 0;
+      frame += 1;
+      if (frame < RESTORE_MAX_FRAMES) handle = window.requestAnimationFrame(toTop);
+    };
+    toTop();
+    const stop = () => window.cancelAnimationFrame(handle);
+    main?.addEventListener("wheel", stop, { passive: true, once: true });
+    main?.addEventListener("touchstart", stop, { passive: true, once: true });
+    main?.addEventListener("keydown", stop, { once: true });
+    return () => {
+      stop();
+      main?.removeEventListener("wheel", stop);
+      main?.removeEventListener("touchstart", stop);
+      main?.removeEventListener("keydown", stop);
+    };
+    // Once per page load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useLayoutEffect(() => {
+    const main = mainRef.current;
+    const pathChanged = location.pathname !== lastPath.current;
+    currentKey.current = location.key;
+    lastPath.current = location.pathname;
+    if (!main) return undefined;
+    if (navigationType !== "POP") {
+      if (pathChanged) main.scrollTop = 0;
+      return undefined;
+    }
+    const saved = positions.current.get(location.key);
+    if (saved == null) {
+      if (pathChanged) main.scrollTop = 0;
+      return undefined;
+    }
+    let frame = 0;
+    let handle = 0;
+    const restore = () => {
+      main.scrollTop = saved;
+      frame += 1;
+      if (Math.abs(main.scrollTop - saved) > 1 && frame < RESTORE_MAX_FRAMES) handle = window.requestAnimationFrame(restore);
+    };
+    restore();
+    // A wheel, touch or key press means the user took over: stop restoring.
+    const stop = () => window.cancelAnimationFrame(handle);
+    main.addEventListener("wheel", stop, { passive: true, once: true });
+    main.addEventListener("touchstart", stop, { passive: true, once: true });
+    main.addEventListener("keydown", stop, { once: true });
+    return () => {
+      stop();
+      main.removeEventListener("wheel", stop);
+      main.removeEventListener("touchstart", stop);
+      main.removeEventListener("keydown", stop);
+    };
+    // Runs once per history entry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
+
+  return useCallback((top: number) => {
+    positions.current.set(currentKey.current, top);
+  }, []);
+}
 
 export function AppShell({
   sidebar,
@@ -92,7 +187,12 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const [floatingHidden, setFloatingHidden] = useState(false);
+  // Round 2 §8.2: the phone top bar turns white 92% with a 1px line once the page scrolls under it.
+  const [scrolled, setScrolled] = useState(false);
   const lastScroll = useRef(0);
+  const mainRef = useRef<HTMLElement>(null);
+  const recordScroll = useMainScrollRestoration(mainRef);
+  const menuDrawerMotion = usePresetMotion("drawer-left");
   const sidebarRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const hoverTimer = useRef<number | undefined>(undefined);
@@ -230,7 +330,7 @@ export function AppShell({
       }
     : {};
 
-  return (
+  const shell = (
     <div className="flex h-dvh flex-col overflow-hidden bg-page">
       <a
         href="#main-content"
@@ -275,7 +375,12 @@ export function AppShell({
         ) : null}
         <div className="relative flex min-w-0 flex-1 flex-col">
           {isPhone && drawerSidebar ? (
-            <header className="sticky top-0 z-[var(--zc-z-sidebar)] flex h-[var(--zc-topbar-h-mobile)] shrink-0 items-center gap-1 bg-topbar pl-2 pr-1">
+            <header
+              className={cx(
+                "zc-topbar sticky top-0 z-[var(--zc-z-sidebar)] flex shrink-0 items-center gap-1 pl-2 pr-1",
+                scrolled && "is-scrolled",
+              )}
+            >
               <div className="flex min-w-0 flex-1 items-center">
                 {store ? (
                   <StoreSwitcher store={store} className="min-h-11" />
@@ -306,30 +411,30 @@ export function AppShell({
           ) : null}
           {/* The scrollbar's space is always kept, so a page that starts or stops scrolling doesn't shift sideways. */}
           <main
+            ref={mainRef}
             id="main-content"
             tabIndex={-1}
             className={cx(
               "zc-main custom-scroll relative min-h-0 flex-1 overflow-y-auto outline-none [scrollbar-gutter:stable]",
               contentClassName,
             )}
-            onScroll={
-              floating
-                ? (event) => {
-                    const top = event.currentTarget.scrollTop;
-                    // Hide while scrolling down, show again on scroll up or at the end of the page (02 §6).
-                    const atEnd = top + event.currentTarget.clientHeight >= event.currentTarget.scrollHeight - 8;
-                    if (atEnd) setFloatingHidden(false);
-                    else if (Math.abs(top - lastScroll.current) > 8) setFloatingHidden(top > lastScroll.current && top > 80);
-                    lastScroll.current = top;
-                  }
-                : undefined
-            }
+            onScroll={(event) => {
+              const top = event.currentTarget.scrollTop;
+              recordScroll(top);
+              if (isPhone) setScrolled(top > 4);
+              if (!floating) return;
+              // Hide while scrolling down, show again on scroll up or at the end of the page (02 §6).
+              const atEnd = top + event.currentTarget.clientHeight >= event.currentTarget.scrollHeight - 8;
+              if (atEnd) setFloatingHidden(false);
+              else if (Math.abs(top - lastScroll.current) > 8) setFloatingHidden(top > lastScroll.current && top > 80);
+              lastScroll.current = top;
+            }}
           >
             {banner}
             <div
               className={cx(
                 "zc-page mx-auto w-full max-w-content-wide px-4 pt-4 md:px-6 md:pt-6 lg:px-8 lg:pt-7",
-                // v2 §3.3: 120px under the content so the Zcom AI bar never hides the last row or the pagination.
+                // Round 2 G3: 112px under the content so the Zcom AI bar never hides the last row or the pagination.
                 floating ? "pb-ask-clearance" : "pb-16",
               )}
             >
@@ -337,9 +442,8 @@ export function AppShell({
             </div>
           </main>
           {floating ? (
-            <div className="zc-askbar-slot pointer-events-none absolute inset-x-0 bottom-4 z-[var(--zc-z-ask)] flex justify-center px-4 md:bottom-[var(--zc-ask-bottom)]">
-              <div className="w-full max-w-[var(--zc-ask-w)]">{floating(floatingHidden)}</div>
-            </div>
+            // Round 2 G3: fixed and centred on the whole viewport (`.zc-askbar-slot`), not on the content column.
+            <div className={cx("zc-askbar-slot", floatingHidden && "is-hidden")}>{floating(floatingHidden)}</div>
           ) : null}
         </div>
       </div>
@@ -349,12 +453,7 @@ export function AppShell({
           onOpenChange={onDrawerOpenChange}
           placement="left"
           hideCloseButton
-          motionProps={{
-            variants: {
-              enter: { x: 0, transition: { duration: 0.32, ease: [0, 0, 0.2, 1] } },
-              exit: { x: "-100%", transition: { duration: 0.22, ease: [0.4, 0, 1, 1] } },
-            },
-          }}
+          motionProps={menuDrawerMotion}
           classNames={{
             base: "h-dvh max-h-dvh w-[var(--zc-sidebar-drawer-w)] max-w-[var(--zc-sidebar-drawer-w)] rounded-none bg-nav",
             backdrop: "zc-drawer-backdrop",
@@ -367,6 +466,8 @@ export function AppShell({
       ) : null}
     </div>
   );
+
+  return <MotionConfig reducedMotion="user">{shell}</MotionConfig>;
 }
 
 const SHORTCUTS: { keys: string[]; label: string }[] = [

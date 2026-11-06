@@ -146,7 +146,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
         </Dropdown>
       </div>
 
-      <Modal isOpen={dialog === "payment"} onClose={closeDialog} width="sm">
+      <Modal isOpen={dialog === "payment"} onClose={closeDialog} size="md">
         <ModalContent>
           <ModalHeader>
             <PopupTitle icon={<IconPayments aria-hidden />}>Record payment for {row.transactionId}</PopupTitle>
@@ -185,7 +185,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={dialog === "coupon"} onClose={closeDialog} width="sm">
+      <Modal isOpen={dialog === "coupon"} onClose={closeDialog} size="md">
         <ModalContent>
           <ModalHeader>
             <PopupTitle icon={<IconTicketPercent aria-hidden />}>Apply a discount code</PopupTitle>
@@ -208,7 +208,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
 
       {/* Void (PRD-025 FR-4.4): a form like the two above, because the void reason is required and the
           action stays disabled until one is chosen. */}
-      <Modal isOpen={dialog === "void"} onClose={closeDialog} width="sm">
+      <Modal isOpen={dialog === "void"} onClose={closeDialog} size="sm">
         <ModalContent>
           <ModalHeader>
             <PopupTitle icon={<IconXCircle aria-hidden />} tone="danger">Void invoice {row.transactionId}?</PopupTitle>
@@ -249,7 +249,7 @@ export function InvoiceRowActions({ row, onChanged }: InvoiceRowActionsProps) {
           </ModalBody>
           <ModalFooter>
             <UiButton variant="secondary" onPress={closeDialog} isDisabled={busy}>Cancel</UiButton>
-            <UiButton variant="destructive" isLoading={busy} isDisabled={busy || !voidReason} onPress={runVoid}>
+            <UiButton variant="danger" isLoading={busy} isDisabled={busy || !voidReason} onPress={runVoid}>
               Void invoice
             </UiButton>
           </ModalFooter>

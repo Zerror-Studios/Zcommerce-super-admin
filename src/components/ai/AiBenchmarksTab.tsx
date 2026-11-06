@@ -159,7 +159,7 @@ export function AiBenchmarksTab({ tabs, exportRef }: AiTabProps) {
             title="No benchmarks yet"
             description={
               minStores != null
-                ? `A metric appears once at least ${formatCount(minStores)} stores have data for it, so no store can be identified. The minimum is in Settings › ZCOM AI settings.`
+                ? `A metric appears once at least ${formatCount(minStores)} stores have data for it, so no store can be identified. The minimum is in Settings › Zcom AI settings.`
                 : "A metric appears once enough stores have data for it, so no store can be identified."
             }
           />

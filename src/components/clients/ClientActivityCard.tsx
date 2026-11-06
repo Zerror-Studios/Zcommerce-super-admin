@@ -13,8 +13,8 @@
  * - `variant="compact"` (Overview, board 60): the latest five, the date
  *   and time on the left, with an "Activity log" link to the tab.
  *
- * Readable action names wait for Check first 05 #19, so the action is the
- * live event code.
+ * Round 2 §6.1: each row is a sentence ("Mehak opened Kesar & Kin as
+ * admin", `lib/activity-sentences.util`), never the event code.
  */
 
 import { useQuery } from "@apollo/client";
@@ -30,6 +30,9 @@ import {
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { activityIconKey, type ActivityIconKey } from "../../lib/sa-home.util";
 import { useAuth } from "../../providers/AuthProvider";
+import { useClients } from "../../providers/ClientsProvider";
+import { describeActivity } from "../../lib/activity-sentences.util";
+import { ActivitySentence } from "../insights/home/activity-parts";
 import {
   Button as UiButton,
   ButtonLink,
@@ -51,6 +54,8 @@ import {
   formatCount,
   formatDate,
   formatDateTime,
+  formatDayTime,
+  formatTime,
 } from "../ui";
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -60,6 +65,8 @@ interface ActivityRow {
   actorEmail: string;
   action: string;
   targetType: string;
+  targetId: string | null;
+  after?: string | null;
   at: string;
 }
 
@@ -115,8 +122,6 @@ const ICONS: Record<ActivityIconKey, ComponentType<{ "aria-hidden"?: boolean }>>
 
 const COMPACT_ROWS = 5;
 
-const timeFormat = new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-
 /** "Today", "Yesterday", else "2 Nov". */
 function dayLabel(date: Date, now: Date): string {
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -144,13 +149,16 @@ function groupByDay(rows: ActivityRow[], now: Date): DayGroup[] {
 
 const timeOf = (at: string) => {
   const date = new Date(at);
-  return Number.isNaN(date.getTime()) ? "—" : timeFormat.format(date);
+  return Number.isNaN(date.getTime()) ? "—" : formatTime(date);
 };
 
 // ─── Component ────────────────────────────────────────────────────────────
 
 export function ClientActivityCard({ tenantId, variant = "full", logHref }: ClientActivityCardProps) {
-  const { can } = useAuth();
+  const { can, user } = useAuth();
+  const { getClient } = useClients();
+  const sentence = (row: ActivityRow) =>
+    describeActivity(row, { storeName: (id) => getClient(id)?.storeName, viewerEmail: user?.email });
   const canReadAudit = can(PLATFORM_PERMISSIONS.AUDIT_READ);
   const compact = variant === "compact";
   const [limit, setLimit] = useState(compact ? COMPACT_ROWS : STORE_ACTIVITY_PAGE_SIZE);
@@ -208,7 +216,7 @@ export function ClientActivityCard({ tenantId, variant = "full", logHref }: Clie
         padding="none"
         actions={
           logHref ? (
-            <ButtonLink variant="tertiary" size="sm" to={logHref}>
+            <ButtonLink variant="ghost" size="sm" to={logHref}>
               Activity log
             </ButtonLink>
           ) : undefined
@@ -217,14 +225,13 @@ export function ClientActivityCard({ tenantId, variant = "full", logHref }: Clie
         {body ?? (
           <ul className="flex flex-col px-5 pb-4">
             {rows.slice(0, COMPACT_ROWS).map((row) => {
-              const date = new Date(row.at);
-              const when = Number.isNaN(date.getTime()) ? "—" : `${dayLabel(date, new Date())} ${timeOf(row.at)}`;
+              // Board 60: "Today 10:42 AM", "Yesterday", "2 Nov" (round 2 G13).
+              const when = formatDayTime(row.at);
               return (
                 <li key={row.id} className="flex min-w-0 items-baseline gap-4 py-1.5 text-body">
                   <span className="w-28 shrink-0 text-label text-fg-muted num">{when}</span>
-                  <span className="min-w-0 flex-1 text-fg max-md:line-clamp-2 md:truncate">
-                    <span className="font-medium">{row.action}</span>
-                    <span className="text-fg-muted"> · {row.actorEmail}</span>
+                  <span className="min-w-0 flex-1 max-md:line-clamp-2 md:truncate" title={row.actorEmail}>
+                    <ActivitySentence segments={sentence(row)} linkStores={false} />
                   </span>
                 </li>
               );
@@ -271,7 +278,7 @@ export function ClientActivityCard({ tenantId, variant = "full", logHref }: Clie
                         </IconTile>
                         {/* Phone (v2 §10): two lines, so who and what both show. */}
                         <p className="min-w-0 flex-1 text-body text-fg max-md:line-clamp-2 md:truncate" title={formatDateTime(row.at)}>
-                          <span className="font-medium">{row.actorEmail}</span> <span className="text-fg-muted">{row.action}</span>
+                          <ActivitySentence segments={sentence(row)} linkStores={false} />
                         </p>
                         <span className="hidden w-24 shrink-0 text-body text-fg-muted sm:block">{AREA_LABELS[AREA_OF[key]]}</span>
                       </li>

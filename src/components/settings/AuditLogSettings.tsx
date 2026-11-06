@@ -19,9 +19,6 @@ import {
   Card,
   DataTable,
   Drawer,
-  DrawerBody,
-  DrawerContent,
-  DrawerHeader,
   EmptyState,
   ErrorState,
   FilterDrawer,
@@ -64,7 +61,7 @@ const AREAS = [
   { value: "tenant.", label: "Stores" },
   { value: "plan.", label: "Plans" },
   { value: "coupon.", label: "Discounts" },
-  { value: "ai.", label: "ZCOM AI" },
+  { value: "ai.", label: "Zcom AI" },
   { value: "user.", label: "Team" },
   { value: "auth.", label: "Sign-in" },
   { value: "settings.", label: "Settings" },
@@ -268,11 +265,8 @@ export function AuditLogSettings() {
         onClear={() => table.clearFilters()}
       />
 
-      <Drawer isOpen={viewing != null} onOpenChange={(open) => !open && setViewing(null)} size="sm">
-        <DrawerContent>
-          <DrawerHeader>Audit entry</DrawerHeader>
-          <DrawerBody>{viewing ? <EntryDetails entry={viewing} storeName={targetName(viewing)} onCopy={() => copyEntry(viewing)} /> : null}</DrawerBody>
-        </DrawerContent>
+      <Drawer isOpen={viewing != null} onOpenChange={(open) => !open && setViewing(null)} size="sm" title="Audit entry">
+        {viewing ? <EntryDetails entry={viewing} storeName={targetName(viewing)} onCopy={() => copyEntry(viewing)} /> : null}
       </Drawer>
     </div>
   );

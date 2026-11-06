@@ -28,7 +28,7 @@ export const ROLE_AREAS: Area[] = [
   { key: "stores", label: "Stores and logging in", edit: [P.TENANTS_MANAGE], view: [P.TENANTS_READ] },
   { key: "billing", label: "Subscriptions and billing", edit: [P.BILLING_MANAGE], view: [P.BILLING_READ] },
   { key: "plans", label: "Plans and discounts", edit: [P.PLANS_MANAGE, P.COUPONS_MANAGE], view: [P.PLANS_READ] },
-  { key: "ai", label: "ZCOM AI", edit: [P.AI_MANAGE], view: [P.AI_READ] },
+  { key: "ai", label: "Zcom AI", edit: [P.AI_MANAGE], view: [P.AI_READ] },
   // Every role can open Settings; only settings:manage changes the platform rules.
   { key: "settings", label: "Settings", edit: [P.SETTINGS_MANAGE], view: "everyone" },
   // The member list itself needs users:manage.

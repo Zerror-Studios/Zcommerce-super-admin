@@ -69,7 +69,7 @@ export function EmptyState({
         <div className="mt-4">{action}</div>
       ) : noResults && onClearFilters ? (
         <div className="mt-4">
-          <Button variant="tertiary" onPress={onClearFilters}>
+          <Button variant="ghost" onPress={onClearFilters}>
             Clear filters
           </Button>
         </div>

@@ -6,9 +6,9 @@
  * "Store, owner or domain", filter, sort) → the table: Store (name + status line), Owner, Plan, Health,
  * Sales · 30d, Orders, Billing, Last active; Lifecycle, Risk, Monthly fee and Renewal under Choose columns.
  *
- * The row chevron (or a click on the row) opens the row IN PLACE (StoreRowDetail: sales, store numbers, apps,
- * what to do); the store name goes into the store. Every row action stays in the row's ⋯ menu. Under 768px the
- * rows are cards that open the store (§10).
+ * Round 2 G18 / §6.2: a click anywhere on the row opens the store; the row ends in › only, and the ⋯ menu shows
+ * on row hover (or focus). The in-place look (StoreRowDetail: sales, store numbers, apps, what to do) is the
+ * ⋯ menu's "Quick look". Under 768px the rows are cards that open the store (§10).
  *
  * Today's tabs, saved views and filters are all kept (stores-tabs.util.ts): Trial and Unpaid are At risk slices,
  * Suspended is Paused, Deleted is behind the title ⋯, saved views are in the filter drawer. PRD-026 FR-3.4: the
@@ -50,7 +50,6 @@ import {
   DataTable,
   EmptyState,
   FilterDrawer,
-  IconButton,
   RowChevron,
   RowMenu,
   TablePagination,
@@ -73,7 +72,7 @@ import {
 } from "../../ui";
 import {
   IconAdd,
-  IconCaret,
+  IconView,
   IconColumns,
   IconDelete,
   IconDownload,
@@ -171,8 +170,8 @@ const columns: DataTableColumn[] = [
   { key: "risk", label: "Risk", width: 80, hideWhen: "narrow" },
   { key: "fee", label: "Monthly fee", width: 110, hideWhen: "narrow", sortable: true },
   { key: "renewalDate", label: "Renewal", width: 120, hideWhen: "narrow", sortable: true },
-  // The row end (§4.4): the ⋯ menu, then the chevron that opens the row in place.
-  { key: OPEN_KEY, label: "Open the row", hideLabel: true, width: 136, mobile: "hide" },
+  // The row end (G18): ⋯ on hover, then › into the store.
+  { key: OPEN_KEY, label: "Open the store", hideLabel: true, width: 96, mobile: "hide" },
 ];
 
 const OPTIONAL_COLUMNS = columns.filter((column) => column.key !== "store" && column.key !== OPEN_KEY);
@@ -265,6 +264,21 @@ function useIsPhone(): boolean {
 }
 
 /** "Live · no products yet", "In setup · joined Oct 2026", else the status and the domain. */
+/**
+ * The Owner cell: name and email, "Invited" with the email before the owner joins, "No owner yet" without either.
+ * PRD-036 round 2 gaps: `ownerJoined` (invite accepted) decides when known; before the first snapshot that has it,
+ * an owner with an email but no name still reads "Invited".
+ */
+function ownerCell(client: Pick<Client, "ownerName" | "ownerEmail" | "ownerJoined">): { name: string; email: string | null; invited: boolean } {
+  const known = (value: string | undefined) => (value && value.trim() && value.trim() !== "—" ? value.trim() : null);
+  const name = known(client.ownerName);
+  const email = known(client.ownerEmail);
+  if (email && client.ownerJoined === false) return { name: "Invited", email, invited: true };
+  if (name) return { name, email, invited: false };
+  if (email) return { name: "Invited", email, invited: true };
+  return { name: "No owner yet", email: null, invited: false };
+}
+
 function storeLine(client: Client): string {
   const status = storeStatusBadge(client).label;
   if (isInSetup(client)) {
@@ -723,7 +737,15 @@ export function StoresTable({ clients, isLoading = false, renderHeader, beforeTa
   const rowActions = (row: Row): RowMenuItem[] => {
     const { client } = row;
     const suspended = storeLifecycleKey(client) === storeLifecycleEnum.SUSPENDED;
-    const items: RowMenuItem[] = [];
+    const items: RowMenuItem[] = [
+      // Round 2 G18: the caret is gone; the in-place look moved here.
+      {
+        key: "peek",
+        label: openId === client.id ? "Close quick look" : "Quick look",
+        icon: IconView,
+        onSelect: () => toggleRow(client.id),
+      },
+    ];
     if (canImpersonate) {
       items.push({ key: "login", label: "Log in to store", icon: IconLogin, onSelect: () => void logInToStore(client) });
     }
@@ -833,13 +855,16 @@ export function StoresTable({ clients, isLoading = false, renderHeader, beforeTa
             </div>
           </div>
         );
-      case "owner":
+      case "owner": {
+        // Round 2 §6.2: never "—" over "—"; "Invited" until the owner accepts (owner.joined, PRD-036 round 2 gaps).
+        const owner = ownerCell(client);
         return (
           <div className="min-w-0">
-            <p className="truncate text-body text-fg">{client.ownerName || "—"}</p>
-            <p className="truncate text-label text-fg-muted">{client.ownerEmail}</p>
+            <p className={cx("truncate text-body", owner.invited || !owner.email ? "text-fg-muted" : "text-fg")}>{owner.name}</p>
+            {owner.email ? <p className="truncate text-label text-fg-muted">{owner.email}</p> : null}
           </div>
         );
+      }
       case "plan":
         return <Chip tone="neutral">{planShortName(client)}</Chip>;
       case "lifecycle": {
@@ -894,19 +919,17 @@ export function StoresTable({ clients, isLoading = false, renderHeader, beforeTa
         const open = openId === client.id;
         return (
           <div className="flex items-center justify-end gap-1">
-            <RowMenu items={rowActions(item)} label={`Actions for ${client.storeName}`} />
-            <IconButton
-              aria-label={open ? `Close ${client.storeName}` : `Open ${client.storeName} here`}
-              aria-expanded={open}
-              variant="default"
-              size="sm"
-              showTooltip={false}
-              className={cx(open && "zc-icon-btn--active")}
-              onPress={() => toggleRow(client.id)}
+            {/* G18: ⋯ only on row hover or keyboard focus (always on touch screens and while its look is open). */}
+            <span
+              className={cx(
+                "transition-opacity duration-fast",
+                !open && "opacity-0 focus-within:opacity-100 [tr:hover_&]:opacity-100 [@media(hover:none)]:opacity-100",
+              )}
+              onPointerDown={(event) => event.stopPropagation()}
             >
-              <IconCaret aria-hidden className={cx("transition-transform duration-fast", open && "rotate-180")} />
-            </IconButton>
-            {/* Board 59: the caret opens the row here, the chevron goes into the store. */}
+              <RowMenu items={rowActions(item)} label={`Actions for ${client.storeName}`} />
+            </span>
+            {/* G18: › at the row end; the whole row opens the store too. */}
             <Link
               to={`/stores/${client.id}/overview`}
               aria-label={`Go to ${client.storeName}`}
@@ -1081,11 +1104,10 @@ export function StoresTable({ clients, isLoading = false, renderHeader, beforeTa
           sort={url.sort}
           onSortChange={url.setSort}
           rowChevron={false}
-          // Desktop: the row opens in place; phone: the card opens the store (§10).
+          // Round 2 G18: the whole row opens the store (desktop and phone).
           onRowAction={(item) => {
             if (isDetailRow(item)) return;
-            if (isPhone) navigate(`/stores/${item.client.id}/overview`);
-            else toggleRow(item.client.id);
+            navigate(`/stores/${item.client.id}/overview`);
           }}
           rowActions={isPhone ? (item) => (isDetailRow(item) ? [] : rowActions(item)) : undefined}
           rowActionsLabel={(item) => `Actions for ${isDetailRow(item) ? item.detailOf.client.storeName : item.client.storeName}`}

@@ -135,7 +135,7 @@ export function PlanEditorModal({ isOpen, onClose, plan, tenantId = null, tenant
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} width="lg">
+    <Modal isOpen={isOpen} onClose={onClose} size="lg">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={<IconPlans aria-hidden />}>
@@ -350,8 +350,8 @@ export function PlanEditorModal({ isOpen, onClose, plan, tenantId = null, tenant
             )}
 
             {/* ZCOM AI: in place, never a new version (PRD-017 D14). */}
-            <section className="flex flex-col gap-3" aria-label="ZCOM AI">
-              <h3 className="text-label font-semibold text-fg-muted">ZCOM AI</h3>
+            <section className="flex flex-col gap-3" aria-label="Zcom AI">
+              <h3 className="text-label font-semibold text-fg-muted">Zcom AI</h3>
               <p className="text-caption text-fg-muted">
                 {editing && storesOnVersion > 0
                   ? `Changes here apply to the ${storesOnVersion} ${storesOnVersion === 1 ? "store" : "stores"} on this version within a few minutes, without a new version.`
@@ -363,7 +363,7 @@ export function PlanEditorModal({ isOpen, onClose, plan, tenantId = null, tenant
                   isSelected={draft.features.aiEnabled}
                   onValueChange={(aiEnabled) => set({ features: { ...draft.features, aiEnabled } })}
                 >
-                  Ask ZCOM and AI insights
+                  Ask Zcom and AI insights
                 </Switch>
                 <Switch
                   isSelected={draft.features.aiDailySummary}

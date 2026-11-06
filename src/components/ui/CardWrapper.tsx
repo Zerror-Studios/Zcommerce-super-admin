@@ -27,8 +27,11 @@ export interface CardWrapperProps {
   info?: ReactNode;
 }
 
-/** Card frame shared by every card in both dashboards (docs/design/02-components.md §4): white, 1px border, 12px radius, no shadow. */
-export const cardFrameClasses = "bg-surface border border-line rounded-card";
+/**
+ * Card frame shared by every small card in both dashboards: white, 1px border, 18px radius (small card), no shadow.
+ * Clips its content (round 2 G5) so row hovers keep the corners; `overflow-clip` keeps sticky children working.
+ */
+export const cardFrameClasses = "bg-surface border border-line rounded-card overflow-clip";
 
 /**
  * Titled card: header (16px 20px) with a 14/600 title, optional description, switch, info tooltip and

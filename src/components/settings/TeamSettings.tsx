@@ -277,7 +277,7 @@ export function TeamSettings() {
         <RolesMatrixCard />
       </div>
 
-      <Modal isOpen={createOpen} onClose={() => { onCreateOpenChange(false); setSetupUrl(null); }} width="sm">
+      <Modal isOpen={createOpen} onClose={() => { onCreateOpenChange(false); setSetupUrl(null); }} size="md">
         <ModalContent>
           <ModalHeader>
             <PopupTitle icon={setupUrl ? <IconLink aria-hidden /> : <IconAddUser aria-hidden />}>{setupUrl ? "Invite link" : "Invite a team member"}</PopupTitle>
@@ -327,7 +327,7 @@ export function TeamSettings() {
         confirmColor="danger"
       />
 
-      <Modal isOpen={roleTarget != null} onClose={() => setRoleTarget(null)} width="sm">
+      <Modal isOpen={roleTarget != null} onClose={() => setRoleTarget(null)} size="md">
         <ModalContent>
           <ModalHeader>
             <PopupTitle icon={<IconUser aria-hidden />}>Change role for {roleTarget?.email}</PopupTitle>

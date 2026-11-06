@@ -7,6 +7,7 @@
  * yet, nothing today, bullets, written on an earlier day).
  */
 
+import { formatDate } from "../components/ui/format-date";
 import { istToday } from "./platform-insights.util";
 import type {
   PlatformAttention,
@@ -23,7 +24,7 @@ export type SummaryState =
   | {
       kind: "bullets";
       fromDate: string | null;
-      items: { text: string; storeIds: string[]; metricKeys: string[] }[];
+      items: { text: string; storeIds: string[]; metricKeys: string[]; rule?: string | null }[];
     };
 
 export interface ThisMonthCell {
@@ -106,7 +107,12 @@ export function bulletStoreLinks(
   }));
 }
 
-/** "Planned go-live 2026-11-15" as the server wrote it, else "—". */
-export function developmentDetail(row: PlatformMetricsStoreRow): string {
-  return row.detail?.trim() || "No go-live date planned";
+/** The server's detail ("Planned go-live 2026-11-15") with any ISO date written "15 Nov" (round 2 G13). */
+export function developmentDetail(row: PlatformMetricsStoreRow, now: Date = new Date()): string {
+  const detail = row.detail?.trim();
+  if (!detail) return "No go-live date planned";
+  return detail.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (match, y, m, d) => {
+    const date = new Date(Number(y), Number(m) - 1, Number(d));
+    return Number.isNaN(date.getTime()) ? match : formatDate(date, now);
+  });
 }

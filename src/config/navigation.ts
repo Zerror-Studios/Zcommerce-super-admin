@@ -1,6 +1,6 @@
 import type { NavItem } from "../components/layout/types";
 import { PLATFORM_PERMISSIONS, type PlatformPermission } from "../lib/permissions";
-import { IconAnalytics, IconHome, IconPayments, IconSettings, IconStore } from "../components/ui/icons";
+import { IconAnalytics, IconHome, IconPayments, IconSettings, IconStore, IconStoreHealth, IconSupport } from "../components/ui/icons";
 
 /**
  * The black menu (docs/design-v2/README.md §3.1, 5 Nov 2026): Home, Stores, Billing, Analytics ▸ (Revenue, Stores,
@@ -9,13 +9,23 @@ import { IconAnalytics, IconHome, IconPayments, IconSettings, IconStore } from "
  * System is the Performance tab. Counts: Stores a plain grey total, Billing an orange pill (owed now or due within 7
  * days), Analytics a blue pill (open AI top-up requests); DashboardLayout fills them in.
  *
- * Not in the menu yet (no page or data; listed in the Phase 0 audit): Support ▸ (Tickets, Announcements, Guides &
- * videos) and System health. Billing is one page today, so it has no sub-items until §7 adds them.
+ * Round 2 §4 (PRD-036 R2-8/R2-9, 2026-11-06): Support ▸ (Tickets, Announcements, Guides & videos) after Billing and
+ * System health after Analytics. Billing is one page today, so it has no sub-items until §7 adds them.
  */
 export const mainNavItems: NavItem[] = [
   { key: "home", label: "Home", to: "/", end: true, icon: IconHome },
   { key: "stores", label: "Stores", to: "/stores", icon: IconStore, countTone: "plain" },
   { key: "subscriptions", label: "Billing", to: "/subscriptions", icon: IconPayments, countTone: "orange" },
+  {
+    key: "support",
+    label: "Support",
+    icon: IconSupport,
+    children: [
+      { to: "/support/tickets", label: "Tickets" },
+      { to: "/support/announcements", label: "Announcements" },
+      { to: "/support/guides", label: "Guides & videos" },
+    ],
+  },
   {
     key: "analytics",
     label: "Analytics",
@@ -29,6 +39,7 @@ export const mainNavItems: NavItem[] = [
       { to: "/analytics/performance", label: "System" },
     ],
   },
+  { key: "system-health", label: "System health", to: "/system-health", icon: IconStoreHealth },
 ];
 
 /** Settings: at the bottom of the menu, after Notifications (v2 §3.1). A single link to the settings shell. */
@@ -42,7 +53,7 @@ export const settingsPages = [
   { label: "Plans & pricing", to: "/settings/plans" },
   { label: "Discounts", to: "/settings/discounts" },
   { label: "Payments & billing rules", to: "/settings/billing" },
-  { label: "ZCOM AI settings", to: "/settings/ai" },
+  { label: "Zcom AI settings", to: "/settings/ai" },
   { label: "Audit log", to: "/settings/audit" },
 ];
 

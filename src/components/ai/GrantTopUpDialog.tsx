@@ -93,7 +93,7 @@ function GrantTopUpForm({
   };
 
   return (
-    <Modal isOpen onClose={onClose} width="sm">
+    <Modal isOpen onClose={onClose} size="md">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={<IconGift aria-hidden />}>Grant AI questions to {store.name}</PopupTitle>

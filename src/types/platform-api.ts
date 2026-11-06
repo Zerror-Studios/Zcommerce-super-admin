@@ -330,6 +330,8 @@ export interface TenantUsage {
   messagesThisMonth?: number | null;
   /** PRD-025 FR-5.2: the store-health block; null on snapshots from before PRD-025. */
   health?: TenantHealth | null;
+  /** PRD-036 round 2 gaps: customer profiles; null until a snapshot has counted them. */
+  customers?: number | null;
 }
 
 // ─── Store health (PRD-025 FR-5) ──────────────────────────────────────────
@@ -450,7 +452,10 @@ export interface PlatformTenant {
   status: PlatformTenantStatus;
   timezone: string | null;
   currency: string | null;
-  owner: { name: string | null; email: string | null; phone: string | null };
+  /** `joined` (PRD-036 round 2 gaps): the owner accepted the invite; null until the nightly snapshot collects it. */
+  owner: { name: string | null; email: string | null; phone: string | null; joined?: boolean | null };
+  /** PRD-036 round 2 gaps: the business (legal / invoice) name given at creation; null when none. */
+  legalName?: string | null;
   billing: { contactEmail: string | null; gstin: string | null };
   onboarding: TenantOnboarding;
   gracePeriodDaysOverride: number | null;
@@ -460,6 +465,8 @@ export interface PlatformTenant {
   monthlyFee: number;
   healthScore: number;
   healthFactors: string[];
+  /** PRD-036 D11: what pulls the score down (setup, payment app, expired unpaid orders). */
+  healthIssues?: string[] | null;
   paymentState: TenantPaymentState;
   subscriptionHealth: TenantSubscriptionHealth;
   usage: TenantUsage | null;

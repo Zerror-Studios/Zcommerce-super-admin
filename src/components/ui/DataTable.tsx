@@ -12,7 +12,8 @@
  * - Rows are 60px (64px with `rowHeight="tall"`: a 40px thumbnail or two lines; v2 §4.4). Every column is left-aligned
  *   (money and dates too), with tabular figures.
  * - First load: 10 skeleton rows shaped like each column. Reloads keep the rows at 60% under a thin progress line.
- * - `rowActions(row)` adds the 56px ⋯ column (RowMenu). `hideWhen: "narrow"` columns (the low-priority ones: keep
+ * - `rowActions(row)` adds the 56px ⋯ column (RowMenu), shown on row hover / focus only (round 2 G18; always on
+ *   touch screens). `hideWhen: "narrow"` columns (the low-priority ones: keep
  *   the identifier, the key number, status and the chevron) hide when the measured card is narrower than the fixed
  *   widths + 200px (laptop and tablet, v2 §10); they stay in Choose columns.
  * - Under 768px (v2 §10) each row becomes a card: line 1 the identifier (`mobile: "primary"`, default the first
@@ -37,6 +38,7 @@ import { EmptyState } from "./EmptyState";
 import { IconCaret, IconCheck, IconNextPage } from "./icons";
 import { RowChevron, rowControlProps } from "./TableToolbar";
 import { RowMenu, type RowMenuItem } from "./RowMenu";
+import { RowActionSheet } from "./RowActionSheet";
 import { Skeleton } from "./Skeleton";
 import type { TableSort } from "./table-state";
 import {
@@ -109,6 +111,11 @@ export interface DataTableProps<T> {
   selectedKeys?: Selection;
   onSelectionChange?: (keys: Selection) => void;
   onRowAction?: (row: T) => void;
+  /**
+   * Round 2 §2 prefetch: called once per row when the pointer first rests on it (laptop/desktop), so the page can
+   * warm the detail query (Apollo cache-first) before the click.
+   */
+  onRowPrefetch?: (row: T) => void;
   /** The ⋯ menu for each row (adds the 56px actions column). */
   rowActions?: (row: T) => RowMenuItem[];
   /** "Actions for #1042": names each row's ⋯ button. */
@@ -153,6 +160,9 @@ const CHECKBOX_WIDTH = 44;
 const FLEX_MIN_WIDTH = 200;
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP_PX = 10;
+/** Phone card swipe left (round 2 §8.4): this far left, and no further than SWIPE_SLOP_PX up or down. */
+const SWIPE_LEFT_PX = 48;
+const SWIPE_SLOP_PX = 24;
 
 /** LEGACY: 8 skeleton rows for lists that aren't a DataTable yet. */
 export function TableSkeletonRows({ rows = 8 }: { rows?: number }) {
@@ -201,6 +211,13 @@ function CellSkeleton({ shape, index, actions }: { shape?: DataTableColumn["skel
   return <Skeleton className={cx("h-3 min-w-10 rounded-md", SKELETON_WIDTHS[index % SKELETON_WIDTHS.length])} />;
 }
 
+/** Room a cell may grow into before it ends in "…": 1.6× a fixed column's width, 560px for the flexible name column. */
+const CELL_GROWTH = 1.6;
+const FLEX_CELL_MAX = 560;
+function cellMaxWidth(column?: { width?: number }): number {
+  return column?.width ? Math.round(column.width * CELL_GROWTH) : FLEX_CELL_MAX;
+}
+
 /** One-line cell text: ellipsis, full text in a tooltip. Names never wrap. */
 export function CellText({ children, className }: { children: ReactNode; className?: string }) {
   const text = typeof children === "string" || typeof children === "number" ? String(children) : undefined;
@@ -218,15 +235,18 @@ const toDescriptor = (sort?: TableSort): SortDescriptor | undefined =>
   sort ? { column: sort.column, direction: sort.direction === "asc" ? "ascending" : "descending" } : undefined;
 
 /**
- * Long press on a phone card (v2 §10: bulk select). Returns pointer handlers and `consumeClick`, true once right
- * after a long press so the click that follows doesn't also open the row.
+ * Long press and swipe left on a phone card (round 2 §8.4: they open the row's actions; a card without actions
+ * selects on a long press, v2 §10). Returns pointer handlers and `consumeClick`, true once right after a gesture
+ * so the click that follows doesn't also open the row.
  */
-function useLongPress(onLongPress: (key: string) => void) {
+function useLongPress(onLongPress: (key: string) => void, onSwipeLeft?: (key: string) => void) {
   const timer = useRef<number | undefined>(undefined);
   const start = useRef<{ x: number; y: number } | null>(null);
   const fired = useRef(false);
   const callback = useRef(onLongPress);
   callback.current = onLongPress;
+  const swipe = useRef(onSwipeLeft);
+  swipe.current = onSwipeLeft;
   const cancel = () => {
     window.clearTimeout(timer.current);
     start.current = null;
@@ -246,7 +266,16 @@ function useLongPress(onLongPress: (key: string) => void) {
     },
     onPointerMove: (event: PointerEvent) => {
       const origin = start.current;
-      if (origin && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > LONG_PRESS_SLOP_PX) cancel();
+      if (!origin) return;
+      const dx = event.clientX - origin.x;
+      const dy = event.clientY - origin.y;
+      if (swipe.current && dx < -SWIPE_LEFT_PX && Math.abs(dy) < SWIPE_SLOP_PX) {
+        cancel();
+        fired.current = true;
+        swipe.current(key);
+        return;
+      }
+      if (Math.abs(dy) > LONG_PRESS_SLOP_PX || (!swipe.current && Math.abs(dx) > LONG_PRESS_SLOP_PX)) cancel();
     },
     onPointerUp: cancel,
     onPointerCancel: cancel,
@@ -309,6 +338,7 @@ export function DataTable<T>({
   selectedKeys,
   onSelectionChange,
   onRowAction,
+  onRowPrefetch,
   rowActions,
   rowActionsLabel,
   rowHeight = "default",
@@ -338,7 +368,19 @@ export function DataTable<T>({
     else next.add(key);
     onSelectionChange(next);
   };
-  const longPress = useLongPress(toggleSelected);
+  // Rows already prefetched on hover (one detail read per row).
+  const prefetched = useRef(new Set<string>());
+  // Phone: the row whose actions show in the bottom sheet (long press or swipe left on its card).
+  const [actionKey, setActionKey] = useState<string | null>(null);
+  const longPress = useLongPress(
+    (key) => {
+      const row = rows.find((item) => getRowKey(item) === key);
+      const hasActions = !!row && (rowActions?.(row).some((item) => item.key !== "open") ?? false);
+      if (hasActions && !hasSelection) setActionKey(key);
+      else if (onSelectionChange) toggleSelected(key);
+    },
+    rowActions ? (key) => setActionKey(key) : undefined,
+  );
   const [sentinelRef, stuck] = useStuck(!scrollClassName);
   const selectable = !!onSelectionChange;
   const [ownExpanded, setOwnExpanded] = useState<ReadonlySet<string>>(() => new Set());
@@ -391,9 +433,12 @@ export function DataTable<T>({
   const hasSelection = selectedKeys === "all" || (selectedKeys instanceof Set && selectedKeys.size > 0);
   const byKey = new Map(rows.map((row) => [getRowKey(row), row]));
 
+  // Round 2 G18: the row ends with › only; ⋯ appears on row hover or keyboard focus (always on touch screens).
   const renderActions = (row: T) =>
     rowActions ? (
-      <RowMenu items={rowActions(row)} label={rowActionsLabel?.(row) ?? "More actions"} />
+      <span className="zc-row-actions">
+        <RowMenu items={rowActions(row)} label={rowActionsLabel?.(row) ?? "More actions"} />
+      </span>
     ) : null;
   const renderToggle = (row: T) => {
     if (!expandable(row)) return null;
@@ -445,9 +490,18 @@ export function DataTable<T>({
 
   const progress = isReloading ? (
     <div aria-hidden className="absolute inset-x-0 top-0 z-30 h-0.5 overflow-hidden">
-      <div className="h-full w-1/3 animate-pulse bg-brand" />
+      <div className="zc-dt-progress h-full w-1/3 bg-brand" />
     </div>
   ) : null;
+
+  const prefetchRow = (event: PointerEvent<HTMLDivElement>) => {
+    const key = event.target instanceof Element ? event.target.closest("tr[data-key]")?.getAttribute("data-key") : null;
+    if (!key || prefetched.current.has(key)) return;
+    const row = rows.find((item) => getRowKey(item) === key);
+    if (!row) return;
+    prefetched.current.add(key);
+    onRowPrefetch?.(row);
+  };
 
   const tableCard = (body: ReactNode) => (
     <div
@@ -457,6 +511,7 @@ export function DataTable<T>({
         className,
       )}
       aria-busy={isLoading || isReloading || undefined}
+      onPointerOver={onRowPrefetch ? prefetchRow : undefined}
     >
       {hasSelection && bulkBar ? bulkBar : null}
       {progress}
@@ -495,6 +550,12 @@ export function DataTable<T>({
             .slice(0, 3);
     const isSelected = (key: string) =>
       selectedKeys === "all" || (selectedKeys instanceof Set && selectedKeys.has(key));
+    const actionRow = actionKey != null ? rows.find((row) => getRowKey(row) === actionKey) ?? null : null;
+    // The sheet lists the row's actions; a selectable list adds "Select" first (long press used to select, v2 §10).
+    const actionSheetItems = (row: T): RowMenuItem[] => [
+      ...(selectable ? [{ key: "zc-select", label: "Select", icon: IconCheck, onSelect: () => toggleSelected(getRowKey(row)) }] : []),
+      ...(rowActions?.(row).filter((item) => item.key !== "open") ?? []),
+    ];
 
     const cell = (row: T, column: DataTableColumn<T>) =>
       column.mobileCell ? column.mobileCell(row) : renderCell(row, column.key);
@@ -572,8 +633,8 @@ export function DataTable<T>({
                         onClick={onPress}
                         onContextMenu={selectable ? (event) => event.preventDefault() : undefined}
                         aria-pressed={selectable && hasSelection ? selected : undefined}
-                        {...(selectable ? longPress.handlers(key) : {})}
-                        className="flex min-w-0 flex-1 items-center gap-2 text-left outline-none focus-visible:rounded-lg focus-visible:shadow-focus-strong"
+                        {...(selectable || actions.length ? longPress.handlers(key) : {})}
+                        className="zc-dt-card__tap flex min-w-0 flex-1 items-center gap-2 text-left outline-none focus-visible:rounded-lg focus-visible:shadow-focus-strong"
                       >
                         <div className="min-w-0 flex-1">{content}</div>
                         {onRowAction && !hasSelection ? (
@@ -588,7 +649,14 @@ export function DataTable<T>({
                         Select
                       </button>
                     ) : null}
-                    {actions.length && !hasSelection ? (
+                    {/* Round 2 §8.4: no ⋯ circle on a phone card; long press or swipe left opens the actions sheet
+                        (screen readers get the hidden "Actions" button). A card that can't be pressed keeps the ⋯. */}
+                    {actions.length && !hasSelection && interactive ? (
+                      <button type="button" className="sr-only" onClick={() => setActionKey(key)}>
+                        {rowActionsLabel?.(row) ?? "More actions"}
+                      </button>
+                    ) : null}
+                    {actions.length && !hasSelection && !interactive ? (
                       <RowMenu items={actions} label={rowActionsLabel?.(row) ?? "More actions"} />
                     ) : null}
                     {canOpen && !hasSelection ? renderToggle(row) : null}
@@ -613,6 +681,11 @@ export function DataTable<T>({
           {cards}
         </div>
         {footer ? <div className="zc-dt-panel">{footer}</div> : null}
+        <RowActionSheet
+          items={actionRow ? actionSheetItems(actionRow) : null}
+          title={actionRow ? rowActionsLabel?.(actionRow) : undefined}
+          onClose={() => setActionKey(null)}
+        />
       </div>
     );
   }
@@ -700,12 +773,22 @@ export function DataTable<T>({
               {(columnKey) => {
                 const key = String(columnKey);
                 const column = shown.find((c) => c.key === key);
+                const content = isSkeletonRow(row) ? (
+                  key === CHEVRON_KEY || key === EXPAND_KEY ? null : <CellSkeleton shape={column?.skeleton} index={row.index} actions={isActionsColumn(key)} />
+                ) : (
+                  cellContent(row, key)
+                );
+                const capped = !isActionsColumn(key) && key !== CHEVRON_KEY && key !== EXPAND_KEY;
                 return (
                   <TableCell className={column?.align === "end" ? "num" : undefined}>
-                    {isSkeletonRow(row) ? (
-                      key === CHEVRON_KEY || key === EXPAND_KEY ? null : <CellSkeleton shape={column?.skeleton} index={row.index} actions={isActionsColumn(key)} />
+                    {capped ? (
+                      // A runaway value (pasted HTML, a 300-character name) must not stretch the table sideways:
+                      // the cell stops at its cap and ends in "…". Real data fits well inside it.
+                      <div className="min-w-0 overflow-hidden text-ellipsis" style={{ maxWidth: cellMaxWidth(column) }}>
+                        {content}
+                      </div>
                     ) : (
-                      cellContent(row, key)
+                      content
                     )}
                   </TableCell>
                 );

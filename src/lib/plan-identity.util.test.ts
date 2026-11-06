@@ -4,7 +4,9 @@ import type { Client, Plan } from "../types";
 import {
   addStorePlans,
   clientPlanLabel,
+  clientPlanName,
   normaliseCurrency,
+  planLabel,
   planFilterOptions,
   planOptionLabel,
   planPriceHint,
@@ -66,5 +68,14 @@ describe("Add store price and settings (PRD-024 FR-1.4)", () => {
   it("accepts a three-letter currency code", () => {
     expect(normaliseCurrency(" inr ")).toBe("INR");
     expect(normaliseCurrency("RUPEE")).toBeNull();
+  });
+});
+
+describe("one plan name (round 2 D16)", () => {
+  it("is the plan version's display name, else the tier in Title Case, never the version", () => {
+    expect(planLabel({ displayName: "Kesar & Kin sample store", name: "PLUS" })).toBe(clientPlanName({ plan: "PLUS", planRef: { displayName: "Kesar & Kin sample store" } } as unknown as Client));
+    expect(planLabel({ displayName: null, name: "PLUS" })).toBe("Plus");
+    expect(planLabel(null)).toBe("No plan");
+    expect(planLabel({ displayName: "Kesar & Kin sample store", name: "PLUS" })).not.toMatch(/v\d/);
   });
 });

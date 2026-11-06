@@ -31,6 +31,17 @@
   --zc-channel-whatsapp-from: #F1F2F5; --zc-channel-whatsapp-to: #F1F2F5; --zc-channel-whatsapp-fg: #1F2430;
   --zc-channel-dot: #9AA0AB;           /* neutral source / channel dots */
   --zc-whatsapp: #25D366; /* the WhatsApp mark only */
+  /* Round 2 §5.8 (CHANGED, Mehak): Marketing overview keeps the board 25 channel gradients on its three channel
+     cards ONLY (the one exception to the retired channel colours). White text sits in the darker 0–60% band. */
+  --zc-channel-email-gradient: linear-gradient(150deg, #4A0F14 0%, #8E1F26 55%, #C9353C 100%);
+  --zc-channel-sms-gradient: linear-gradient(150deg, #0B1F57 0%, #163FA8 55%, #2F6BF0 100%);
+  --zc-channel-whatsapp-gradient: linear-gradient(150deg, #06321C 0%, #0E6E3A 55%, #1DA851 100%);
+  /* Round 2 §5.9 (board 29): "What the shopper sees" ticket on the discount page; red while it can be used, grey
+     once it has ended or is paused. */
+  --zc-ticket-live: linear-gradient(150deg, #6E161C 0%, #A3262D 55%, #C9353C 100%);
+  --zc-ticket-off: linear-gradient(150deg, #3F434B 0%, #5F646E 60%, #7A7F89 100%);
+  /* Round 2 §5.9: the ring of an unselected radio. */
+  --zc-radio-ring: #C9CDD6;
 
   /* ---------- Welcome banner on Home (08 §2.1): light, never dark or saturated ---------- */
   --zc-welcome-border: #DCE5FF;
@@ -44,7 +55,7 @@
   --zc-support-bg: #FFF4E0;
   --zc-support-fg: #7A4B00;
   --zc-support-border: #F6E2C2;
-  --zc-support-h: 36px;
+  --zc-support-h: 32px; /* round 2 §4: the admin banner is one 32px line */
 
   /* ---------- Settings / two-pane list (09 §1.3, §2B) ---------- */
   --zc-pane-bg: #FAFAFB;
@@ -105,8 +116,6 @@
 
   /* ---------- Layout sizes from 08/09 ---------- */
   --zc-drawer-image: 560px;
-  --zc-media-dialog-w: 1240px;   /* owner 2026-10-29: was 1180; the bar above the grid fits one row with details open */
-  --zc-media-dialog-h: 820px;
   --zc-media-folders-w: 240px; /* v2 (03 A-11) */
   --zc-blog-tools-w: 232px;
   --zc-blog-panel-w: 300px;

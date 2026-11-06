@@ -9,6 +9,7 @@
 
 import type { Client, Plan } from "../types";
 import { getPlanLabel } from "./display-labels.util";
+import { formatPlanName } from "../components/ui/format-name";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -27,9 +28,24 @@ const CURRENCY_PATTERN = /^[A-Z]{3}$/;
 
 // ─── Labels ───────────────────────────────────────────────────────────────
 
+/**
+ * Round 2 D16: the one plan name every surface shows (header chip, Overview,
+ * Billing): the plan version's display name, else the tier in Title Case
+ * ("Plus"). The version ("v1") is added only on Billing.
+ */
+export function planLabel(plan: { displayName?: string | null; name?: string | null } | null | undefined): string {
+  if (!plan) return "No plan";
+  return plan.displayName ? formatPlanName(plan.displayName) : getPlanLabel((plan.name ?? "") as any);
+}
+
+/** Round 2 D16: the store's plan name from its own plan version (the subscription's), else the tier. */
+export function clientPlanName(client: Pick<Client, "plan" | "planRef">): string {
+  return client.planRef?.displayName ? formatPlanName(client.planRef.displayName) : getPlanLabel(client.plan);
+}
+
 /** "Premium v2", "Acme v1 (custom)": one plan version's name. */
 export function planOptionLabel(plan: PlanNaming): string {
-  const name = plan.displayName || getPlanLabel(plan.name);
+  const name = plan.displayName ? formatPlanName(plan.displayName) : getPlanLabel(plan.name);
   const custom = plan.tenantId ? " (custom)" : "";
   return `${name} v${plan.version ?? 1}${custom}`;
 }
@@ -38,7 +54,7 @@ export function planOptionLabel(plan: PlanNaming): string {
 export function clientPlanLabel(client: Client): string {
   const ref = client.planRef;
   if (!ref) return getPlanLabel(client.plan);
-  const name = ref.displayName || getPlanLabel(client.plan);
+  const name = ref.displayName ? formatPlanName(ref.displayName) : getPlanLabel(client.plan);
   const custom = ref.custom ? " (custom)" : "";
   return `${name} v${ref.version ?? 1}${custom}`;
 }

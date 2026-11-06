@@ -216,7 +216,7 @@ export function BrowserNotificationsCard() {
           </Select>
           <div>
             <Button
-              variant="tertiary"
+              variant="ghost"
               size="sm"
               startIcon={<IconSend aria-hidden />}
               isLoading={push.isTesting}

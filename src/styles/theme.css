@@ -69,6 +69,8 @@
   --color-nav-hover: var(--zc-nav-hover-bg);
   --color-nav-active: var(--zc-nav-active-bg);
   --color-nav-count: var(--zc-nav-count-bg);
+  --color-nav-product: var(--zc-nav-product);
+  --color-ring-zero: var(--zc-ring-zero);
   --color-nav-sub: var(--zc-nav-sub-bg);
   --color-nav-sub-hover: var(--zc-nav-sub-hover-bg);
   --color-nav-sub-active: var(--zc-nav-sub-active-bg);
@@ -239,7 +241,20 @@
   --shadow-modal: var(--zc-shadow-modal);
   --shadow-float: var(--zc-shadow-float);
   --shadow-ask: var(--zc-shadow-ask);
+  /* Depth (round 2 G16): shadow-raised, shadow-floating; bg-inset / border-inset-line, border-raised-line. */
+  --shadow-raised: var(--zc-shadow-raised);
+  --shadow-floating: var(--zc-shadow-floating);
+  --color-inset: var(--zc-surface-inset);
+  --color-inset-line: var(--zc-surface-inset-border);
+  --color-raised-line: var(--zc-raised-border);
 
+  /* Motion (round 2 §2). Tailwind's ease-out / ease-in-out / ease-in utilities read the --ease-* variables that
+     tokens.css sets (unlayered, so they replace Tailwind's defaults); duration-1 … duration-4 read --dur-1 … 4.
+     The older names below are aliases of the same curves. */
+  --transition-duration-1: var(--dur-1);
+  --transition-duration-2: var(--dur-2);
+  --transition-duration-3: var(--dur-3);
+  --transition-duration-4: var(--dur-4);
   --ease-standard: var(--zc-ease);
   --ease-enter: var(--zc-ease-enter);
   --ease-exit: var(--zc-ease-exit);
@@ -440,7 +455,6 @@
   --spacing-seo-ring: var(--zc-seo-ring);
   --spacing-cell-x: var(--zc-table-cell-px);
 
-  --animate-shimmer: zc-shimmer var(--zc-dur-shimmer) linear infinite;
   --animate-spin-slow: zc-spin 0.8s linear infinite;
   --animate-rise-in: zc-rise-in var(--zc-dur-base) var(--zc-ease-enter) both;
 
@@ -452,21 +466,19 @@
   --container-content-wide: 1440px;
   --container-content-form: 720px;
   --container-article: var(--zc-article-w);
-  --container-media-dialog: var(--zc-media-dialog-w);
 }
 
-/* Skeleton sweep (shared by every block with background-attachment: fixed), button spinner, page rise-in. */
-@keyframes zc-shimmer {
-  0% { background-position: -480px 0; }
-  100% { background-position: calc(100vw + 480px) 0; }
-}
+/* Skeleton: appears after the delay, then one soft pulse (round 2 §2, opacity only); button spinner, page rise-in. */
+@keyframes zc-skel-in { to { opacity: 1; } }
+@keyframes zc-skel-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 @keyframes zc-spin { to { transform: rotate(360deg); } }
 @keyframes zc-rise-in {
   from { opacity: 0; transform: translateY(var(--zc-rise)); }
   to { opacity: 1; transform: none; }
 }
 
-/* Named durations (01 §8): 80 press, 140 hover/menus/tooltips, 220 segmented/modals, 320 drawers. */
+/* LEGACY named durations, now the round 2 tokens: instant 80 (press), fast = --dur-1 120 (hover, colour),
+   base = --dur-2 180 (menus, pop-ups), slow = --dur-4 320. Prefer duration-1 … duration-4 in new code. */
 @utility duration-instant {
   transition-duration: var(--zc-dur-instant);
 }
@@ -478,6 +490,34 @@
 }
 @utility duration-slow {
   transition-duration: var(--zc-dur-slow);
+}
+
+/* Depth levels (round 2 G16): one class sets the level's fill, border and shadow (values in tokens.css).
+   page grey · card white + 1px line · inset light grey + its own line (chat canvas, stat tiles in cards, previews) ·
+   raised white + 6% line + small shadow (composer, bubbles, sticky toolbars) · floating white + big soft shadow, no
+   border (pop-ups, menus, drawers, AI bar/box). */
+@utility surface-page {
+  background-color: var(--zc-surface-page);
+}
+@utility surface-card {
+  background-color: var(--zc-surface-card);
+  border: 1px solid var(--zc-surface-card-border);
+  box-shadow: none;
+}
+@utility surface-inset {
+  background-color: var(--zc-surface-inset);
+  border: 1px solid var(--zc-surface-inset-border);
+  box-shadow: none;
+}
+@utility surface-raised {
+  background-color: var(--zc-surface-raised);
+  border: 1px solid var(--zc-raised-border);
+  box-shadow: var(--zc-shadow-raised);
+}
+@utility surface-floating {
+  background-color: var(--zc-surface-floating);
+  border: 0;
+  box-shadow: var(--zc-shadow-floating);
 }
 
 /* Tabular figures for every number in tables, KPIs, charts and prices. */
@@ -546,7 +586,7 @@ button.font-normal.min-w-max.tap-highlight-transparent {
   backdrop-filter: none;
 }
 
-/* Menus (kit Dropdown/Select): v2 motion is opacity + scale(.98 → 1) only (menuMotionProps, 01 §7.17); no slide.
+/* Menus (kit Dropdown/Select): round 2 motion is opacity + scale(.97 → 1) from the trigger (components/ui/motion.ts); no slide.
    Menu sections (DropdownSection): HeroUI puts 8px under each section and 8px above its divider; the spec's
    divider has 6px above and below, none after the last section. HeroUI sections can't be wrapped (collection
    nodes), so this is CSS on the menu popover. */

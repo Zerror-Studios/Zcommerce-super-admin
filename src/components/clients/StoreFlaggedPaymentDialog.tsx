@@ -77,7 +77,7 @@ export function StoreFlaggedPaymentDialog({ target, onClose, onResolved }: Store
   }, [invoiceId, openInvoices, payment]);
 
   if (!payment) return null;
-  const money = (amount: number) => formatMoney(amount, { currency: payment.currency });
+  const money = (amount: number) => formatMoney(amount, { currency: payment.currency, exact: true });
   const chosen = openInvoices.find((invoice) => invoice.id === invoiceId);
 
   const close = () => {
@@ -120,7 +120,7 @@ export function StoreFlaggedPaymentDialog({ target, onClose, onResolved }: Store
   };
 
   return (
-    <Modal isOpen onClose={close} width="sm">
+    <Modal isOpen onClose={close} size="sm">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={<IconFlag aria-hidden />}>{TITLES[action]}</PopupTitle>
@@ -167,7 +167,7 @@ export function StoreFlaggedPaymentDialog({ target, onClose, onResolved }: Store
             Cancel
           </UiButton>
           <UiButton
-            variant={action === "APPLY" ? "primary" : "destructive"}
+            variant={action === "APPLY" ? "primary" : "danger"}
             isLoading={busy}
             isDisabled={busy || !note.trim() || (action === "APPLY" && openInvoices.length === 0)}
             onPress={() => void run()}

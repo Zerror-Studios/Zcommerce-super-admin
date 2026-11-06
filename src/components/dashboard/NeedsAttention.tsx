@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { DrawerBody, DrawerContent, DrawerHeader } from "@heroui/react";
 import type { Client, Subscription } from "../../types";
 import { getStoreHealth, isCriticalHealth } from "../../lib/storeHealth";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
@@ -132,33 +131,28 @@ export function NeedsAttention(props: NeedsAttentionProps) {
         emptyText="Nothing needs you right now."
         seeAll={items.length > 3 ? { label: `See all (${items.length})`, onPress: () => setAllOpen(true) } : undefined}
       />
-      <Drawer isOpen={allOpen} onOpenChange={setAllOpen} size="sm">
-        <DrawerContent>
-          <DrawerHeader>Needs your attention</DrawerHeader>
-          <DrawerBody>
-            <ul className="flex flex-col gap-2">
-              {items.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <li key={item.id} className={cx("flex min-h-16 items-center gap-3 rounded-xl px-4 py-3", toneSoft[item.urgency])}>
-                    <span aria-hidden className={cx("flex size-8 shrink-0 items-center justify-center rounded-full bg-surface", toneText[item.urgency])}>
-                      {Icon ? <Icon aria-hidden className="size-4" /> : null}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className={cx("block text-body-strong", toneText[item.urgency])}>{item.title}</span>
-                      {item.text ? <span className="block truncate text-label text-fg-muted">{item.text}</span> : null}
-                    </span>
-                    {item.action?.href ? (
-                      <ButtonLink variant="secondary" size="sm" to={item.action.href} onClick={() => setAllOpen(false)}>
-                        {item.action.label}
-                      </ButtonLink>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </DrawerBody>
-        </DrawerContent>
+      <Drawer isOpen={allOpen} onOpenChange={setAllOpen} size="sm" title="Needs your attention">
+        <ul className="flex flex-col gap-2">
+          {items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <li key={item.id} className={cx("flex min-h-16 items-center gap-3 rounded-xl px-4 py-3", toneSoft[item.urgency])}>
+                <span aria-hidden className={cx("flex size-8 shrink-0 items-center justify-center rounded-full bg-surface", toneText[item.urgency])}>
+                  {Icon ? <Icon aria-hidden className="size-4" /> : null}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={cx("block text-body-strong", toneText[item.urgency])}>{item.title}</span>
+                  {item.text ? <span className="block truncate text-label text-fg-muted">{item.text}</span> : null}
+                </span>
+                {item.action?.href ? (
+                  <ButtonLink variant="secondary" size="sm" to={item.action.href} onClick={() => setAllOpen(false)}>
+                    {item.action.label}
+                  </ButtonLink>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
       </Drawer>
     </>
   );

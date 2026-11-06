@@ -111,7 +111,7 @@ export interface Client {
     steps: { key: string; status: "PENDING" | "DONE" | "FAILED"; error: string | null }[];
   };
   /** Server-computed store health; `lib/storeHealth` prefers it when present. */
-  health?: { score: number; factors: string[] };
+  health?: { score: number; factors: string[]; issues?: string[] };
   /** Server-computed payment badge; `lib/storeStatus` prefers it when present. */
   paymentState?: { label: string; tone: "success" | "warning" | "danger" | "info" | "neutral"; detail: string | null };
   // ── Store details (PRD-017 FR-4.5) ──
@@ -143,6 +143,12 @@ export interface Client {
   messagesThisMonth?: number | null;
   /** PRD-024 FR-2.7: some snapshot figures were carried from the previous snapshot. */
   usagePartial?: boolean;
+  /** PRD-036 round 2 gaps: false while the owner hasn't accepted the invite; null/undefined = not known yet. */
+  ownerJoined?: boolean | null;
+  /** PRD-036 round 2 gaps: the business (legal) name given at creation. */
+  legalName?: string;
+  /** PRD-036 round 2 gaps: customer profiles from the usage snapshot; null until counted. */
+  customers?: number | null;
   region?: string;
   /** The store's own plan version (id, version, limits), never matched by tier name. */
   planRef?: ClientPlanRef;

@@ -15,9 +15,6 @@ import {
   Chip,
   DEFAULT_PAGE_SIZE,
   Drawer,
-  DrawerBody,
-  DrawerContent,
-  DrawerHeader,
   ErrorState,
   Skeleton,
   TablePagination,
@@ -77,7 +74,7 @@ export function SentRemindersCard() {
       padding="none"
       actions={
         api.totalCount > 0 ? (
-          <Button variant="tertiary" size="sm" endIcon={<IconExpand aria-hidden />} onPress={() => setAllOpen(true)}>
+          <Button variant="ghost" size="sm" endIcon={<IconExpand aria-hidden />} onPress={() => setAllOpen(true)}>
             Show all
           </Button>
         ) : undefined
@@ -99,11 +96,8 @@ export function SentRemindersCard() {
         </ul>
       )}
 
-      <Drawer isOpen={allOpen} onOpenChange={setAllOpen} size="sm">
-        <DrawerContent>
-          <DrawerHeader>Sent reminders</DrawerHeader>
-          <DrawerBody className="px-0">{allOpen ? <AllReminders /> : null}</DrawerBody>
-        </DrawerContent>
+      <Drawer isOpen={allOpen} onOpenChange={setAllOpen} size="sm" title="Sent reminders" classNames={{ body: "px-0" }}>
+        {allOpen ? <AllReminders /> : null}
       </Drawer>
     </Card>
   );

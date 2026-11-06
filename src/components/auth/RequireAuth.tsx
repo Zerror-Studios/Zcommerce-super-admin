@@ -5,7 +5,7 @@ import { ErrorState, Spinner } from "../ui";
 /** Full-page wait while the session is restored from the refresh cookie. */
 export function SessionLoading() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-sunken" role="status">
+    <div className="flex min-h-dvh items-center justify-center bg-surface-sunken" role="status">
       <Spinner size="lg" aria-label="Loading" />
     </div>
   );
@@ -15,7 +15,7 @@ export function SessionLoading() {
 export function SessionUnreachable() {
   const { retryRestore } = useAuth();
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-sunken">
+    <div className="flex min-h-dvh items-center justify-center bg-surface-sunken">
       <ErrorState
         title="Can't reach the server."
         description="Check your connection and try again. You haven't been logged out."

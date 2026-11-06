@@ -20,11 +20,11 @@ export interface SupportBannerProps {
 }
 
 /**
- * Support-session strip (docs/design/08-fixes-and-screens.md §1.1): 36px, across the top of the main area,
- * amber. "You're viewing {Store} as Zerror admin. Changes are logged." · Exit · × hides it for this
- * browser session. It scrolls with the page and has no z-index of its own, so dialogs and popovers cover it
- * and it never stacks with a sticky page header (owner 2026-10-27: it showed over the Choose media dialog).
- * Owner 2026-10-29: just that one line; the signed-in email and the repeated "Zerror support" were dropped.
+ * Support-session strip (docs/design/08-fixes-and-screens.md §1.1, round 2 §4): one 32px line across the top of
+ * the main area, amber. "You're viewing {Store} as Zerror admin. Changes are logged." (the store's display name,
+ * never the slug) · Exit · × hides it for this browser session. Phone: the one line "Viewing as Zerror admin · Exit".
+ * It scrolls with the page and has no z-index of its own, so dialogs and popovers cover it and it never stacks
+ * with a sticky page header (owner 2026-10-27: it showed over the Choose media dialog).
  */
 export function SupportBanner({ storeName, onExit }: SupportBannerProps) {
   const [hidden, setHidden] = useState(readHidden);
@@ -40,12 +40,13 @@ export function SupportBanner({ storeName, onExit }: SupportBannerProps) {
   return (
     <div
       role="status"
-      className="flex min-h-support shrink-0 items-center gap-2.5 border-b border-support-line bg-support px-4 text-label text-support-fg"
+      className="flex h-support shrink-0 items-center gap-2.5 border-b border-support-line bg-support px-4 text-label text-support-fg"
     >
       <IconSupport aria-hidden className="size-4 shrink-0" />
-      <p className="min-w-0 flex-1 truncate">
+      <p className="min-w-0 flex-1 truncate max-md:hidden">
         You&apos;re viewing <span className="font-semibold">{storeName}</span> as Zerror admin. Changes are logged.
       </p>
+      <p className="min-w-0 flex-1 truncate md:hidden">Viewing as Zerror admin</p>
       <button type="button" onClick={onExit} className="shrink-0 rounded-sm font-semibold underline-offset-2 hover:underline">
         Exit
       </button>
@@ -53,7 +54,7 @@ export function SupportBanner({ storeName, onExit }: SupportBannerProps) {
         type="button"
         aria-label="Hide for this session"
         onClick={hide}
-        className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm hover:bg-support-line"
+        className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm hover:bg-support-line max-md:hidden"
       >
         <IconClose aria-hidden className="size-3.5" />
       </button>

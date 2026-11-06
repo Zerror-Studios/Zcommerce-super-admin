@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@apollo/client";
 import { addToast } from "@heroui/react";
 import { useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
-import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ClientActivityCard } from "../components/clients/ClientActivityCard";
 import { ClientAiCard } from "../components/clients/ClientAiCard";
 import { ClientOverviewTab } from "../components/clients/ClientOverviewTab";
@@ -17,29 +17,28 @@ import { StoreSetupCard } from "../components/clients/StoreSetupCard";
 import { StoreHistoryCard } from "../components/clients/StoreHistoryCard";
 import { StoreLifecycleCard } from "../components/clients/StoreLifecycleCard";
 import { StoreProfileCard } from "../components/clients/StoreProfileCard";
+import { StoreTabsPrefetch } from "../components/clients/StoreTabsPrefetch";
 import { StoreTeamTab } from "../components/clients/StoreTeamTab";
 import {
   SubscriptionDialogs,
   subscriptionActionsFor,
   type SubscriptionDialog,
 } from "../components/clients/SubscriptionActions";
-import { paymentBadge, planShortName, storeStatusBadge } from "../components/clients/stores-list/store-list.util";
-import { isInSetup } from "../components/clients/stores-list/stores-tabs.util";
+import { planShortName, storeStatusBadge } from "../components/clients/stores-list/store-list.util";
 import { StoreActionDialog, type StoreAction } from "../components/clients/storeActions";
 import { logInToStore } from "../components/clients/storeLogin";
 import { useStoreBillingRefresh } from "../components/clients/useStoreBillingRefresh";
 import { ConfirmModal } from "../components/common/ConfirmModal";
 import { PageHeader } from "../components/common/PageHeader";
+import { useDocumentTitle } from "../components/layout/document-title";
 import { PlanEditorModal } from "../components/settings/PlanEditorModal";
 import { PLATFORM_TENANT, RESEND_OWNER_INVITE } from "../graphql/tenants";
 import { useTenantProfile } from "../hooks/use-tenant-profile";
 import { subscriptionsOf, toClient } from "../lib/api-adapters";
-import { paymentProviderLabel } from "../lib/store-profile.util";
 import { findLatestSubscription } from "../lib/subscription-lookup.util";
 import { mutationFailureCopy } from "../lib/mutation-errors";
 import { ownerContactGaps } from "../lib/owner-contact.util";
 import { PLATFORM_PERMISSIONS } from "../lib/permissions";
-import { graceDaysFor } from "../lib/storeStatus";
 import { useAuth } from "../providers/AuthProvider";
 import { useClients } from "../providers/ClientsProvider";
 import { usePlatformSettings } from "../providers/SettingsProvider";
@@ -153,7 +152,8 @@ function useIsPhone() {
  */
 function backTarget(fromSubscriptions: boolean, from: string | undefined): { href: string; label: string } {
   if (fromSubscriptions) {
-    return { href: from?.startsWith("/subscriptions") ? from : "/subscriptions", label: "Subscriptions" };
+    // The menu calls /subscriptions "Billing" (v2 §3.1).
+    return { href: from?.startsWith("/subscriptions") ? from : "/subscriptions", label: "Billing" };
   }
   return { href: from?.startsWith("/stores") ? from : "/stores", label: "Stores" };
 }
@@ -183,9 +183,9 @@ const sinceFormat = new Intl.DateTimeFormat("en-IN", { month: "short", year: "nu
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 /**
- * Store detail (design v2 §7, boards 60–66): the sticky detail header (back, a neutral initials tile, the store
- * name with status, plan and payment badges, a meta line, **Message owner** + **Open store admin** + ⋯) with the
- * horizontal tabs under it, the missing-owner notice, then the chosen tab. Each tab keeps its URL
+ * Store detail (design v2 §7, boards 60–66; round 2 §6.3): the breadcrumb "Stores / Kesar & Kin", the sticky detail
+ * header (a neutral initials tile, the store name with status and plan chips, the meta line legal name · domain ·
+ * city · on Zcom since, **Message owner** + **Open store admin** ↗ + ⋯) with the underline tabs under it, the missing-owner notice, then the chosen tab. Each tab keeps its URL
  * (/stores/:id/:tab); the old section URLs redirect to the tab and the spot that holds them.
  */
 export function ClientDetail() {
@@ -246,10 +246,9 @@ export function ClientDetail() {
     skip: !id || !!listedClient || loading,
   });
   const fetchedTenant = listedClient ? undefined : single.data?.platformTenant;
-  // PRD-025 FR-6.3: the payment-app chip; the Profile, History and Billing state cards share this read
+  // PRD-025: the Profile, History and Billing state cards share this read (city for the meta line)
   // through the cache (one extra query per store, kept off the shared tenant fragment).
   const profileRead = useTenantProfile(id ?? "", { skip: !id });
-  const paymentProvider = paymentProviderLabel(profileRead.tenant?.paymentProvider);
   const city = profileRead.tenant?.profile?.city;
   const client = useMemo(
     () => listedClient ?? (fetchedTenant ? toClient(fetchedTenant) : undefined),
@@ -262,6 +261,8 @@ export function ClientDetail() {
     const source = fetchedTenant ? subscriptionsOf([fetchedTenant]) : subscriptions;
     return findLatestSubscription(source, client.id);
   }, [client, fetchedTenant, subscriptions]);
+  // Round 2 G14: "Kesar & Kin · Stores · Zcom Super admin".
+  useDocumentTitle(client?.storeName);
 
   if (!id) {
     return <Navigate to="/stores" replace />;
@@ -313,7 +314,6 @@ export function ClientDetail() {
   }
 
   const status = storeStatusBadge(client);
-  const payment = paymentBadge(subscription, graceDaysFor(client, defaultGracePeriodDays));
   const isDeleted = client.tenantStatus === "DELETED";
   const contactGaps = ownerContactGaps(client);
   const isSuspended = !isDeleted && client.status === "suspended";
@@ -423,40 +423,56 @@ export function ClientDetail() {
     </UiButton>
   ) : null;
 
-  // Meta line: owner name · owner email · domain ↗ · city · on Zcom since (leaving out missing parts: Check first 05 #24).
+  // Meta line (round 2 §6.3, board 60): legal name · domain ↗ · city · on Zcom since, leaving out missing parts.
+  // The legal name is PRD-031's business name (`legalName`, PRD-036 round 2 gaps), shown when it differs from the
+  // store name. The owner's name and email are in the Owner card.
   const joined = new Date(client.joinedDate);
   const since = Number.isNaN(joined.getTime()) || joined.getTime() === 0 ? null : sinceFormat.format(joined);
-  const metaLine = (
+  const metaParts: ReactNode[] = [
+    client.legalName && client.legalName.trim().toLowerCase() !== client.storeName.trim().toLowerCase() ? client.legalName : null,
+    client.domain ? (
+      <a key="domain" href={`https://${client.domain}`} target="_blank" rel="noreferrer" className="text-brand hover:underline">
+        {client.domain} ↗
+      </a>
+    ) : null,
+    city ?? null,
+    since ? `on Zcom since ${since}` : null,
+  ].filter(Boolean);
+  const metaLine = metaParts.length ? (
     <span className="wrap-anywhere">
-      {`${client.ownerName} · ${client.ownerEmail}`}
-      {client.domain ? (
-        <>
-          {" · "}
-          <a href={`https://${client.domain}`} target="_blank" rel="noreferrer" className="text-brand hover:underline">
-            {client.domain} ↗
-          </a>
-        </>
-      ) : null}
-      {city ? ` · ${city}` : null}
-      {since ? ` · on Zcom since ${since}` : null}
+      {metaParts.map((part, index) => (
+        <span key={index}>
+          {index > 0 ? " · " : null}
+          {part}
+        </span>
+      ))}
     </span>
-  );
+  ) : undefined;
 
-  // A store in setup sees its checklist first; a live one has it lower down (it still holds the domain).
-  const setupFirst = isInSetup(client) || (client.onboarding != null && client.onboarding.status !== "READY");
+  // Round 2 §6.3: Setup is a collapsible card after Activity ("Setup 4 of 11 · Show steps"); a #setup link opens it.
+  // Provisioning (OnboardingCard) shows above it until the store is READY.
   const setupSection = (
     <Section id="setup">
       <OnboardingCard client={client} />
       {/* PRD-031 FR-D3: what the store still needs (a new store lands here after Create store). */}
-      <StoreSetupCard tenantId={client.id} />
+      <StoreSetupCard tenantId={client.id} collapsible defaultOpen={hash === "setup"} />
     </Section>
   );
 
   return (
     <div className="w-full" style={isPhone ? phoneStickyTopStyle : stickyTopStyle}>
+      {/* Round 2 G12 / §6.3: the text breadcrumb "Stores / Kesar & Kin" above the title, no round back button. */}
+      <nav aria-label="Breadcrumb" className="mb-1 flex min-w-0 items-center gap-1.5 text-label text-fg-muted">
+        <Link to={back.href} className="shrink-0 rounded-sm outline-none hover:text-fg focus-visible:shadow-focus-strong">
+          {back.label}
+        </Link>
+        <span aria-hidden>/</span>
+        <span aria-current="page" className="truncate">
+          {client.storeName}
+        </span>
+      </nav>
       <PageHeader
         type="detail"
-        back={back}
         leading={
           <IconTile tone="neutral" size="lg">
             <span className="text-body font-semibold">{initialsOf(client.storeName)}</span>
@@ -464,12 +480,13 @@ export function ClientDetail() {
         }
         title={<span className="wrap-anywhere">{client.storeName}</span>}
         badges={
+          // Round 2 §6.3 (board 60): status and plan only. The payment state is in Plan & billing and on Billing;
+          // the payment app is in Connected apps and the Billing state card.
           <>
             <Chip tone={status.tone}>{status.label}</Chip>
-            <Chip tone="neutral">{planShortName(client)}</Chip>
-            <Chip tone={payment.tone}>{payment.label}</Chip>
-            {/* PRD-025 FR-6.3: the payment app the store takes payments with; hidden when none is set. */}
-            {paymentProvider ? <Chip tone="neutral">{paymentProvider}</Chip> : null}
+            <Chip tone="neutral" dot={false}>
+              {planShortName(client)}
+            </Chip>
           </>
         }
         description={metaLine}
@@ -482,6 +499,7 @@ export function ClientDetail() {
       >
         {/* The tabs (§7), the kit's one tab style; each keeps its URL. */}
         <SegmentedSwitch<StoreTab>
+          variant="underline"
           ariaLabel="Store sections"
           value={active}
           onChange={(key) => navigate(hrefOf(key))}
@@ -495,7 +513,7 @@ export function ClientDetail() {
           className="mb-4"
           action={
             active === "settings" ? undefined : (
-              <ButtonLink to={hrefOf("settings", "details")} variant="tertiary" size="sm">
+              <ButtonLink to={hrefOf("settings", "details")} variant="ghost" size="sm">
                 Add it in Settings
               </ButtonLink>
             )
@@ -510,9 +528,7 @@ export function ClientDetail() {
       <div key={active} className="flex min-w-0 animate-rise-in flex-col gap-6">
         {active === "overview" ? (
           <>
-            {setupFirst ? setupSection : null}
-            <ClientOverviewTab client={client} subscription={subscription} />
-            {setupFirst ? null : setupSection}
+            <ClientOverviewTab client={client} subscription={subscription} setup={setupSection} />
             {/* PRD-018 FR-4: domain verification, the go-live checklist and Mark live (the old Go live section). */}
             {isDeleted ? null : (
               <Section id="go-live" title="Go live" description="Verify the store's domain and check everything it needs before going live.">
@@ -589,6 +605,9 @@ export function ClientDetail() {
           </div>
         ) : null}
       </div>
+
+      {/* Round 2 §6.3: the other tabs' reads start after the first paint, so a tab opens with its data. */}
+      <StoreTabsPrefetch client={client} />
 
       <ConfirmModal
         isOpen={confirmInvite}

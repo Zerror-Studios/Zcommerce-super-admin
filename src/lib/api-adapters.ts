@@ -152,7 +152,7 @@ export function toClient(tenant: PlatformTenant): Client {
     ownerPhone: tenant.owner.phone ?? undefined,
     ownerEmailSet: !!tenant.owner.email?.trim(),
     onboarding: tenant.onboarding,
-    health: { score: tenant.healthScore, factors: tenant.healthFactors },
+    health: { score: tenant.healthScore, factors: tenant.healthFactors, issues: tenant.healthIssues ?? [] },
     paymentState: tenant.paymentState,
     billingContactEmail: tenant.billing.contactEmail ?? undefined,
     gstin: tenant.billing.gstin ?? undefined,
@@ -172,6 +172,9 @@ export function toClient(tenant: PlatformTenant): Client {
     staffCount: usage ? usage.staffCount : null,
     messagesThisMonth: usage?.messagesThisMonth ?? null,
     usagePartial: usage?.partial === true,
+    ownerJoined: tenant.owner.joined ?? null,
+    legalName: tenant.legalName ?? undefined,
+    customers: usage?.customers ?? null,
     region: tenant.region ?? undefined,
     planRef: planRefOf(tenant),
   };

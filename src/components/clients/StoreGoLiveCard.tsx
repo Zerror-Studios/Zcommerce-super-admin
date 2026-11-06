@@ -395,7 +395,7 @@ function MarkLiveDialog({ isOpen, onClose, client, checks, onRecheck }: MarkLive
   const labelOf = (key: string) => checks.find((check) => check.key === key)?.label ?? key;
 
   return (
-    <Modal isOpen={isOpen} onClose={close} width="md">
+    <Modal isOpen={isOpen} onClose={close} size="md">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={<IconRocket aria-hidden />}>Mark {client.storeName} live</PopupTitle>

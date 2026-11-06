@@ -4,11 +4,13 @@
  * doesn't depend on the browser's locale data (en-IN in recent ICU writes "Sept"; the spec says "Sep").
  *
  *   formatDate      "14 Oct" · "14 Oct 2025" (year only when it isn't the current year)
- *   formatDateTime  "14 Oct, 4:58 pm"
+ *   formatTime      "1:12 AM" (upper-case AM/PM everywhere, round 2 G13)
+ *   formatDateTime  "14 Oct, 4:58 PM"
+ *   formatDayTime   "Today 10:42 AM" · "Yesterday" · "27 Oct" (lists and feeds)
  *   formatRange     "15 Sep – 14 Oct"
  *   formatRelative  "now" · "2m" · "1h" · "Yesterday" · "Mon", then formatDate (feeds and notifications only)
  *
- * Every function returns "—" for a missing or invalid date.
+ * Every function returns "—" for a missing or invalid date. Never show ISO dates ("2026-11-05") in the UI.
  */
 
 export type DateInput = string | number | Date | null | undefined;
@@ -36,11 +38,11 @@ function dayMonth(date: Date): string {
   return `${date.getDate()} ${MONTHS[date.getMonth()]}`;
 }
 
-/** "4:58 pm" */
+/** "4:58 PM" */
 function time(date: Date): string {
   const hours = date.getHours();
   const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${hours % 12 || 12}:${minutes} ${hours < 12 ? "am" : "pm"}`;
+  return `${hours % 12 || 12}:${minutes} ${hours < 12 ? "AM" : "PM"}`;
 }
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
@@ -52,11 +54,26 @@ export function formatDate(value: DateInput, now: Date = new Date()): string {
   return date.getFullYear() === now.getFullYear() ? dayMonth(date) : `${dayMonth(date)} ${date.getFullYear()}`;
 }
 
-/** "14 Oct, 4:58 pm" (lower-case am/pm; year added outside the current year). */
+/** "1:12 AM" (upper-case AM/PM). */
+export function formatTime(value: DateInput): string {
+  const date = toDate(value);
+  return date ? time(date) : EMPTY;
+}
+
+/** "14 Oct, 4:58 PM" (upper-case AM/PM; year added outside the current year). */
 export function formatDateTime(value: DateInput, now: Date = new Date()): string {
   const date = toDate(value);
   if (!date) return EMPTY;
   return `${formatDate(date, now)}, ${time(date)}`;
+}
+
+/** Lists and feeds (round 2 G13): "Today 10:42 AM" · "Yesterday" · "27 Oct" (formatDate further back). */
+export function formatDayTime(value: DateInput, now: Date = new Date()): string {
+  const date = toDate(value);
+  if (!date) return EMPTY;
+  if (sameDay(date, now)) return `Today ${time(date)}`;
+  if (sameDay(date, new Date(now.getTime() - DAY_MS))) return "Yesterday";
+  return formatDate(date, now);
 }
 
 /**

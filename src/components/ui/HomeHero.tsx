@@ -57,6 +57,8 @@ export interface HomeHeroProps<V extends string = string> {
   onPeriodChange?: (value: V) => void;
   /** Names the period group for screen readers. */
   periodLabel?: string;
+  /** Round 2 G17: a control in place of the period tabs (the shared DateRangePicker, variant "on-dark"). */
+  periodControl?: ReactNode;
   className?: string;
 }
 
@@ -87,6 +89,7 @@ export function HomeHero<V extends string = string>({
   period,
   onPeriodChange,
   periodLabel = "Period",
+  periodControl,
   className,
 }: HomeHeroProps<V>) {
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -134,7 +137,7 @@ export function HomeHero<V extends string = string>({
         </div>
       ) : null}
 
-      {chips.length > 0 || periods.length > 0 ? (
+      {chips.length > 0 || periods.length > 0 || periodControl ? (
         <div className="zc-hero__bottom">
           {chips.length > 0 ? (
             <ul className="zc-hero__chips">
@@ -156,7 +159,9 @@ export function HomeHero<V extends string = string>({
               })}
             </ul>
           ) : null}
-          {periods.length > 0 ? (
+          {periodControl ? (
+            <div className="zc-hero__period">{periodControl}</div>
+          ) : periods.length > 0 ? (
             <div ref={tabsRef} role="radiogroup" aria-label={periodLabel} className="zc-hero__tabs" onKeyDown={onTabsKeyDown}>
               {periods.map((item) => {
                 const selected = item.value === period;

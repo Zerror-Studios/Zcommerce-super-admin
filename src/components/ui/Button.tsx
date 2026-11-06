@@ -12,39 +12,24 @@ import {
   type ReactNode,
 } from "react";
 import { Link } from "react-router-dom";
+import { buttonClasses, resolveButtonVariant, type ButtonSize, type ButtonVariant } from "./button-variants";
 import { cx } from "./cx";
 import { ButtonShortLabelContext } from "./short-label";
 import { IconExternalArrow } from "./icons";
 
 /**
- * Capsule button (01 §7.1, styles in src/styles/components.css `.zc-btn`). One primary per area, rightmost.
- * - primary: the one main action
- * - secondary: light blue (v2 §4.5): Cancel and the one secondary action per area
- * - dark: ink (Log out, Mark done)
- * - tertiary: blue text with a pill hover ("View full report ›", "Clear all", "See all")
- * - ghost: neutral text with a grey hover (toolbar items, "Dismiss")
- * - destructive: filled red, only the final Delete / Suspend in a confirm dialog
- * - destructive-secondary: white with red text ("Delete product" before the confirm)
- * - glass: only on video, photos and the Home banner
- * - ai: gradient ring; pass the sparkle as startIcon ("Ask AI", "Write with AI")
- * - secondary-on-dark: only on the blog editor's dark side panels
- * - on-dark: white fill, ink text: the one main action on a dark or gradient surface (Home hero "Create store")
+ * Capsule button (round 2 G10, styles in src/styles/components.css `.zc-btn`). One button system:
+ * - primary: blue fill; one per view (Save, Create order, Send)
+ * - secondary: light blue; other actions next to the primary (Pause, Preview, Show all)
+ * - ghost: transparent, blue text, light blue hover; inline and text actions (See all, Documentation)
+ * - dark: ink; only Mark done, Log out, Connect Claude
+ * - on-dark: white fill, ink text; buttons on gradient/AI cards and the Home/SA hero
+ * - danger: red fill; only the delete / discard confirmation button
+ * - icon: the circle `IconButton` (⋯, filter, sort, edit, delete, close)
+ * The old names still compile and render the new look: tertiary/link → ghost, destructive → danger,
+ * glass/secondary-on-dark → on-dark, ai/outline/destructive-secondary/danger-outline → secondary.
  */
-export type ButtonVariant =
-  | "primary"
-  | "secondary"
-  | "dark"
-  | "tertiary"
-  | "ghost"
-  | "destructive"
-  | "destructive-secondary"
-  | "glass"
-  | "ai"
-  | "secondary-on-dark"
-  | "on-dark";
-
-/** lg 40 (banner, empty states), md 36 (default), sm 32 (toolbars, card headers), xs 28 (dense rows only). */
-export type ButtonSize = "lg" | "md" | "sm" | "xs";
+export type { ButtonSize, ButtonVariant, ButtonVariantName, LegacyButtonVariant } from "./button-variants";
 
 export interface ButtonProps
   extends Omit<HeroButtonProps, "variant" | "color" | "size" | "radius" | "startContent" | "endContent"> {
@@ -108,7 +93,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   const innerRef = useRef<HTMLButtonElement | null>(null);
   const spinner = useDelayedSpinner(isLoading);
   const shortLabel = useContext(ButtonShortLabelContext);
-  const short = shortLabel && variant === "primary" ? shortLabel : undefined;
+  const short = shortLabel && resolveButtonVariant(variant) === "primary" ? shortLabel : undefined;
   // Lock the width while busy so the button never jumps when the spinner replaces the icon.
   const [lockedWidth, setLockedWidth] = useState<number>();
   useLayoutEffect(() => {
@@ -142,13 +127,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       onClick={isLoading ? undefined : onClick}
       fullWidth={fullWidth}
       style={lockedWidth ? { ...style, width: lockedWidth } : style}
-      className={cx(
-        "zc-btn",
-        `zc-btn--${variant}`,
-        size !== "md" && `zc-btn--${size}`,
-        fullWidth && "zc-btn--full",
-        className,
-      )}
+      className={cx(buttonClasses(variant, size), fullWidth && "zc-btn--full", className)}
       {...externalProps}
       {...rest}
     >
@@ -172,7 +151,7 @@ export interface ButtonLinkProps extends Omit<ComponentProps<typeof Link>, "clas
  */
 export function ButtonLink({ variant = "secondary", size = "md", startIcon, endIcon, children, className, ...rest }: ButtonLinkProps) {
   return (
-    <Link className={cx("zc-btn", `zc-btn--${variant}`, size !== "md" && `zc-btn--${size}`, className)} {...rest}>
+    <Link className={cx(buttonClasses(variant, size), className)} {...rest}>
       {startIcon}
       <span>{children}</span>
       {endIcon}

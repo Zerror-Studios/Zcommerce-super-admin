@@ -23,7 +23,7 @@ export function AppliedFilters({ items, onClearAll }: { items: AppliedFilterItem
           {item.label}
         </AppliedFilter>
       ))}
-      <UiButton variant="tertiary" size="sm" onPress={onClearAll}>
+      <UiButton variant="ghost" size="sm" onPress={onClearAll}>
         Clear all
       </UiButton>
     </div>

@@ -16,6 +16,7 @@ import { ISSUE_PLATFORM_CREDIT, PLATFORM_CREDITS, RECORD_PLATFORM_REFUND } from 
 import { usePayments } from "../../hooks/use-platform-reports";
 import { scheduledPlanChangeOf } from "../../lib/api-adapters";
 import { PLAN_LABELS } from "../../lib/display-labels.util";
+import { planLabel } from "../../lib/plan-identity.util";
 import { billingFailureCopy, isUserInputError } from "../../lib/mutation-errors";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { billingStateView, CREDIT_REASON_LABELS, parseAmount, refundFormError } from "../../lib/platform-billing.util";
@@ -80,7 +81,8 @@ export function PlanSubscriptionCard({ client, subscription, onCreateCustomPlan,
   const paidToDate = useMemo(() => paid.data.reduce((sum, payment) => sum + payment.amount, 0), [paid.data]);
   const state = billingStateView(subscription, formatDate);
   const scheduled = scheduledPlanChangeOf(subscription, plans);
-  const planName = subscription ? subscription.planDisplayName || PLAN_LABELS[subscription.plan] : null;
+  // Round 2 D16: the same plan name as the header and Overview (the version is shown beside it here only)
+  const planName = subscription ? planLabel({ displayName: subscription.planDisplayName, name: subscription.plan }) : null;
 
   const cycle = subscription ? (subscription.billingCycle === "YEARLY" ? "billed yearly" : "billed monthly") : null;
   const showCustomPlan = canManagePlans && onCreateCustomPlan;
@@ -138,7 +140,7 @@ export function PlanSubscriptionCard({ client, subscription, onCreateCustomPlan,
             )}
           </KeyValue>
           <KeyValue label="Credit balance">
-            <span className="num">{formatMoney(subscription?.creditBalance ?? 0)}</span>
+            <span className="num">{formatMoney(subscription?.creditBalance ?? 0, { exact: true })}</span>
           </KeyValue>
           <KeyValue label="Orders">{state.detail ?? "Taking orders as normal."}</KeyValue>
         </KeyValueGrid>
@@ -201,9 +203,9 @@ export function StoreCreditsCard({ client }: { client: Client }) {
               </span>
             );
           case "amount":
-            return <span className="num">{formatMoney(credit.amount)}</span>;
+            return <span className="num">{formatMoney(credit.amount, { exact: true })}</span>;
           case "remaining":
-            return <span className="num">{formatMoney(credit.remaining)}</span>;
+            return <span className="num">{formatMoney(credit.remaining, { exact: true })}</span>;
           case "createdAt":
             return <span className="num">{formatDate(credit.createdAt)}</span>;
           default:
@@ -214,11 +216,11 @@ export function StoreCreditsCard({ client }: { client: Client }) {
         <div className="min-w-0">
           <div className="flex min-w-0 items-center justify-between gap-3">
             <span className="min-w-0 truncate font-mono text-label text-fg">{credit.number}</span>
-            <span className="shrink-0 font-semibold text-fg num">{formatMoney(credit.amount)}</span>
+            <span className="shrink-0 font-semibold text-fg num">{formatMoney(credit.amount, { exact: true })}</span>
           </div>
           <div className="mt-1 flex min-w-0 items-center justify-between gap-3 text-label text-fg-muted">
             <span className="min-w-0 truncate">
-              {CREDIT_REASON_LABELS[credit.reason] ?? credit.reason} · {formatMoney(credit.remaining)} left
+              {CREDIT_REASON_LABELS[credit.reason] ?? credit.reason} · {formatMoney(credit.remaining, { exact: true })} left
             </span>
             <span className="shrink-0 num">{formatDate(credit.createdAt)}</span>
           </div>
@@ -285,7 +287,7 @@ export function IssueCreditDialog({ isOpen, client, onClose, onDone }: StoreDial
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={close} width="sm">
+    <Modal isOpen={isOpen} onClose={close} size="md">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={<IconWallet aria-hidden />}>Issue credit to {client.storeName}?</PopupTitle>
@@ -379,7 +381,7 @@ export function RecordRefundDialog({ isOpen, client, onClose, onDone }: StoreDia
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={close} width="sm">
+    <Modal isOpen={isOpen} onClose={close} size="md">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={<IconExchange aria-hidden />}>Record a refund for {client.storeName}</PopupTitle>
@@ -426,7 +428,7 @@ export function RecordRefundDialog({ isOpen, client, onClose, onDone }: StoreDia
           <UiButton variant="secondary" onPress={close} isDisabled={busy}>
             Cancel
           </UiButton>
-          <UiButton variant="destructive" isLoading={busy} isDisabled={busy || !payment} onPress={() => void run()}>
+          <UiButton variant="danger" isLoading={busy} isDisabled={busy || !payment} onPress={() => void run()}>
             Record refund
           </UiButton>
         </ModalFooter>

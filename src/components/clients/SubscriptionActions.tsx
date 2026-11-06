@@ -207,7 +207,7 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
       />
 
       {/* Reactivate (PRD-016 FR-18): a payment, or an audited override with a reason */}
-      <Modal isOpen={dialog === "reactivate"} onClose={closeDialog} width="sm">
+      <Modal isOpen={dialog === "reactivate"} onClose={closeDialog} size="sm">
         <ModalContent>
           <ModalHeader>
             <PopupTitle icon={<IconRepeat aria-hidden />}>Reactivate {client.storeName}'s subscription?</PopupTitle>
@@ -240,7 +240,7 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
               Cancel
             </UiButton>
             <UiButton
-              variant={reactivateOverride ? "destructive" : "primary"}
+              variant={reactivateOverride ? "danger" : "primary"}
               isLoading={busy}
               isDisabled={busy || (reactivateOverride && !reactivateReason.trim())}
               onPress={runReactivate}
@@ -252,7 +252,7 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
       </Modal>
 
       {/* Extend trial */}
-      <Modal isOpen={dialog === "trial"} onClose={closeDialog} width="sm">
+      <Modal isOpen={dialog === "trial"} onClose={closeDialog} size="md">
         <ModalContent>
           <ModalHeader>
             <PopupTitle icon={<IconCalendar aria-hidden />}>Extend trial</PopupTitle>
@@ -288,7 +288,7 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
 
       {/* Cancel (PRD-025 FR-4.2): a form, not a bare confirm, because the reason is required and the
           action stays disabled until one is chosen; same shape as Reactivate and Activate. */}
-      <Modal isOpen={dialog === "cancel"} onClose={closeDialog} width="sm">
+      <Modal isOpen={dialog === "cancel"} onClose={closeDialog} size="sm">
         <ModalContent>
           <ModalHeader>
             <PopupTitle icon={<IconXCircle aria-hidden />} tone="danger">Cancel {client.storeName}'s subscription?</PopupTitle>
@@ -342,7 +342,7 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
               Keep subscription
             </UiButton>
             <UiButton
-              variant="destructive"
+              variant="danger"
               isLoading={busy}
               isDisabled={busy || !cancelReason}
               onPress={runCancel}
@@ -365,7 +365,7 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
       />
 
       {/* Activate without payment (PRD-014 SEC-04) */}
-      <Modal isOpen={dialog === "activate"} onClose={closeDialog} width="sm">
+      <Modal isOpen={dialog === "activate"} onClose={closeDialog} size="sm">
         <ModalContent>
           <ModalHeader>
             <PopupTitle icon={<IconPower aria-hidden />}>Activate {client.storeName} without a payment?</PopupTitle>
@@ -391,7 +391,7 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
               Cancel
             </UiButton>
             <UiButton
-              variant="destructive"
+              variant="danger"
               isLoading={busy}
               isDisabled={busy || !activationReason.trim()}
               onPress={() =>
@@ -408,7 +408,7 @@ export function SubscriptionDialogs({ client, subscription, dialog, onClose }: S
       </Modal>
 
       {/* Record payment */}
-      <Modal isOpen={dialog === "payment"} onClose={closeDialog} width="sm">
+      <Modal isOpen={dialog === "payment"} onClose={closeDialog} size="md">
         <ModalContent>
           <ModalHeader>
             <PopupTitle icon={<IconPayments aria-hidden />}>Record a payment</PopupTitle>

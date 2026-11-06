@@ -146,7 +146,7 @@ export function ProfileSecuritySettings() {
   const signOutEverywhereButton = (
     <Button
       id="sign-out-everywhere"
-      variant="destructive-secondary"
+      variant="secondary"
       size="sm"
       startIcon={<IconLogout aria-hidden />}
       onPress={() => setLogoutAllOpen(true)}
@@ -191,7 +191,7 @@ export function ProfileSecuritySettings() {
             <ReadOnlyField label="Role">{user ? <Chip tone="neutral">{getPlatformRoleLabel(user.role)}</Chip> : "—"}</ReadOnlyField>
             <ReadOnlyField id="two-step" label="Two-step verification">
               <Chip tone={user?.mfaEnabled ? "success" : "warning"}>{user?.mfaEnabled ? "On" : "Off"}</Chip>
-              <Button variant="tertiary" size="sm" startIcon={<IconLock aria-hidden />} onPress={() => navigate("/mfa")}>
+              <Button variant="ghost" size="sm" startIcon={<IconLock aria-hidden />} onPress={() => navigate("/mfa")}>
                 {user?.mfaEnabled ? "Set up again" : "Set up"}
               </Button>
             </ReadOnlyField>

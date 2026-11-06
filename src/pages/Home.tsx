@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { NeedsYouAiCard, NeedsYouBillingCard, NeedsYouStoresCard } from "../components/insights/home/NeedsYouCards";
+import { Link, useNavigate } from "react-router-dom";
+import { NeedsYouAiCard, NeedsYouBillingCard, NeedsYouOnboardingCard } from "../components/insights/home/NeedsYouCards";
 import { RecentActivityCard } from "../components/insights/home/RecentActivityCard";
 import { SnapshotHeader } from "../components/insights/SnapshotHeader";
-import { Button, ErrorState, HomeHero, SummaryPanel, cx } from "../components/ui";
+import { Button, ErrorState, HomeHero, SummaryPanel } from "../components/ui";
 import { toasts } from "../copy";
 import { knownStoreNames } from "../lib/home-attention.util";
 import { findMetric } from "../lib/platform-insights.util";
@@ -15,8 +15,8 @@ import {
   greetingName,
   healthSummary,
   heroChips,
+  heroAttentionLine,
   heroDate,
-  heroSummary,
   pastDueOf,
   storeCounts,
   summaryCells,
@@ -33,9 +33,10 @@ import type { PlatformMetricsPeriod } from "../types/platform-insights";
  * orb with this week's line, chips for stores · live, GMV change and
  * payments past due, period tabs) → the summary panel (GMV, Subscriptions
  * with past due in red, Store health, and Uptime, which shows checkout
- * failures until uptime is monitored) → three Needs you cards (Zcom AI's
- * What needs attention, Billing's money due this week, Stores at risk and
- * in setup) → Recent activity → "Last updated · Refresh now".
+ * failures until uptime is monitored) → three equal action cards (round 2
+ * §6.1: Zcom AI · Urgent, Billing, Onboarding) → Recent activity in
+ * sentences → "Last updated · Refresh now". Hero: Announce + Create store,
+ * and the line from the attention engine.
  *
  * The period tabs pick the snapshot period for GMV and its chip; the rest
  * is live (money due), this month (MRR) or fixed (checkout failures, 7
@@ -63,9 +64,8 @@ export function Home() {
   const health = useMemo(() => healthSummary(clients), [clients]);
 
   const chips = heroChips({ stores, gmv, pastDue, comparison: SA_HOME_COMPARISON[period] });
-  const summary = loading
-    ? ""
-    : heroSummary({ pastDue, atRisk: data?.atRisk.totalCount ?? 0, inSetup: data?.development.totalCount ?? 0 });
+  // Round 2 §6.1: the line comes from the attention engine (rules + Zcom AI summary, money due, setup, risk).
+  const summary = loading ? "" : heroAttentionLine(data);
 
   const cells = summaryCells({
     gmv,
@@ -91,12 +91,18 @@ export function Home() {
         date={heroDate()}
         name={greetingName(user?.name)}
         actions={
-          // Announce (board 02) waits for an Announcements feature: there is no data for it yet.
-          can(PLATFORM_PERMISSIONS.TENANTS_MANAGE) ? (
-            <Button variant="glass" size="sm" onPress={() => navigate("/stores/new")}>
-              Create store
-            </Button>
-          ) : undefined
+          // Round 2 §6.1 (board 02): Announce (glass) + Create store (on-dark). The kit has no glass button
+          // variant any more (G10 maps "glass" to on-dark), so Announce uses the hero's own glass pill.
+          <>
+            <Link to="/support/announcements" className="zc-hero__chip outline-none focus-visible:shadow-focus-strong">
+              Announce
+            </Link>
+            {can(PLATFORM_PERMISSIONS.TENANTS_MANAGE) ? (
+              <Button variant="on-dark" size="sm" onPress={() => navigate("/stores/new")}>
+                Create store
+              </Button>
+            ) : null}
+          </>
         }
         summary={summary}
         chips={chips}
@@ -117,16 +123,11 @@ export function Home() {
         <>
           <SummaryPanel cells={cells} isLoading={summaryLoading} storageKey={`${user?.id ?? "me"}:home`} aria-label="Platform summary" />
 
-          {/* v2 §10: three cards a row from 1024px, two on tablet (the third spans the row), one on phone. */}
-          <div
-            className={cx(
-              "grid grid-cols-1 gap-4 md:grid-cols-2",
-              showBilling && "lg:grid-cols-3 md:max-lg:[&>:last-child]:col-span-2",
-            )}
-          >
+          {/* Round 2 §6.1: three equal action cards a row from 1024px (two on tablet, the third spans), one on phone. */}
+          <div className={showBilling ? "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 md:max-lg:[&>:last-child]:col-span-2" : "grid grid-cols-1 gap-4 md:grid-cols-2"}>
             <NeedsYouAiCard summary={data?.whatNeedsAttention ?? null} storeNames={storeNames} isLoading={loading} />
             {showBilling ? <NeedsYouBillingCard moneyDue={data?.moneyDue ?? null} isLoading={loading} /> : null}
-            <NeedsYouStoresCard atRisk={data?.atRisk ?? null} development={data?.development ?? null} isLoading={loading} />
+            <NeedsYouOnboardingCard development={data?.development ?? null} atRiskCount={data?.atRisk.totalCount ?? 0} isLoading={loading} />
           </div>
         </>
       )}

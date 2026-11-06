@@ -46,19 +46,24 @@ export interface NotificationCountsState {
 }
 
 export interface NotificationFeedState {
-  /** The tab on screen; `null` before the panel first opened. */
-  category: PlatformNotificationCategory | null;
+  /** The categories on screen (one tab); `null` before the panel first opened. */
+  categories: PlatformNotificationCategory[] | null;
   items: PlatformNotification[];
   totalCount: number;
   loading: boolean;
   loadingMore: boolean;
   error: boolean;
   hasMore: boolean;
-  /** Shows a tab from its first page. */
-  load: (category: PlatformNotificationCategory) => Promise<void>;
+  /**
+   * Shows a tab from its first page. Round 2 G2: the "All" tab merges every
+   * readable category; `platformNotifications` takes one, so each is read
+   * page by page and merged newest first.
+   */
+  load: (categories: PlatformNotificationCategory | PlatformNotificationCategory[]) => Promise<void>;
   loadMore: () => Promise<void>;
   /** Resolves once the server marked them; throws when it refused. */
   markRead: (ids: string[]) => Promise<void>;
+  /** "Mark all as read" for every category of the tab on screen. */
   markAllRead: () => Promise<void>;
 }
 
@@ -107,14 +112,20 @@ export function useNotificationCounts(): NotificationCountsState {
 
 // ─── Feed ─────────────────────────────────────────────────────────────────
 
+/** Newest first. */
+function byNewest(items: PlatformNotification[]): PlatformNotification[] {
+  return items.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+type PageState = Partial<Record<PlatformNotificationCategory, { read: number; total: number }>>;
+
 export function useNotificationFeed(
   onReadChanged: () => void,
 ): NotificationFeedState {
   const apollo = useApolloClient();
-  const [category, setCategory] =
-    useState<PlatformNotificationCategory | null>(null);
+  const [categories, setCategories] = useState<PlatformNotificationCategory[] | null>(null);
   const [items, setItems] = useState<PlatformNotification[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  const [pages, setPages] = useState<PageState>({});
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
@@ -142,18 +153,23 @@ export function useNotificationFeed(
   // Called from the events that show a tab (open, tab change, Retry), not
   // from an effect.
   const load = useCallback(
-    async (target: PlatformNotificationCategory) => {
+    async (target: PlatformNotificationCategory | PlatformNotificationCategory[]) => {
+      const list = Array.isArray(target) ? target : [target];
       const request = ++requestRef.current;
-      setCategory(target);
+      setCategories(list);
       setLoading(true);
       setError(false);
       setItems([]);
-      setTotalCount(0);
+      setPages({});
       try {
-        const page = await fetchPage(target, 0);
+        const results = await Promise.all(list.map((category) => fetchPage(category, 0)));
         if (request !== requestRef.current) return;
-        setItems(page.items);
-        setTotalCount(page.totalCount);
+        const next: PageState = {};
+        list.forEach((category, index) => {
+          next[category] = { read: results[index].items.length, total: results[index].totalCount };
+        });
+        setPages(next);
+        setItems(byNewest(results.flatMap((page) => page.items)));
       } catch {
         if (request === requestRef.current) setError(true);
       } finally {
@@ -164,50 +180,81 @@ export function useNotificationFeed(
   );
 
   const loadMore = useCallback(async () => {
-    if (!category) return;
+    if (!categories) return;
     const request = requestRef.current;
+    const pending = categories.filter((category) => {
+      const page = pages[category];
+      return page && page.read < page.total;
+    });
+    if (!pending.length) return;
     setLoadingMore(true);
     try {
-      const page = await fetchPage(category, items.length);
+      const results = await Promise.all(pending.map((category) => fetchPage(category, pages[category]?.read ?? 0)));
       if (request !== requestRef.current) return;
-      setItems((current) => appendNotificationPage(current, page.items));
-      setTotalCount(page.totalCount);
+      setPages((current) => {
+        const next = { ...current };
+        pending.forEach((category, index) => {
+          next[category] = {
+            read: (current[category]?.read ?? 0) + results[index].items.length,
+            total: results[index].totalCount,
+          };
+        });
+        return next;
+      });
+      setItems((current) => byNewest(appendNotificationPage(current, results.flatMap((page) => page.items))));
     } finally {
       setLoadingMore(false);
     }
-  }, [category, fetchPage, items.length]);
+  }, [categories, fetchPage, pages]);
 
   const markRead = useCallback(
     async (ids: string[]) => {
       if (ids.length === 0) return;
-      await apollo.mutate({
-        mutation: MARK_PLATFORM_NOTIFICATIONS_READ,
-        variables: { ids },
-      });
+      // Round 2 §2: optimistic. The rows read as read at once; on an error they go back and the caller toasts.
+      const unread = new Set(items.filter((item) => ids.includes(item.id) && !item.read).map((item) => item.id));
       setItems((current) => markItemsRead(current, ids));
+      try {
+        await apollo.mutate({
+          mutation: MARK_PLATFORM_NOTIFICATIONS_READ,
+          variables: { ids },
+        });
+      } catch (error) {
+        setItems((current) => current.map((item) => (unread.has(item.id) ? { ...item, read: false } : item)));
+        throw error;
+      }
       onReadChanged();
     },
-    [apollo, onReadChanged],
+    [apollo, items, onReadChanged],
   );
 
   const markAllRead = useCallback(async () => {
-    if (!category) return;
-    await apollo.mutate({
-      mutation: MARK_ALL_PLATFORM_NOTIFICATIONS_READ,
-      variables: { category },
-    });
+    if (!categories?.length) return;
+    const unread = new Set(items.filter((item) => !item.read).map((item) => item.id));
     setItems((current) => current.map((item) => ({ ...item, read: true })));
+    try {
+      await Promise.all(
+        categories.map((category) =>
+          apollo.mutate({
+            mutation: MARK_ALL_PLATFORM_NOTIFICATIONS_READ,
+            variables: { category },
+          }),
+        ),
+      );
+    } catch (error) {
+      setItems((current) => current.map((item) => (unread.has(item.id) ? { ...item, read: false } : item)));
+      throw error;
+    }
     onReadChanged();
-  }, [apollo, category, onReadChanged]);
+  }, [apollo, categories, items, onReadChanged]);
 
   return {
-    category,
+    categories,
     items,
-    totalCount,
+    totalCount: Object.values(pages).reduce((sum, page) => sum + (page?.total ?? 0), 0),
     loading,
     loadingMore,
     error,
-    hasMore: items.length < totalCount,
+    hasMore: Object.values(pages).some((page) => page && page.read < page.total),
     load,
     loadMore,
     markRead,

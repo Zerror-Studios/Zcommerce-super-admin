@@ -14,8 +14,8 @@ const client = (status: Client["status"], gracePeriodDays?: number): Client => (
 describe("store status", () => {
   it("maps lifecycle (PRD-024 D4: Live = liveAt)", () => {
     expect(storeLifecycle({ ...client("active"), liveAt: "2026-10-01T00:00:00Z" }).label).toBe("Live");
-    expect(storeLifecycle(client("active")).label).toBe("Set up");
-    expect(storeLifecycle({ ...client("active"), subscriptionStatus: "ACTIVE" }).label).toBe("Set up");
+    expect(storeLifecycle(client("active")).label).toBe("In setup");
+    expect(storeLifecycle({ ...client("active"), subscriptionStatus: "ACTIVE" }).label).toBe("In setup");
     expect(storeLifecycle({ ...client("trial"), subscriptionStatus: "TRIAL" }).label).toBe("Trial");
     expect(storeLifecycle({ ...client("active"), subscriptionStatus: "PAST_DUE" }).label).toBe("Past due");
     expect(storeLifecycle({ ...client("active"), subscriptionStatus: "CANCELLED" }).label).toBe("Cancelled");

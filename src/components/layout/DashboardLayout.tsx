@@ -1,6 +1,6 @@
-import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Suspense, useCallback, useMemo, useState, type ReactNode } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { allNavItems, mainNavItems, settingsNavItem, visibleNavItems } from "../../config/navigation";
+import { allNavItems, mainNavItems, settingsNavItem, settingsPages, visibleNavItems } from "../../config/navigation";
 import { askSuggestionsFor } from "../../config/ask-suggestions";
 import { APP_VERSION } from "../../config/data-source";
 import { getPlatformRoleLabel } from "../../lib/display-labels.util";
@@ -13,11 +13,12 @@ import { useAiTopUpRequests } from "../../hooks/use-platform-ai";
 import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { usePlatformSettings } from "../../providers/SettingsProvider";
 import { subscriptionsNeedingAction } from "../billing/subscription-rows";
-import { IconAdd, IconLogout, IconNotifications, IconStore } from "../ui/icons";
+import { IconAdd, IconHome, IconLogout, IconNotifications, IconPayments, IconSettings, IconStore } from "../ui/icons";
 import { AppShell } from "./AppShell";
 import { AskBar } from "./Assistant";
 import { AskZcomPlatformPanel } from "../assistant/AskZcomPlatformPanel";
 import { readStoredFlag, storeFlag, useShellHotkeys } from "./shell-utils";
+import { useShellDocumentTitle } from "./document-title";
 import { CommandPalette } from "./CommandPalette";
 import { AskZcomAiContext } from "./ask-context";
 import { PlatformNotificationsPanel } from "./PlatformNotificationsPanel";
@@ -26,6 +27,7 @@ import { AiSpectrumDefs } from "../ui/Ai";
 import { RouteSkeleton } from "../ui/RouteSkeleton";
 import { ConfirmDialog, cx, toneTextClasses } from "../ui";
 import type { CommandGroup } from "./types";
+import { prefetchRoute } from "../../lib/route-prefetch";
 
 const COLLAPSE_KEY = "zcommerce-sidebar-collapsed";
 
@@ -105,9 +107,10 @@ export function DashboardLayout() {
 
   const pageLabel = pageLabelFor(location.pathname);
   const askSuggestions = askSuggestionsFor(location.pathname);
-  useEffect(() => {
-    document.title = pageLabel ? `${pageLabel} · Zcom Super admin` : "Zcom Super admin";
-  }, [pageLabel]);
+  // Round 2 G3: no bar on pages with their own composer (a support ticket's reply box).
+  const hideAskBar = pathMatches(location.pathname, "/support/tickets");
+  // Round 2 G14: "‹Record› · ‹Section› · Zcom Super admin"; record pages add theirs with useDocumentTitle.
+  useShellDocumentTitle(pageLabel, "Zcom Super admin");
 
   // `signOut` ends with `clearAuth`, which hard-reloads to /sign-in; the
   // sign-in page shows the "logged out" notice itself (review C-L5).
@@ -137,25 +140,41 @@ export function DashboardLayout() {
     [can, totalCount, subscriptionCount, openTopUps],
   );
 
+  // Round 2 G1: the console palette searches the loaded stores, the pages and the settings sections in the
+  // browser (the store list is already loaded by ClientsProvider); Stores come first.
   const commandGroups = useMemo<CommandGroup[]>(
     () => [
       {
-        title: "Pages",
-        items: visibleNavItems(allNavItems, can).flatMap((item) =>
-          item.children?.length
-            ? item.children.map((child) => ({ id: `page-${child.to}`, label: child.label, hint: item.label, keywords: item.label, icon: item.icon, href: child.to }))
-            : [{ id: `page-${item.key}`, label: item.label, icon: item.icon, href: item.to }],
-        ),
-      },
-      {
         title: "Stores",
+        noun: "stores",
+        showAllHref: "/stores",
         items: clients.map((client) => ({
           id: `store-${client.id}`,
           label: client.storeName,
-          hint: client.ownerEmail,
+          description: [client.ownerName, client.ownerEmail].filter(Boolean).join(" · ") || undefined,
+          hint: "Store",
           keywords: `${client.ownerName} ${client.ownerEmail}`,
           icon: IconStore,
           href: `/stores/${client.id}`,
+        })),
+      },
+      {
+        title: "Pages",
+        items: visibleNavItems(mainNavItems, can).flatMap((item) =>
+          item.children?.length
+            ? item.children.map((child) => ({ id: `page-${child.to}`, label: child.label, description: item.label, hint: "Page", keywords: item.label, icon: item.icon, href: child.to }))
+            : [{ id: `page-${item.key}`, label: item.label, hint: "Page", icon: item.icon, href: item.to }],
+        ),
+      },
+      {
+        title: "Settings",
+        items: settingsPages.map((page) => ({
+          id: `settings-${page.to}`,
+          label: page.label,
+          hint: "Settings",
+          keywords: "settings",
+          icon: IconSettings,
+          href: page.to,
         })),
       },
       ...(canAddStore
@@ -165,14 +184,27 @@ export function DashboardLayout() {
     [can, canAddStore, clients],
   );
 
+  // The empty palette's "Jump to" (G1).
+  const jumpTo = useMemo(
+    () => [
+      { id: "jump-home", label: "Home", icon: IconHome, href: "/" },
+      { id: "jump-stores", label: "Stores", icon: IconStore, href: "/stores" },
+      { id: "jump-billing", label: "Billing", icon: IconPayments, href: "/subscriptions" },
+      { id: "jump-settings", label: "Settings", icon: IconSettings, href: "/settings/profile" },
+    ],
+    [],
+  );
+
   const unreadCount = notificationCounts.total;
   const panel = (trigger: ReactNode) => <PlatformNotificationsPanel trigger={trigger} counts={notificationCounts} />;
 
   const isActive = (to: string, end?: boolean) => pathMatches(location.pathname, to, end);
   const sidebarProps = {
     items,
+    // Round 2 §2: menu hover/focus loads the page's code before the click.
+    onPrefetch: prefetchRoute,
     settingsItem: settingsNavItem,
-    productLabel: "Platform",
+    productLabel: "Platform admin",
     productVersion: APP_VERSION,
     searchPlaceholder: "Search stores",
     onOpenSearch: openPalette,
@@ -201,10 +233,10 @@ export function DashboardLayout() {
         topBarSubtitle="Super admin"
         onOpenSearch={openPalette}
         floating={
-          canAsk
-            ? (hidden) => (
-                <AskBar placeholder="Ask Zcom AI about any store…" hidden={hidden} onOpen={openAssistant} suggestion={askSuggestions[0]} />
-              )
+          // Round 2 G3: while the chat box is open the bar steps aside (the box grows out of it).
+          canAsk && !hideAskBar
+            ? (hidden) =>
+                isAssistantOpen ? null : <AskBar placeholder="Ask Zcom AI about any store…" hidden={hidden} onOpen={openAssistant} />
             : undefined
         }
         mobileActions={panel(
@@ -253,7 +285,9 @@ export function DashboardLayout() {
         isOpen={paletteOpen}
         onClose={() => setPaletteOpen(false)}
         groups={commandGroups}
-        placeholder="Search stores, pages and actions"
+        placeholder="Search stores, pages and settings"
+        recentKey="zc.console.palette.recent"
+        jumpTo={jumpTo}
       />
       <AiSpectrumDefs />
       {canAsk ? (

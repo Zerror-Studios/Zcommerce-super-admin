@@ -13,10 +13,9 @@
  * single request/answer shape shared with the dashboard.
  */
 
-import { DrawerBody, DrawerContent, DrawerFooter } from "@heroui/react";
 import { useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import {
   AiThinking,
@@ -31,7 +30,18 @@ import {
 } from "../ui";
 import { cx } from "../ui/cx";
 import { IconAdd, IconBack, IconChat, IconDelete, IconTime } from "../ui/icons";
-import { AiComposer, AiSheet, AiSheetHeader, AiSheetHistory, AiSheetWelcome } from "../layout/AiSheet";
+import {
+  AiAnswerFooter,
+  AiComposer,
+  AiSheet,
+  AiSheetBody,
+  AiSheetContent,
+  AiSheetFooter,
+  AiSheetHeader,
+  AiSheetHistory,
+  AiSheetWelcome,
+  type AiSheetSize,
+} from "../layout/AiSheet";
 import { AiUsageBar } from "./AiUsageBar";
 import { AssistantMarkdown } from "./AssistantMarkdown";
 import {
@@ -126,6 +136,25 @@ function RatingButtons({ turn, onRate }: { turn: AskTurn; onRate: (rating: "UP" 
   );
 }
 
+/** Round 2 G3: an answer ends with one action, the first in-app link it gives (`[label](/path)`). */
+const ANSWER_LINK_PATTERN = /\[([^\]]+)\]\((\/[^)\s]*)\)/;
+
+function AnswerAction({ text, onOpen }: { text: string; onOpen: (path: string) => void }) {
+  const match = ANSWER_LINK_PATTERN.exec(text);
+  const path = match && !match[2].startsWith("//") ? match[2] : null;
+  return (
+    <AiAnswerFooter
+      action={
+        match && path ? (
+          <Button variant="secondary" size="sm" onPress={() => onOpen(path)}>
+            {match[1]}
+          </Button>
+        ) : undefined
+      }
+    />
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────
 
 export function AskZcomPlatformPanel({
@@ -139,7 +168,10 @@ export function AskZcomPlatformPanel({
   const { can } = useAuth();
   const { clients } = useClients();
   const [view, setView] = useState<"chat" | "history">("chat");
-  const [expanded, setExpanded] = useState(false);
+  // Round 2 G3: the chat box first; ⤢ grows it to the large half view, then to the full view.
+  const [size, setSize] = useState<AiSheetSize>("box");
+  const expanded = size === "full";
+  const navigate = useNavigate();
   const [draft, setDraft] = useState("");
   const [deleting, setDeleting] = useState<PlatformAssistantConversationSummary | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -165,6 +197,14 @@ export function AskZcomPlatformPanel({
   );
 
   // ─── Effects ───
+  // Every open starts as the chat box (round 2 G3).
+  useEffect(() => {
+    if (!isOpen) {
+      setSize("box");
+      setView("chat");
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen && pendingQuestion) {
       setView("chat");
@@ -272,6 +312,15 @@ export function AskZcomPlatformPanel({
             </Button>
           </div>
         ) : null}
+        {!isRunning && turn.status !== "FAILED" && turn.status !== "CANCELLED" && turn.text ? (
+          <AnswerAction
+            text={turn.text}
+            onOpen={(path) => {
+              navigate(path);
+              onClose();
+            }}
+          />
+        ) : null}
         {!isRunning && (sources || turn.messageId) ? (
           <div className="flex items-center justify-between gap-2">
             <span className="text-caption text-fg-subtle">{sources}</span>
@@ -285,10 +334,10 @@ export function AskZcomPlatformPanel({
   const runningTurn = chat.turns.find((turn) => turn.status === "RUNNING");
   const showHistoryView = !expanded && view === "history";
 
-  /** Full view (v2 §3.3): the history sits on the left, so load it when the sheet expands. */
-  const changeExpanded = (next: boolean) => {
-    setExpanded(next);
-    if (next) {
+  /** Full view (v2 §3.3): the history sits on the left, so load it when the surface reaches full size. */
+  const changeSize = (next: AiSheetSize) => {
+    setSize(next);
+    if (next === "full") {
       void loadConversations({ variables: { limit: HISTORY_PAGE_SIZE, offset: 0 } });
       setView("chat");
     }
@@ -359,8 +408,8 @@ export function AskZcomPlatformPanel({
 
   return (
     <>
-      <AiSheet isOpen={isOpen} onClose={onClose} expanded={expanded} onExpandedChange={changeExpanded}>
-        <DrawerContent>
+      <AiSheet isOpen={isOpen} onClose={onClose} size={size} onSizeChange={changeSize}>
+        <AiSheetContent>
           <AiSheetHeader
             context={pageLabel}
             title={showHistoryView ? "Conversations" : undefined}
@@ -379,20 +428,21 @@ export function AskZcomPlatformPanel({
                     <IconTime />
                   </IconButton>
                 ) : null}
-                <IconButton
-                  aria-label="New conversation"
-                  size="sm"
-                  onPress={() => {
-                    chat.startNew();
-                    setView("chat");
-                  }}
-                >
-                  <IconAdd />
-                </IconButton>
+                {/* The box keeps three buttons (history, expand, close); New chat is in its history list. */}
+                {size !== "box" ? (
+                  <IconButton
+                    aria-label="New conversation"
+                    size="sm"
+                    onPress={() => {
+                      chat.startNew();
+                      setView("chat");
+                    }}
+                  >
+                    <IconAdd />
+                  </IconButton>
+                ) : null}
               </>
             }
-            expanded={expanded}
-            onExpandedChange={changeExpanded}
             onClose={onClose}
             thinking={chat.isBusy}
           />
@@ -421,13 +471,32 @@ export function AskZcomPlatformPanel({
               </AiSheetHistory>
             ) : null}
             <div className="zc-ai-sheet__main">
-              <DrawerBody className="custom-scroll gap-5 px-5 py-4">
-                {showHistoryView ? historyList : chatList}
+              <AiSheetBody>
+                {showHistoryView ? (
+                  <>
+                    <div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        startIcon={<IconAdd aria-hidden />}
+                        onPress={() => {
+                          chat.startNew();
+                          setView("chat");
+                        }}
+                      >
+                        New chat
+                      </Button>
+                    </div>
+                    {historyList}
+                  </>
+                ) : (
+                  chatList
+                )}
                 <div ref={endRef} />
-              </DrawerBody>
+              </AiSheetBody>
 
               {showHistoryView ? null : (
-                <DrawerFooter className="zc-drawer__footer--stack">
+                <AiSheetFooter>
                   <AiComposer
                     value={draft}
                     onValueChange={setDraft}
@@ -455,11 +524,11 @@ export function AskZcomPlatformPanel({
                       )
                     }
                   />
-                </DrawerFooter>
+                </AiSheetFooter>
               )}
             </div>
           </div>
-        </DrawerContent>
+        </AiSheetContent>
       </AiSheet>
 
       <ConfirmDialog

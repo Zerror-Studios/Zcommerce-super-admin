@@ -19,6 +19,7 @@ import {
   type SubscriptionStatus,
 } from "../types";
 import type { PlatformRole } from "../types/platform-api";
+import { formatPlanName } from "../components/ui/format-name";
 
 // ─── Ordered value lists ──────────────────────────────────────────────────
 
@@ -104,9 +105,9 @@ function lookupLabel<T extends string>(
   return labels[value as T] ?? value;
 }
 
-/** Human-readable plan name; unknown values are returned unchanged. */
+/** Human-readable plan name; unknown values in Title Case ("GROWTH" → "Growth", round 2 G13), never CAPS. */
 export function getPlanLabel(plan: string): string {
-  return lookupLabel(PLAN_LABELS, plan);
+  return (PLAN_LABELS as Record<string, string>)[plan] ?? formatPlanName(plan);
 }
 
 /** Human-readable subscription status; unknown values pass through. */

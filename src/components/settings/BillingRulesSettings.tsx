@@ -439,7 +439,7 @@ export function BillingRulesSettings() {
             {draft.rows.length < MAX_REMINDERS && !disabled ? (
               <div>
                 <Button
-                  variant="tertiary"
+                  variant="ghost"
                   size="sm"
                   startIcon={<IconAdd aria-hidden />}
                   onPress={() => set("rows", [...draft.rows, { days: "3", when: "after" }])}

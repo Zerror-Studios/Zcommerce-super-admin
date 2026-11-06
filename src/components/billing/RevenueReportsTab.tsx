@@ -18,6 +18,7 @@ import { useMrrHistory, useRevenueOverview } from "../../hooks/use-platform-repo
 import { monthTotal } from "../../lib/api-report-adapters";
 import { NOT_RECORDED_COPY, firstRecordedDay, mrrByMonth, type MrrMonthRow } from "../../lib/platform-history.util";
 import { downloadCsv, rowsToCsv } from "../../lib/report-csv";
+import { IconChartBar } from "../ui/icons";
 import type { GatewayBreakdownRow, MonthlyPlanRevenue, PlanBreakdownRow, TopStoreRevenueRow } from "../../types/reports";
 import { toasts } from "../../copy";
 import type { DateRangeValue } from "../common/DateRangeComparison";
@@ -36,6 +37,7 @@ import { areaGradientStops, chartColors, planColors, pointsForViewport, recharts
 import { useIsPhone } from "../ui/use-media";
 import {
   Card,
+  EmptyState,
   ErrorState,
   Skeleton,
   SummaryPanel,
@@ -234,6 +236,14 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
     },
   ];
 
+  // Round 2 §6.4: when every figure is ₹0 the charts would be flat lines on ₹0–₹4 axes; say why instead.
+  const allZero =
+    !api.loading &&
+    !mrrApi.loading &&
+    [kpis.planRevenue, kpis.netCollected, kpis.activeMrr, kpis.pendingAmount, kpis.failedAmount, kpis.refundedAmount].every((value) => !value) &&
+    bookingsSeries.every((value) => !value) &&
+    mrrSeries.every((value) => !value);
+
   // On error show only the error, not a page of zeros (the figures below would read as real).
   if (api.error) {
     return (
@@ -250,6 +260,16 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
       <div className="space-y-4">
         <SummaryPanel cells={summaryCells} isLoading={api.loading} storageKey={summaryKey} aria-label="Revenue summary" />
 
+        {allZero ? (
+          <Card>
+            <EmptyState
+              icon={IconChartBar}
+              title="No paid plans yet."
+              description="Revenue shows here once a store pays."
+            />
+          </Card>
+        ) : (
+        <>
         {/* 50/50; the two cards stack when the row is under 720px (01 §7.25: 280px charts). */}
         <div className="@container">
           <div className="grid grid-cols-1 gap-4 @3xl:grid-cols-2">
@@ -479,6 +499,8 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
             }
           }}
         />
+        </>
+        )}
       </div>
     </div>
   );

@@ -410,7 +410,7 @@ export function WriteWithAiButton({
   size?: "sm" | "md";
 }) {
   return (
-    <Button variant="ai" size={size} startIcon={<Sparkle />} onPress={onPress} isLoading={isLoading}>
+    <Button variant="secondary" size={size} startIcon={<Sparkle />} onPress={onPress} isLoading={isLoading}>
       {label}
     </Button>
   );

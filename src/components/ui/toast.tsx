@@ -10,8 +10,8 @@ export interface ToastAction {
   onPress: () => void;
 }
 
-/** Toasts with an action stay 6s, plain ones 4s (01 §7.19). */
-const TIMEOUT_MS = 4000;
+/** Round 2 G7: plain toasts stay 3.2s; with an action ("Undo") 6s so there is time to press it; errors stay. */
+export const TOAST_TIMEOUT_MS = 3200;
 const TIMEOUT_WITH_ACTION_MS = 6000;
 
 const actionButton = (action: ToastAction) => (
@@ -32,7 +32,7 @@ function show(
   { action, ...options }: ToastOptions & { action?: ToastAction } = {},
 ) {
   return addToast({
-    timeout: kind === "error" ? 0 : action ? TIMEOUT_WITH_ACTION_MS : TIMEOUT_MS,
+    timeout: kind === "error" ? 0 : action ? TIMEOUT_WITH_ACTION_MS : TOAST_TIMEOUT_MS,
     icon: kind ? iconFor[kind] : undefined,
     hideIcon: !kind,
     endContent: action ? actionButton(action) : undefined,
@@ -45,7 +45,7 @@ function show(
 /**
  * Toasts (01 §7.19): `toast("Order archived", { action: { label: "Undo", onPress } })`, `toast.success("Changes
  * saved")`, `toast.error("Couldn't save. Try again.", { action: { label: "Retry", onPress } })`, `toast.info(…)`.
- * Errors stay until closed; the rest leave after 4s (6s with an action).
+ * Errors stay until closed; the rest leave after 3.2s (6s with an action). The timer pauses on hover.
  */
 export const toast = Object.assign(
   (message: ReactNode, options?: ToastOptions & { action?: ToastAction }) => show(message, null, options),

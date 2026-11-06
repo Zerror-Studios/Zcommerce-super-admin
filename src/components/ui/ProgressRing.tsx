@@ -38,7 +38,15 @@ export function ProgressRing({ value, size = 40, label, className }: ProgressRin
       className={cx("relative inline-flex shrink-0 items-center justify-center", BOX[size], className)}
     >
       <svg viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 size-full -rotate-90" aria-hidden>
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={stroke} className="stroke-surface-sunken" />
+        {/* Round 2 §6.4: no empty ring at 0; a 0 reads as a grey full ring. */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          strokeWidth={stroke}
+          className={percent === 0 ? "stroke-ring-zero" : "stroke-surface-sunken"}
+        />
         {percent > 0 ? (
           <circle
             cx={size / 2}

@@ -55,17 +55,17 @@ import { useStoreStuckPayments } from "./StoreStuckPayments";
 import { useStoreBillingRefresh } from "./useStoreBillingRefresh";
 
 type Tab = "payments" | "invoices" | "reminders";
-type PaymentFilter = "all" | "SUCCESS" | "FAILED" | "REFUNDED" | "review";
+export type PaymentFilter = "all" | "SUCCESS" | "FAILED" | "REFUNDED" | "review";
 
-const PAYMENTS_PAGE = 30;
-const REMINDERS_PAGE = 20;
+export const PAYMENTS_PAGE = 30;
+export const REMINDERS_PAGE = 20;
 
 interface PaymentsData {
   platformPayments: { items: PlatformPayment[]; totalCount: number; countsByStatus: PlatformStatusCount[] | null };
 }
 
 /** The store's payments under one filter; the All read also carries the counts per status. */
-function useStorePayments(tenantId: string, filter: PaymentFilter, limit: number, skip: boolean) {
+export function useStorePayments(tenantId: string, filter: PaymentFilter, limit: number, skip: boolean) {
   const apiFilter =
     filter === "all"
       ? { tenantId }
@@ -281,7 +281,7 @@ function PaymentsTab({
         {stuckCount > 0 ? (
           <InlineNotice
             action={
-              <ButtonLink to={lifecycleHref} variant="tertiary" size="sm">
+              <ButtonLink to={lifecycleHref} variant="ghost" size="sm">
                 View in Lifecycle ›
               </ButtonLink>
             }
@@ -313,7 +313,7 @@ function PaymentCard({
   onOpenInvoice: (invoice: PlatformInvoice) => void;
   onResolve?: (action: FlaggedPaymentAction) => void;
 }) {
-  const money = (amount: number) => formatMoney(amount, { currency: payment.currency });
+  const money = (amount: number) => formatMoney(amount, { currency: payment.currency, exact: true });
   const badge = paymentBadgeOf(payment);
   const provider = getPaymentGatewayLabel(payment.provider);
   const date = payment.createdAt ? formatDate(payment.createdAt) : null;
@@ -449,7 +449,7 @@ function InvoicesTab({
   const canManage = can(PLATFORM_PERMISSIONS.BILLING_MANAGE);
   const refresh = useStoreBillingRefresh();
   const pdf = useInvoicePdf();
-  const money = (amount: number, currency: string) => formatMoney(amount, { currency });
+  const money = (amount: number, currency: string) => formatMoney(amount, { currency, exact: true });
 
   if (invoices.error && invoices.data.length === 0) {
     return (
@@ -623,7 +623,7 @@ function RemindersTab({ client, subscription, header }: { client: Client; subscr
         </>
       )}
       <div className="border-t border-line-subtle px-5 py-3">
-        <ButtonLink to="/settings/billing" variant="tertiary" size="sm">
+        <ButtonLink to="/settings/billing" variant="ghost" size="sm">
           Reminder rules ›
         </ButtonLink>
       </div>

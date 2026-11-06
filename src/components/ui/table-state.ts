@@ -72,6 +72,14 @@ function readStoredSize(key: string): number | undefined {
   }
 }
 
+/**
+ * The page size a list at `pathname` will open with (its remembered choice, else the default), so a prefetch on
+ * menu hover asks for exactly the first page the list then reads from the cache (round 2 §2).
+ */
+export function storedPageSize(pathname: string, tableId?: string, defaultPageSize = DEFAULT_PAGE_SIZE): number {
+  return readStoredSize(`zc.pageSize.${tableId ?? routeKey(pathname)}`) ?? defaultPageSize;
+}
+
 export function useTableUrlState({
   defaultSort,
   defaultPageSize = DEFAULT_PAGE_SIZE,

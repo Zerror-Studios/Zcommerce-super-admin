@@ -27,7 +27,7 @@ export function OwnerCredentialsDialog({
 }: OwnerCredentialsDialogProps) {
   const kind = ownerNoticeKind({ ownerInviteSent, ownerTemporaryPassword: temporaryPassword });
   return (
-    <Modal isOpen={isOpen} onClose={onClose} width="sm">
+    <Modal isOpen={isOpen} onClose={onClose} size="md">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={<IconSuccess aria-hidden />}>{storeName} is ready</PopupTitle>

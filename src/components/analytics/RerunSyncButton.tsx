@@ -56,7 +56,7 @@ export function RerunSyncDialog({ row, onClose }: RerunSyncDialogProps) {
       onOpenChange={(open) => {
         if (!open && !loading) onClose();
       }}
-      width="sm"
+      size="sm"
       isDismissable={!loading}
       isKeyboardDismissDisabled={loading}
       hideCloseButton={loading}

@@ -72,8 +72,9 @@ describe("formatting", () => {
   it("shows USD with paise, and small amounts with four decimals", () => {
     expect(formatUsd(12.5)).toBe("$12.50");
     expect(formatUsd(0.0042)).toBe("$0.0042");
-    expect(formatUsd(0)).toBe("$0.00");
-    expect(formatUsd(null)).toBe("$0.00");
+    // Round 2 G13: zero is never "0.00".
+    expect(formatUsd(0)).toBe("$0");
+    expect(formatUsd(null)).toBe("$0");
   });
 
   it("shows 0–1 rates as percentages", () => {

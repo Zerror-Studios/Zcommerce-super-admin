@@ -11,8 +11,10 @@ export type { BadgeProps } from "./Badge";
 export { IconTile, sectionClass } from "./IconTile";
 export type { IconTileProps, SectionColor } from "./IconTile";
 export { Button, ButtonLink } from "./Button";
+export { buttonClasses, resolveButtonSize, resolveButtonVariant } from "./button-variants";
 export { ButtonShortLabelContext } from "./short-label";
-export type { ButtonLinkProps, ButtonProps, ButtonSize, ButtonVariant } from "./Button";
+export type { ButtonLinkProps, ButtonProps } from "./Button";
+export type { ButtonSize, ButtonVariant, ButtonVariantName, LegacyButtonVariant } from "./button-variants";
 export { AttentionList } from "./AttentionList";
 export type { AttentionItem, AttentionListProps, AttentionUrgency } from "./AttentionList";
 export { VideoBanner } from "./VideoBanner";
@@ -51,7 +53,9 @@ export type {
 export { RowMenu } from "./RowMenu";
 export type { RowMenuItem, RowMenuProps } from "./RowMenu";
 export { Modal } from "./Modal";
-export type { ModalProps, ModalWidth } from "./Modal";
+export type { ModalProps } from "./Modal";
+export { resolveModalSize } from "./modal-size";
+export type { LegacyModalSize, ModalSize, ModalWidth } from "./modal-size";
 export { SearchInput } from "./SearchInput";
 export type { SearchInputProps } from "./SearchInput";
 export { Select } from "./Select";
@@ -97,8 +101,32 @@ export {
   recharts,
   rechartsEndTicks,
 } from "./chart-theme";
+export {
+  DUR_1_S,
+  DUR_2_S,
+  DUR_3_S,
+  DUR_4_S,
+  EASE_IN,
+  EASE_IN_OUT,
+  EASE_OUT,
+  EXIT_S,
+  POPOVER_EXIT_S,
+  drawerLeftVariants,
+  drawerVariants,
+  fadeVariants,
+  popoverVariants,
+  popupVariants,
+  presetMotion,
+  sheetVariants,
+  spring,
+  toastMotionProps,
+  tooltipVariants,
+  usePresetMotion,
+} from "./motion";
+export type { MotionPreset } from "./motion";
 export { formatCount, formatDelta, formatMoney, formatPercent } from "./money";
-export { formatDate, formatDateTime, formatRange, formatRelative } from "./format-date";
+export { formatPlanName } from "./format-name";
+export { formatDate, formatDateTime, formatDayTime, formatRange, formatRelative, formatTime } from "./format-date";
 export type { DateInput } from "./format-date";
 export type { FormatMoneyOptions } from "./money";
 export { STATUS_MAP, getExpiryStatus, getHealthBand, getStatus, normalizeStatus, statusTone } from "./status-map";
@@ -146,16 +174,16 @@ export { AiAskInput, AiAvatar, AiFeedback, AiInsightCard, AiSpectrumDefs, AiSugg
 export type { AiAskInputProps, AiInsightCardProps, AiSuggestionProps, AiThinkingProps, BriefLine, TodaysBriefProps } from "./Ai";
 export { isAiEnabled, useAiEnabled } from "./ai-flag";
 export { PaneHeader, PaneList, TwoPaneCard } from "./TwoPane";
-export { FieldGrid, SettingsSearch, SettingsShell, fieldSpanFull, useSettingsFieldFocus } from "./SettingsShell";
+export { FieldGrid, SettingsSearch, SettingsShell, SetupStatusIcon, fieldSpanFull, useSettingsFieldFocus } from "./SettingsShell";
 export { ProgressRing } from "./ProgressRing";
 export { ColorPicker } from "./ColorPicker";
-export type { SettingsMenuAction, SettingsMenuGroup, SettingsMenuItem, SettingsSearchEntry, SettingsShellProps } from "./SettingsShell";
+export type { SettingsMenuAction, SettingsMenuGroup, SettingsMenuItem, SettingsSearchEntry, SettingsShellProps, SetupStatus } from "./SettingsShell";
 export type { PaneGroup, PaneHeaderProps, PaneItem, PaneListProps, TwoPaneCardProps } from "./TwoPane";
 export { CellText, DataTable, TableSkeletonRows } from "./DataTable";
 export type { DataTableColumn, DataTableProps, DataTableRowTone } from "./DataTable";
 export { DEFAULT_PAGE_SIZE, PAGE_SIZES, TablePagination } from "./TablePagination";
 export type { TablePaginationProps } from "./TablePagination";
-export { usePersistentColumns, useTableUrlState } from "./table-state";
+export { storedPageSize, usePersistentColumns, useTableUrlState } from "./table-state";
 export type { SortDirection, TableSort, TableUrlOptions, TableUrlState } from "./table-state";
 export { Avatar, CoverTag, ImageControl, ViewToggle, useViewMode } from "./Media";
 export type { AvatarProps, ImageControlProps, ViewMode } from "./Media";
@@ -184,3 +212,23 @@ export {
   useViewportBand,
 } from "./use-media";
 export type { ViewportBand } from "./use-media";
+export {
+  DateRangePicker,
+  DATE_RANGE_PRESETS,
+  compareRange,
+  dateRangeFromParams,
+  dateRangeFromPreset,
+  dateRangeLabel,
+  dateRangeToParams,
+  formatDateRange,
+  matchPreset,
+  presetRange,
+  useUrlDateRange,
+} from "./DateRangePicker";
+export type {
+  DateRangeCompare,
+  DateRangePickerProps,
+  DateRangePreset,
+  DateRangeValue,
+  UseUrlDateRangeOptions,
+} from "./DateRangePicker";

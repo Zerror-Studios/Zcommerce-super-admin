@@ -24,7 +24,11 @@ export const PLATFORM_TENANT_FIELDS = gql`
       name
       email
       phone
+      # PRD-036 round 2 gaps: invite accepted (nightly usage snapshot; null until collected)
+      joined
     }
+    # PRD-036 round 2 gaps: the business name given at creation (PRD-031); null when none
+    legalName
     billing {
       contactEmail
       gstin
@@ -50,6 +54,7 @@ export const PLATFORM_TENANT_FIELDS = gql`
     monthlyFee
     healthScore
     healthFactors
+    healthIssues
     paymentState {
       label
       tone
@@ -78,6 +83,8 @@ export const PLATFORM_TENANT_FIELDS = gql`
       conversionRate30d
       partial
       messagesThisMonth
+      # PRD-036 round 2 gaps: customer profiles; null until counted
+      customers
     }
     suspendedAt
     suspendReason

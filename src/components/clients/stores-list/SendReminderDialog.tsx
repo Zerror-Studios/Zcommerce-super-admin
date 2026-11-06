@@ -118,7 +118,7 @@ export function SendReminderDialog({ stores, onClose }: SendReminderDialogProps)
   ];
 
   return (
-    <Modal isOpen onClose={onClose} width="md">
+    <Modal isOpen onClose={onClose} size="md">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={<IconSend aria-hidden />}>
@@ -183,7 +183,7 @@ export function SendReminderDialog({ stores, onClose }: SendReminderDialogProps)
           </div>
         </ModalBody>
         <ModalFooter className="justify-between">
-          <Button variant="tertiary" onPress={() => navigate("/settings/billing")} isDisabled={sending}>
+          <Button variant="ghost" onPress={() => navigate("/settings/billing")} isDisabled={sending}>
             Edit text in Settings ›
           </Button>
           <span className="flex items-center gap-2">

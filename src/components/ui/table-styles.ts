@@ -12,16 +12,17 @@ export const tablePanelClasses =
 
 /**
  * Header cell (v2 §4.4): 40px, light grey table-head fill, 12/500 grey text, sentence case, left-aligned (every column, money too).
- * Sortable headers show their arrow on hover; the active sort shows ↑ or ↓ (HeroUI).
+ * Sortable headers show their arrow on hover; the active sort shows ↑ or ↓ (HeroUI). The first and last cells keep
+ * the card's top corners, so a stuck (sticky) header stays rounded (round 2 G5).
  */
 export const tableHeaderCellClasses =
-  "h-10 !bg-table-head !text-table-head-fg text-xs font-medium normal-case text-start border-b border-line-subtle !rounded-none px-cell-x";
+  "h-10 !bg-table-head !text-table-head-fg text-xs font-medium normal-case text-start border-b border-line-subtle !rounded-none first:!rounded-tl-card-lg last:!rounded-tr-card-lg px-cell-x";
 
 /** The trailing ⋯ column: 56px, its header label visually hidden. */
 export const tableActionsColumnClass = "w-14 min-w-14";
 
 /**
- * Body row: row-hover grey on hover, row-selected blue when selected (checkbox), 1px divider between rows, none after the last.
+ * Body row: the row-hover token on hover in 120ms (round 2 G5), row-selected blue when selected (checkbox), 1px divider between rows, none after the last.
  * The cells take the same fill, so sticky cells (pinned name or actions, which carry their own white background)
  * change with the rest of the row instead of staying white.
  */

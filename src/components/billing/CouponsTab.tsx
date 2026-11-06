@@ -369,7 +369,7 @@ export function CouponsTab({
       <Modal
         isOpen={createOpen}
         onClose={closeForm}
-        width="md"
+        size="md"
       >
         <ModalContent>
           {() => (

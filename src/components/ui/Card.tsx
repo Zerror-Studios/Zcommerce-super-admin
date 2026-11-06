@@ -22,7 +22,8 @@ const paddingClasses: Record<CardPadding, string> = {
 };
 
 /**
- * Card (01 §7.13): white, 1px border, 16px radius, no shadow, padding 20. Header: a 15/600 title with an optional
+ * Card (01 §7.13): white, 1px border, 22px radius, no shadow, padding 20. Clips its content (round 2 G5), so row
+ * hovers and full-bleed lists keep the rounded corners; `overflow-clip` (not hidden) keeps sticky children working. Header: a 15/600 title with an optional
  * 13px muted line under it, and one action on the right (a tertiary sm link or a ghost circle); 16px to the body.
  * `leading` sits left of the title, centred on the title block (12px gap). Photos inside cards and mosaics use
  * `rounded-photo` (14px, --zc-radius-photo).
@@ -30,7 +31,7 @@ const paddingClasses: Record<CardPadding, string> = {
 export function Card({ title, description, leading, actions, padding = "md", className, children, ...rest }: CardProps) {
   const hasHeader = title != null || description != null || actions != null || leading != null;
   return (
-    <section className={cx("rounded-[var(--zc-radius-card)] border border-line bg-surface", className)} {...rest}>
+    <section className={cx("overflow-clip rounded-[var(--zc-radius-card)] border border-line bg-surface", className)} {...rest}>
       {hasHeader ? (
         <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 pb-4 pt-5">
           <div className="flex min-w-0 items-center gap-3">

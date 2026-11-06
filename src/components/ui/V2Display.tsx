@@ -40,7 +40,8 @@ export function SeoScore({ score, hideWord = false, hint, className }: SeoScoreP
   const band = seoBand(value);
   return (
     <span className={cx("zc-seo", className)} data-band={band} aria-label={`SEO score ${value} of 100, ${SEO_WORD[band]}`}>
-      <span aria-hidden className="zc-seo__ring" style={{ ["--_p" as string]: value }} />
+      {/* Round 2 §5.10: a 0 shows a short red stub, never an empty ring. */}
+      <span aria-hidden className="zc-seo__ring" data-zero={value === 0 || undefined} style={{ ["--_p" as string]: value }} />
       <span aria-hidden className="flex flex-col leading-tight">
         <span>
           {value}
@@ -74,7 +75,7 @@ export interface VideoThumbProps {
 /** Video thumbnail (§4.8): 16:9, radius 20, the title top left, a screenshot, play + length bottom left, nothing else. */
 export function VideoThumb({ title, duration, screenshot, look = "tilt", onPlay, className }: VideoThumbProps) {
   return (
-    <button type="button" className={cx("zc-video", className)} data-look={look} onClick={onPlay} aria-label={`Play ${title}${duration ? `, ${duration}` : ""}`}>
+    <button type="button" className={cx("zc-video zc-press", className)} data-look={look} onClick={onPlay} aria-label={`Play ${title}${duration ? `, ${duration}` : ""}`}>
       <span className="zc-video__title">{title}</span>
       {screenshot ? (
         <span aria-hidden className="zc-video__shot">

@@ -170,7 +170,8 @@ export interface PlatformAttentionSummary {
   date: string | null;
   generatedAt: string | null;
   bullets: string[];
-  items: { text: string; storeIds: string[]; metricKeys: string[] }[];
+  /** `rule` (PRD-036 round 2 gaps): PAYMENT_APP_RETIRING, PAYMENTS_FAILING, INVOICE_PAST_DUE, … or null. */
+  items: { text: string; storeIds: string[]; metricKeys: string[]; rule?: string | null }[];
 }
 
 export interface PlatformAttention {

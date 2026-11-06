@@ -164,7 +164,7 @@ export function StoreDetailsDialog({ client, onClose }: { client: Client; onClos
   };
 
   return (
-    <Modal isOpen onClose={() => !saving && onClose()} width="md">
+    <Modal isOpen onClose={() => !saving && onClose()} size="md">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={<IconEdit aria-hidden />}>Edit {client.storeName}</PopupTitle>

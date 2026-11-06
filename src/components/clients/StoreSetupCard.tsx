@@ -5,9 +5,13 @@
  * location, profile, invoice details, shopper emails, domain, catalog and
  * the owner's sign-in. Missing rows come first (amber), then checks to
  * look at (grey), then done (green). Shown with `platform:tenants:read`.
+ *
+ * Round 2 §6.3 (board 60): on Overview it is a collapsible card, "Setup
+ * 4 of 11 · Show steps", closed unless the link asked for #setup.
  */
 
 import { useQuery } from "@apollo/client";
+import { useState } from "react";
 import { PLATFORM_STORE_SETUP } from "../../graphql/tenants";
 import { errorReasonOf } from "../../lib/apollo-client";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
@@ -25,6 +29,10 @@ import { IconError, IconInfo, IconRefresh, IconSuccess } from "../ui/icons";
 
 export interface StoreSetupCardProps {
   tenantId: string;
+  /** Round 2 §6.3: the steps fold away behind "Show steps". */
+  collapsible?: boolean;
+  /** Start open (a #setup link). */
+  defaultOpen?: boolean;
 }
 
 const STATUS_ICON = { OK: IconSuccess, MISSING: IconError, WARNING: IconInfo } as const;
@@ -35,8 +43,9 @@ const STATUS_ICON_CLASS = {
   WARNING: "text-fg-subtle",
 } as const;
 
-export function StoreSetupCard({ tenantId }: StoreSetupCardProps) {
+export function StoreSetupCard({ tenantId, collapsible = false, defaultOpen = false }: StoreSetupCardProps) {
   const { can } = useAuth();
+  const [open, setOpen] = useState(!collapsible || defaultOpen);
   const allowed = can(PLATFORM_PERMISSIONS.TENANTS_READ);
   const query = useQuery<{ platformStoreSetup: PlatformStoreSetupCheck[] }>(PLATFORM_STORE_SETUP, {
     variables: { tenantId },
@@ -48,29 +57,54 @@ export function StoreSetupCard({ tenantId }: StoreSetupCardProps) {
 
   const checks = sortStoreSetupChecks(query.data?.platformStoreSetup ?? []);
   const unavailable = errorReasonOf(query.error) === "STORE_DB_UNAVAILABLE";
+  const done = storeSetupDoneCount(checks);
 
   return (
     <Card
-      title="Setup"
+      title={
+        collapsible && checks.length ? (
+          <>
+            Setup{" "}
+            <span className="num font-normal text-fg-muted">
+              {done} of {checks.length}
+            </span>
+          </>
+        ) : (
+          "Setup"
+        )
+      }
       description={
-        checks.length
-          ? `${storeSetupDoneCount(checks)} of ${checks.length} done. What the store still needs before it sells.`
-          : "What the store still needs before it sells."
+        collapsible
+          ? done === checks.length && checks.length
+            ? "Everything the store needs to sell is done."
+            : "What the store still needs before it sells."
+          : checks.length
+            ? `${done} of ${checks.length} done. What the store still needs before it sells.`
+            : "What the store still needs before it sells."
       }
       padding="none"
       actions={
-        <UiButton
-          variant="ghost"
-          size="sm"
-          startIcon={<IconRefresh aria-hidden />}
-          isLoading={query.loading && !!query.data}
-          onPress={() => void query.refetch()}
-        >
-          Refresh
-        </UiButton>
+        <div className="flex items-center gap-1">
+          {open ? (
+            <UiButton
+              variant="ghost"
+              size="sm"
+              startIcon={<IconRefresh aria-hidden />}
+              isLoading={query.loading && !!query.data}
+              onPress={() => void query.refetch()}
+            >
+              Refresh
+            </UiButton>
+          ) : null}
+          {collapsible ? (
+            <UiButton variant="ghost" size="sm" aria-expanded={open} onPress={() => setOpen((value) => !value)}>
+              {open ? "Hide steps" : "Show steps"}
+            </UiButton>
+          ) : null}
+        </div>
       }
     >
-      {query.error && !query.data ? (
+      {!open ? null : query.error && !query.data ? (
         <div className="px-5 pb-5">
           {unavailable ? (
             <p role="status" className="text-body text-fg-muted">

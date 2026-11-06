@@ -31,8 +31,8 @@ export interface ClientsPageContentProps {
   clients: Client[];
 }
 
-/** Plans in the summary: the two biggest by store count ("1 Growth · 2 Starter"), the rest as "+N more". */
-const PLANS_SHOWN = 2;
+/** Plans in the summary note: the three biggest by store count ("2 Starter · 1 Custom"), the rest as "+N more". */
+const PLANS_SHOWN = 3;
 
 /**
  * Stores (design v2 §7, board 59; small charts: sales bars, health dots, plan ring, past-due segments): ink title tile, "Stores 3", the line "2 live · 1 in setup · 1 needs payment",
@@ -72,7 +72,8 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
         revenues.push(client.revenue);
       }
       healthSum += getStoreHealth(client).score;
-      const plan = planShortName(client);
+      // Round 2 §6.2: a store's own (custom) plan counts as "Custom" here, not by its long name.
+      const plan = client.planRef?.custom ? "Custom" : planShortName(client);
       plans.set(plan, (plans.get(plan) ?? 0) + 1);
     });
     const averageHealth = clients.length ? Math.round(healthSum / clients.length) : null;
@@ -119,18 +120,28 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
       chart: numbers.averageHealth == null ? undefined : { kind: "dots" },
     },
     {
+      // Round 2 §6.2: "3 stores" with "2 Starter · 1 Custom" under it (never truncated) and a mini bar per plan.
       key: "plans",
       label: "Plans",
-      value: topPlans.length ? topPlans.map(([plan, count]) => `${formatCount(count)} ${plan}`).join(" · ") : "—",
-      note: morePlans > 0 ? `+${formatCount(morePlans)} more ${morePlans === 1 ? "plan" : "plans"}` : undefined,
-      // The share of stores on the biggest plan.
-      chart: topPlans.length && clients.length ? { kind: "ring", percent: Math.round((topPlans[0][1] / clients.length) * 100) } : undefined,
+      value: clients.length ? `${formatCount(clients.length)} ${clients.length === 1 ? "store" : "stores"}` : "—",
+      note: topPlans.length
+        ? [topPlans.map(([plan, count]) => `${formatCount(count)} ${plan}`).join(" · "), morePlans > 0 ? `+${formatCount(morePlans)} more` : null]
+            .filter(Boolean)
+            .join(" · ")
+        : undefined,
+      chart: numbers.planList.length > 1 ? { kind: "bars", values: numbers.planList.map(([, count]) => count) } : undefined,
     },
     {
+      // Round 2 §6.2: "Past due 0 · 1 due soon": an amber "Due 15 Nov" counts as due soon, not past due.
       key: "past-due",
       label: "Past due",
-      value: `${formatCount(numbers.pastDue)} ${numbers.pastDue === 1 ? "store" : "stores"}`,
-      note: numbers.dueSoon ? `${formatCount(numbers.dueSoon)} more due soon` : undefined,
+      value: (
+        <>
+          {formatCount(numbers.pastDue)}
+          {numbers.dueSoon ? <span className="text-body font-normal opacity-70"> · {formatCount(numbers.dueSoon)} due soon</span> : null}
+        </>
+      ),
+      note: numbers.pastDue ? `${numbers.pastDue === 1 ? "1 store is" : `${formatCount(numbers.pastDue)} stores are`} late` : "No one is late",
       tone: numbers.pastDue > 0 ? "danger" : "default",
       chart: clients.length
         ? { kind: "segments", filled: Math.min(10, Math.ceil((numbers.pastDue / clients.length) * 10)) }

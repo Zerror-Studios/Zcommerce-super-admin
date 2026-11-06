@@ -98,7 +98,7 @@ export function ArchivePlanDialog({ plan, plans, onClose }: PlanDialogProps) {
   };
 
   return (
-    <Modal isOpen onClose={onClose} width="sm">
+    <Modal isOpen onClose={onClose} size="sm">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={<IconArchive aria-hidden />}>Archive {planVersionLabel(plan)}?</PopupTitle>
@@ -146,7 +146,7 @@ export function ArchivePlanDialog({ plan, plans, onClose }: PlanDialogProps) {
             Cancel
           </UiButton>
           <UiButton
-            variant="destructive"
+            variant="danger"
             isLoading={busy}
             isDisabled={busy || (inUse && options.length === 0)}
             onPress={() => void run()}
@@ -225,7 +225,7 @@ export function MigratePlanDialog({ plan, plans, onClose }: PlanDialogProps) {
   };
 
   return (
-    <Modal isOpen onClose={onClose} width="sm">
+    <Modal isOpen onClose={onClose} size="md">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={<IconExchange aria-hidden />}>Migrate stores on {planVersionLabel(plan)}</PopupTitle>

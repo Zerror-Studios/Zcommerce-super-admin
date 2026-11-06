@@ -1,10 +1,11 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
- * Zcom AI bar (docs/design-v2/README.md §3.3) + the LEGACY right-drawer assistant panel (the apps now render their
+ * Zcom AI bar (round 2 G3; docs/design-v2/README.md §3.3) + the LEGACY right-drawer assistant panel (the apps now render their
  * own panels inside the shared AiSheet). Render only when the `ai` flag is on. The app supplies `onAsk`; until a backend exists it returns sample answers marked as such.
  */
 import { DrawerBody, DrawerContent, DrawerFooter, DrawerHeader } from "@heroui/react";
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { motion } from "framer-motion";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { AiFeedback, AiThinking } from "../ui/Ai";
 import { Orb } from "../ui/Orb";
@@ -13,7 +14,9 @@ import { cx } from "../ui/cx";
 import { Drawer } from "../ui/Drawer";
 import { IconAdd, IconArrowRight, IconClose } from "../ui/icons";
 import { IconButton } from "../ui/IconButton";
-import { Kbd } from "../ui/Primitives";
+import { spring } from "../ui/motion";
+import { Tooltip } from "../ui/Tooltip";
+import { AI_SURFACE_LAYOUT_ID } from "./AiSheet";
 
 export interface AiAnswer {
   text: ReactNode;
@@ -34,6 +37,9 @@ interface Turn {
   failed?: boolean;
 }
 
+/** The bar's corner radius (G3: 26), inline so the shared-layout morph keeps it round. */
+const ASK_BAR_RADIUS = 26;
+
 const MOD_KEY = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl ";
 
 // ─── Ask bar ─────────────────────────────────────────────────────────────────
@@ -41,60 +47,37 @@ const MOD_KEY = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navig
 export interface AskBarProps {
   /** "Ask Zcom AI anything…" (store) / "Ask Zcom AI about any store…" (console). */
   placeholder?: string;
-  /** True while the user scrolls down: the bar slides away. */
-  hidden: boolean;
-  /** Opens the sheet; with a question, asks it straight away. */
+  /** True while the user scrolls down: the bar slides away (the shell's slot moves it). */
+  hidden?: boolean;
+  /** Opens the chat box; with a question, asks it straight away. */
   onOpen: (question?: string) => void;
-  /** One suggestion chip for the current page. */
+  /** LEGACY: ignored. Round 2 G3: the suggestions moved into the chat box. */
   suggestion?: string;
 }
 
 /**
- * The Zcom AI bar (v2 §3.3, `.zc-askbar`): the ONLY AI entry point. A white 54px pill, 600px max, centred at the
- * bottom of the content area: the orb, the input, one suggestion chip for the page and the ⌘J hint. Enter (or the
- * chip) opens the sheet with that question; an empty Enter opens it to "How can I help today?". Hides on scroll
- * down (the shell passes `hidden`) and while a dialog, drawer or the save bar is open.
+ * The Zcom AI bar (round 2 G3, `.zc-askbar`): the ONLY AI entry point. A white 52px pill, radius 26, at most 560px
+ * wide, fixed at the bottom centre of the whole viewport (the shell's slot places it). Only the orb (28px) and the
+ * placeholder: no chip and no shortcut hint; ⌘J / Ctrl J still works and shows in the tooltip only. A click opens the
+ * chat box, which grows out of the bar (shared layout id with AiSheet). The page hides it while the box is open.
  */
-export function AskBar({ placeholder = "Ask Zcom AI anything…", hidden, onOpen, suggestion }: AskBarProps) {
-  const [value, setValue] = useState("");
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    onOpen(value.trim() || undefined);
-    setValue("");
-  };
+export function AskBar({ placeholder = "Ask Zcom AI anything…", hidden = false, onOpen }: AskBarProps) {
   return (
-    <form
-      onSubmit={submit}
-      aria-label="Ask Zcom AI"
-      className={cx(
-        "zc-askbar pointer-events-auto transition-[opacity,transform] duration-base ease-standard",
-        hidden ? "pointer-events-none translate-y-4 opacity-0" : "translate-y-0 opacity-100",
-      )}
-    >
-      <Orb size="bar" />
-      <input
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        onFocus={(event) => {
-          // Clicking the bar opens the sheet; the sheet's own input takes over (v2: the bar becomes the input).
-          if (!value) {
-            event.currentTarget.blur();
-            onOpen();
-          }
-        }}
-        placeholder={placeholder}
+    <Tooltip content={`Ask Zcom AI (${MOD_KEY}J)`} placement="top" isDisabled={hidden}>
+      <motion.button
+        type="button"
+        layoutId={AI_SURFACE_LAYOUT_ID}
+        onClick={() => onOpen()}
         aria-label={placeholder}
-        className="h-full min-w-0 flex-1 bg-transparent text-body text-fg outline-hidden placeholder:text-fg-faint max-md:text-base"
-        style={{ boxShadow: "none" }}
-      />
-      {suggestion ? (
-        <button type="button" className="zc-askbar__chip" onClick={() => onOpen(suggestion)} title={suggestion}>
-          {suggestion}
-        </button>
-      ) : null}
-      <Kbd className="hidden sm:inline-flex">{MOD_KEY}J</Kbd>
-      <button type="submit" className="sr-only">Ask</button>
-    </form>
+        aria-keyshortcuts="Meta+J Control+J"
+        className="zc-askbar pointer-events-auto"
+        style={{ borderRadius: ASK_BAR_RADIUS }}
+        transition={{ layout: spring.layout }}
+      >
+        <Orb size="bar" />
+        <span className="zc-askbar__placeholder">{placeholder}</span>
+      </motion.button>
+    </Tooltip>
   );
 }
 

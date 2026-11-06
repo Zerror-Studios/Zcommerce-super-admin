@@ -294,18 +294,21 @@ const istDay = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
-/** "2 Nov, 8:31 am" in IST; "—" when missing. */
+/** Round 2 G13: upper-case AM/PM everywhere (en-IN writes "am"). */
+const upperMeridiem = (text: string) => text.replace(/\b(am|pm)\b/gi, (match) => match.toUpperCase());
+
+/** "2 Nov, 8:31 AM" in IST; "—" when missing. */
 export function formatIst(value: string | Date | null | undefined): string {
   if (!value) return EMPTY;
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? EMPTY : istDateTime.format(date);
+  return Number.isNaN(date.getTime()) ? EMPTY : upperMeridiem(istDateTime.format(date));
 }
 
-/** "3:42 pm" in IST (Refresh now's "Available at …"). */
+/** "3:42 PM" in IST (Refresh now's "Available at …"). */
 export function formatIstTime(value: string | Date | null | undefined): string {
   if (!value) return EMPTY;
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? EMPTY : istTime.format(date);
+  return Number.isNaN(date.getTime()) ? EMPTY : upperMeridiem(istTime.format(date));
 }
 
 /** Today's date in IST, `YYYY-MM-DD` (the summary's `date` is one). */
@@ -406,12 +409,12 @@ const ASK_ERROR_COPY: Record<string, string> = {
   RUN_IN_PROGRESS: "Still answering the last question",
   DUPLICATE_QUESTION: "That question was already sent; reloading the conversation",
   CONVERSATION_FULL: "This conversation is full. Start a new conversation",
-  AI_UNAVAILABLE: "Ask ZCOM is unavailable right now. Try again later",
-  AI_RESTING: "Ask ZCOM is resting until tomorrow (daily spend cap)",
-  AI_DISABLED: "Ask ZCOM is switched off",
+  AI_UNAVAILABLE: "Ask Zcom is unavailable right now. Try again later",
+  AI_RESTING: "Ask Zcom is resting until tomorrow (daily spend cap)",
+  AI_DISABLED: "Ask Zcom is switched off",
   RATE_LIMITED: "Too many questions at once. Try again in a moment",
   AI_TOKEN_BUDGET_EXHAUSTED: "This month's internal AI budget is used up",
-  MFA_REQUIRED: "Turn on two-step sign-in to use Ask ZCOM",
+  MFA_REQUIRED: "Turn on two-step sign-in to use Ask Zcom",
 };
 
 /** A refused question's copy, by `extensions.reason` (guide §12). */
@@ -420,11 +423,11 @@ export function askErrorMessage(error: unknown): string {
   const reason = typeof ext.reason === "string" ? ext.reason : "";
   if (ASK_ERROR_COPY[reason]) return ASK_ERROR_COPY[reason];
   if (ext.code === "MFA_REQUIRED") return ASK_ERROR_COPY.MFA_REQUIRED;
-  if (ext.code === "FORBIDDEN") return "You don't have access to Ask ZCOM";
+  if (ext.code === "FORBIDDEN") return "You don't have access to Ask Zcom";
   if ((error as GraphQlErrorLike | null)?.networkError) {
     return "Couldn't reach the server. Check your connection and retry";
   }
-  return "Ask ZCOM couldn't answer, try again";
+  return "Ask Zcom couldn't answer, try again";
 }
 
 /** Guide §12: a finished run's note under the answer; null when none. */
@@ -441,11 +444,11 @@ export function runStatusNote(
   if (status === "FAILED") {
     // The console stopped waiting (2 minutes, or 3 failed polls in a row)
     if (errorReason === "POLL_TIMEOUT" || errorReason === "POLL_UNREACHABLE") {
-      return "Couldn't reach Ask ZCOM, try again";
+      return "Couldn't reach Ask Zcom, try again";
     }
     return errorReason === "RUN_INTERRUPTED"
       ? "Something interrupted the answer, try again"
-      : "Ask ZCOM couldn't answer, try again";
+      : "Ask Zcom couldn't answer, try again";
   }
   return null;
 }
@@ -467,7 +470,7 @@ export function assistantUsageText(usage: {
       case "AI_DISABLED":
         return "AI is switched off";
       default:
-        return "Ask ZCOM is unavailable: no API key, or the provider is failing";
+        return "Ask Zcom is unavailable: no API key, or the provider is failing";
     }
   }
   const budget = formatCount(usage.monthlyTokenBudget, true).replace(/k$/, "K");

@@ -19,6 +19,9 @@ export const healthAreaEnum = {
   GROWTH: "Growth",
   BILLING: "Billing",
   ACTIVITY: "Activity",
+  // Round 2 D11: setup progress and the store's own payments
+  SETUP: "Setup",
+  PAYMENTS: "Payments",
   OTHER: "Other",
 } as const;
 
@@ -60,18 +63,31 @@ const FACTORS: Record<string, { area: HealthArea; tone: Tone }> = {
   "Active this week": { area: healthAreaEnum.ACTIVITY, tone: "success" },
   "Quiet lately": { area: healthAreaEnum.ACTIVITY, tone: "warning" },
   "Inactive store": { area: healthAreaEnum.ACTIVITY, tone: "danger" },
+
+  "Setup complete": { area: healthAreaEnum.SETUP, tone: "success" },
 };
+
+/** Round 2 D11: the server's `healthIssues` ("Setup 4 of 11", "Payment app Nimbbl is being retired", …). */
+function issueRow(issue: string): HealthFactorRow {
+  if (/^setup\b/i.test(issue)) return { factor: issue, area: healthAreaEnum.SETUP, tone: "warning" };
+  if (/payment|unpaid/i.test(issue)) return { factor: issue, area: healthAreaEnum.PAYMENTS, tone: "danger" };
+  return { factor: issue, area: healthAreaEnum.OTHER, tone: "danger" };
+}
 
 const AREA_ORDER: HealthArea[] = Object.values(healthAreaEnum);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
-/** One row per factor, in area order; unknown factors are kept as neutral "Other" rows. */
-export function healthFactorRows(factors: string[]): HealthFactorRow[] {
-  return factors
-    .map((factor) => ({
+/**
+ * One row per factor and per issue (round 2 D11: issues are Failing / Watch
+ * rows), in area order; unknown factors are kept as neutral "Other" rows.
+ */
+export function healthFactorRows(factors: string[], issues: string[] = []): HealthFactorRow[] {
+  return [
+    ...factors.map((factor) => ({
       factor,
       ...(FACTORS[factor] ?? { area: healthAreaEnum.OTHER, tone: "neutral" as const }),
-    }))
-    .sort((a, b) => AREA_ORDER.indexOf(a.area) - AREA_ORDER.indexOf(b.area));
+    })),
+    ...issues.map(issueRow),
+  ].sort((a, b) => AREA_ORDER.indexOf(a.area) - AREA_ORDER.indexOf(b.area));
 }

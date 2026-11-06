@@ -89,7 +89,7 @@ export function ConfirmDialog({
           <Button variant="secondary" autoFocus isDisabled={isLoading} onPress={onClose}>
             {cancelLabel}
           </Button>
-          <Button variant={destructive ? "destructive" : "dark"} isLoading={isLoading} onPress={onConfirm}>
+          <Button variant={destructive ? "danger" : "primary"} isLoading={isLoading} onPress={onConfirm}>
             {confirmLabel}
           </Button>
         </ModalFooter>

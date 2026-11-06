@@ -105,7 +105,7 @@ export function Ai() {
 
   const tabs = (
     <SegmentedSwitch
-      ariaLabel="ZCOM AI tables"
+      ariaLabel="Zcom AI tables"
       value={tab}
       onChange={selectTab}
       items={TAB_ORDER.map((key) => ({
@@ -172,7 +172,7 @@ export function Ai() {
         type="page"
         icon={aiTile}
         title={PAGE_TITLE}
-        description="What ZCOM AI is asked, what it costs, and the data it answers from."
+        description="What Zcom AI is asked, what it costs, and the data it answers from."
         actions={
           <ButtonLink to="/settings/ai" variant="secondary" startIcon={<IconSettings aria-hidden />}>
             AI settings

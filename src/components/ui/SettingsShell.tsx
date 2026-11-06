@@ -9,7 +9,10 @@
  *   <SettingsInsight> and white 22px cards.
  * - Below 1024px the menu is a full-width select-style button ("Store details ▾") with the search beside it.
  * - Below 768px the section index (`showList`) is the heading, the search and a grouped list of rows with chevrons;
- *   a section opens full screen with a circle back button. Without `back` the select stays on phone too.
+ *   a section opens full screen with the same section select at the top (round 2 §5.15: the sub-menu becomes a
+ *   select on phone; it replaced the circle back button).
+ * - One status icon set across settings (round 2 §5.15, <SetupStatusIcon>): empty ring = to do, amber ! = needs
+ *   attention, green ✓ = done.
  * The settings search (<SettingsSearch>) finds sections and field labels; picking a field opens its section with
  * `#fieldId` and the shell focuses that field and flashes its label (1.2s).
  */
@@ -28,8 +31,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { PageIconContext } from "../layout/page-icon";
 import { Button } from "./Button";
 import { Dropdown, DropdownMenu } from "./Dropdown";
-import { IconButton } from "./IconButton";
-import { IconBack, IconCaret, IconCheck, IconExpand } from "./icons";
+import { IconCaret, IconCheck, IconExpand } from "./icons";
 import { menuItemDangerClasses, menuPopoverClasses, menuSectionClasses } from "./menu-styles";
 import { Orb } from "./Orb";
 import { SearchInput } from "./SearchInput";
@@ -80,7 +82,10 @@ export interface SettingsShellProps {
    * to the first section, so `children` is usually that redirect.
    */
   showList?: boolean;
-  /** Phone back button above a section ("Settings"). */
+  /**
+   * Where the phone index is ("Settings"). Round 2 §5.15: phones now get the section select at the top of a section
+   * instead of a back button, so this is no longer drawn; kept so both apps' call sites stay valid.
+   */
   back?: { href: string; label: string };
   /** The menu heading, also the phone index title. Default "Settings". */
   title?: string;
@@ -127,7 +132,6 @@ export function SettingsShell({
   activeKey,
   footer = [],
   showList = false,
-  back,
   title = "Settings",
   subtitle,
   search,
@@ -184,15 +188,9 @@ export function SettingsShell({
 
       <div className="min-w-0 flex-1 lg:pb-ask-clearance lg:pl-8 lg:pt-6">
         <div className="mx-auto w-full max-w-4xl">
-          {back ? (
-            <div className="mb-3 flex items-center gap-2 md:hidden">
-              <BackCircle to={back.href} label={`Back to ${back.label}`} />
-              <span className="text-body font-medium text-fg">{back.label}</span>
-            </div>
-          ) : null}
-          {/* Below 1024px the section select and the search; on phone a page with an index list uses the back button. */}
+          {/* Below 1024px the section select and the search, on phone too (round 2 §5.15). */}
           {isWide ? null : (
-            <div className={cx("mb-4 flex flex-col gap-3 sm:flex-row sm:items-center", back && "max-md:hidden")}>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
                 <SectionSelect
                   groups={visible}
@@ -210,15 +208,6 @@ export function SettingsShell({
         </div>
       </div>
     </div>
-  );
-}
-
-function BackCircle({ to, label }: { to: string; label: string }) {
-  const navigate = useNavigate();
-  return (
-    <IconButton aria-label={label} size="sm" onPress={() => navigate(to)}>
-      <IconBack aria-hidden />
-    </IconButton>
   );
 }
 
@@ -291,7 +280,7 @@ function ProgressCard({ progress, className }: { progress: SettingsProgress; cla
   const ratio = total > 0 ? done / total : 0;
   const body = (
     <>
-      <IconCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-pane-icon" />
+      <SetupStatusIcon status={done >= total ? "done" : "todo"} className="mt-0.5" />
       <span className="min-w-0 flex-1">
         <span className="block text-body font-medium text-fg">{progress.label}</span>
         <span className="block text-caption text-fg-muted num">
@@ -454,6 +443,42 @@ function SettingsSectionList({
         </ul>
       ) : null}
     </nav>
+  );
+}
+
+// ─── Status icons ────────────────────────────────────────────────────────────
+
+export type SetupStatus = "todo" | "attention" | "done";
+
+const SETUP_STATUS_LABEL: Record<SetupStatus, string> = { todo: "To do", attention: "Needs attention", done: "Done" };
+
+/**
+ * The one settings status icon set (round 2 §5.15), 16px: an empty ring = to do, an amber circle with "!" = needs
+ * attention, a green circle with ✓ = done. Decorative unless `label` is true (then it is named for screen readers).
+ */
+export function SetupStatusIcon({ status, label = false, className }: { status: SetupStatus; label?: boolean; className?: string }) {
+  const a11y = label ? { role: "img" as const, "aria-label": SETUP_STATUS_LABEL[status] } : { "aria-hidden": true as const };
+  if (status === "todo") {
+    return (
+      <svg viewBox="0 0 16 16" className={cx("size-4 shrink-0 text-fg-subtle", className)} {...a11y}>
+        <circle cx="8" cy="8" r="6.75" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
+    );
+  }
+  if (status === "attention") {
+    return (
+      <svg viewBox="0 0 16 16" className={cx("size-4 shrink-0 text-tone-warning", className)} {...a11y}>
+        <circle cx="8" cy="8" r="7.5" fill="currentColor" />
+        <rect x="7.1" y="3.8" width="1.8" height="5.4" rx="0.9" className="fill-white" />
+        <circle cx="8" cy="11.6" r="1" className="fill-white" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 16 16" className={cx("size-4 shrink-0 text-tone-success", className)} {...a11y}>
+      <circle cx="8" cy="8" r="7.5" fill="currentColor" />
+      <path d="M4.9 8.2l2.1 2.1 4.1-4.4" fill="none" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="stroke-white" />
+    </svg>
   );
 }
 

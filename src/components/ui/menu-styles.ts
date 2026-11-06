@@ -1,20 +1,16 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /** Menu popover and item classes shared by Select and Dropdown (01 §7.17). */
+import { presetMotion } from "./motion";
 
-/** Popover: white, 1px border, 12px radius, popover shadow, 6px padding, 200–320px wide. */
-export const menuPopoverClasses = "zc-menu rounded-xl border border-line bg-surface p-1.5 !shadow-popover";
+/** Popover: the floating level (G16: white, the floating shadow with a 6% ring), 16px radius, 6px padding. */
+export const menuPopoverClasses = "zc-menu rounded-menu border-0 bg-surface p-1.5 !shadow-popover";
 
 /**
- * Menu motion (01 §7.17): opacity and scale(.98 → 1) in 140ms; exit fades in 100ms. HeroUI places the popover,
- * so it grows from the trigger side.
+ * Menu motion (round 2 §2, motion.ts `popoverVariants`): scale .97 → 1 from the trigger's corner with a fade on the
+ * snappy spring; exit fades in 100ms. HeroUI places the popover, so it grows from the trigger side. Reduced motion
+ * keeps only the fade (MotionConfig in AppShell).
  */
-export const menuMotionProps = {
-  variants: {
-    initial: { opacity: 0, scale: 0.98 },
-    enter: { opacity: 1, scale: 1, transition: { duration: 0.14, ease: [0.2, 0, 0, 1] as const } },
-    exit: { opacity: 0, scale: 1, transition: { duration: 0.1, ease: [0.4, 0, 1, 1] as const } },
-  },
-};
+export const menuMotionProps = presetMotion("popover");
 
 /**
  * Item: 36px (44 on phone), 8px radius, padding 0 10, 10px gap, 16px icon in the muted grey, 14px label;

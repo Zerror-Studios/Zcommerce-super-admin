@@ -42,7 +42,8 @@ export function HealthScore({ score, variant = "full", details }: HealthScorePro
       <span className="inline-flex items-center gap-2">
         <span className="relative inline-flex size-10 shrink-0 items-center justify-center">
           <svg viewBox="0 0 40 40" className="absolute inset-0 size-10 -rotate-90" aria-hidden>
-            <circle cx="20" cy="20" r="18" fill="none" strokeWidth="4" className="stroke-line" />
+            {/* Round 2 §6.4: no empty ring at 0; a 0 (or no score) reads as a grey full ring. */}
+            <circle cx="20" cy="20" r="18" fill="none" strokeWidth="4" className={value ? "stroke-line" : "stroke-ring-zero"} />
             {value != null ? (
               <circle
                 cx="20"

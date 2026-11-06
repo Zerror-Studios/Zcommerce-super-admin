@@ -88,6 +88,8 @@ export const PLATFORM_ATTENTION = gql`
           text
           storeIds
           metricKeys
+          # PRD-036 round 2 gaps: the attention rule behind the item (null when none fired)
+          rule
         }
       }
     }

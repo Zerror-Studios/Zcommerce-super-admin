@@ -70,7 +70,7 @@
 
   /* ---------- Brand / action (v2 --blue) ---------- */
   --zc-primary: #1F5EFF;
-  --zc-primary-hover: #1A4FDB;
+  --zc-primary-hover: #1A52E6;  /* G10 */
   --zc-primary-pressed: #1745C2;
   --zc-on-primary: #FFFFFF;
   --zc-primary-text: #1F4FD6;   /* secondary button text, links on tints */
@@ -86,6 +86,12 @@
   --zc-danger-soft: var(--zc-red-tint);
   --zc-danger-border: #F3C7C3;
   --zc-danger-dot: var(--zc-red);
+  /* G10 danger button: #D92D20 fill (the AA-safe --zc-danger above stays for red text); hover/press darken. */
+  --zc-btn-danger: var(--zc-red);
+  --zc-btn-danger-hover: var(--zc-danger);
+  --zc-btn-danger-pressed: var(--zc-danger-hover);
+  /* G10 ghost button: transparent, blue text, light blue hover. */
+  --zc-btn-ghost-hover: #F1F5FF;
   --zc-success: #18794E;
   --zc-success-soft: var(--zc-green-tint);
   --zc-success-dot: var(--zc-green);
@@ -109,6 +115,7 @@
   --zc-nav-hover-bg: #17191F;
   --zc-nav-active-bg: #20232B;
   --zc-nav-count-bg: var(--zc-red); /* Notifications count is red (v2 §3.1) */
+  --zc-nav-product: #A78BFA;         /* round 2 §6.1: the console's "Platform admin" label in the menu brand block */
   --zc-nav-store-badge: #23262E;    /* store switcher initials badge */
   --zc-nav-kbd-bg: #20232B;
   --zc-nav-kbd-fg: #9AA0AB;
@@ -117,19 +124,22 @@
   --zc-nav-sub-hover-bg: #17191F;
   --zc-nav-sub-active-bg: #17191F;
 
-  /* LEGACY: the phone/tablet top bar (v2 §10 replaces it with the icon rail and phone top row in Phase 9). */
-  --zc-topbar: var(--zc-ink);
-  --zc-topbar-fg: #FFFFFF;
-  --zc-topbar-fg-muted: #A3A8B3;
-  --zc-topbar-control: #15171D;
-  --zc-topbar-control-hover: #17191F;
-  --zc-topbar-badge: #20232B;
-  --zc-topbar-badge-fg: #A3A8B3;
+  /* The phone top bar (round 2 §8.2): the page colour at rest; white 92% with a 1px line once the page scrolls
+     under it (`.zc-topbar.is-scrolled`). Ink text and icons. */
+  --zc-topbar: var(--zc-bg);
+  --zc-topbar-scrolled: rgba(255, 255, 255, 0.92);
+  --zc-topbar-fg: var(--zc-fg);
+  --zc-topbar-fg-muted: var(--zc-fg-muted);
+  --zc-topbar-control: transparent;
+  --zc-topbar-control-hover: var(--zc-control-hover-bg);
+  --zc-topbar-badge: var(--zc-surface);
+  --zc-topbar-badge-fg: var(--zc-fg);
 
   --zc-focus: #1F5EFF;
   --zc-focus-ring: 0 0 0 3px rgba(31, 94, 255, 0.18);
   --zc-overlay: rgba(11, 12, 16, 0.40);   /* plain scrim, no blur (v2 §4.6) */
   --zc-overlay-ai: rgba(11, 12, 16, 0.28); /* page dim behind the Zcom AI half sheet (§3.3) */
+  --zc-overlay-search: rgba(11, 12, 16, 0.32); /* search palette scrim, no blur (round 2 G1) */
   --zc-media-scrim: rgba(11, 12, 16, 0.35);
   --zc-media-action: rgba(255, 255, 255, 0.30);
   --zc-scrollbar-thumb: rgba(95, 100, 110, 0.35);
@@ -196,9 +206,24 @@
   --zc-shadow-card: none;
   --zc-shadow-sm: 0 1px 2px rgba(11, 12, 16, 0.06);
   --zc-shadow-float: 0 30px 70px -24px rgba(11, 12, 16, 0.35);
-  --zc-shadow-popover: 0 24px 60px -18px rgba(11, 12, 16, 0.35), 0 0 0 1px rgba(11, 12, 16, 0.06);
+  /* Menus and popovers are floating too; the 6% ring keeps a small menu's top edge visible on a white card. */
+  --zc-shadow-popover: var(--zc-shadow-float), 0 0 0 1px var(--zc-raised-border);
   --zc-shadow-modal: var(--zc-shadow-float);
-  --zc-shadow-ask: 0 22px 50px -18px rgba(11, 26, 79, 0.35), 0 0 0 6px rgba(255, 255, 255, 0.55); /* Zcom AI bar */
+  --zc-shadow-ask: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 8px 24px -8px rgba(11, 12, 16, 0.18), 0 0 0 1px rgba(11, 12, 16, 0.06); /* Zcom AI bar (round 2 G3) */
+
+  /* ---------- Depth: five surface levels (round 2 G16). theme.css maps them to bg-inset, shadow-raised,
+     shadow-floating and the surface-* utilities. Page → card → inset inside a card; raised for things that sit on
+     a surface (composer, bubbles, sticky toolbars); floating for pop-ups, menus, drawers and the AI bar/box. ---------- */
+  --zc-surface-page: var(--zc-bg);
+  --zc-surface-card: var(--zc-surface);
+  --zc-surface-card-border: var(--zc-border);
+  --zc-surface-inset: #F6F7F9;
+  --zc-surface-inset-border: #EEF0F3;
+  --zc-surface-raised: var(--zc-surface);
+  --zc-raised-border: rgba(11, 12, 16, 0.06);
+  --zc-shadow-raised: 0 1px 2px rgba(11, 12, 16, 0.06), 0 6px 16px -8px rgba(11, 12, 16, 0.12);
+  --zc-surface-floating: var(--zc-surface);
+  --zc-shadow-floating: var(--zc-shadow-float);
 
   /* ---------- Sizes ---------- */
   --zc-control-h: 36px;
@@ -214,21 +239,29 @@
   --zc-page-pad-top: 28px;
   --zc-page-pad-x-mobile: 16px;
 
-  /* ---------- Motion ---------- */
-  --zc-dur-instant: 80ms;
-  --zc-dur-fast: 140ms;
-  --zc-dur-base: 220ms;
-  --zc-dur-slow: 320ms;
-  --zc-dur-popup: 160ms;        /* pop-ups fade in and rise 8px */
-  --zc-dur-sheet: 220ms;        /* the AI sheet rises */
+  /* ---------- Motion (round 2 §2): these names only. Springs live in components/ui/motion.ts. ---------- */
+  --ease-out: cubic-bezier(.22,1,.36,1);      /* most enter motions (iOS-like) */
+  --ease-in-out: cubic-bezier(.65,0,.35,1);   /* move/resize between two states */
+  --ease-in: cubic-bezier(.4,0,1,1);          /* exits only */
+  --dur-1: 120ms;  /* hover, press, colour, toggles */
+  --dur-2: 180ms;  /* pop-ups, menus, popovers, toasts */
+  --dur-3: 240ms;  /* drawers, sheets, AI chat box */
+  --dur-4: 320ms;  /* AI box → large view, page-level layout change */
+  /* LEGACY names, kept as aliases of the tokens above so existing rules move with them. */
+  --zc-dur-instant: 80ms;       /* press down (§2: buttons and cards scale .98 in 80ms) */
+  --zc-dur-fast: var(--dur-1);
+  --zc-dur-base: var(--dur-2);
+  --zc-dur-slow: var(--dur-4);
+  --zc-dur-popup: var(--dur-2);
+  --zc-dur-sheet: var(--dur-3);
   --zc-dur-drift: 12s;          /* summary panel light */
   --zc-dur-drift-card: 10s;     /* AI card light */
   --zc-dur-orb: 5s;             /* orb colour layer, idle */
   --zc-dur-orb-think: 1.1s;     /* orb colour layer, thinking */
   --zc-dur-orb-breathe: 2.8s;   /* orb core */
-  --zc-ease: cubic-bezier(0.2, 0, 0, 1);
-  --zc-ease-enter: cubic-bezier(0, 0, 0.2, 1);
-  --zc-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --zc-ease: var(--ease-out);
+  --zc-ease-enter: var(--ease-out);
+  --zc-ease-exit: var(--ease-in);
 
   /* ---------- Layers ---------- */
   --zc-z-sticky: 10;
@@ -271,14 +304,15 @@
   --zc-control-pressed-bg: #EEEFF2;
   --zc-ghost-hover-bg: #F2F3F5;
   --zc-ghost-pressed-bg: #EAEBEE;
-  --zc-icon-btn-fg: #3D414B;         /* icon buttons: white, bordered; ink when active */
+  --zc-icon-btn-fg: var(--zc-ink);   /* icon buttons (G10): white, 1px border, ink icon; ink fill when active */
   --zc-seg-bg: #DFE1E7;              /* segmented tabs above tables (§4.3) */
   --zc-seg-count: #8A909B;
   --zc-ring-track: #ECEEF2;          /* SEO ring and mini ring tracks */
+  --zc-ring-zero: #CDD0D7;           /* round 2 §6.4: a ring whose value is 0 is a grey full ring, never empty */
   --zc-seg-off: #E6E8EE;             /* empty segments in mini charts */
   --zc-solid-dark: var(--zc-ink);    /* dark buttons, tooltips, toasts, active icon buttons */
   --zc-solid-dark-hover: #2A2D35;
-  --zc-table-row-hover: #FAFAFB;
+  --zc-table-row-hover: var(--zc-surface-inset); /* G5: #F6F7F9, 120ms */
   --zc-table-row-selected: #EEF3FF;
   /* Light row tints for failing and past-due rows (boards 16, 59, 63): lighter than the badge tints. */
   --zc-table-row-danger: #FFFBFB;
@@ -357,7 +391,7 @@
   /* ---------- Sizes ---------- */
   --zc-control-h-xs: 28px;           /* buttons inside dense table rows only */
   --zc-control-h-touch: 44px;        /* tap targets on phone (v2 §10) */
-  --zc-btn-px-lg: 20px;  --zc-btn-px: 16px;  --zc-btn-px-sm: 14px;  --zc-btn-px-xs: 12px;
+  --zc-btn-px-lg: 16px;  --zc-btn-px: 16px;  --zc-btn-px-sm: 12px;  --zc-btn-px-xs: 12px; /* G10: md 0 16, sm 0 12 */
   --zc-icon-btn: 36px;   --zc-icon-btn-sm: 32px;   --zc-icon-btn-xs: 28px;
   --zc-seg-h: 38px;      --zc-seg-h-sm: 32px;      --zc-seg-pad: 3px;
   --zc-table-row-h-tall: 64px;
@@ -371,10 +405,12 @@
   --zc-summary-h: 122px;             /* summary panel cell min height */
   --zc-summary-h-collapsed: 48px;
   --zc-summary-toggle: 28px;
-  --zc-ask-h: 54px;                  /* Zcom AI bar */
-  --zc-ask-w: 600px;
-  --zc-ask-bottom: 26px;
-  --zc-ask-clearance: 120px;         /* bottom padding so the bar never hides the last row */
+  --zc-ask-h: 52px;                  /* Zcom AI bar */
+  --zc-ask-w: 560px;
+  --zc-ask-bottom: 24px;
+  --zc-ask-clearance: 112px;         /* bottom padding so the bar never hides the last row */
+  --zc-ai-box-w: 420px;              /* Zcom AI chat box (round 2 G3) */
+  --zc-ai-box-h: 560px;
   --zc-ask-bottom-phone: 16px;       /* phone: the bar sits 16px above the safe area (v2 §10) */
   /* Phone: the height the AI bar takes at the bottom of the screen, safe area included. Things that stick to the
      bottom (PhoneActionBar) sit this far up, so they stack above the bar instead of under it. */
@@ -390,8 +426,8 @@
   --zc-sidebar-w-collapsed: 72px;    /* laptop/tablet icon rail (v2 §10) */
   --zc-sidebar-drawer-w: 280px;
   --zc-topbar-h-mobile: 56px;
-  --zc-drawer-w: 420px;              /* filter drawer, notifications */
-  --zc-drawer-w-md: 460px;           /* order preview */
+  --zc-drawer-w: 440px;              /* G6: every drawer (filter, order preview, customer) */
+  --zc-drawer-w-md: var(--zc-drawer-w); /* G6: one drawer width (was 460 for the order preview) */
   --zc-drawer-w-lg: 640px;
   --zc-sticky-top: 0px;              /* 0 on list pages; detail pages add their sticky header */
   --zc-side-col: 360px;
@@ -403,15 +439,23 @@
   --zc-card-pad: 20px;
   --zc-card-pad-lg: 22px;
   --zc-header-gap: 20px;
-  --zc-modal-sm: 420px;  --zc-modal-md: 640px;  --zc-modal-lg: 960px; /* the only three pop-up sizes */
+  --zc-modal-sm: 420px;  --zc-modal-md: 640px;  --zc-modal-lg: 960px; /* G4 pop-up sizes, plus full: */
+  --zc-modal-full-inset: 64px;       /* full = 100vw − 64 × 100vh − 64 (AI large view, media editor) */
+  --zc-modal-max-h: 86vh;
+  --zc-drawer-header-h: 64px;
+  --zc-drawer-pad: 20px;
+  --zc-toast-bottom: 92px;           /* G7: above the AI bar */
+  --zc-toast-w: 420px;
+  --zc-radius-toast: 14px;
 
   /* ---------- Motion ---------- */
   --zc-dur-video-fade: 0.6s;
   --zc-dur-shimmer: 1.2s;
-  --zc-ease-press: cubic-bezier(0.34, 1.3, 0.64, 1);
-  --zc-press-scale: 0.97;
-  --zc-press-scale-icon: 0.94;
-  --zc-press-scale-card: 0.99;
+  --zc-skeleton-delay: 300ms;     /* round 2 §2: skeletons only when data takes longer than this */
+  --zc-ease-press: var(--ease-out);  /* no overshoot anywhere (§2) */
+  --zc-press-scale: 0.98;
+  --zc-press-scale-icon: 0.98;
+  --zc-press-scale-card: 0.98;
   --zc-rise: 8px;
   --zc-spinner-delay: 250ms;
   --zc-spinner-min: 400ms;
@@ -438,15 +482,16 @@
     --zc-seg-h-sm: var(--zc-control-h-touch);
   }
 }
-/* Reduced motion: keep opacity changes, remove movement. */
+/* Reduced motion (§2): everything becomes a 120ms opacity fade; nothing moves or loops. */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --zc-press-scale: 1;
     --zc-press-scale-icon: 1;
     --zc-press-scale-card: 1;
     --zc-rise: 0px;
-    --zc-dur-base: 0.14s;
-    --zc-dur-slow: 0.14s;
+    --dur-2: var(--dur-1);
+    --dur-3: var(--dur-1);
+    --dur-4: var(--dur-1);
   }
 }
 
@@ -511,11 +556,16 @@ body {
 @keyframes zc-ai-spin { to { --zc-ai-angle: 360deg; } }
 @keyframes zc-ai-sheen { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
+/* Reduced motion (§2): transitions keep only colour and opacity at 120ms (transforms snap); keyframe animations
+   run once, at 120ms, so nothing loops. framer-motion follows the same rule through components/ui/motion.ts. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 1ms !important;
+    animation-duration: var(--dur-1) !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-property: opacity, color, background-color, border-color, box-shadow !important;
+    transition-duration: var(--dur-1) !important;
+    transition-delay: 0ms !important;
     scroll-behavior: auto !important;
   }
 }

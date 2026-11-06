@@ -67,8 +67,12 @@ export interface UserMenuItem {
 export interface CommandItem {
   id: string;
   label: string;
-  /** Secondary text on the right (section, shortcut, owner email). */
+  /** Right-aligned type hint ("Order", "Product", the section). */
   hint?: ReactNode;
+  /** Grey sub-line under the title (order: customer · ₹ · status; customer: email · orders). Round 2 G1. */
+  description?: string;
+  /** Product thumbnail instead of the icon tile. */
+  imageUrl?: string | null;
   icon?: NavIcon;
   /** Extra words that should match the query. */
   keywords?: string;
@@ -82,6 +86,8 @@ export interface CommandGroup {
   items: CommandItem[];
   /** Server results: total matches, for the "Show all N" row. */
   total?: number;
-  /** Where "Show all N" goes (the list page with the search applied). */
+  /** Where "See all N …" goes (the list page with the search applied). */
   showAllHref?: string;
+  /** Plural noun for "See all 23 orders →" (default: the title in lower case). */
+  noun?: string;
 }

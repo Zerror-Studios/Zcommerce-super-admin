@@ -1,70 +1,247 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
- * The Zcom AI sheet (docs/design-v2/README.md §3.3; styles `.zc-ai-sheet` in src/styles/components.css). The bar at
- * the bottom of every page opens it (click or ⌘J) as a bottom sheet over about half the viewport, the full width of
- * the content area, with a 24px radius on the top corners; the page above stays visible, dimmed 28%. The expand
- * button (or dragging the handle up) grows it to the full height with the chat history on the left; shrink returns
- * to half; Esc or close returns to the bar. Phone (v2 §10): it opens at 70% of the height and the handle (drag up,
- * or tap) takes it to full. Each app's own panel (store AskZcomPanel, console AskZcomPlatformPanel)
- * renders its conversation inside: <AiSheet> → <DrawerContent> → <AiSheetHeader> + body + footer.
+ * The Zcom AI surface (round 2 G3, docs/review-r2/ROUND-2-FIXES.md; styles `.zc-ai-surface` in
+ * src/styles/components.css). One floating card in three sizes, morphing between them with a shared-layout
+ * spring (motion.ts `spring.layout`):
+ * - box (step 1, click on the bar or ⌘J): a 420 × 560 card, radius 22, anchored bottom-centre where the bar sits.
+ *   It grows out of the bar (the bar and the card share `AI_SURFACE_LAYOUT_ID`), the page is not dimmed, and a
+ *   click outside closes it. Its 48px header: orb, "Zcom AI · sees ‹Page›" (13px), history, expand ⤢, close.
+ * - half (⤢ from the box): the large view over the content area, about half the viewport, page dimmed 28%.
+ * - full (⤢ again): the centred full view (board 46) with the history column on the left.
+ * Shrink and Esc step back one level (full → half → box → closed). Phone (v2 §10): the box is a bottom sheet at
+ * 70% height whose handle drags (or taps) it to full; there is no half size.
  *
- * Full view (board 46): from 768px up a centred panel (max 1180px, radius 28, a thin gradient line on top) over the
- * dimmed app. <AiSheetHistory> is its left column: the orb with "Zcom AI", a "+ New chat" pill, the conversations,
- * and the usage line at the bottom. The header turns plain white with only the conversation title, shrink and close.
- * <AiComposer> is the reply box in both sizes: a pill input with a round blue send and the "Zcom can make mistakes"
- * line under it.
+ * Each app's own panel (store AskZcomPanel, console AskZcomPlatformPanel) renders inside:
+ * <AiSheet> → <AiSheetContent> → <AiSheetHeader> + <AiSheetBody> + <AiSheetFooter>.
+ * <AiComposer> is the reply box in every size: a pill input with a round blue send and one line under it.
  */
-import { Drawer, DrawerHeader } from "@heroui/react";
-import { useRef, type PointerEvent, type ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  type HTMLAttributes,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import { Button } from "../ui/Button";
 import { Orb } from "../ui/Orb";
 import { cx } from "../ui/cx";
 import { IconButton } from "../ui/IconButton";
 import { IconAdd, IconArrowRight, IconClose, IconMaximize, IconMinimize } from "../ui/icons";
+import { DUR_1_S, DUR_2_S, EXIT_S, spring } from "../ui/motion";
+import { useIsPhone } from "../ui/use-media";
 
-/** The line every answer ends with (v2 §3.3). */
+/** The line every answer ends with (v2 §3.3, round 2 G3). */
 export const AI_CONSENT_LINE = "Nothing is sent or changed until you say yes.";
 
 /** The line under the reply box (board 46). */
 export const AI_COMPOSER_NOTE = "Zcom can make mistakes. It asks before changing anything.";
 
-/** Opening: the sheet rises in 220ms (transform only, v2 §2.4). */
-const sheetMotion = {
-  variants: {
-    enter: { y: 0, opacity: 1, transition: { duration: 0.22, ease: [0, 0, 0.2, 1] as const } },
-    exit: { y: "100%", opacity: 1, transition: { duration: 0.18, ease: [0.4, 0, 1, 1] as const } },
-  },
-};
+/** The closed bar (Assistant.tsx AskBar) and the open surface share this id, so the box grows out of the bar. */
+export const AI_SURFACE_LAYOUT_ID = "zc-ai-surface";
+
+export type AiSheetSize = "box" | "half" | "full";
 
 const DRAG_THRESHOLD = 40;
 const TAP_SLOP_PX = 6;
+/** The content fades in this long after the surface starts to grow (§2: 60ms). */
+const CONTENT_DELAY_S = 0.06;
+/** Corner radii per size, in style (framer-motion corrects radii it animates only when they are inline). */
+const RADIUS = { bar: 26, box: 22, half: 24, full: 28 } as const;
+/** Layers opened from inside the surface (menus, confirm dialogs) never count as "outside". */
+const OTHER_LAYER_SELECTOR =
+  '[role="menu"], [role="listbox"], [role="alertdialog"], [role="dialog"]:not(.zc-ai-surface):not(.zc-rail-overlay)';
+
+interface AiSheetContextValue {
+  size: AiSheetSize;
+  isPhone: boolean;
+  setSize: (size: AiSheetSize) => void;
+  close: () => void;
+}
+
+const AiSheetContext = createContext<AiSheetContextValue | null>(null);
+
+/** The size on screen (box / half / full); "box" outside an AiSheet. */
+export function useAiSheetSize(): AiSheetSize {
+  return useContext(AiSheetContext)?.size ?? "box";
+}
+
+/** One level bigger: box → half → full (phone: box → full). */
+function grow(size: AiSheetSize, isPhone: boolean): AiSheetSize {
+  if (size === "box") return isPhone ? "full" : "half";
+  return "full";
+}
+
+/** One level smaller: full → half → box (phone: full → box). */
+function shrink(size: AiSheetSize, isPhone: boolean): AiSheetSize {
+  if (size === "full") return isPhone ? "box" : "half";
+  return "box";
+}
+
+function radiusStyle(size: AiSheetSize, isPhone: boolean) {
+  if (isPhone) {
+    const top = size === "full" ? 0 : RADIUS.box;
+    return { borderTopLeftRadius: top, borderTopRightRadius: top, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 };
+  }
+  if (size === "half") {
+    return {
+      borderTopLeftRadius: RADIUS.half,
+      borderTopRightRadius: RADIUS.half,
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
+    };
+  }
+  const all = size === "full" ? RADIUS.full : RADIUS.box;
+  return { borderTopLeftRadius: all, borderTopRightRadius: all, borderBottomLeftRadius: all, borderBottomRightRadius: all };
+}
 
 export interface AiSheetProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Full height with the history on the left. */
-  expanded: boolean;
-  onExpandedChange: (expanded: boolean) => void;
-  /** <DrawerContent> with <AiSheetHeader> and the conversation. */
+  /** The size on screen. Defaults to "half" / "full" from the LEGACY `expanded`. */
+  size?: AiSheetSize;
+  onSizeChange?: (size: AiSheetSize) => void;
+  /** LEGACY: true = full. */
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
+  /** Accessible name of the surface. */
+  label?: string;
+  /** <AiSheetContent> with <AiSheetHeader> and the conversation. */
   children: ReactNode;
 }
 
-export function AiSheet({ isOpen, onClose, expanded, children }: AiSheetProps) {
-  return (
-    <Drawer
-      isOpen={isOpen}
-      onOpenChange={(open) => !open && onClose()}
-      placement="bottom"
-      hideCloseButton
-      motionProps={sheetMotion}
-      classNames={{
-        base: cx("zc-ai-sheet", expanded && "zc-ai-sheet--full"),
-        backdrop: "zc-ai-sheet-backdrop",
-      }}
-    >
-      {children}
-    </Drawer>
+export function AiSheet({
+  isOpen,
+  onClose,
+  size: sizeProp,
+  onSizeChange,
+  expanded,
+  onExpandedChange,
+  label = "Zcom AI",
+  children,
+}: AiSheetProps) {
+  const isPhone = useIsPhone();
+  const reduced = useReducedMotion() ?? false;
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
+  const requested = sizeProp ?? (expanded ? "full" : "half");
+  // Phone has no half size: the sheet is 70% (box) or full.
+  const size: AiSheetSize = isPhone && requested === "half" ? "full" : requested;
+  const dimmed = isPhone || size !== "box";
+
+  const setSize = (next: AiSheetSize) => {
+    onSizeChange?.(next);
+    onExpandedChange?.(next === "full");
+  };
+
+  // Esc steps back one level; a layer opened inside (a menu, a confirm dialog) handles its own Esc first.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (document.querySelector(OTHER_LAYER_SELECTOR)) return;
+      event.preventDefault();
+      if (size === "box") onClose();
+      else setSize(shrink(size, isPhone));
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // setSize only forwards to the props.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, size, isPhone, onClose]);
+
+  // The box (no dim) closes on a press anywhere outside it, except in a layer it opened and on the bar.
+  useEffect(() => {
+    if (!isOpen || dimmed) return undefined;
+    const onPointerDown = (event: globalThis.PointerEvent) => {
+      const target = event.target as Element | null;
+      if (!target || surfaceRef.current?.contains(target)) return;
+      if (target.closest(OTHER_LAYER_SELECTOR) || target.closest(".zc-askbar")) return;
+      onClose();
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [isOpen, dimmed, onClose]);
+
+  // Focus goes back where it was (the bar, or the page) when the surface closes.
+  useEffect(() => {
+    if (isOpen) {
+      returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      return undefined;
+    }
+    const target = returnFocus.current;
+    returnFocus.current = null;
+    if (target?.isConnected) target.focus({ preventScroll: true });
+    return undefined;
+  }, [isOpen]);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <AnimatePresence>
+      {isOpen && dimmed ? (
+        <motion.div
+          key="zc-ai-scrim"
+          aria-hidden
+          className="zc-ai-scrim"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, transition: { duration: DUR_2_S } }}
+          exit={{ opacity: 0, transition: { duration: EXIT_S } }}
+          onClick={onClose}
+        />
+      ) : null}
+      {isOpen ? (
+        <motion.div
+          key="zc-ai-surface"
+          ref={surfaceRef}
+          role="dialog"
+          aria-modal={dimmed ? true : undefined}
+          aria-label={label}
+          layoutId={AI_SURFACE_LAYOUT_ID}
+          className={cx("zc-ai-surface", `zc-ai-surface--${size}`)}
+          style={radiusStyle(size, isPhone)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: EXIT_S } }}
+          transition={reduced ? { duration: DUR_1_S } : { layout: spring.layout, opacity: { duration: DUR_1_S } }}
+        >
+          <AiSheetContext.Provider value={{ size, isPhone, setSize, close: onClose }}>
+            <motion.div
+              layout={reduced ? false : "position"}
+              className="zc-ai-surface__content"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { delay: reduced ? 0 : CONTENT_DELAY_S, duration: DUR_1_S } }}
+            >
+              {children}
+            </motion.div>
+          </AiSheetContext.Provider>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>,
+    document.body,
   );
+}
+
+/** The column inside the surface: header, then the scrolling body, then the footer. */
+export function AiSheetContent({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cx("zc-ai-surface__column", className)}>{children}</div>;
+}
+
+/** The scrolling conversation. */
+export function AiSheetBody({ children, className, ...rest }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cx("zc-ai-surface__body custom-scroll", className)} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+/** The bottom of the surface: the reply box (pinned). */
+export function AiSheetFooter({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cx("zc-ai-surface__footer", className)}>{children}</div>;
 }
 
 export interface AiSheetHeaderProps {
@@ -72,13 +249,16 @@ export interface AiSheetHeaderProps {
   context?: ReactNode;
   /** Replaces the title (e.g. "Conversations" in the history view). */
   title?: ReactNode;
-  /** Before the title (a back button in the history view). Defaults to the white orb. */
+  /** Before the title (a back button in the history view). Defaults to the orb. */
   leading?: ReactNode;
-  /** Extra header buttons before expand and close (history, new chat). */
+  /** Extra header buttons before expand and close (history). */
   actions?: ReactNode;
-  expanded: boolean;
-  onExpandedChange: (expanded: boolean) => void;
-  onClose: () => void;
+  /** LEGACY: the surface's own size is used. */
+  expanded?: boolean;
+  /** LEGACY: the surface's own size is used. */
+  onExpandedChange?: (expanded: boolean) => void;
+  /** LEGACY: the surface's own close is used when this is missing. */
+  onClose?: () => void;
   /** Busy: the orb thinks. */
   thinking?: boolean;
   /** Full view: the conversation title in the plain header. Default "New chat". */
@@ -86,22 +266,18 @@ export interface AiSheetHeaderProps {
 }
 
 /**
- * Half size: the gradient header strip (grab handle, "Zcom AI · sees ‹page›", the app's actions, expand and close).
- * Full view (board 46): a plain white header with only the conversation title, shrink and close; the app's actions
- * stay on phone, where the history column is hidden.
+ * Box and half size: the 48px header (grab handle on phone; orb, "Zcom AI · sees ‹page›" in 13px, the app's
+ * actions, expand ⤢ and close; the half size adds shrink). Full view (board 46): a plain header with the
+ * conversation title, shrink and close; the app's actions stay on phone, where the history column is hidden.
  */
-export function AiSheetHeader({
-  context,
-  title,
-  leading,
-  actions,
-  expanded,
-  onExpandedChange,
-  onClose,
-  thinking = false,
-  fullTitle,
-}: AiSheetHeaderProps) {
+export function AiSheetHeader({ context, title, leading, actions, onClose, thinking = false, fullTitle }: AiSheetHeaderProps) {
+  const sheet = useContext(AiSheetContext);
+  const size = sheet?.size ?? "box";
+  const isPhone = sheet?.isPhone ?? false;
+  const close = onClose ?? sheet?.close ?? (() => undefined);
+  const setSize = (next: AiSheetSize) => sheet?.setSize(next);
   const dragStart = useRef<number | null>(null);
+
   const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
     dragStart.current = event.clientY;
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -111,70 +287,81 @@ export function AiSheetHeader({
     dragStart.current = null;
     if (start == null) return;
     const delta = event.clientY - start;
-    if (delta < -DRAG_THRESHOLD) onExpandedChange(true);
+    if (delta < -DRAG_THRESHOLD) setSize(grow(size, isPhone));
     else if (delta > DRAG_THRESHOLD) {
-      if (expanded) onExpandedChange(false);
-      else onClose();
+      if (size === "box") close();
+      else setSize(shrink(size, isPhone));
     } else if (Math.abs(delta) < TAP_SLOP_PX) {
-      // A tap (no drag) toggles the size too: phones have no expand button (v2 §10, opens at 70%, drags to full).
-      onExpandedChange(!expanded);
+      // A tap toggles the phone sheet between 70% and full.
+      setSize(size === "full" ? "box" : "full");
     }
   };
 
-  if (expanded) {
+  const closeButton = (
+    <IconButton aria-label="Close Zcom AI" size="sm" onPress={close}>
+      <IconClose />
+    </IconButton>
+  );
+
+  if (size === "full" && !isPhone) {
     return (
-      <DrawerHeader className="zc-ai-sheet__bar">
+      <header className="zc-ai-sheet__bar">
         <h2 className="min-w-0 flex-1 truncate text-body-strong text-fg">{fullTitle ?? "New chat"}</h2>
-        {actions ? <div className="flex items-center gap-1 md:hidden">{actions}</div> : null}
-        <IconButton aria-label="Shrink to half" variant="default" size="sm" onPress={() => onExpandedChange(false)}>
+        <IconButton aria-label="Shrink" size="sm" onPress={() => setSize(shrink(size, isPhone))}>
           <IconMinimize />
         </IconButton>
-        <IconButton aria-label="Close Zcom AI" variant="default" size="sm" onPress={onClose}>
-          <IconClose />
-        </IconButton>
-      </DrawerHeader>
+        {closeButton}
+      </header>
     );
   }
 
   return (
-    <DrawerHeader className="zc-ai-sheet__header">
-      <button
-        type="button"
-        className="zc-ai-sheet__handle"
-        aria-label={expanded ? "Shrink Zcom AI" : "Expand Zcom AI"}
-        onPointerDown={onPointerDown}
-        onPointerUp={onPointerUp}
-        onClick={(event) => {
-          // A keyboard press (no drag) toggles the size.
-          if (event.detail === 0) onExpandedChange(!expanded);
-        }}
-      />
-      {leading ?? <Orb onDark state={thinking ? "thinking" : "idle"} />}
-      <h2 className="min-w-0 flex-1 truncate text-body-strong text-white">
+    <header className="zc-ai-surface__header">
+      {isPhone ? (
+        <button
+          type="button"
+          className="zc-ai-sheet__handle"
+          aria-label={size === "full" ? "Shrink Zcom AI" : "Expand Zcom AI"}
+          onPointerDown={onPointerDown}
+          onPointerUp={onPointerUp}
+          onClick={(event) => {
+            // A keyboard press (no drag) toggles the size.
+            if (event.detail === 0) setSize(size === "full" ? "box" : "full");
+          }}
+        />
+      ) : null}
+      {leading ?? <Orb state={thinking ? "thinking" : "idle"} />}
+      <h2 className="zc-ai-surface__title">
         {title ?? (
           <>
             Zcom AI
-            {context ? <span className="font-normal text-white/75"> · sees {context}</span> : null}
+            {context ? <span className="text-fg-muted"> · sees {context}</span> : null}
           </>
         )}
       </h2>
       {actions}
-      <IconButton
-        aria-label={expanded ? "Shrink to half" : "Expand to full view"}
-        size="sm"
-        onPress={() => onExpandedChange(!expanded)}
-        className="max-md:hidden"
-      >
-        {expanded ? <IconMinimize /> : <IconMaximize />}
-      </IconButton>
-      <IconButton aria-label="Close Zcom AI" size="sm" onPress={onClose}>
-        <IconClose />
-      </IconButton>
-    </DrawerHeader>
+      {isPhone ? null : (
+        <>
+          {size === "half" ? (
+            <IconButton aria-label="Shrink to the chat box" size="sm" onPress={() => setSize("box")}>
+              <IconMinimize />
+            </IconButton>
+          ) : null}
+          <IconButton
+            aria-label={size === "box" ? "Expand" : "Expand to full view"}
+            size="sm"
+            onPress={() => setSize(grow(size, isPhone))}
+          >
+            <IconMaximize />
+          </IconButton>
+        </>
+      )}
+      {closeButton}
+    </header>
   );
 }
 
-/** Empty state of the sheet: "How can I help today?" with three suggestions for the current page. */
+/** Empty state: "How can I help?" with three suggestion rows for the current page (config/ask-suggestions.ts). */
 export function AiSheetWelcome({
   suggestions,
   onAsk,
@@ -190,23 +377,33 @@ export function AiSheetWelcome({
   return (
     <div className="flex flex-col gap-4 py-2">
       <div>
-        <p className="text-title-2 text-fg">How can I help today?</p>
-        {note ? <p className="mt-1 text-body text-fg-muted">{note}</p> : null}
+        <p className="text-title-2 text-fg">How can I help?</p>
+        {note ? <p className="mt-1 text-label text-fg-muted">{note}</p> : null}
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <div className="flex flex-col gap-2">
         {suggestions.slice(0, 3).map((suggestion) => (
           <button
             key={suggestion}
             type="button"
             disabled={disabled}
             onClick={() => onAsk(suggestion)}
-            className="zc-ai-line text-left text-label text-fg transition-colors duration-fast hover:border-brand disabled:opacity-50"
+            className="zc-ai-line text-left text-label text-fg transition-colors duration-1 hover:border-brand disabled:opacity-50"
           >
             <Orb />
             <span className="min-w-0 flex-1">{suggestion}</span>
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** The line under every finished answer (G3): one optional action, then "Nothing is sent or changed until you say yes." */
+export function AiAnswerFooter({ action }: { action?: ReactNode }) {
+  return (
+    <div className="flex flex-col items-start gap-2">
+      {action}
+      <p className="text-caption text-fg-subtle">{AI_CONSENT_LINE}</p>
     </div>
   );
 }
@@ -275,8 +472,8 @@ export interface AiComposerProps {
 }
 
 /**
- * The Zcom AI reply box (board 46): a pill field with a round blue send button, and one small centred line under it
- * ("Zcom can make mistakes. It asks before changing anything."). Enter sends, Shift+Enter adds a line.
+ * The Zcom AI reply box (board 46): a pill field (16px text) with a round blue send button, and one small centred
+ * line under it ("Zcom can make mistakes. It asks before changing anything."). Enter sends, Shift+Enter adds a line.
  */
 export function AiComposer({
   value,

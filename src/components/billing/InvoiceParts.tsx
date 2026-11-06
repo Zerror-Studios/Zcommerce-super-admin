@@ -63,7 +63,7 @@ export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps
   ];
   const owed = invoice.amountDue > 0;
   return (
-    <Modal isOpen onClose={onClose} width="md">
+    <Modal isOpen onClose={onClose} size="md">
       <ModalContent>
         <ModalHeader>
           <PopupTitle

@@ -1,5 +1,5 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
-import { DrawerBody, DrawerContent, DrawerFooter, DrawerHeader, SelectItem } from "@heroui/react";
+import { SelectItem } from "@heroui/react";
 import { forwardRef, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button, type ButtonSize } from "./Button";
 import { Checkbox } from "./Checkbox";
@@ -287,38 +287,25 @@ export function FilterDrawer({
     else onClear?.();
   };
 
+  // Round 2 G6: the kit Drawer's own header (title, the live match line, the 36px close) and its sticky footer.
   return (
-    <Drawer isOpen={isOpen} onOpenChange={(open) => !open && onClose()} size="sm">
-      <DrawerContent>
-        <DrawerHeader>
-          <div className="flex min-w-0 flex-col">
-            <span>{title}</span>
-            {totalCount != null && staged ? (
-              <span aria-live="polite" className="text-label font-normal text-fg-subtle num">
-                {matchLine ?? "\u00a0"}
-              </span>
-            ) : null}
-          </div>
-        </DrawerHeader>
-        <DrawerBody>
-          <div className="flex flex-col gap-6">
-            {staged
-              ? groups.map((group) => (
-                  <section key={group.key} className="zc-filter-group" aria-label={group.label}>
-                    <span className="zc-filter-group__label">{group.label}</span>
-                    <FilterGroupField
-                      group={group}
-                      value={draft[group.key]}
-                      onChange={(next) => setDraft((current) => ({ ...current, [group.key]: next }))}
-                    />
-                  </section>
-                ))
-              : children}
-          </div>
-        </DrawerBody>
-        <DrawerFooter className="justify-between">
+    <Drawer
+      isOpen={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      size="sm"
+      title={title}
+      subtitle={
+        totalCount != null && staged ? (
+          <span aria-live="polite" className="num">
+            {matchLine ?? "\u00a0"}
+          </span>
+        ) : undefined
+      }
+      classNames={{ footer: "justify-between" }}
+      footer={
+        <>
           {staged || onClear ? (
-            <Button variant="tertiary" onPress={clearAll}>
+            <Button variant="ghost" onPress={clearAll}>
               Clear all
             </Button>
           ) : (
@@ -334,8 +321,23 @@ export function FilterDrawer({
               {staged ? showLabel : "Show results"}
             </Button>
           </span>
-        </DrawerFooter>
-      </DrawerContent>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-6">
+        {staged
+          ? groups.map((group) => (
+              <section key={group.key} className="zc-filter-group" aria-label={group.label}>
+                <span className="zc-filter-group__label">{group.label}</span>
+                <FilterGroupField
+                  group={group}
+                  value={draft[group.key]}
+                  onChange={(next) => setDraft((current) => ({ ...current, [group.key]: next }))}
+                />
+              </section>
+            ))
+          : children}
+      </div>
     </Drawer>
   );
 }

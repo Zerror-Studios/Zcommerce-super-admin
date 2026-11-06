@@ -44,7 +44,7 @@ export function TotpQrCode({ otpauthUrl }: TotpQrCodeProps) {
   return (
     <div className="inline-flex rounded-card border border-line bg-white p-3">
       {dataUrl ? (
-        <img src={dataUrl} width={QR_SIZE_PX} height={QR_SIZE_PX} alt="QR code to add Zcommerce to your authenticator app" />
+        <img loading="lazy" src={dataUrl} width={QR_SIZE_PX} height={QR_SIZE_PX} alt="QR code to add Zcommerce to your authenticator app" />
       ) : (
         <Skeleton className="size-52" />
       )}

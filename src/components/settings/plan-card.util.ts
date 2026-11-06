@@ -1,7 +1,7 @@
 /** Plan display helpers shared by the plan cards and the custom plans table (04 S-07d). */
 import { PLAN_LABELS } from "../../lib/display-labels.util";
 import type { PlatformPlan } from "../../types/platform-api";
-import { formatCount, type RowMenuItem } from "../ui";
+import { formatCount, formatPlanName, type RowMenuItem } from "../ui";
 import { IconArchive, IconEdit, IconExchange } from "../ui/icons";
 
 /** "Unlimited" when there is no limit (a negative value). */
@@ -11,7 +11,7 @@ export function limitText(value: number | undefined): string {
 }
 
 export function planTitle(plan: PlatformPlan): string {
-  return plan.displayName || PLAN_LABELS[plan.name];
+  return plan.displayName ? formatPlanName(plan.displayName) : PLAN_LABELS[plan.name] ?? formatPlanName(plan.name);
 }
 
 export function planActions(

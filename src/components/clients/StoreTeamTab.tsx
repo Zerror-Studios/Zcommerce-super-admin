@@ -61,7 +61,7 @@ function staffRoleLabel(role: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-/** "Now" · "Today, 9:40 am" · "Yesterday" · "3 Nov"; "Never" without a sign-in. */
+/** "Now" · "Today, 9:40 AM" · "Yesterday" · "3 Nov"; "Never" without a sign-in. */
 function lastActiveLabel(value: string | null, now: Date = new Date()): string {
   if (!value) return "Never";
   const date = new Date(value);

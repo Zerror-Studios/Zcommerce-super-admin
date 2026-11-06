@@ -27,7 +27,7 @@ export function SelectionBar({ count, children, onClear, total, onSelectAll }: S
         {formatCount(count)} selected
       </p>
       {onSelectAll && total != null && total > count ? (
-        <Button variant="tertiary" size="sm" onPress={onSelectAll}>
+        <Button variant="ghost" size="sm" onPress={onSelectAll}>
           Select all {formatCount(total)}
         </Button>
       ) : null}

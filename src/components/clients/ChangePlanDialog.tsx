@@ -176,7 +176,7 @@ export function ChangePlanDialog({ isOpen, onClose, client, subscription, onChan
   const renewal = subscription?.renewalDate ? formatDate(subscription.renewalDate) : "the next renewal";
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} width="md">
+    <Modal isOpen={isOpen} onClose={onClose} size="md">
       <ModalContent>
         <ModalHeader>
           <PopupTitle icon={<IconPlans aria-hidden />}>Change {client.storeName}'s plan</PopupTitle>
@@ -309,7 +309,7 @@ export function ChangePlanDialog({ isOpen, onClose, client, subscription, onChan
             Cancel
           </UiButton>
           <UiButton
-            variant={needsOverride ? "destructive" : "primary"}
+            variant={needsOverride ? "danger" : "primary"}
             isLoading={busy}
             isDisabled={
               busy ||
