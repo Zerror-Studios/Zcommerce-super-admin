@@ -38,8 +38,13 @@ export interface SidebarStore {
   domain?: string;
   /** Two letters for the badge; taken from the name when missing. */
   initials?: string;
-  /** Opens the store chooser. Without it the switcher is a plain label. */
+  /** Opens the store chooser. Without it (and without `switchItems`) the switcher is a plain label. */
   onSwitch?: () => void;
+  /**
+   * A small menu instead of a jump to the chooser (developer, 2026-11-06): "Switch to Nahara", "Sign in to another
+   * store". The chevron shows only when the menu has items.
+   */
+  switchItems?: { key: string; label: string; onSelect: () => void }[];
 }
 
 export interface SidebarProps {
@@ -405,10 +410,31 @@ export function StoreSwitcher({ store, collapsed = false, className: extra }: { 
         <span className="block truncate text-label-strong text-nav-fg-strong">{store.name}</span>
         {store.domain ? <span className="block truncate text-caption text-nav-fg-muted">{store.domain}</span> : null}
       </span>
-      {store.onSwitch ? <IconCaret aria-hidden className="size-3.5 shrink-0 text-nav-icon" /> : null}
+      {store.onSwitch || store.switchItems?.length ? <IconCaret aria-hidden className="size-3.5 shrink-0 text-nav-icon" /> : null}
     </>
   );
   const className = cx("flex min-w-0 flex-1 items-center gap-2.5 rounded-field p-1", collapsed && "justify-center", extra);
+  if (store.switchItems?.length) {
+    const items = store.switchItems;
+    return (
+      <Dropdown placement="bottom-start">
+        <DropdownTrigger>
+          <button
+            type="button"
+            aria-label={`Switch store, current: ${store.name}`}
+            className={cx(className, "transition-colors duration-fast hover:bg-nav-hover", focusRing)}
+          >
+            {body}
+          </button>
+        </DropdownTrigger>
+        <DropdownMenu aria-label="Switch store" onAction={(key) => items.find((item) => item.key === String(key))?.onSelect()}>
+          {items.map((item) => (
+            <DropdownItem key={item.key}>{item.label}</DropdownItem>
+          ))}
+        </DropdownMenu>
+      </Dropdown>
+    );
+  }
   return store.onSwitch ? (
     <WithTooltip show={collapsed} label={`Switch store (${store.name})`}>
       <button

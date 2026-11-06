@@ -35,3 +35,14 @@ export function storeAdminLink(
   }
   return `${base}/#impersonation=${encodeURIComponent(token)}`;
 }
+
+/**
+ * Adds the store's display name to a hand-over link's fragment (`#impersonation=…&store=Kesar%20%26%20Kin`), so
+ * the store admin's opening screen can say "Opening Kesar & Kin". Display only: the store app never trusts it.
+ * A link without a fragment, or with no name, is returned as it is.
+ */
+export function withStoreName(link: string, storeName: string | null | undefined): string {
+  const name = storeName?.trim();
+  if (!name || !link.includes("#")) return link;
+  return `${link}&store=${encodeURIComponent(name)}`;
+}

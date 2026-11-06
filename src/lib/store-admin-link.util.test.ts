@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { storeAdminLink } from "./store-admin-link.util";
+import { storeAdminLink, withStoreName } from "./store-admin-link.util";
 
 const TEMPLATE = "https://store.zerrorstudios.com/store/{slug}";
 
@@ -27,5 +27,18 @@ describe("storeAdminLink (UX-26)", () => {
     expect(storeAdminLink(null, "t", "http://localhost:5173/", false)).toBeNull();
     expect(storeAdminLink("s", "t", "http://store.example/{slug}", true)).toBeNull();
     expect(storeAdminLink("s", "t", "http://store.example/{slug}", false)).toBeNull();
+  });
+});
+
+describe("withStoreName (round 2 hand-over screen)", () => {
+  it("adds the display name to the fragment, encoded", () => {
+    expect(withStoreName("https://s.example/store/kk/#impersonation=t", "Kesar & Kin")).toBe(
+      "https://s.example/store/kk/#impersonation=t&store=Kesar%20%26%20Kin",
+    );
+  });
+
+  it("leaves a link without a fragment or without a name alone", () => {
+    expect(withStoreName("https://s.example/store/kk/", "Kesar & Kin")).toBe("https://s.example/store/kk/");
+    expect(withStoreName("https://s.example/#impersonation=t", "  ")).toBe("https://s.example/#impersonation=t");
   });
 });

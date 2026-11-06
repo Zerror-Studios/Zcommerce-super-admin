@@ -41,7 +41,6 @@ import {
   ErrorState,
   Skeleton,
   SummaryPanel,
-  Tooltip,
   cx,
   formatCount,
   formatDate,
@@ -91,15 +90,6 @@ const topStoreColumns: DataTableColumn[] = [
   { key: "failed", label: "Failed", width: 110, mobile: "hide" },
   { key: "charges", label: "Charges", width: 90, hideWhen: "narrow", mobile: "hide" },
 ];
-
-/** A label with a dotted underline that explains itself on hover (in the summary panel's own text colour). */
-function Explained({ children, tip }: { children: ReactNode; tip: ReactNode }) {
-  return (
-    <Tooltip content={tip}>
-      <span className="cursor-help border-b border-dashed border-current">{children}</span>
-    </Tooltip>
-  );
-}
 
 /** PRD-024 FR-3.1: a month before the first MRR snapshot has no figure. */
 const tooltipMoney = (value: number | null | undefined) =>
@@ -191,31 +181,24 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
   const summaryCells: SummaryCell[] = [
     {
       key: "bookings",
-      label: <Explained tip="Plan bookings for the months in this period">Subscription revenue</Explained>,
+      label: "Subscription revenue",
+      info: "Plan bookings for the months in this period",
       value: formatMoney(kpis.planRevenue, { whole: true }),
       note: kpis.momChangePercent == null ? "Plan bookings" : `${formatDelta(kpis.momChangePercent)} · ${momLabel}`,
       chart: bookingsSeries.length > 1 ? { kind: "bars", values: bookingsSeries } : undefined,
     },
     {
       key: "collected",
-      label: (
-        <Explained tip="Successful payments minus refunds in this period. It can be below zero when refunds are larger than new payments.">
-          Collected
-        </Explained>
-      ),
+      label: "Collected",
+      info: "Successful payments minus refunds in this period. It can be below zero when refunds are larger than new payments.",
       value: formatMoney(kpis.netCollected, { whole: true }),
       note: kpis.refundedAmount > 0 ? `After ${formatMoney(kpis.refundedAmount, { whole: true })} refunded` : "Successful payments",
       tone: kpis.netCollected < 0 ? "danger" : "default",
     },
     {
       key: "mrr",
-      label: (
-        <Explained
-          tip={`Monthly recurring revenue from paying (ACTIVE) subscriptions. Not included: ${formatMoney(summary.trialPipeline, { whole: true })} a month in trials and ${formatMoney(summary.atRiskMrr, { whole: true })} a month past due.`}
-        >
-          Monthly billing
-        </Explained>
-      ),
+      label: "Monthly billing",
+      info: `Monthly recurring revenue from paying (ACTIVE) subscriptions. Not included: ${formatMoney(summary.trialPipeline, { whole: true })} a month in trials and ${formatMoney(summary.atRiskMrr, { whole: true })} a month past due.`,
       value: formatMoney(kpis.activeMrr, { whole: true }),
       note:
         summary.atRiskMrr > 0
@@ -226,7 +209,8 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
     },
     {
       key: "open",
-      label: <Explained tip="Invoices still open whose due date is in this period">Open invoices</Explained>,
+      label: "Open invoices",
+      info: "Invoices still open whose due date is in this period",
       value: formatMoney(kpis.pendingAmount, { whole: true }),
       note:
         kpis.failedAmount > 0

@@ -24,12 +24,15 @@ export function Select<T extends object = object>({
   ...rest
 }: SelectProps<T>) {
   const styles = getDropdownClasses();
+  // HeroUI 2.4 draws an "outside" label absolutely, 12px in from the edge, once the field has a description, so it
+  // no longer lines up with other labels. "outside-top" keeps it in the flow, flush left above the trigger.
+  const placement = labelPlacement === "outside" && rest.description ? "outside-top" : labelPlacement;
   return (
     <HeroSelect<T>
       variant="bordered"
       size={size}
-      labelPlacement={labelPlacement}
-      placeholder={placeholder ?? (labelPlacement === "outside" ? OUTSIDE_LABEL_PLACEHOLDER : undefined)}
+      labelPlacement={placement}
+      placeholder={placeholder ?? (placement === "outside" || placement === "outside-top" ? OUTSIDE_LABEL_PLACEHOLDER : undefined)}
       selectorIcon={selectorIcon ?? <IconCaret aria-hidden className="size-3" />}
       popoverProps={{ ...popoverProps, motionProps: popoverProps?.motionProps ?? menuMotionProps }}
       listboxProps={{

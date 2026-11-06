@@ -82,6 +82,8 @@ const LAYER_SELECTOR = '[role="menu"], [role="dialog"]:not(.zc-rail-overlay), [r
 
 /** Back/Forward: keep trying to restore the saved position for this many frames while the page loads its content. */
 const RESTORE_MAX_FRAMES = 60;
+/** A fresh load holds the top at most this long (until the user scrolls, taps, clicks or types first). */
+const FIRST_LOAD_HOLD_MS = 8000;
 
 const sidebarProps = (node: ReactNode): Partial<SidebarProps> | undefined =>
   isValidElement<Partial<SidebarProps>>(node) ? node.props : undefined;
@@ -100,28 +102,25 @@ function useMainScrollRestoration(mainRef: { current: HTMLElement | null }) {
   const lastPath = useRef(location.pathname);
 
   // A fresh load or reload always opens at the top: turn off the browser's own restoration (it would put the
-  // page back mid-scroll), then hold the top for a few frames while the lazy page and its data fill in.
+  // page back mid-scroll), then hold the top while the lazy page, its cards and their data fill in, until the
+  // user scrolls, taps, clicks or types (or FIRST_LOAD_HOLD_MS passes).
   useLayoutEffect(() => {
     if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
     const main = mainRef.current;
-    let frame = 0;
+    const startedAt = performance.now();
     let handle = 0;
     const toTop = () => {
-      window.scrollTo(0, 0);
-      if (main) main.scrollTop = 0;
-      frame += 1;
-      if (frame < RESTORE_MAX_FRAMES) handle = window.requestAnimationFrame(toTop);
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+      if (main && main.scrollTop !== 0) main.scrollTop = 0;
+      if (performance.now() - startedAt < FIRST_LOAD_HOLD_MS) handle = window.requestAnimationFrame(toTop);
     };
     toTop();
     const stop = () => window.cancelAnimationFrame(handle);
-    main?.addEventListener("wheel", stop, { passive: true, once: true });
-    main?.addEventListener("touchstart", stop, { passive: true, once: true });
-    main?.addEventListener("keydown", stop, { once: true });
+    const events = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
+    events.forEach((type) => window.addEventListener(type, stop, { passive: true, once: true, capture: true }));
     return () => {
       stop();
-      main?.removeEventListener("wheel", stop);
-      main?.removeEventListener("touchstart", stop);
-      main?.removeEventListener("keydown", stop);
+      events.forEach((type) => window.removeEventListener(type, stop, { capture: true }));
     };
     // Once per page load.
     // eslint-disable-next-line react-hooks/exhaustive-deps

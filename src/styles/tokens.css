@@ -409,7 +409,7 @@
   --zc-ask-w: 560px;
   --zc-ask-bottom: 24px;
   --zc-ask-clearance: 112px;         /* bottom padding so the bar never hides the last row */
-  --zc-ai-box-w: 420px;              /* Zcom AI chat box (round 2 G3) */
+  --zc-ai-box-w: var(--zc-ask-w);    /* Zcom AI chat box: as wide as the bar it grows from (developer, 2026-11-06; G3 said 420) */
   --zc-ai-box-h: 560px;
   --zc-ask-bottom-phone: 16px;       /* phone: the bar sits 16px above the safe area (v2 §10) */
   /* Phone: the height the AI bar takes at the bottom of the screen, safe area included. Things that stick to the

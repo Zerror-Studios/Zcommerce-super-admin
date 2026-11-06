@@ -170,7 +170,7 @@ describe("SA Home (design v2 §7)", () => {
         items: [{ text: "Kesar & Kin still takes payments through Nimbbl.", storeIds: ["kk"], metricKeys: [] }],
       },
     });
-    expect(line).toBe("3 stores need you this week: a payment due soon, a store stuck in setup and one more flagged by Zcom AI.");
+    expect(line).toBe("3 stores need you: 1 due soon, 1 stuck in setup and 1 flagged by Zcom AI.");
     // PRD-036 round 2 gaps: the item's rule key names the reason
     const named = heroAttentionLine({
       ...base,
@@ -187,7 +187,7 @@ describe("SA Home (design v2 §7)", () => {
         ],
       },
     });
-    expect(named).toBe("2 stores need you this week: a store on a payment app that is shutting down and one more flagged by Zcom AI.");
+    expect(named).toBe("2 stores need you: 1 on a closing payment app and 1 flagged by Zcom AI.");
     expect(
       heroAttentionLine({ ...base, moneyDue: null, atRisk: { totalCount: 0, items: [] }, development: { totalCount: 0, items: [] }, whatNeedsAttention: null }),
     ).toMatch(/^Nothing needs you today/);

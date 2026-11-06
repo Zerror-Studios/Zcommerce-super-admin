@@ -998,6 +998,8 @@
 .zc-topbar.is-scrolled { background: var(--zc-topbar-scrolled); box-shadow: inset 0 -1px 0 var(--zc-border); }
 /* Round 2 §8.9: the content area keeps its scroll to itself (no page bounce or pull-to-refresh chained behind it). */
 .zc-main, .custom-scroll { overscroll-behavior: contain; }
+/* No scroll anchoring on the page scroller: cards that fill in above the fold must not push the page down. */
+.zc-main { overflow-anchor: none; }
 .zc-topbar .zc-icon-btn--on-dark { color: var(--zc-topbar-fg); }
 @media (hover: hover) {
   .zc-topbar .zc-icon-btn--on-dark:hover:not(:disabled):not([data-pressed="true"]) { color: var(--zc-topbar-fg); }
@@ -1042,6 +1044,7 @@ body:has([aria-modal="true"]) .zc-askbar-slot { opacity: 0; visibility: hidden; 
   -webkit-tap-highlight-color: transparent;
 }
 .zc-askbar:focus-visible { outline: none; box-shadow: var(--zc-shadow-ask), var(--zc-focus-ring-strong); }
+.zc-askbar__inner { display: flex; min-width: 0; flex: 1; align-items: center; gap: 12px; }
 .zc-askbar__placeholder { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 767px) {
   /* Phone (§8.3): the full width minus 16px, 16px above the iOS home indicator. */
@@ -1097,14 +1100,9 @@ body:has([aria-modal="true"]) .zc-askbar-slot { opacity: 0; visibility: hidden; 
   left: 0; right: 0; top: 32px; margin: 0 auto;
   width: min(1180px, calc(100vw - 48px)); height: calc(100dvh - 64px);
 }
-.zc-ai-surface--full::before {
-  content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; z-index: 2; pointer-events: none;
-  background: var(--zc-ai-gradient);
-}
 @media (max-width: 767px) {
   .zc-ai-surface--box { left: 0; right: 0; bottom: 0; width: 100%; height: 70dvh; margin: 0; }
   .zc-ai-surface--full { inset: 0; width: 100%; height: 100dvh; margin: 0; }
-  .zc-ai-surface--full::before { display: none; }
   .zc-ai-surface__footer { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
 }
 /* The box and half header (48px): orb, "Zcom AI · sees ‹Page›" in 13px, the icon buttons. */
@@ -1305,6 +1303,9 @@ body:has([aria-modal="true"]) .zc-askbar-slot { opacity: 0; visibility: hidden; 
   border-radius: var(--zc-radius-card);
   background: var(--zc-border);
 }
+.zc-kpi-strip[data-cells="1"] { --_cols: 1; }
+.zc-kpi-strip[data-cells="2"] { --_cols: 2; }
+.zc-kpi-strip[data-cells="3"] { --_cols: 3; }
 .zc-kpi-strip[data-cells="4"] { --_cols: 4; }
 .zc-kpi-strip[data-cells="5"] { --_cols: 5; }
 .zc-kpi-strip[data-cells="6"] { --_cols: 3; }
@@ -1510,6 +1511,14 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 .zc-summary__cell[data-tone="danger"] { --_a: var(--zc-red-on-dark); --_note: var(--zc-red-note-on-dark); }
 .zc-summary__cell[data-tone="warning"] { --_a: var(--zc-amber-on-dark); --_note: var(--zc-amber-note-on-dark); }
 .zc-summary__label { display: flex; align-items: center; gap: 8px; min-width: 0; font: 500 13px/18px var(--zc-font-sans); color: white; opacity: 0.78; white-space: nowrap; }
+.zc-summary__info {
+  display: inline-flex; flex: none; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: -4px;
+  border-radius: 999px; color: inherit; opacity: 0.8; cursor: help; transition: opacity var(--dur-1) var(--ease-out);
+}
+.zc-summary__info svg { width: 13px; height: 13px; }
+.zc-summary__info:hover, .zc-summary__info:focus-visible { opacity: 1; }
+.zc-summary__info:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8); }
+.zc-summary--lite .zc-summary__info:focus-visible { box-shadow: var(--zc-focus-ring-strong); }
 .zc-summary__dot { width: 8px; height: 8px; border-radius: 3px; background: var(--_a); flex: none; }
 /* The value sits at the bottom with its note right under it (label stays at the top). */
 .zc-summary__value {
@@ -1797,8 +1806,9 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 /* Hero actions are ordinary G10 buttons (on-dark for the main one); no contextual size or colour override. */
 .zc-hero__greeting { margin: 26px 0 0; font-size: 46px; line-height: 52px; font-weight: 300; letter-spacing: -0.035em; color: white; }
 .zc-hero__greeting b { font-weight: 600; }
-.zc-hero__summary { display: flex; align-items: center; gap: 10px; max-width: 680px; margin-top: 12px; font-size: 15px; line-height: 22px; }
-.zc-hero__summary p { min-width: 0; opacity: 0.92; }
+.zc-hero__summary { display: flex; align-items: center; gap: 10px; max-width: 100%; margin-top: 12px; font-size: 15px; line-height: 22px; }
+/* One line from tablet up ("…" + the full text on hover); phones wrap (below). */
+.zc-hero__summary p { min-width: 0; opacity: 0.92; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .zc-hero__bottom { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: auto; padding-top: 22px; }
 .zc-hero__chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .zc-hero__chip {
@@ -1834,6 +1844,7 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
   .zc-hero__top:not(:has(.zc-hero__actions)) + .zc-hero__greeting { margin-top: 0; }
   .zc-hero__greeting br { display: none; }
   .zc-hero__summary { font-size: 14px; line-height: 20px; }
+  .zc-hero__summary p { white-space: normal; }
   .zc-hero__tab { height: calc(var(--zc-control-h-touch) - 10px); }
   .zc-hero__bottom { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -20px; padding-right: 20px; padding-top: 16px; }
   /* Round 2 §5.1: the row fades out at the right edge, so a cut chip reads as "scrolls sideways" */

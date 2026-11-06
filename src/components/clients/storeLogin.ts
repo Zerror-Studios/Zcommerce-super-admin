@@ -21,7 +21,7 @@ import { STORE_ADMIN_URL_TEMPLATE } from "../../config/data-source";
 import { client as apollo } from "../../lib/apollo-client";
 import { IMPERSONATE_TENANT } from "../../graphql/team";
 import { mutationFailureCopy } from "../../lib/mutation-errors";
-import { storeAdminLink } from "../../lib/store-admin-link.util";
+import { storeAdminLink, withStoreName } from "../../lib/store-admin-link.util";
 import { toastError } from "../ui";
 
 /** Longest an impersonation session lasts (PRD-014 §5.2). */
@@ -58,10 +58,40 @@ function openStoreLink(url: string) {
   );
 }
 
+/**
+ * The new tab is blank while the grant is created: give it the store's name and a quiet line, so it doesn't sit
+ * empty. Plain text nodes only (no HTML from data); the store admin's own opening screen takes over on load.
+ */
+function showOpening(tab: Window | null, storeName: string | null | undefined): void {
+  if (!tab || tab.closed) return;
+  try {
+    const doc = tab.document;
+    const name = storeName?.trim() || "the store";
+    // The blank tab has no stylesheet: copy the token values from this page.
+    const tokens = getComputedStyle(document.documentElement);
+    const token = (key: string) => tokens.getPropertyValue(key).trim();
+    doc.title = `Opening ${name} · Zcom`;
+    doc.body.style.cssText =
+      `margin:0;height:100vh;display:grid;place-items:center;background:${token("--zc-bg")};` +
+      `color:${token("--zc-ink")};font:600 20px/28px Geist,system-ui,-apple-system,sans-serif;text-align:center;`;
+    const box = doc.createElement("div");
+    const title = doc.createElement("div");
+    title.textContent = `Opening ${name}`;
+    const note = doc.createElement("div");
+    note.textContent = "Getting your admin access ready…";
+    note.style.cssText = `margin-top:4px;font-weight:400;font-size:14px;line-height:20px;color:${token("--zc-fg-muted")};`;
+    box.append(title, note);
+    doc.body.replaceChildren(box);
+  } catch {
+    // A tab we can't write to still opens the store when the grant arrives.
+  }
+}
+
 export async function logInToStore(store: Client): Promise<void> {
   // Opened now, while the click still counts as a user gesture. `null`
   // means the browser blocked it.
   const tab = window.open("", "_blank");
+  showOpening(tab, store.storeName);
   try {
     const { data } = await apollo.mutate<{ impersonateTenant: Grant }>({
       mutation: IMPERSONATE_TENANT,
@@ -73,7 +103,7 @@ export async function logInToStore(store: Client): Promise<void> {
     if (grant.adminUrl && isSafeAdminUrl(grant.adminUrl)) {
       if (tab && !tab.closed) {
         tab.opener = null;
-        tab.location.href = grant.adminUrl;
+        tab.location.href = withStoreName(grant.adminUrl, store.storeName);
         addToast({
           title: `Opened ${store.storeName} as ${grant.adminEmail}.`,
           description: `The store session ends after ${IMPERSONATION_SESSION_MAX_HOURS} hour; use Log in again to continue.`,
@@ -87,14 +117,15 @@ export async function logInToStore(store: Client): Promise<void> {
         description: `Open ${store.storeName} within 2 minutes, or allow pop-ups for this site and use Log in again.`,
         color: "warning",
         timeout: 120_000,
-        endContent: openStoreLink(grant.adminUrl),
+        endContent: openStoreLink(withStoreName(grant.adminUrl, store.storeName)),
       });
       return;
     }
 
     // No admin address from the API: build the full one and copy it.
     tab?.close();
-    const link = storeAdminLink(store.slug, grant.accessToken, STORE_ADMIN_URL_TEMPLATE);
+    const built = storeAdminLink(store.slug, grant.accessToken, STORE_ADMIN_URL_TEMPLATE);
+    const link = built ? withStoreName(built, store.storeName) : null;
     if (!link) {
       toastError(`${store.storeName} has no admin address yet. Set its domain first.`);
       return;

@@ -128,13 +128,8 @@ function metricCell(metric: PlatformMetric, threshold: number | null | undefined
   const help = metricHelp(metric);
   return {
     key: metric.key,
-    label: help ? (
-      <Tooltip content={<span className="whitespace-pre-line">{help}</span>} placement="top-start">
-        <span className="cursor-help border-b border-dashed border-current">{metric.label}</span>
-      </Tooltip>
-    ) : (
-      metric.label
-    ),
+    label: metric.label,
+    info: help ? <span className="whitespace-pre-line">{help}</span> : undefined,
     value: text.value,
     note: text.note ?? undefined,
     tone: text.tone,

@@ -133,7 +133,7 @@ export function HomeHero<V extends string = string>({
       {summary ? (
         <div className="zc-hero__summary">
           <Orb onDark />
-          <p>{summary}</p>
+          <p title={typeof summary === "string" ? summary : undefined}>{summary}</p>
         </div>
       ) : null}
 

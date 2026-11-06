@@ -50,9 +50,9 @@ export function greetingName(name: string | null | undefined): string {
   return name?.trim().replace(/\s+/g, " ") || "Zerror Studios";
 }
 
-/** "Thursday, 5 November · Platform" (the hero shows it in mono capitals). */
+/** "Thursday, 5 November" (the hero shows it in mono capitals). */
 export function heroDate(now: Date = new Date()): string {
-  return `${now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })} · Platform`;
+  return now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
 }
 
 export interface StoreCounts {
@@ -145,22 +145,23 @@ export const SETUP_STALLED_DAYS = 7;
 
 /**
  * The hero's line from the attention engine (round 2 §6.1): how many stores
- * need the team this week and why, e.g. "2 stores need you this week: a
- * past-due payment and a store stuck in setup." The stores are the union of
+ * need the team this week and why, short enough for one line (developer,
+ * 2026-11-06), e.g. "3 stores need you: 2 at risk and 1 on a closing payment app." The stores are the union of
  * those Zcom AI's attention items name (PRD-036 D15 rules), money due this
  * week, stores at risk and stores in setup for more than 7 days. When the
  * items name no store, the first item is the line.
  */
 /** PRD-036 round 2 gaps: the attention rule keys the hero can name ("the payment app shutdown"). */
-const RULE_REASONS: Record<string, { one: string; many: string }> = {
-  PAYMENT_APP_RETIRING: { one: "a store on a payment app that is shutting down", many: "stores on a payment app that is shutting down" },
-  PAYMENTS_FAILING: { one: "a store with payments failing", many: "stores with payments failing" },
-  CHECKOUT_FAILURES: { one: "a store with checkouts failing", many: "stores with checkouts failing" },
-  ANALYTICS_STALE: { one: "a store whose Google Analytics stopped syncing", many: "stores whose Google Analytics stopped syncing" },
-  TRIAL_ENDING: { one: "a trial ending soon", many: "trials ending soon" },
-  INVOICE_PAST_DUE: { one: "a past-due invoice", many: "past-due invoices" },
-  INVOICE_DUE_SOON: { one: "an invoice due soon", many: "invoices due soon" },
-  SETUP_STALLED: { one: "a store stuck in setup", many: "stores stuck in setup" },
+/** Each reason follows a store count ("1 on a closing payment app", "2 with checkouts failing"). */
+const RULE_REASONS: Record<string, string> = {
+  PAYMENT_APP_RETIRING: "on a closing payment app",
+  PAYMENTS_FAILING: "with payments failing",
+  CHECKOUT_FAILURES: "with checkouts failing",
+  ANALYTICS_STALE: "with Analytics not syncing",
+  TRIAL_ENDING: "with a trial ending",
+  INVOICE_PAST_DUE: "past due",
+  INVOICE_DUE_SOON: "due soon",
+  SETUP_STALLED: "stuck in setup",
 };
 
 export function heroAttentionLine(attention: PlatformAttention | null | undefined): string {
@@ -178,12 +179,12 @@ export function heroAttentionLine(attention: PlatformAttention | null | undefine
   for (const row of stalled) stores.add(row.tenantId);
   for (const row of atRisk) stores.add(row.tenantId);
 
-  const a = (count: number, one: string, many: string) => (count === 1 ? `a ${one}` : `${formatCount(count)} ${many}`);
+  const n = (count: number, reason: string) => `${formatCount(count)} ${reason}`;
   const parts: string[] = [];
-  if (pastDue) parts.push(a(pastDue, "past-due payment", "past-due payments"));
-  if (dueSoon) parts.push(a(dueSoon, "payment due soon", "payments due soon"));
-  if (stalled.length) parts.push(stalled.length === 1 ? "a store stuck in setup" : `${formatCount(stalled.length)} stores stuck in setup`);
-  if (atRisk.length) parts.push(atRisk.length === 1 ? "a store at risk" : `${formatCount(atRisk.length)} stores at risk`);
+  if (pastDue) parts.push(n(pastDue, "past due"));
+  if (dueSoon) parts.push(n(dueSoon, "due soon"));
+  if (stalled.length) parts.push(n(stalled.length, "stuck in setup"));
+  if (atRisk.length) parts.push(n(atRisk.length, "at risk"));
   // Stores only the rules name (payment app retiring, checkouts failing, sync stale): named by the item's rule key
   // (PRD-036 round 2 gaps), else "flagged by Zcom AI".
   const covered = new Set([...money, ...stalled, ...atRisk].map((row) => row.tenantId));
@@ -196,21 +197,17 @@ export function heroAttentionLine(attention: PlatformAttention | null | undefine
   }
   for (const [key, count] of byReason) {
     if (key === "AI") continue;
-    const reason = RULE_REASONS[key];
-    parts.push(count === 1 ? reason.one : `${formatCount(count)} ${reason.many}`);
+    parts.push(n(count, RULE_REASONS[key]));
   }
   const unnamed = byReason.get("AI") ?? 0;
-  if (unnamed) {
-    const more = parts.length ? "more " : "";
-    parts.push(unnamed === 1 ? `one ${more}flagged by Zcom AI` : `${formatCount(unnamed)} ${more}flagged by Zcom AI`);
-  }
+  if (unnamed) parts.push(n(unnamed, "flagged by Zcom AI"));
 
   if (stores.size === 0) {
     if (items.length) return items[0].text;
     return "Nothing needs you today. Every store is paid up and on track.";
   }
   const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0];
-  const who = stores.size === 1 ? "1 store needs you this week" : `${formatCount(stores.size)} stores need you this week`;
+  const who = stores.size === 1 ? "1 store needs you" : `${formatCount(stores.size)} stores need you`;
   return list ? `${who}: ${list}.` : `${who}.`;
 }
 

@@ -13,8 +13,9 @@
  */
 import { useCallback, useId, useState, type ReactNode } from "react";
 import { cx } from "./cx";
-import { IconCaret } from "./icons";
+import { IconCaret, IconInfo } from "./icons";
 import { Skeleton } from "./Skeleton";
+import { Tooltip } from "./Tooltip";
 import { useIsPhone } from "./use-media";
 
 export type SummaryTone = "default" | "warning" | "danger";
@@ -32,6 +33,8 @@ export interface SummaryCell {
   value: ReactNode;
   /** One line under the value (72% white). */
   note?: ReactNode;
+  /** What the number means: a small ⓘ after the label shows it on hover or focus (round 2 §5.11, "every number has an ⓘ"). */
+  info?: ReactNode;
   /** "warning" amber / "danger" red: only when the number needs attention. */
   tone?: SummaryTone;
   chart?: SummaryChart;
@@ -152,6 +155,13 @@ export function SummaryPanel({
           <span className="zc-summary__label">
             <span aria-hidden className="zc-summary__dot" />
             <span className="truncate">{cell.label}</span>
+            {cell.info ? (
+              <Tooltip content={cell.info}>
+                <button type="button" className="zc-summary__info" aria-label={`What this means: ${typeof cell.label === "string" ? cell.label : "this number"}`}>
+                  <IconInfo aria-hidden />
+                </button>
+              </Tooltip>
+            ) : null}
           </span>
           {isLoading ? (
             <Skeleton className={cx("mt-2 h-6 w-24 rounded-md", !lite && "opacity-40")} />

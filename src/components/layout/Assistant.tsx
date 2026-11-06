@@ -14,7 +14,7 @@ import { cx } from "../ui/cx";
 import { Drawer } from "../ui/Drawer";
 import { IconAdd, IconArrowRight, IconClose } from "../ui/icons";
 import { IconButton } from "../ui/IconButton";
-import { spring } from "../ui/motion";
+import { DUR_2_S, EASE_OUT, spring } from "../ui/motion";
 import { Tooltip } from "../ui/Tooltip";
 import { AI_SURFACE_LAYOUT_ID } from "./AiSheet";
 
@@ -74,8 +74,18 @@ export function AskBar({ placeholder = "Ask Zcom AI anything…", hidden = false
         style={{ borderRadius: ASK_BAR_RADIUS }}
         transition={{ layout: spring.layout }}
       >
-        <Orb size="bar" />
-        <span className="zc-askbar__placeholder">{placeholder}</span>
+        {/* Own layer: framer-motion keeps the orb and text at their real shape while the bar reshapes (no
+            stretching when the chat box closes back into it), and they fade in as the bar settles. */}
+        <motion.span
+          layout="position"
+          className="zc-askbar__inner"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ opacity: { duration: DUR_2_S, delay: DUR_2_S, ease: EASE_OUT } }}
+        >
+          <Orb size="bar" />
+          <span className="zc-askbar__placeholder">{placeholder}</span>
+        </motion.span>
       </motion.button>
     </Tooltip>
   );

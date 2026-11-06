@@ -124,6 +124,13 @@ export interface DataTableProps<T> {
   rowHeight?: "default" | "tall";
   /** The 30px chevron at the row end (v2 §4.4). Default: shown when `onRowAction` is set. */
   rowChevron?: boolean;
+  /**
+   * The chevron does something else than the row: e.g. the row opens a preview drawer and › opens the full page.
+   * Without it the chevron is part of the row and does what the row does.
+   */
+  onChevronAction?: (row: T) => void;
+  /** Names each row's chevron button when `onChevronAction` is set ("Open order #1042"). */
+  chevronLabel?: (row: T) => string;
   /** Pin the first data column (the name) on sideways scroll. */
   stickyFirstColumn?: boolean;
   /** Empty because of a filter → EmptyState kind="no-results"; truly empty → the first-use EmptyState. */
@@ -338,6 +345,8 @@ export function DataTable<T>({
   selectedKeys,
   onSelectionChange,
   onRowAction,
+  onChevronAction,
+  chevronLabel,
   onRowPrefetch,
   rowActions,
   rowActionsLabel,
@@ -461,9 +470,15 @@ export function DataTable<T>({
       </button>
     );
   };
+  const renderChevron = (row: T) =>
+    onChevronAction ? (
+      <RowChevron onPress={() => onChevronAction(row)} aria-label={chevronLabel?.(row) ?? "Open"} />
+    ) : (
+      <RowChevron />
+    );
   const cellContent = (row: T, key: string) =>
     key === CHEVRON_KEY ? (
-      <RowChevron />
+      renderChevron(row)
     ) : key === ACTIONS_KEY ? (
       renderActions(row)
     ) : key === EXPAND_KEY ? (
@@ -783,8 +798,9 @@ export function DataTable<T>({
                   <TableCell className={column?.align === "end" ? "num" : undefined}>
                     {capped ? (
                       // A runaway value (pasted HTML, a 300-character name) must not stretch the table sideways:
-                      // the cell stops at its cap and ends in "…". Real data fits well inside it.
-                      <div className="min-w-0 overflow-hidden text-ellipsis" style={{ maxWidth: cellMaxWidth(column) }}>
+                      // the cell stops at its cap and ends in "…". Real data fits well inside it. Clipped sideways only,
+                      // so a badge that hangs below a thumbnail ("+1") stays whole.
+                      <div className="min-w-0 overflow-x-clip text-ellipsis" style={{ maxWidth: cellMaxWidth(column) }}>
                         {content}
                       </div>
                     ) : (

@@ -29,7 +29,7 @@ import type { PlatformMetricsPeriod } from "../types/platform-insights";
 /**
  * Home (design v2 §7, board 02-V4-SA-Home; backend PRD-026 FR-7.1).
  *
- * The hero (date · Platform, Create store, "Good morning, ‹name›", the
+ * The hero (date, Create store, "Good morning, ‹name›", the
  * orb with this week's line, chips for stores · live, GMV change and
  * payments past due, period tabs) → the summary panel (GMV, Subscriptions
  * with past due in red, Store health, and Uptime, which shows checkout

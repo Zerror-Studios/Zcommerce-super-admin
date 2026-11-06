@@ -3,12 +3,14 @@
  * The Zcom AI surface (round 2 G3, docs/review-r2/ROUND-2-FIXES.md; styles `.zc-ai-surface` in
  * src/styles/components.css). One floating card in three sizes, morphing between them with a shared-layout
  * spring (motion.ts `spring.layout`):
- * - box (step 1, click on the bar or ⌘J): a 420 × 560 card, radius 22, anchored bottom-centre where the bar sits.
+ * - box (step 1, click on the bar or ⌘J): a card as wide as the bar (560) and 560 tall, radius 22, growing up from
+ *   where the bar sits.
  *   It grows out of the bar (the bar and the card share `AI_SURFACE_LAYOUT_ID`), the page is not dimmed, and a
  *   click outside closes it. Its 48px header: orb, "Zcom AI · sees ‹Page›" (13px), history, expand ⤢, close.
- * - half (⤢ from the box): the large view over the content area, about half the viewport, page dimmed 28%.
- * - full (⤢ again): the centred full view (board 46) with the history column on the left.
- * Shrink and Esc step back one level (full → half → box → closed). Phone (v2 §10): the box is a bottom sheet at
+ * - full (⤢ from the box): the box grows straight into the centred full view (board 46) with the history column on
+ *   the left (developer, 2026-11-06: no half-height step).
+ * - half: kept only for callers that still ask for it (the LEGACY `expanded={false}` default).
+ * Shrink and Esc step back one level (full → box → closed). Phone (v2 §10): the box is a bottom sheet at
  * 70% height whose handle drags (or taps) it to full; there is no half size.
  *
  * Each app's own panel (store AskZcomPanel, console AskZcomPlatformPanel) renders inside:
@@ -69,15 +71,16 @@ export function useAiSheetSize(): AiSheetSize {
   return useContext(AiSheetContext)?.size ?? "box";
 }
 
-/** One level bigger: box → half → full (phone: box → full). */
-function grow(size: AiSheetSize, isPhone: boolean): AiSheetSize {
-  if (size === "box") return isPhone ? "full" : "half";
+/**
+ * Expand: the chat box itself grows into the full view, with no half-height step in between (developer,
+ * 2026-11-06; round 2 G3 had box → half → full).
+ */
+function grow(): AiSheetSize {
   return "full";
 }
 
-/** One level smaller: full → half → box (phone: full → box). */
-function shrink(size: AiSheetSize, isPhone: boolean): AiSheetSize {
-  if (size === "full") return isPhone ? "box" : "half";
+/** Shrink / Esc: the full view (or a legacy half view) goes straight back to the chat box. */
+function shrink(): AiSheetSize {
   return "box";
 }
 
@@ -145,7 +148,7 @@ export function AiSheet({
       if (document.querySelector(OTHER_LAYER_SELECTOR)) return;
       event.preventDefault();
       if (size === "box") onClose();
-      else setSize(shrink(size, isPhone));
+      else setSize(shrink());
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -287,10 +290,10 @@ export function AiSheetHeader({ context, title, leading, actions, onClose, think
     dragStart.current = null;
     if (start == null) return;
     const delta = event.clientY - start;
-    if (delta < -DRAG_THRESHOLD) setSize(grow(size, isPhone));
+    if (delta < -DRAG_THRESHOLD) setSize(grow());
     else if (delta > DRAG_THRESHOLD) {
       if (size === "box") close();
-      else setSize(shrink(size, isPhone));
+      else setSize(shrink());
     } else if (Math.abs(delta) < TAP_SLOP_PX) {
       // A tap toggles the phone sheet between 70% and full.
       setSize(size === "full" ? "box" : "full");
@@ -307,7 +310,7 @@ export function AiSheetHeader({ context, title, leading, actions, onClose, think
     return (
       <header className="zc-ai-sheet__bar">
         <h2 className="min-w-0 flex-1 truncate text-body-strong text-fg">{fullTitle ?? "New chat"}</h2>
-        <IconButton aria-label="Shrink" size="sm" onPress={() => setSize(shrink(size, isPhone))}>
+        <IconButton aria-label="Shrink" size="sm" onPress={() => setSize(shrink())}>
           <IconMinimize />
         </IconButton>
         {closeButton}
@@ -350,7 +353,7 @@ export function AiSheetHeader({ context, title, leading, actions, onClose, think
           <IconButton
             aria-label={size === "box" ? "Expand" : "Expand to full view"}
             size="sm"
-            onPress={() => setSize(grow(size, isPhone))}
+            onPress={() => setSize(grow())}
           >
             <IconMaximize />
           </IconButton>
