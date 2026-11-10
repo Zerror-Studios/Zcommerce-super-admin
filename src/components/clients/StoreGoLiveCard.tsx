@@ -39,6 +39,7 @@ import { useAuth } from "../../providers/AuthProvider";
 import type { Client } from "../../types";
 import type { GoLiveCheck, TenantDomainVerification } from "../../types/platform-api";
 import { IconError, IconInfo, IconRefresh, IconSuccess, IconWarning } from "../ui/icons";
+import { SkelChip, SkelLine } from "../common/SkeletonBits";
 import { KeyValue, KeyValueGrid } from "./StoreDetailParts";
 import {
   Button as UiButton,
@@ -55,7 +56,6 @@ import {
   ModalHeader,
   PopupTitle,
   IconRocket,
-  Skeleton,
   Textarea,
   Tooltip,
   cx,
@@ -268,11 +268,19 @@ export function StoreGoLiveCard({ client }: StoreGoLiveCardProps) {
         }
       >
         {checklist.loading && checks.length === 0 ? (
-          <div className="flex flex-col gap-3 px-5 pb-5" role="status" aria-label="Running the checks">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-8 w-full rounded-lg" />
+          // Loading pass: the checklist rows' shape (state icon, label and detail, chip).
+          <ul className="mx-5 mb-5 divide-y divide-line-subtle border-t border-line-subtle" role="status" aria-label="Running the checks">
+            {Array.from({ length: 5 }, (_, index) => (
+              <li key={index} className="flex min-h-14 items-center gap-3 py-2">
+                <span aria-hidden className="zc-skel size-5 shrink-0 rounded-full" />
+                <div className="min-w-0 flex-1">
+                  <SkelLine className={index % 2 ? "w-1/3" : "w-2/5"} />
+                  <SkelLine text="text-label" className="w-1/2" />
+                </div>
+                <SkelChip />
+              </li>
             ))}
-          </div>
+          </ul>
         ) : checklist.error && checks.length === 0 ? (
           <div className="px-5 pb-5">
             <ErrorState inline title="Couldn't run the go-live checks." onRetry={() => void checklist.refetch()} />

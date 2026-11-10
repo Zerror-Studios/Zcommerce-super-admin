@@ -49,6 +49,7 @@ import { PlatformJobsCard } from "./PlatformJobsCard";
 import { ReminderTextModal } from "./ReminderTextModal";
 import { SentRemindersCard } from "./SentRemindersCard";
 import { SettingsSaveBar } from "./SettingsSaveBar";
+import { SettingsCardSkeleton } from "./SettingsCardsSkeleton";
 import { SettingsSectionHeader } from "./SettingsSectionHeader";
 import {
   MAX_REMINDERS,
@@ -250,6 +251,29 @@ export function BillingRulesSettings() {
             />
           </Card>
           {readOnly ? null : <PlatformJobsCard />}
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    // Loading pass (2026-11-10): the default rules never show as if saved. The section's cards keep their places
+    // (real titles); the issuer and sent-reminder cards load on their own, so they render as they are.
+    return (
+      <div>
+        <SettingsSectionHeader section="billing" />
+        <div className="flex flex-col gap-4">
+          <SettingsCardSkeleton title="Payment provider" description="How stores pay Zcom for their plans." fields={4} />
+          <InvoiceIssuerCard />
+          <SettingsCardSkeleton title="Grace period" fields={1} />
+          <SettingsCardSkeleton title="Renewal reminders" description="When stores are reminded to pay, and how." rows={3} />
+          <SentRemindersCard />
+          <SettingsCardSkeleton
+            title="Overdue payments"
+            description="What happens to a store that doesn't pay: orders pause first, then the store is suspended."
+            switches={1}
+            fields={3}
+          />
         </div>
       </div>
     );

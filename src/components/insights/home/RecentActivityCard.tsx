@@ -11,6 +11,7 @@ import { useQuery } from "@apollo/client";
 import { useMemo } from "react";
 
 import { ButtonLink, ErrorState, IconTile, Skeleton } from "../../ui";
+import { useLoadView } from "../../../hooks/use-load-view";
 import { PLATFORM_AUDIT_LOG } from "../../../graphql/team";
 import { groupActivity, type ActivityEntry } from "../../../lib/activity-sentences.util";
 import { activityWhen } from "../../../lib/sa-home.util";
@@ -42,6 +43,7 @@ export function RecentActivityCard() {
       }).slice(0, ROWS),
     [data, getClient, user?.email],
   );
+  const view = useLoadView(query.loading, data != null);
 
   return (
     <section aria-label="Recent activity" className="flex flex-col rounded-card-lg border border-line bg-surface pb-1.5">
@@ -54,12 +56,14 @@ export function RecentActivityCard() {
 
       {query.error && !data ? (
         <ErrorState inline title="Couldn't load the activity." onRetry={() => void query.refetch()} />
-      ) : query.loading && !data ? (
-        <ul aria-label="Loading the activity">
-          {Array.from({ length: 3 }, (_, index) => (
-            <li key={index} className="flex min-h-15 items-center gap-3 border-t border-line-subtle px-5">
-              <Skeleton className="size-9 rounded-tile" />
+      ) : view.skeleton ? (
+        // Loading pass (2026-11-10): the loaded list's 5 rows (tile, sentence, time), invisible for the first 200ms.
+        <ul aria-label="Loading the activity" className={view.hold ? "invisible" : undefined}>
+          {Array.from({ length: ROWS }, (_, index) => (
+            <li key={index} className="flex min-h-15 items-center gap-3 border-t border-line-subtle px-5 py-2">
+              <Skeleton className="size-9 shrink-0 rounded-tile" />
               <Skeleton className="h-4 flex-1 rounded-md" />
+              <Skeleton className="h-3 w-14 shrink-0 rounded-md" />
             </li>
           ))}
         </ul>

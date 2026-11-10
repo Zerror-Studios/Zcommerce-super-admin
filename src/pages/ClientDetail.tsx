@@ -29,6 +29,7 @@ import { StoreActionDialog, type StoreAction } from "../components/clients/store
 import { logInToStore, storeLoginIntentProps } from "../components/clients/storeLogin";
 import { useStoreBillingRefresh } from "../components/clients/useStoreBillingRefresh";
 import { ConfirmModal } from "../components/common/ConfirmModal";
+import { SkelChip, SkelLine } from "../components/common/SkeletonBits";
 import { PageHeader } from "../components/common/PageHeader";
 import { useDocumentTitle } from "../components/layout/document-title";
 import { PlanEditorModal } from "../components/settings/PlanEditorModal";
@@ -277,8 +278,37 @@ export function ClientDetail() {
   // Deep links land here before `platformTenants` has answered: wait, don't say "not found".
   if (!client && (loading || single.loading)) {
     return (
-      <div className="w-full">
-        <PageHeader type="detail" back={back} title="Loading store…" />
+      // Loading pass (2026-11-10): the loaded header's shape (breadcrumb, tile, name, chips, meta) with the real
+      // tabs; each tab's own skeleton follows once the store is known.
+      <div className="w-full" style={isPhone ? phoneStickyTopStyle : stickyTopStyle} aria-busy>
+        <nav aria-label="Breadcrumb" className="mb-1 flex min-w-0 items-center gap-1.5 text-label text-fg-muted">
+          <Link to={back.href} className="shrink-0 rounded-sm outline-none hover:text-fg focus-visible:shadow-focus-strong">
+            {back.label}
+          </Link>
+          <span aria-hidden>/</span>
+          <SkelLine text="text-label" className="w-28" />
+        </nav>
+        <PageHeader
+          type="detail"
+          leading={<span aria-hidden className="zc-skel block size-[var(--zc-title-tile)] rounded-tile" />}
+          title={<SkelLine text="text-title-1" className="w-48" />}
+          badges={
+            <>
+              <SkelChip />
+              <SkelChip className="w-12" />
+            </>
+          }
+          description={<SkelLine text="text-label" className="w-72 max-w-full" />}
+          sticky={!isPhone}
+        >
+          <SegmentedSwitch<StoreTab>
+            variant="underline"
+            ariaLabel="Store sections"
+            value={isStoreTab(section) ? section : DEFAULT_TAB}
+            onChange={() => undefined}
+            items={STORE_TABS.map((tab) => ({ value: tab.key, label: tab.label }))}
+          />
+        </PageHeader>
       </div>
     );
   }

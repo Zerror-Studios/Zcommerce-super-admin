@@ -29,10 +29,10 @@ import {
   ErrorState,
   Select,
   SelectItem,
-  Skeleton,
   toastError,
 } from "../ui";
 import { IconInfo, IconNotifications, IconSend } from "../ui/icons";
+import { SkelLine } from "../common/SkeletonBits";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -65,7 +65,7 @@ export function BrowserNotificationsCard() {
   if (push.configLoading) {
     return (
       <Card title="Browser notifications">
-        <Skeleton className="h-3 w-3/5 rounded" />
+        <SkelLine text="text-label" className="w-3/5" />
       </Card>
     );
   }
@@ -125,7 +125,7 @@ export function BrowserNotificationsCard() {
   const renderDeviceState = () => {
     switch (push.state) {
       case pushDeviceStateEnum.CHECKING:
-        return <Skeleton className="h-3 w-2/5 rounded" />;
+        return <SkelLine text="text-label" className="w-2/5" />;
       case pushDeviceStateEnum.UNSUPPORTED:
         return (
           <StateNote>

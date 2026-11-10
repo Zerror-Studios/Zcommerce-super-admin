@@ -15,7 +15,7 @@ import { useAuth } from "../../providers/AuthProvider";
 import type { Coupon } from "../../types";
 import { CouponsTab } from "../billing/CouponsTab";
 import { LoadMoreFooter } from "../common/LoadMoreFooter";
-import { Button, ErrorState, TableSkeletonRows, useTableUrlState } from "../ui";
+import { Button, ErrorState, useTableUrlState } from "../ui";
 import { IconAdd } from "../ui/icons";
 import { SettingsSectionHeader } from "./SettingsSectionHeader";
 
@@ -58,12 +58,10 @@ export function DiscountsSettings() {
       />
       {coupons.error ? (
         <ErrorState title="Couldn't load the discounts." description={toasts.genericError} onRetry={() => void coupons.refetch()} />
-      ) : coupons.loading ? (
-        <div className="overflow-clip rounded-2xl border border-line" role="status" aria-label="Loading discounts">
-          <TableSkeletonRows rows={5} />
-        </div>
       ) : (
+        // Loading pass: the real table (toolbar, columns) with its own skeleton rows on the first load.
         <CouponsTab
+          isLoading={coupons.loading}
           coupons={coupons.data}
           onCreate={onCreate}
           onUpdate={onUpdate}

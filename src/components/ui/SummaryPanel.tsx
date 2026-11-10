@@ -184,7 +184,10 @@ export function SummaryPanel({
           ) : (
             <span className="zc-summary__value">{cell.value}</span>
           )}
-          {cell.note != null && !isLoading ? (
+          {isLoading ? (
+            // The note line's place is kept while loading, so the cell doesn't grow when the data comes (2026-11-10).
+            <span aria-hidden className="zc-summary__note">&nbsp;</span>
+          ) : cell.note != null ? (
             <span className="zc-summary__note" title={typeof cell.note === "string" ? cell.note : undefined}>
               {cell.note}
             </span>

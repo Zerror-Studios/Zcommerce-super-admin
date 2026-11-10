@@ -92,13 +92,25 @@ function Actions({ children }: { children: ReactNode }) {
   return <div className="mt-auto flex flex-wrap gap-2 pt-2">{children}</div>;
 }
 
+/**
+ * Loading pass (owner, 2026-11-10): the loaded card's shape — the headline (22px line), the two-line sentence (18px
+ * lines) and the small buttons at the bottom — so the three cards keep their height when the answer comes.
+ */
 function LoadingBody() {
   return (
-    <div className="flex flex-col gap-2 pt-1">
-      <Skeleton className="h-5 w-3/4 rounded-md" />
-      <Skeleton className="h-4 w-full rounded-md" />
-      <Skeleton className="h-4 w-2/3 rounded-md" />
-    </div>
+    <>
+      <span className="flex h-[var(--zc-text-title-3-line)] items-center">
+        <Skeleton className="h-4 w-3/4 rounded-md" />
+      </span>
+      <span className="flex flex-col gap-1.5 py-0.5">
+        <Skeleton className="h-3.5 w-full rounded-md" />
+        <Skeleton className="h-3.5 w-2/3 rounded-md" />
+      </span>
+      <Actions>
+        <Skeleton className="h-[var(--zc-control-h-sm)] w-32 rounded-full" />
+        <Skeleton className="h-[var(--zc-control-h-sm)] w-24 rounded-full" />
+      </Actions>
+    </>
   );
 }
 

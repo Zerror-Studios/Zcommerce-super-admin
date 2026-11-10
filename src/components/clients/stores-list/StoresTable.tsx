@@ -21,6 +21,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PLATFORM_STORE_PROFILE_OPTIONS } from "../../../graphql/store-profile";
 import { PLATFORM_TENANT_SIGNALS } from "../../../graphql/tenants";
+import { useLoadView } from "../../../hooks/use-load-view";
 import { useUrlSearch } from "../../../hooks/use-url-search";
 import { lifecycleLabel, lifecycleTone } from "../../../lib/platform-insights.util";
 import { PLATFORM_PERMISSIONS } from "../../../lib/permissions";
@@ -43,6 +44,7 @@ import { usePlatformSettings } from "../../../providers/SettingsProvider";
 import type { Client, Subscription } from "../../../types";
 import type { PlatformList } from "../../../types/platform-api";
 import { AppliedFilters, type AppliedFilterItem } from "../../common/AppliedFilters";
+import { TableReserve } from "../../common/LoadHold";
 import {
   Avatar,
   Button,
@@ -482,6 +484,8 @@ export function StoresTable({ clients, isLoading = false, renderHeader, beforeTa
 
   // A server filter's matches arrive after the stores themselves
   const serverLoading = isLoading || (serverFilter !== null && matched.loading);
+  // Loading pass (2026-11-10): rows show as soon as they're here; skeleton rows only after 200ms without any.
+  const tableView = useLoadView(serverLoading, tableRows.length > 0);
 
   /** Guide §6: the rows shown (same server filter, read 100 a page), as CSV. */
   const exportCsv = async () => {
@@ -1066,7 +1070,7 @@ export function StoresTable({ clients, isLoading = false, renderHeader, beforeTa
           rows={tableRows}
           getRowKey={(item) => (isDetailRow(item) ? `${item.detailOf.client.id}:detail` : item.client.id)}
           renderCell={renderCell}
-          isLoading={serverLoading}
+          isLoading={tableView.shimmer}
           // Round 3 C4: the tabs filter the loaded stores here, so a switch is instant; the rows cross-fade.
           tabKey={tab}
           rowHeight="tall"
@@ -1120,7 +1124,7 @@ export function StoresTable({ clients, isLoading = false, renderHeader, beforeTa
           rowActions={isPhone ? (item) => (isDetailRow(item) ? [] : rowActions(item)) : undefined}
           rowActionsLabel={(item) => `Actions for ${isDetailRow(item) ? item.detailOf.client.storeName : item.client.storeName}`}
           mobileRow={mobileRow}
-          emptyContent={emptyContent}
+          emptyContent={tableView.hold ? <TableReserve /> : emptyContent}
         />
       </div>
 

@@ -16,12 +16,12 @@ import {
   DEFAULT_PAGE_SIZE,
   Drawer,
   ErrorState,
-  Skeleton,
   TablePagination,
   cx,
   formatDateTime,
 } from "../ui";
 import { IconExpand } from "../ui/icons";
+import { SkelChip, SkelLine } from "../common/SkeletonBits";
 
 const CARD_LIMIT = 20;
 
@@ -50,11 +50,21 @@ function ReminderRow({ row }: { row: PlatformReminderLogEntry }) {
 
 function RowsSkeleton({ rows }: { rows: number }) {
   return (
-    <div className="flex flex-col gap-3 px-5 pb-5" role="status" aria-label="Loading sent reminders">
-      {Array.from({ length: rows }).map((_, index) => (
-        <Skeleton key={index} className="h-10 w-full rounded-lg" />
+    // Loading pass: ReminderRow's shape (store + subject line, channel · time line, result chip).
+    <ul className="border-t border-line-subtle" role="status" aria-label="Loading sent reminders">
+      {Array.from({ length: rows }, (_, index) => (
+        <li
+          key={index}
+          className="flex min-h-16 items-center justify-between gap-4 border-b border-line-subtle px-5 py-2.5 last:border-b-0"
+        >
+          <div className="min-w-0 flex-1">
+            <SkelLine className={index % 2 ? "w-1/2" : "w-2/3"} />
+            <SkelLine text="text-label" className="w-2/5" />
+          </div>
+          <SkelChip />
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 

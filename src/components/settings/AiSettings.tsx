@@ -39,7 +39,6 @@ import {
   Input,
   Select,
   SelectItem,
-  Skeleton,
   Switch,
   cx,
   fieldSpanFull,
@@ -48,6 +47,7 @@ import {
 import { IconAdd, IconLock } from "../ui/icons";
 import { SettingsSaveBar } from "./SettingsSaveBar";
 import { SettingsSectionHeader } from "./SettingsSectionHeader";
+import { SettingsCardsSkeleton } from "./SettingsCardsSkeleton";
 
 type TextField =
   | "globalDailySpendCapUsd"
@@ -98,11 +98,26 @@ export function AiSettings() {
       ) : api.error ? (
         <ErrorState title="Couldn't load the AI settings." description={toasts.genericError} onRetry={() => void api.refetch()} />
       ) : api.loading || !api.data ? (
-        <div className="flex flex-col gap-4" role="status" aria-label="Loading AI settings">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <Skeleton key={index} className="h-40 w-full rounded-2xl" />
-          ))}
-        </div>
+        // Loading pass: the form's real cards (titles and descriptions as in AiConfigForm below).
+        <SettingsCardsSkeleton
+          label="Loading AI settings"
+          cards={[
+            {
+              title: "Assistant",
+              description: "Switch Zcom AI off for every store, and pick the models it may use.",
+              switches: 1,
+              fields: 2,
+            },
+            { title: "Spend", description: "Caps in US dollars; the rate converts them for reports in rupees.", fields: 4 },
+            { title: "Limits", description: "Per question and per store, on top of each plan's weekly questions.", fields: 3 },
+            { title: "Night window", fields: 2 },
+            {
+              title: "Model prices",
+              description: "US dollars per million tokens; the batch multiplier applies to daily summaries.",
+              fields: 4,
+            },
+          ]}
+        />
       ) : (
         // A saved config (or another operator's save) remounts the form with it.
         <AiConfigForm key={JSON.stringify(api.data)} config={api.data} canManage={canManage} />

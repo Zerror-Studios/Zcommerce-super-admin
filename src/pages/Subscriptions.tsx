@@ -564,6 +564,10 @@ export function Subscriptions() {
   // ─── Render ──────────────────────────────────────────────────────────────
 
   const loading = api.loading || (clientsLoading && !clients.length);
+  // Loading pass (2026-11-10): a flagged / stuck filter waits for its first answer instead of listing every store.
+  const issueLoading =
+    filters.issue === "flagged" ? flagged.loading && !flagged.data : filters.issue === "stuck" ? stuck.loading && !stuck.data : false;
+  const tableLoading = loading || issueLoading;
   const activeFilters = countActiveFilters(drawerValue);
   const hasFilters = url.search.trim() !== "" || activeFilters > 0;
   const selectable = tab === subscriptionTabEnum.DUE && canManageBilling;
@@ -633,7 +637,7 @@ export function Subscriptions() {
 
   const toolbar = (
     <TableToolbar<SubscriptionTab>
-      tabs={SUBSCRIPTION_TABS.map((item) => ({ value: item.value, label: item.label, count: loading ? null : tabCounts[item.value] }))}
+      tabs={SUBSCRIPTION_TABS.map((item) => ({ value: item.value, label: item.label, count: tableLoading ? null : tabCounts[item.value] }))}
       tab={tab}
       onTabChange={setTab}
       tabsLabel="Subscription status"
@@ -675,10 +679,10 @@ export function Subscriptions() {
           aria-label="Subscriptions"
           columns={columns}
           visibleColumns={visibleColumns}
-          rows={pageRows}
+          rows={issueLoading ? [] : pageRows}
           getRowKey={(row) => row.id}
           renderCell={renderCell}
-          isLoading={loading}
+          isLoading={tableLoading}
           isReloading={api.reloading}
           // Round 3 C4: the tabs filter the period's rows here, so a switch is instant; the rows cross-fade.
           tabKey={tab}
@@ -707,7 +711,7 @@ export function Subscriptions() {
           }
           chips={<AppliedFilters items={chips} onClearAll={clearFilters} />}
           footer={
-            !loading && rows.length > 0 ? (
+            !tableLoading && rows.length > 0 ? (
               <TablePagination
                 page={page}
                 pageSize={url.pageSize}

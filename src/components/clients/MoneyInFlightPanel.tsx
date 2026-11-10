@@ -13,7 +13,8 @@ import { useQuery } from "@apollo/client";
 import { TENANT_MONEY_IN_FLIGHT } from "../../graphql/tenants";
 import { isMoneySettled, moneyInFlightRows } from "../../lib/tenant-lifecycle.util";
 import type { TenantMoneyInFlight } from "../../types/platform-api";
-import { Button as UiButton, Skeleton, cx, formatCount, toneTextClasses } from "../ui";
+import { SkelLine } from "../common/SkeletonBits";
+import { Button as UiButton, cx, formatCount, toneTextClasses } from "../ui";
 
 export interface MoneyInFlightPanelProps {
   tenantId: string;
@@ -55,10 +56,14 @@ export function MoneyInFlightPanel({
         ) : null}
       </div>
       {query.loading && !counts ? (
-        <div className="space-y-2" role="status" aria-label="Loading the counts">
-          <Skeleton className="h-4 w-full rounded" />
-          <Skeleton className="h-4 w-3/4 rounded" />
-          <Skeleton className="h-4 w-2/3 rounded" />
+        // Loading pass: count rows at the loaded line height (label, then the 64px count column).
+        <div className="flex flex-col gap-1" role="status" aria-label="Loading the counts">
+          {["w-1/2", "w-2/5", "w-1/3"].map((width) => (
+            <div key={width} className="flex items-center gap-4">
+              <SkelLine text="min-w-0 flex-1 text-body" className={width} />
+              <SkelLine text="w-16 shrink-0 text-body" className="w-6" />
+            </div>
+          ))}
         </div>
       ) : query.error && !counts ? (
         <div role="alert" className="flex items-center justify-between gap-2">

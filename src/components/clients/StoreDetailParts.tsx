@@ -7,7 +7,8 @@
  * - ExpandableCard (01 §7.29): radius 12, 1px border, padding 12 16; the summary row toggles it, 220ms.
  */
 import type { ReactNode } from "react";
-import { Skeleton, cx } from "../ui";
+import { cx } from "../ui";
+import { SkelLine } from "../common/SkeletonBits";
 import { IconCaret, IconInfo, IconWarning } from "../ui/icons";
 
 // ─── Key / value grid ────────────────────────────────────────────────────────
@@ -79,7 +80,7 @@ export function StatTile({ label, value, isLoading = false }: { label: ReactNode
     <div className="min-w-0 rounded-tile bg-surface-sunken px-4 py-3">
       <p className="text-caption text-fg-muted">{label}</p>
       {isLoading ? (
-        <Skeleton className="mt-2 h-6 w-24 rounded-md" />
+        <SkelLine text="mt-1 text-kpi-l" className="w-24" />
       ) : (
         <p className="mt-1 truncate text-kpi-l text-fg num">{value}</p>
       )}

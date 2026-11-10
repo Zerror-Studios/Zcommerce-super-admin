@@ -44,7 +44,6 @@ import {
   IconWallet,
   Select,
   SelectItem,
-  Skeleton,
   Textarea,
   formatMoney,
   toastError,
@@ -52,6 +51,7 @@ import {
 } from "../ui";
 import { IconPayments } from "../ui/icons";
 import { KeyValue, KeyValueGrid } from "./StoreDetailParts";
+import { SkelLine } from "../common/SkeletonBits";
 
 const MONTH_YEAR = new Intl.DateTimeFormat("en-IN", { month: "short", year: "numeric" });
 
@@ -123,7 +123,7 @@ export function PlanSubscriptionCard({ client, subscription, onCreateCustomPlan,
           <KeyValue label="Renews">{subscription?.renewalDate ? formatDate(subscription.renewalDate) : null}</KeyValue>
           <KeyValue label="Paid to date">
             {canReadBilling && paid.loading ? (
-              <Skeleton className="h-5 w-20 rounded-md" />
+              <SkelLine className="w-20" />
             ) : (
               <span className="num">{canReadBilling ? `${formatMoney(paidToDate, { whole: true })}${paid.hasMore ? "+" : ""}` : "—"}</span>
             )}

@@ -24,7 +24,8 @@ import {
 } from "../../lib/store-setup.util";
 import { useAuth } from "../../providers/AuthProvider";
 import type { PlatformStoreSetupCheck } from "../../types/platform-api";
-import { Button as UiButton, Card, Chip, ErrorState, Skeleton, cx } from "../ui";
+import { SkelChip, SkelLine } from "../common/SkeletonBits";
+import { Button as UiButton, Card, Chip, ErrorState, cx } from "../ui";
 import { IconError, IconInfo, IconRefresh, IconSuccess } from "../ui/icons";
 
 export interface StoreSetupCardProps {
@@ -115,11 +116,19 @@ export function StoreSetupCard({ tenantId, collapsible = false, defaultOpen = fa
           )}
         </div>
       ) : query.loading && !query.data ? (
-        <div className="flex flex-col gap-2 px-5 pb-5" role="status" aria-label="Loading setup checks">
-          <Skeleton className="h-10 w-full rounded-md" />
-          <Skeleton className="h-10 w-full rounded-md" />
-          <Skeleton className="h-10 w-full rounded-md" />
-        </div>
+        // Loading pass: the check rows' shape (status icon, label and detail, chip).
+        <ul className="mx-5 mb-2 divide-y divide-line-subtle border-t border-line-subtle" role="status" aria-label="Loading setup checks">
+          {Array.from({ length: 5 }, (_, index) => (
+            <li key={index} className="flex min-h-14 items-center gap-3 py-2">
+              <span aria-hidden className="zc-skel size-5 shrink-0 rounded-full" />
+              <div className="min-w-0 flex-1">
+                <SkelLine className={index % 2 ? "w-1/3" : "w-2/5"} />
+                <SkelLine text="text-label" className="w-1/2" />
+              </div>
+              <SkelChip />
+            </li>
+          ))}
+        </ul>
       ) : checks.length === 0 ? (
         <p className="px-5 pb-5 text-body text-fg-muted">No checks returned.</p>
       ) : (

@@ -473,7 +473,7 @@
   /* ---------- Motion ---------- */
   --zc-dur-video-fade: 0.6s;
   --zc-dur-shimmer: 1.2s;
-  --zc-skeleton-delay: 300ms;     /* round 2 §2: skeletons only when data takes longer than this */
+  --zc-skeleton-delay: 200ms;     /* skeletons only when data takes longer than this (= SKELETON_DELAY_MS in use-skeleton.ts) */
   --zc-ease-press: var(--ease-out);  /* no overshoot anywhere (§2) */
   --zc-press-scale: 0.98;
   --zc-press-scale-icon: 0.98;
