@@ -9,7 +9,6 @@ import {
   SegmentedSwitch,
   Select,
   SelectItem,
-  Skeleton,
   Textarea,
   cx,
   formatDateTime,
@@ -39,6 +38,7 @@ import {
   type SupportStatus,
   type SupportTicket,
 } from "./support.util";
+import { SkelChip, SkelLine } from "../common/SkeletonBits";
 
 type ComposerMode = "reply" | "note";
 
@@ -257,9 +257,38 @@ export function SupportTicketDrawer({ ticketId, onClose, onPrev, onNext, prevDis
       }
     >
       {!ticket && loading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full rounded-xl" />
-          <Skeleton className="h-24 w-full rounded-xl" />
+        // Loading pass: the ticket's layout. The tracker's steps are static, so they show (none reached yet);
+        // the lines, controls and messages are placeholders.
+        <div className="space-y-5" aria-busy>
+          <section className="space-y-3 border-b border-line pb-5">
+            <Tracker step={-1} />
+            <SkelLine text="text-label" className="w-3/4" />
+            <SkelLine text="text-label" className="w-1/2" />
+            {canWrite ? (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {[0, 1, 2].map((index) => (
+                  <span key={index} aria-hidden className="zc-skel block h-12 rounded-field" />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <SkelChip />
+                <SkelChip className="w-24" />
+              </div>
+            )}
+          </section>
+          <ol className="space-y-5">
+            {[0, 1].map((index) => (
+              <li key={index} className="flex gap-3">
+                <span aria-hidden className="zc-skel size-7 shrink-0 rounded-full" />
+                <div className="min-w-0 flex-1">
+                  <SkelLine text="text-label" className="w-40" />
+                  <SkelLine className="w-full" />
+                  <SkelLine className={index ? "w-1/3" : "w-2/3"} />
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       ) : ticket ? (
         <div className="space-y-5">

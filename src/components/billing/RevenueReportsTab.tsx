@@ -34,11 +34,11 @@ import { CHART_BAR_RADIUS, RECHARTS_GROW_MS, chartColors, planColors, pointsForV
 import { useIsPhone } from "../ui/use-media";
 import {
   Card,
+  ChartSkeleton,
   LineChart,
   useLibraryEntrance,
   EmptyState,
   ErrorState,
-  Skeleton,
   SummaryPanel,
   cx,
   formatCount,
@@ -171,7 +171,7 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
   }, [monthly]);
 
   const chartBody = (empty: boolean, chart: ReactNode) =>
-    api.loading ? <Skeleton className="h-full w-full rounded-xl" /> : empty ? <ChartEmpty /> : chart;
+    api.loading ? <ChartSkeleton height={264} shape="bars" /> : empty ? <ChartEmpty /> : chart;
 
   const row = tabRow();
 
@@ -323,7 +323,10 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
         <TableCard<MrrMonthRow>
           title="MRR movement"
           description={
-            mrrSince
+            // Loading pass: no "nothing recorded" claim before the history has answered.
+            mrrApi.loading
+              ? "From the daily MRR snapshot."
+              : mrrSince
               ? `From the daily MRR snapshot, recorded since ${formatDate(mrrSince)}. Earlier months are not recorded.`
               : "From the daily MRR snapshot. Nothing is recorded for this period yet."
           }

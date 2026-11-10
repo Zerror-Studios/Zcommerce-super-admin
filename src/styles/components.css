@@ -518,7 +518,7 @@
     display: block;
     border-radius: 6px;
     background-color: var(--zc-surface-sunken);
-    /* Round 2 §2: a skeleton only shows when data takes longer than 300ms (invisible until then, its space kept so
+    /* A skeleton only shows when data takes longer than --zc-skeleton-delay (200ms; invisible until then, its space kept so
        nothing jumps), then one soft 1.2s pulse; opacity only, never a looping sweep. */
     opacity: 0;
     animation:
@@ -1606,13 +1606,13 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 .zc-mini-bars i { flex: 1; border-radius: 2px; background: currentColor; opacity: 0.28; }
 .zc-mini-bars i:nth-last-child(-n + 2) { opacity: 1; }
 .zc-mini-dots { width: 100%; height: 100%; background: radial-gradient(circle, currentColor 1.8px, transparent 2.2px) 0 0 / 7px 7px; opacity: 0.7; }
-.zc-mini-ring { width: 44px; height: 44px; margin-left: auto; border-radius: 50%; background: conic-gradient(currentColor calc(var(--_p) * 1%), rgba(255, 255, 255, 0.18) 0); -webkit-mask: radial-gradient(circle, transparent 54%, black 56%); mask: radial-gradient(circle, transparent 54%, black 56%); }
-.zc-summary--lite .zc-mini-ring { background: conic-gradient(currentColor calc(var(--_p) * 1%), var(--zc-ring-track) 0); }
+.zc-mini-ring { --_pv: var(--_p); width: 44px; height: 44px; margin-left: auto; border-radius: 50%; background: conic-gradient(currentColor calc(var(--_pv) * 1%), rgba(255, 255, 255, 0.18) 0); -webkit-mask: radial-gradient(circle, transparent 54%, black 56%); mask: radial-gradient(circle, transparent 54%, black 56%); }
+.zc-summary--lite .zc-mini-ring { background: conic-gradient(currentColor calc(var(--_pv) * 1%), var(--zc-ring-track) 0); }
 /* Round 2 §6.4: no empty rings; a 0 is a grey full ring. */
 .zc-mini-ring[data-zero], .zc-summary--lite .zc-mini-ring[data-zero] { background: var(--zc-ring-zero); }
 /* Round 3 F3: a good zero (all stocked, no failures, all paid) is a full green ring. */
-.zc-mini-ring[data-good] { background: var(--zc-green-on-dark); }
-.zc-summary--lite .zc-mini-ring[data-good] { background: var(--zc-green); }
+.zc-mini-ring[data-good] { background: conic-gradient(var(--zc-green-on-dark) calc(var(--_pv) * 1%), rgba(255, 255, 255, 0.18) 0); }
+.zc-summary--lite .zc-mini-ring[data-good] { background: conic-gradient(var(--zc-green) calc(var(--_pv) * 1%), var(--zc-ring-track) 0); }
 .zc-mini-segs { display: flex; align-items: flex-end; gap: 3px; width: 100%; height: 18px; }
 .zc-mini-segs i { flex: 1; height: 16px; border-radius: 3px; background: rgba(255, 255, 255, 0.2); }
 .zc-summary--lite .zc-mini-segs i { background: var(--zc-seg-off); }

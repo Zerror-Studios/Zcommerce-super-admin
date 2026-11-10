@@ -21,7 +21,6 @@ import {
   Button as UiButton,
   Chip,
   ErrorState,
-  Skeleton,
   StatusChip,
   Modal,
   ModalBody,
@@ -35,6 +34,7 @@ import {
   formatDateTime,
   formatMoney,
 } from "../ui";
+import { SkelLine } from "../common/SkeletonBits";
 
 export function InvoiceStatusChip({ invoice }: { invoice: PlatformInvoice }) {
   const view = invoiceStatusView(invoice);
@@ -165,8 +165,23 @@ function InvoiceHistory({ invoice }: { invoice: PlatformInvoice }) {
   }
   if (detail.loading) {
     return (
-      <div className="mt-4 border-t border-line pt-3" role="status" aria-label="Loading invoice history">
-        <Skeleton className="h-16 w-full rounded-lg" />
+      // Loading pass: the two real section titles with history / payment lines as placeholders.
+      <div role="status" aria-label="Loading invoice history">
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="text-label font-medium text-fg">Status history</p>
+          <div className="mt-2 flex flex-col gap-1.5">
+            {["w-24", "w-20"].map((width) => (
+              <div key={width} className="flex justify-between gap-x-4">
+                <SkelLine className={width} />
+                <SkelLine text="text-caption" className="w-36" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="text-label font-medium text-fg">Payments</p>
+          <SkelLine text="mt-2 text-body" className="w-1/2" />
+        </div>
       </div>
     );
   }

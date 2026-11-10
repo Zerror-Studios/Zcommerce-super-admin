@@ -29,7 +29,8 @@ export function useStoreApps(client: Pick<Client, "id" | "slug" | "storeName">):
     offset: 0,
   });
   const rows = useMemo(() => (api.data?.rows ?? []).filter((row) => row.tenantId === client.id), [api.data, client.id]);
-  return { rows, loading: api.loading, error: api.error, refetch: api.refetch };
+  // First load only (loading pass 2026-11-10): a background refetch keeps the apps on screen.
+  return { rows, loading: api.loading && !api.data, error: api.error, refetch: api.refetch };
 }
 
 /** Apps that need a look: a connection error or switched off. */

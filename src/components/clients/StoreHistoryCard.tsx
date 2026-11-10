@@ -14,7 +14,8 @@ import {
   HISTORY_EMPTY_COPY,
   statusHistoryRows,
 } from "../../lib/store-history.util";
-import { Card, Chip, EmptyState, ErrorState, Skeleton, formatDateTime } from "../ui";
+import { SkelChip, SkelLine } from "../common/SkeletonBits";
+import { Card, Chip, EmptyState, ErrorState, formatDateTime } from "../ui";
 import { IconTime } from "../ui/icons";
 
 // ─── Component ────────────────────────────────────────────────────────────
@@ -28,11 +29,18 @@ export function StoreHistoryCard({ tenantId }: { tenantId: string }) {
       {read.error && !read.tenant ? (
         <ErrorState inline title="Couldn't load the history." onRetry={() => void read.refetch()} />
       ) : read.loading ? (
-        <div className="space-y-3 p-4">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <Skeleton key={index} className="h-8 w-full rounded-lg" />
+        // Loading pass: history rows (status chip, "by …", time on the right).
+        <ol aria-busy className="border-t border-line-subtle">
+          {Array.from({ length: 3 }, (_, index) => (
+            <li key={index} className="flex items-center justify-between gap-x-4 border-b border-line-subtle px-5 py-2.5">
+              <span className="flex min-w-0 items-center gap-2">
+                <SkelChip />
+                <SkelLine text="text-caption" className="w-24" />
+              </span>
+              <SkelLine text="shrink-0 text-caption" className="w-28" />
+            </li>
           ))}
-        </div>
+        </ol>
       ) : rows.length === 0 ? (
         <EmptyState
           compact

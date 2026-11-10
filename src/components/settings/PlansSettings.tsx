@@ -31,14 +31,13 @@ import {
   EmptyState,
   ErrorState,
   SegmentedControl,
-  Skeleton,
   Switch,
   formatMoney,
   toastError,
   type DataTableColumn,
 } from "../ui";
 import { IconAdd, IconPlans } from "../ui/icons";
-import { PlanCard } from "./PlanCard";
+import { PlanCard, PlanCardSkeleton } from "./PlanCard";
 import { planActions, planTitle } from "./plan-card.util";
 import { PlanEditorModal } from "./PlanEditorModal";
 import { ArchivePlanDialog, MigratePlanDialog } from "./PlanLifecycleDialogs";
@@ -137,8 +136,8 @@ export function PlansSettings() {
                 <ErrorState title="Couldn't load the plans." onRetry={() => void query.refetch()} />
               ) : query.loading && !query.data ? (
                 <div className={PLAN_GRID} role="status" aria-label="Loading plans">
-                  {Array.from({ length: 2 }).map((_, index) => (
-                    <Skeleton key={index} className="h-96 w-full rounded-2xl" />
+                  {Array.from({ length: 2 }, (_, index) => (
+                    <PlanCardSkeleton key={index} canManage={canManage} />
                   ))}
                 </div>
               ) : globalPlans.length === 0 ? (

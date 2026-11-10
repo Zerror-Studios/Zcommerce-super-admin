@@ -16,10 +16,11 @@
 
 import { Link } from "react-router-dom";
 
-import { Card, Chip, EmptyState, ErrorState, Skeleton, SummaryPanel, Tooltip, type SummaryCell } from "../../ui";
+import { Card, Chip, EmptyState, ErrorState, SummaryPanel, Tooltip, type SummaryCell } from "../../ui";
 import { IconLock } from "../../ui/icons";
 import { toneTextClasses } from "../../ui/tones";
 import { TableCard } from "../../analytics/analytics-shared";
+import { SkelBars, SkelLine } from "../../common/SkeletonBits";
 import { useSummaryKey } from "../../../hooks/use-summary-key";
 import {
   FIRST_SNAPSHOT_COPY,
@@ -59,7 +60,15 @@ export interface SnapshotTabProps {
 
 // ─── Store lists ──────────────────────────────────────────────────────────
 
-function StoreListCard({ config, rows }: { config: SnapshotListConfig; rows: PlatformMetricsStoreRow[] }) {
+function StoreListCard({
+  config,
+  rows,
+  isLoading = false,
+}: {
+  config: SnapshotListConfig;
+  rows: PlatformMetricsStoreRow[];
+  isLoading?: boolean;
+}) {
   const columns = [
     { key: "store", label: "Store" },
     { key: "status", label: "Status", width: 140 },
@@ -78,6 +87,7 @@ function StoreListCard({ config, rows }: { config: SnapshotListConfig; rows: Pla
       columns={columns}
       rows={rows}
       getRowKey={(row) => row.tenantId}
+      isLoading={isLoading}
       renderCell={(row, key) => {
         switch (key) {
           case "store":
@@ -143,10 +153,33 @@ export function SnapshotTab({ tab, snapshot, loading, error, onRetry }: Snapshot
   const summaryKey = useSummaryKey(`analytics-${tab}`);
 
   if (loading && !snapshot) {
+    // Loading pass (2026-11-10): the loaded layout. The summary's labels and the breakdown titles come from the
+    // snapshot, so they are placeholders; the tab's store lists are known, so they show their real titles and columns.
     return (
-      <div className="flex flex-col gap-4">
-        <Skeleton className="h-28 w-full rounded-card-lg" />
-        <Skeleton className="h-64 w-full rounded-card-lg" />
+      <div className="flex flex-col gap-4" aria-busy>
+        <SummaryPanel
+          isLoading
+          cells={Array.from({ length: SUMMARY_CELLS }, (_, index) => ({
+            key: `skel-${index}`,
+            label: <SkelLine text="text-label" className="w-24" />,
+            value: null,
+          }))}
+          aria-label={`${config.label} summary`}
+        />
+        <div className="grid gap-4 lg:grid-cols-2">
+          {[0, 1].map((index) => (
+            <Card
+              key={index}
+              title={<SkelLine text="text-title-3" className="w-40" />}
+              description={<SkelLine text="text-label" className="w-56" />}
+            >
+              <SkelBars />
+            </Card>
+          ))}
+        </div>
+        {config.lists.map((list) => (
+          <StoreListCard key={list.key} config={list} rows={[]} isLoading />
+        ))}
       </div>
     );
   }

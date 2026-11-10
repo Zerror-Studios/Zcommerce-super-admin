@@ -2,12 +2,12 @@ import { useTenantSyncRows } from "../../hooks/use-platform-analytics";
 import { errorPreview } from "../../lib/analytics-health";
 import type { Client } from "../../types";
 import { AnalyticsHealthChip } from "../analytics/AnalyticsHealthChip";
+import { SkelChip, SkelLine } from "../common/SkeletonBits";
 import { RerunSyncButton } from "../analytics/RerunSyncButton";
 import {
   Card,
   ErrorState,
   KpiStrip,
-  Skeleton,
   StatCard,
   Tooltip,
   cx,
@@ -55,7 +55,14 @@ export function ClientAnalyticsCard({ client }: ClientAnalyticsCardProps) {
         {api.error ? (
           <ErrorState inline title="Couldn't load the sync status." onRetry={() => void api.refetch()} />
         ) : api.loading ? (
-          <Skeleton className="h-12 w-full rounded-lg" />
+          // Loading pass: one property row (health chip + name, the sync line).
+          <div aria-busy className="min-w-0">
+            <div className="flex items-center gap-2">
+              <SkelChip />
+              <SkelLine className="w-40" />
+            </div>
+            <SkelLine text="mt-1 text-label" className="w-72 max-w-full" />
+          </div>
         ) : rows.length === 0 ? (
           <p className="text-body text-fg-muted">
             No analytics app installed. The store connects Google Analytics 4 from its Apps hub.

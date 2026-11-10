@@ -36,7 +36,6 @@ import {
   ErrorState,
   RowMenu,
   SegmentedSwitch,
-  Skeleton,
   TablePagination,
   cx,
   formatDate,
@@ -53,6 +52,7 @@ import { ExpandableCard, InlineNotice, KeyValue, KeyValueGrid } from "./StoreDet
 import { StoreFlaggedPaymentDialog } from "./StoreFlaggedPaymentDialog";
 import { useStoreStuckPayments } from "./StoreStuckPayments";
 import { useStoreBillingRefresh } from "./useStoreBillingRefresh";
+import { SkelChip, SkelLine } from "../common/SkeletonBits";
 
 type Tab = "payments" | "invoices" | "reminders";
 export type PaymentFilter = "all" | "SUCCESS" | "FAILED" | "REFUNDED" | "review";
@@ -223,8 +223,13 @@ function PaymentsTab({
   } else if (!page) {
     body = (
       <div className="flex flex-col gap-2" role="status" aria-label="Loading the payments">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <Skeleton key={index} className="h-12 w-full rounded-tile" />
+        {/* Loading pass: the collapsed payment cards (amount · date · app, chip, caret). */}
+        {Array.from({ length: 3 }, (_, index) => (
+          <div key={index} className="flex items-center gap-3 rounded-tile border border-line bg-surface px-4 py-3">
+            <SkelLine text="min-w-0 flex-1 text-body" className={index % 2 ? "w-2/5" : "w-1/2"} />
+            <SkelChip />
+            <span aria-hidden className="size-4 shrink-0" />
+          </div>
         ))}
       </div>
     );
@@ -583,11 +588,21 @@ function RemindersTab({ client, subscription, header }: { client: Client; subscr
           <ErrorState inline title="Couldn't load the sent reminders." onRetry={() => void api.refetch()} />
         </div>
       ) : api.loading ? (
-        <div className="flex flex-col gap-3 p-5" role="status" aria-label="Loading sent reminders">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <Skeleton key={index} className="h-10 w-full rounded-lg" />
+        // Loading pass: the reminder rows (subject and channel line, time, result chip).
+        <ul className="mt-2 divide-y divide-line-subtle" role="status" aria-label="Loading sent reminders">
+          {Array.from({ length: 3 }, (_, index) => (
+            <li key={index} className="flex min-h-16 items-center justify-between gap-4 px-5 py-2.5">
+              <span className="min-w-0 flex-1">
+                <SkelLine className="w-1/2" />
+                <SkelLine text="text-label" className="w-1/3" />
+              </span>
+              <span className="flex shrink-0 items-center gap-3">
+                <SkelLine text="text-label" className="w-24" />
+                <SkelChip />
+              </span>
+            </li>
           ))}
-        </div>
+        </ul>
       ) : rows.length === 0 ? (
         <EmptyState compact icon={IconSend} title="No reminders sent yet" description="Reminders the schedule or a person sends appear here." />
       ) : (

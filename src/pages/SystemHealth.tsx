@@ -1,6 +1,7 @@
 import { useQuery } from "@apollo/client";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../components/common/PageHeader";
+import { SkelChip, SkelLine } from "../components/common/SkeletonBits";
 import { durationLabel } from "../components/support/support.util";
 import {
   CellText,
@@ -157,17 +158,34 @@ export function SystemHealth() {
                 </li>
               ))}
             </ul>
+          ) : loading && !health ? (
+            // Loading pass: provider rows (name, counts line, state chip) instead of "Loading…".
+            <ul aria-busy className="divide-y divide-line-subtle border-t border-line-subtle">
+              {[0, 1].map((index) => (
+                <li key={index} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
+                  <span className="min-w-0 flex-1">
+                    <SkelLine className="w-40" />
+                    <SkelLine text="text-label" className="w-2/3" />
+                  </span>
+                  <SkelChip />
+                </li>
+              ))}
+            </ul>
           ) : (
-            <p className="px-5 pb-5 text-body text-fg-muted">{loading ? "Loading…" : "No store has a payment app installed."}</p>
+            <p className="px-5 pb-5 text-body text-fg-muted">No store has a payment app installed.</p>
           )}
         </section>
 
         <section className="space-y-3" aria-labelledby="health-sync">
           <div>
             <h2 id="health-sync" className="text-title-3 text-fg">Google Analytics sync per store</h2>
-            <p className="text-label text-fg-muted">
-              {health ? `${health.analyticsSync.healthy} syncing · ${health.analyticsSync.failing} failing · ${health.analyticsSync.paused} paused` : " "}
-            </p>
+            {health ? (
+              <p className="text-label text-fg-muted">
+                {`${health.analyticsSync.healthy} syncing · ${health.analyticsSync.failing} failing · ${health.analyticsSync.paused} paused`}
+              </p>
+            ) : (
+              <SkelLine text="text-label" className="w-56" />
+            )}
           </div>
           <DataTable<SyncRow>
             aria-label="Google Analytics sync per store"

@@ -49,11 +49,11 @@ import {
   Input,
   Select,
   SelectItem,
-  Skeleton,
   formatDate,
   toastError,
 } from "../ui";
 import { IconClose, IconStore } from "../ui/icons";
+import { SkelButton, SkelChip, SkelLine } from "../common/SkeletonBits";
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
@@ -86,12 +86,27 @@ export function StoreProfileCard({ client }: StoreProfileCardProps) {
 
   if (read.loading) {
     return (
-      <Card title="Profile">
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <Skeleton key={index} className="h-6 w-full rounded-lg" />
+      // Loading pass: the loaded card's description and field labels, the values as placeholders.
+      <Card
+        title="Profile"
+        description="Who this store is, for Zerror's records."
+        actions={canManage ? <SkelButton size="sm" className="w-12" /> : null}
+        aria-busy
+      >
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+          {["Category", "Source", "City", "State", "Account manager", "Planned go-live"].map((label) => (
+            <Row key={label} label={label}>
+              <SkelLine className="w-1/2" />
+            </Row>
           ))}
-        </div>
+          <div className="min-w-0 sm:col-span-2">
+            <dt className="text-label text-fg-muted">Tags</dt>
+            <dd className="mt-1 flex flex-wrap gap-1.5">
+              <SkelChip className="w-14" />
+              <SkelChip className="w-20" />
+            </dd>
+          </div>
+        </dl>
       </Card>
     );
   }

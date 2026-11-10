@@ -23,12 +23,12 @@ import {
   Chip,
   Drawer,
   ErrorState,
-  Skeleton,
   Tooltip,
   formatDateTime,
   toastError,
 } from "../ui";
 import { IconCaret, IconExpand, IconPlay } from "../ui/icons";
+import { SkelChip, SkelLine } from "../common/SkeletonBits";
 
 type PlatformJob = "billing_cycle" | "reminders" | "usage_snapshot";
 
@@ -45,6 +45,23 @@ const JOBS: { key: PlatformJob; label: string; description: string }[] = [
 const RECENT_RUNS = 10;
 /** The server's page cap (`JOB_RUNS_MAX`). */
 const ALL_RUNS = 100;
+
+/** Loading pass (2026-11-10): RunList's rows (job, time · duration, status chip). */
+function RunListSkeleton({ rows }: { rows: number }) {
+  return (
+    <ul aria-busy className="flex flex-col divide-y divide-line-subtle">
+      {Array.from({ length: rows }, (_, index) => (
+        <li key={index} className="flex min-h-13 items-center justify-between gap-4 py-2">
+          <span className="min-w-0 flex-1">
+            <SkelLine className={index % 2 ? "w-1/3" : "w-2/5"} />
+            <SkelLine text="text-label" className="w-1/2" />
+          </span>
+          <SkelChip />
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function RunList({ runs }: { runs: PlatformJobRun[] }) {
   return (
@@ -160,7 +177,9 @@ export function PlatformJobsCard() {
           runs.error ? (
             <ErrorState inline title="Couldn't load the recent runs." onRetry={() => void runs.refetch()} />
           ) : runs.loading ? (
-            <Skeleton className="mt-3 h-16 w-full rounded-lg" />
+            <div className="mt-2">
+              <RunListSkeleton rows={3} />
+            </div>
           ) : runs.data.length === 0 ? (
             <p className="mt-2 text-body text-fg-muted">No runs recorded yet.</p>
           ) : (
@@ -191,7 +210,7 @@ export function PlatformJobsCard() {
 function AllRuns() {
   const runs = useJobRuns({ limit: ALL_RUNS });
   if (runs.error) return <ErrorState inline title="Couldn't load the job runs." onRetry={() => void runs.refetch()} />;
-  if (runs.loading) return <Skeleton className="h-40 w-full rounded-lg" />;
+  if (runs.loading) return <RunListSkeleton rows={6} />;
   if (runs.data.length === 0) return <p className="text-body text-fg-muted">No runs recorded yet.</p>;
   return <RunList runs={runs.data} />;
 }

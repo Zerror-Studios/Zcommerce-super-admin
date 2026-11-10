@@ -40,7 +40,6 @@ import {
   IconAi,
   IconPause,
   IconPlay,
-  Skeleton,
   SummaryPanel,
   Textarea,
   cx,
@@ -51,6 +50,7 @@ import {
   toneTextClasses,
   type SummaryCell,
 } from "../ui";
+import { SkelChip, SkelLine } from "../common/SkeletonBits";
 
 export interface ClientAiCardProps {
   client: Client;
@@ -97,7 +97,11 @@ export function ClientAiCard({ client }: ClientAiCardProps) {
           title={
             <span className="flex flex-wrap items-center gap-2">
               Status and limits
-              {setting ? setting.paused ? <Chip tone="warning">Paused</Chip> : <Chip tone="success">AI on</Chip> : null}
+              {setting ? (
+                setting.paused ? <Chip tone="warning">Paused</Chip> : <Chip tone="success">AI on</Chip>
+              ) : api.loading ? (
+                <SkelChip />
+              ) : null}
             </span>
           }
           description={
@@ -124,7 +128,14 @@ export function ClientAiCard({ client }: ClientAiCardProps) {
           {api.error ? (
             <ErrorState inline title="Couldn't load this store's AI setting." onRetry={() => void api.refetch()} />
           ) : api.loading || !setting ? (
-            <Skeleton className="h-12 w-full rounded-lg" />
+            // Loading pass: the three limits with their labels, the values as placeholders.
+            <KeyValueGrid columns={1}>
+              {["Questions per week", "Claude connector calls per week", "Monthly token budget"].map((label) => (
+                <KeyValue key={label} label={label}>
+                  <SkelLine className="w-32" />
+                </KeyValue>
+              ))}
+            </KeyValueGrid>
           ) : (
             <KeyValueGrid columns={1}>
               <KeyValue label="Questions per week">{aiOverrideLabel(setting.questionsPerWeek, "questions")}</KeyValue>
@@ -213,7 +224,22 @@ function TopQuestions({ tenantId }: { tenantId: string }) {
   if (api.error) {
     return <ErrorState inline title="Couldn't load the questions." onRetry={() => void api.refetch()} />;
   }
-  if (api.loading) return <Skeleton className="h-16 w-full rounded-lg" />;
+  if (api.loading) {
+    // Loading pass: question rows (orb, excerpt, count · last asked).
+    return (
+      <ol aria-busy className="flex flex-col divide-y divide-line-subtle border-t border-line-subtle">
+        {["w-3/4", "w-1/2", "w-2/3"].map((width) => (
+          <li key={width} className="flex items-center justify-between gap-3 py-2.5">
+            <span className="flex min-w-0 flex-1 items-center gap-3">
+              <span aria-hidden className="zc-skel size-[var(--zc-orb)] shrink-0 rounded-full" />
+              <SkelLine text="min-w-0 flex-1 text-body" className={width} />
+            </span>
+            <SkelLine text="shrink-0 text-label" className="w-28" />
+          </li>
+        ))}
+      </ol>
+    );
+  }
   if (api.data.length === 0) {
     return <p className="text-body text-fg-muted">No questions asked in the last 30 days.</p>;
   }

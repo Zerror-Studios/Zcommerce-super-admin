@@ -17,7 +17,8 @@ import { billingStateView } from "../../lib/platform-billing.util";
 import { billingStateReasonLabel, paymentProviderLabel } from "../../lib/store-profile.util";
 import { formatDate } from "../../lib/utils";
 import type { Subscription } from "../../types";
-import { Card, Chip, ErrorState, Skeleton } from "../ui";
+import { SkelLine } from "../common/SkeletonBits";
+import { Card, Chip, ErrorState } from "../ui";
 
 // ─── Component ────────────────────────────────────────────────────────────
 
@@ -43,11 +44,14 @@ export function StoreBillingStateCard({ tenantId, subscription }: StoreBillingSt
       {read.error && !tenant ? (
         <ErrorState inline title="Couldn't load the billing state." onRetry={() => void read.refetch()} />
       ) : read.loading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 2 }).map((_, index) => (
-            <Skeleton key={index} className="h-6 w-full rounded-lg" />
+        // Loading pass: the three fields that always show, with their labels.
+        <dl aria-busy className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {["Reason", "Since", "Payment app"].map((label) => (
+            <Item key={label} label={label}>
+              <SkelLine className="w-24" />
+            </Item>
           ))}
-        </div>
+        </dl>
       ) : (
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Item label="Reason">{reason ?? <span className="text-fg-subtle">—</span>}</Item>

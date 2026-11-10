@@ -136,3 +136,20 @@
   .zc-c-kpi:hover { transform: none; }
 }
 @keyframes zc-c-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ─── Round sweeps (owner, 2026-11-10: "circle charts animate and come in round") ───────────────────────────── */
+
+/* Summary panel mini ring: --_pv is registered as a number so the conic fill can sweep from 0 to the value (and the
+   green "good" ring too) the first time the ring is on screen. Reduced motion: the global rule drops the transition. */
+@property --_pv { syntax: "<number>"; inherits: false; initial-value: 0; }
+.zc-chart .zc-mini-ring { --_pv: 0; }
+.zc-chart[data-play="true"] .zc-mini-ring { --_pv: var(--_p); transition: --_pv 700ms var(--ease-out); }
+
+/* Donuts: the parts fill one after another around the circle at one steady speed (--d = where the part starts,
+   --t = its share, both in ms of a 900ms turn), so the ring draws round like one stroke instead of every part
+   growing at once. Hover still thickens a part (stroke-width transition). */
+.zc-chart[data-play="true"] .zc-c-arc.zc-c-sweep {
+  transition:
+    stroke-dasharray calc(var(--t, 700) * 1ms) linear calc(var(--d, 0) * 1ms),
+    stroke-width var(--dur-1) var(--ease-out);
+}

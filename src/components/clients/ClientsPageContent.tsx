@@ -9,6 +9,8 @@ import { latestSubscriptionByClient } from "../../lib/subscription-lookup.util";
 import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import { usePlatformSettings } from "../../providers/SettingsProvider";
+import { useLoadView } from "../../hooks/use-load-view";
+import { LoadHold } from "../common/LoadHold";
 import { PageHeader } from "../common/PageHeader";
 import { IconAdd, IconStore } from "../ui/icons";
 import {
@@ -45,6 +47,8 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
     useClients();
   const { settings } = usePlatformSettings();
   const { can, user } = useAuth();
+  // Loading pass (2026-11-10): cached stores show at once; the panel's skeleton only after 200ms without them.
+  const summaryView = useLoadView(loading, false);
 
   const numbers = useMemo(() => {
     const byClient = latestSubscriptionByClient(subscriptions);
@@ -207,13 +211,15 @@ export function ClientsPageContent({ clients }: ClientsPageContentProps) {
         renderHeader={header}
         beforeTable={
           <>
-            <SummaryPanel
-              cells={cells}
-              isLoading={loading}
-              storageKey={`${user?.id ?? "me"}:stores`}
-              aria-label="Stores summary"
-              className="mb-4"
-            />
+            <LoadHold hold={summaryView.hold}>
+              <SummaryPanel
+                cells={cells}
+                isLoading={summaryView.skeleton}
+                storageKey={`${user?.id ?? "me"}:stores`}
+                aria-label="Stores summary"
+                className="mb-4"
+              />
+            </LoadHold>
             {notices}
           </>
         }

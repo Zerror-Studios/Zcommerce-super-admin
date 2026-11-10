@@ -19,7 +19,8 @@ import {
   tenantHealthRows,
   type HealthSnapshotLike,
 } from "../../lib/tenant-health.util";
-import { Card, EmptyState, ErrorState, Skeleton, cx, formatDate, toneTextClasses } from "../ui";
+import { SkelLine } from "../common/SkeletonBits";
+import { Card, EmptyState, ErrorState, cx, formatDate, toneTextClasses } from "../ui";
 import { IconStoreHealth } from "../ui/icons";
 
 // ─── Component ────────────────────────────────────────────────────────────
@@ -46,11 +47,17 @@ export function StoreHealthCard({ tenantId }: { tenantId: string }) {
       {query.error && !data ? (
         <ErrorState inline title="Couldn't load the health signals." onRetry={() => void query.refetch()} />
       ) : query.loading && !data ? (
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-6 w-full rounded-lg" />
+        // Loading pass: the real signal labels, the values as placeholders.
+        <dl aria-busy className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+          {rows.map((row) => (
+            <div key={row.key} className="flex items-baseline justify-between gap-4">
+              <dt className="text-label text-fg-muted">{row.label}</dt>
+              <dd className="shrink-0">
+                <SkelLine className="w-10" />
+              </dd>
+            </div>
           ))}
-        </div>
+        </dl>
       ) : !health ? (
         <EmptyState compact icon={IconStoreHealth} title="No health snapshot yet" description={NO_HEALTH_SNAPSHOT_COPY} />
       ) : (

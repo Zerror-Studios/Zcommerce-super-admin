@@ -33,6 +33,7 @@ import { useAuth } from "../../providers/AuthProvider";
 import { useClients } from "../../providers/ClientsProvider";
 import { describeActivity } from "../../lib/activity-sentences.util";
 import { ActivitySentence } from "../insights/home/activity-parts";
+import { SkelLine } from "../common/SkeletonBits";
 import {
   Button as UiButton,
   ButtonLink,
@@ -50,7 +51,6 @@ import {
   IconTicketPercent,
   IconTile,
   OptionChip,
-  Skeleton,
   formatCount,
   formatDate,
   formatDateTime,
@@ -199,11 +199,36 @@ export function ClientActivityCard({ tenantId, variant = "full", logHref }: Clie
     query.error && !data ? (
       <ErrorState inline title="Couldn't load the activity." onRetry={() => void query.refetch()} />
     ) : query.loading && !data ? (
-      <div className="space-y-3 p-5" role="status" aria-label="Loading the activity">
-        {Array.from({ length: compact ? 3 : 4 }).map((_, index) => (
-          <Skeleton key={index} className="h-10 w-full rounded-lg" />
-        ))}
-      </div>
+      // Loading pass: the loaded rows' shape (compact: time + sentence; log: a day header, then time, icon tile,
+      // sentence and area).
+      compact ? (
+        <ul className="flex flex-col px-5 pb-4" role="status" aria-label="Loading the activity">
+          {Array.from({ length: COMPACT_ROWS }, (_, index) => (
+            <li key={index} className="flex min-w-0 items-center gap-4 py-1.5">
+              <SkelLine text="w-28 shrink-0 text-label" className="w-20" />
+              <SkelLine text="min-w-0 flex-1 text-body" className={index % 2 ? "w-2/3" : "w-4/5"} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div role="status" aria-label="Loading the activity">
+          <div className="border-b border-line-subtle bg-surface-sunken px-5 py-2.5">
+            <SkelLine text="text-label" className="w-16" />
+          </div>
+          <ul className="divide-y divide-line-subtle">
+            {Array.from({ length: 6 }, (_, index) => (
+              <li key={index} className="flex min-h-14 items-center gap-3 px-5 py-2 md:gap-4">
+                <SkelLine text="w-14 shrink-0 text-body" className="w-10" />
+                <span aria-hidden className="zc-skel size-7 shrink-0 rounded-lg" />
+                <SkelLine text="min-w-0 flex-1 text-body" className={index % 2 ? "w-1/2" : "w-3/4"} />
+                <span className="hidden w-24 shrink-0 sm:block">
+                  <SkelLine className="w-16" />
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
     ) : rows.length === 0 ? (
       <EmptyState compact icon={IconLock} title="Nothing logged yet" description="Changes made in the console appear here." />
     ) : null;

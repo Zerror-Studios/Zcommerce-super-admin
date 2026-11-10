@@ -24,7 +24,6 @@ import {
   Card,
   Chip,
   ProgressRing,
-  Skeleton,
   SummaryPanel,
   formatCount,
   formatMoney,
@@ -33,6 +32,7 @@ import {
   useAiEnabled,
   type SummaryCell,
 } from "../ui";
+import { SkelChip, SkelLine } from "../common/SkeletonBits";
 import { ClientActivityCard } from "./ClientActivityCard";
 import { ClientPerformanceCard } from "./ClientPerformanceCard";
 import { NotesCard } from "./NotesCard";
@@ -219,37 +219,34 @@ export function ClientOverviewTab({ client, subscription, setup }: ClientOvervie
         <div className="flex min-w-0 flex-col gap-4">
           <Card
             title="Store health"
-            description={healthLoading ? "Checking…" : storeHealthLine(band.label, healthRows)}
+            description={healthLoading ? <SkelLine text="text-label" className="w-56" /> : storeHealthLine(band.label, healthRows)}
             leading={
               // Round 3 F4: one number in the ring (the score), not the score drawn over the ring's own "NN%".
               <ProgressRing value={health.score} label={`Store health ${health.score} of 100`} center={health.score} />
             }
           >
-            {healthLoading ? (
-              <div className="flex flex-col gap-2">
-                {Array.from({ length: 5 }, (_, index) => (
-                  <Skeleton key={index} className="h-8 w-full rounded-md" />
-                ))}
-              </div>
-            ) : (
-              <dl className="flex flex-col divide-y divide-line-subtle border-t border-line-subtle">
-                {healthRows.map((row) => (
-                  <div key={row.key} className="flex items-center gap-4 py-2.5">
-                    <dt className="flex min-w-0 flex-1 items-center gap-4 text-body text-fg">
-                      <span className="w-20 shrink-0">
+            {/* Loading pass: the real rows (labels are known) with the verdict chip and detail as placeholders. */}
+            <dl className="flex flex-col divide-y divide-line-subtle border-t border-line-subtle" aria-busy={healthLoading || undefined}>
+              {healthRows.map((row) => (
+                <div key={row.key} className="flex items-center gap-4 py-2.5">
+                  <dt className="flex min-w-0 flex-1 items-center gap-4 text-body text-fg">
+                    <span className="w-20 shrink-0">
+                      {healthLoading ? (
+                        <SkelChip />
+                      ) : (
                         <Chip tone={row.tone} dot={false}>
                           {row.word}
                         </Chip>
-                      </span>
-                      <span className="min-w-0 truncate">{row.label}</span>
-                    </dt>
-                    <dd className="min-w-0 truncate text-right text-label text-fg-muted" title={row.detail}>
-                      {row.detail}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            )}
+                      )}
+                    </span>
+                    <span className="min-w-0 truncate">{row.label}</span>
+                  </dt>
+                  <dd className="min-w-0 truncate text-right text-label text-fg-muted" title={healthLoading ? undefined : row.detail}>
+                    {healthLoading ? <SkelLine text="text-label" className="ml-auto w-24" /> : row.detail}
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </Card>
 
           <ConnectedAppsCard client={client} />

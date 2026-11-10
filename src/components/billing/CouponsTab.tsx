@@ -69,6 +69,8 @@ export interface CouponsTabProps {
   canCreate?: boolean;
   /** Under the table, e.g. "Load more" while the API has more pages. */
   footer?: ReactNode;
+  /** First load: the table's own skeleton rows under the real toolbar (loading pass 2026-11-10). */
+  isLoading?: boolean;
 }
 
 /** Fixed 476 → Code 208px in the 684px Settings column (04 S-07e). No checkbox column: no bulk actions (06 Q31). */
@@ -119,6 +121,7 @@ export function CouponsTab({
   onCreateOpenChange,
   canCreate = true,
   footer,
+  isLoading = false,
 }: CouponsTabProps) {
   const [draft, setDraft] = useState<CouponDraft>(() => emptyCouponDraft());
   const [formErrors, setFormErrors] = useState<CouponFormErrors>({});
@@ -300,6 +303,7 @@ export function CouponsTab({
         rows={pageRows}
         getRowKey={(coupon) => coupon.id}
         renderCell={renderCell}
+        isLoading={isLoading}
         rowHeight="tall"
         rowActions={canEdit ? rowActions : undefined}
         rowActionsLabel={(coupon) => `Actions for ${coupon.code}`}

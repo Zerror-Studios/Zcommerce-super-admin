@@ -30,7 +30,6 @@ import {
   EmptyState,
   ErrorState,
   IconTile,
-  Skeleton,
   SummaryPanel,
   TableToolbar,
   formatCount,
@@ -41,6 +40,7 @@ import {
 } from "../ui";
 import { IconApps } from "../ui/icons";
 import { ClientAnalyticsCard } from "./ClientAnalyticsCard";
+import { SkelChip, SkelLine } from "../common/SkeletonBits";
 import { lastSyncOf, needsAttention, useStoreApps } from "./use-store-apps";
 
 type AppsTab = "all" | "attention";
@@ -242,7 +242,18 @@ export function ConnectedAppsCard({ client }: { client: Client }) {
       }
     >
       {apps.loading ? (
-        <Skeleton className="h-12 w-full rounded-lg" />
+        // Loading pass: the loaded app rows (tile, name, status chip) in the same grid.
+        <ul aria-busy className="grid grid-cols-1 gap-2 @min-[40rem]:grid-cols-3">
+          {Array.from({ length: 3 }, (_, index) => (
+            <li key={index} className="flex min-w-0 items-center gap-3 rounded-card bg-surface-sunken px-3 py-2">
+              <span aria-hidden className="zc-skel size-7 shrink-0 rounded-lg" />
+              <span className="min-w-0 flex-1">
+                <SkelLine className="w-2/3" />
+              </span>
+              <SkelChip />
+            </li>
+          ))}
+        </ul>
       ) : apps.error ? (
         <ErrorState inline title="Couldn't load the apps." onRetry={() => void apps.refetch()} />
       ) : sorted.length === 0 ? (

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { NeedsYouAiCard, NeedsYouBillingCard, NeedsYouOnboardingCard } from "../components/insights/home/NeedsYouCards";
 import { RecentActivityCard } from "../components/insights/home/RecentActivityCard";
 import { SnapshotHeader } from "../components/insights/SnapshotHeader";
-import { Button, ErrorState, HomeHero, SummaryPanel } from "../components/ui";
+import { Button, ErrorState, HomeHero, SummaryPanel, cx } from "../components/ui";
 import { toasts } from "../copy";
 import { knownStoreNames } from "../lib/home-attention.util";
 import { findMetric } from "../lib/platform-insights.util";
@@ -21,6 +21,8 @@ import {
   storeCounts,
   summaryCells,
 } from "../lib/sa-home.util";
+import { LoadHold } from "../components/common/LoadHold";
+import { useLoadView } from "../hooks/use-load-view";
 import { useAuth } from "../providers/AuthProvider";
 import { useClients } from "../providers/ClientsProvider";
 import { usePlatformAttention, usePlatformMetrics } from "../hooks/use-platform-insights";
@@ -82,6 +84,10 @@ export function Home() {
     metricsError: metrics.error != null,
   });
   const summaryLoading = (metrics.loading && !snapshot) || loading || clientsLoading;
+  // Loading pass (2026-11-10): no skeleton for a fast answer (first 200ms keep the frame, invisible); cached
+  // numbers show at once while cache-and-network refreshes them.
+  const summaryView = useLoadView(summaryLoading, false);
+  const cardsView = useLoadView(loading, data != null);
 
   const showBilling = loading || data?.moneyDue != null;
 
@@ -121,13 +127,20 @@ export function Home() {
         />
       ) : (
         <>
-          <SummaryPanel cells={cells} isLoading={summaryLoading} storageKey={`${user?.id ?? "me"}:home`} aria-label="Platform summary" />
+          <LoadHold hold={summaryView.hold}>
+            <SummaryPanel cells={cells} isLoading={summaryView.skeleton} storageKey={`${user?.id ?? "me"}:home`} aria-label="Platform summary" />
+          </LoadHold>
 
           {/* Round 2 §6.1: three equal action cards a row from 1024px (two on tablet, the third spans), one on phone. */}
-          <div className={showBilling ? "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 md:max-lg:[&>:last-child]:col-span-2" : "grid grid-cols-1 gap-4 md:grid-cols-2"}>
-            <NeedsYouAiCard summary={data?.whatNeedsAttention ?? null} storeNames={storeNames} isLoading={loading} />
-            {showBilling ? <NeedsYouBillingCard moneyDue={data?.moneyDue ?? null} isLoading={loading} /> : null}
-            <NeedsYouOnboardingCard development={data?.development ?? null} atRiskCount={data?.atRisk.totalCount ?? 0} isLoading={loading} />
+          <div
+            className={cx(
+              showBilling ? "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 md:max-lg:[&>:last-child]:col-span-2" : "grid grid-cols-1 gap-4 md:grid-cols-2",
+              cardsView.hold && "invisible",
+            )}
+          >
+            <NeedsYouAiCard summary={data?.whatNeedsAttention ?? null} storeNames={storeNames} isLoading={cardsView.skeleton} />
+            {showBilling ? <NeedsYouBillingCard moneyDue={data?.moneyDue ?? null} isLoading={cardsView.skeleton} /> : null}
+            <NeedsYouOnboardingCard development={data?.development ?? null} atRiskCount={data?.atRisk.totalCount ?? 0} isLoading={cardsView.skeleton} />
           </div>
         </>
       )}

@@ -222,6 +222,7 @@ export type { AiStep, AiStepState, AiStepsProps } from "./AiSteps";
 export { AI_GLOW_EXIT_MS, AiGlow } from "./AiGlow";
 export type { AiGlowProps, AiGlowState } from "./AiGlow";
 export { AiQuota, AiQuotaSkeleton, quotaResetLabel } from "./AiQuota";
+export { SKELETON_DELAY_MS, SKELETON_MIN_MS, nextSkeletonStep, useSkeleton, useSkeletonFrame } from "./use-skeleton";
 export type { AiQuotaProps } from "./AiQuota";
 export { SummaryPanel } from "./SummaryPanel";
 export type { SummaryCell, SummaryChart, SummaryPanelProps, SummaryTone } from "./SummaryPanel";
