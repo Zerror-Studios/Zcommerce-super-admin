@@ -3,8 +3,12 @@
  * Progress ring (01 §7.29, `<ProgressRing>`): sizes 24 (inline), 40 and 96px with a 3, 4 or 8px stroke. Track
  * `--zc-surface-sunken`, arc `--zc-primary` (`--zc-success` at 100%), round caps, starting at 12 o'clock. The
  * percentage sits in the centre, tabular: `caption-strong` at 40px, `title-2` at 96px, none at 24px.
+ * Round 3 D2: the arc grows from 0 to the value (700ms) the first time the ring is on screen in a visit, and the
+ * centre number fades in at 60%; a new value slides the arc.
  */
+import type { ReactNode } from "react";
 import { cx } from "./cx";
+import { useChartEntrance } from "./use-chart-entrance";
 
 export type ProgressRingSize = 24 | 40 | 96;
 
@@ -14,28 +18,31 @@ export interface ProgressRingProps {
   size?: ProgressRingSize;
   /** Names the ring for screen readers ("Store profile"). */
   label: string;
+  /** Round 3 F4: what the centre shows instead of "NN%" (a score of 100: "33"). One number, centred, tabular. */
+  center?: ReactNode;
   className?: string;
 }
 
 const STROKE: Record<ProgressRingSize, number> = { 24: 3, 40: 4, 96: 8 };
 const BOX: Record<ProgressRingSize, string> = { 24: "size-6", 40: "size-10", 96: "size-24" };
 
-export function ProgressRing({ value, size = 40, label, className }: ProgressRingProps) {
+export function ProgressRing({ value, size = 40, label, center, className }: ProgressRingProps) {
   const percent = Math.max(0, Math.min(100, Math.round(Number.isFinite(value) ? value : 0)));
   const stroke = STROKE[size];
   const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - percent / 100);
   const done = percent >= 100;
+  const { ref, play } = useChartEntrance<HTMLSpanElement>(`ring:${label}`);
 
   return (
     <span
+      ref={ref}
+      data-play={play}
       role="progressbar"
       aria-label={label}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={percent}
-      className={cx("relative inline-flex shrink-0 items-center justify-center", BOX[size], className)}
+      className={cx("zc-chart relative inline-flex shrink-0 items-center justify-center", BOX[size], className)}
     >
       <svg viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 size-full -rotate-90" aria-hidden>
         {/* Round 2 §6.4: no empty ring at 0; a 0 reads as a grey full ring. */}
@@ -55,18 +62,15 @@ export function ProgressRing({ value, size = 40, label, className }: ProgressRin
             fill="none"
             strokeWidth={stroke}
             strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            className={cx(
-              "transition-[stroke-dashoffset] duration-200 ease-[var(--zc-ease)]",
-              done ? "stroke-tone-success" : "stroke-brand",
-            )}
+            pathLength={100}
+            style={{ ["--v" as string]: percent }}
+            className={cx("zc-c-arc", done ? "stroke-tone-success" : "stroke-brand")}
           />
         ) : null}
       </svg>
       {size === 24 ? null : (
-        <span className={cx("relative num text-fg", size === 96 ? "text-title-2" : "text-caption-strong")}>
-          {percent}%
+        <span className={cx("zc-c-center relative num text-fg", size === 96 ? "text-title-2" : "text-caption-strong")}>
+          {center ?? `${percent}%`}
         </span>
       )}
     </span>

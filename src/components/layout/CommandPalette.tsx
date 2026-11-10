@@ -236,7 +236,7 @@ export function CommandPalette({
   }, [cursor, flat.length]);
 
   useEffect(() => {
-    listRef.current?.querySelector(`[data-index="${cursor}"]`)?.scrollIntoView({ block: "nearest" });
+    listRef.current?.querySelector(`[data-index="${cursor}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [cursor]);
 
   // Reset on close so the next open starts empty; focus goes back to the opener.

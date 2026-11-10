@@ -2,6 +2,7 @@
 import { Children, type ComponentType, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { cx } from "./cx";
+import { KpiRoll } from "./KpiRoll";
 import { formatCount, formatMoney, formatPercent } from "./money";
 import { Skeleton } from "./Skeleton";
 import { Tooltip } from "./Tooltip";
@@ -41,6 +42,8 @@ function formatValue(value: StatCardProps["value"], format: StatCardProps["forma
  * KPI cell (01 §7.13): label 13/500 muted → the number (32px when the cell is at least 200px wide, else 24px;
  * tabular) → the change as a small chip ("↑ 100.7%", green or red) whose tooltip says "vs previous 30 days", or a
  * muted sub-line when there is no change to show. Use several inside <KpiStrip>; alone it renders its own card.
+ * Round 3 D2: the number rolls in (8px, 400ms) the first time the label shows in a visit; a card on its own lifts
+ * 2px on hover.
  */
 export function StatCard({
   label,
@@ -73,7 +76,7 @@ export function StatCard({
       ) : (
         <>
           <p className={cx("zc-kpi-value mt-1 num", valueTone === "danger" ? "text-tone-danger-text" : valueTone === "warning" ? "text-tone-warning" : "text-fg")}>
-            {formatValue(value, format, currency)}
+            <KpiRoll rollKey={typeof label === "string" ? `stat:${label}` : undefined}>{formatValue(value, format, currency)}</KpiRoll>
           </p>
           <Delta delta={delta} unit={deltaUnit} label={deltaLabel} />
         </>
@@ -82,7 +85,7 @@ export function StatCard({
   );
   const classes = cx(
     "zc-kpi-cell block min-w-0 bg-surface px-5 py-4",
-    !bare && "rounded-[var(--zc-radius-card)] border border-line",
+    !bare && "zc-c-kpi rounded-[var(--zc-radius-card)] border border-line",
     href && "zc-press hover:bg-row-hover focus-visible:shadow-focus-strong focus-visible:outline-none",
     className,
   );

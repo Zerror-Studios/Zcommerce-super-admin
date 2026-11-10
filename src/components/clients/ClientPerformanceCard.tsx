@@ -26,16 +26,19 @@ import {
 } from "../../lib/usage-history.util";
 import { formatNumber } from "../../lib/utils";
 import {
+  CHART_BAR_RADIUS,
   Card,
+  ChartSkeleton,
   EmptyState,
   ErrorState,
-  Skeleton,
+  RECHARTS_GROW_MS,
   chartColors,
   formatMoney,
   pointsForViewport,
   recharts,
   rechartsEndTicks,
   useIsPhone,
+  useLibraryEntrance,
 } from "../ui";
 import { IconAnalytics } from "../ui/icons";
 
@@ -92,6 +95,8 @@ export function ClientPerformanceCard({ tenantId }: { tenantId: string }) {
     fetchPolicy: "cache-and-network",
   });
   const isPhone = useIsPhone();
+  // Round 3 D2: the bars grow in the first time the card is on screen in a visit.
+  const { ref: barsRef, play: barsPlay, animate: barsAnimate } = useLibraryEntrance<HTMLDivElement>("console-client-performance");
   // v2 §10: phones show the last six months, labelled at the start and end only.
   const points = useMemo(
     () =>
@@ -118,7 +123,7 @@ export function ClientPerformanceCard({ tenantId }: { tenantId: string }) {
           onRetry={() => void query.refetch()}
         />
       ) : query.loading && !query.data ? (
-        <Skeleton className="h-55 w-full" />
+        <ChartSkeleton height={220} shape="bars" />
       ) : points.length === 0 ? (
         <EmptyState
           compact
@@ -127,8 +132,8 @@ export function ClientPerformanceCard({ tenantId }: { tenantId: string }) {
           description="The nightly usage snapshot fills this in."
         />
       ) : (
-        <div className="h-55 w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div ref={barsRef} data-play={barsPlay} className="h-55 w-full">
+          {barsPlay ? <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={points}
               margin={{ top: 8, right: 0, left: 0, bottom: 0 }}
@@ -149,11 +154,13 @@ export function ClientPerformanceCard({ tenantId }: { tenantId: string }) {
               <Bar
                 dataKey="revenue30d"
                 fill={chartColors.series[0]}
-                radius={[3, 3, 0, 0]}
-                isAnimationActive={false}
+                radius={[CHART_BAR_RADIUS, CHART_BAR_RADIUS, 0, 0]}
+                isAnimationActive={barsAnimate}
+                animationDuration={RECHARTS_GROW_MS}
+                animationEasing="ease-out"
               />
             </BarChart>
-          </ResponsiveContainer>
+          </ResponsiveContainer> : null}
         </div>
       )}
     </Card>

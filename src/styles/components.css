@@ -220,6 +220,19 @@
 .zc-icon-btn--on-dark[data-pressed="true"] { background: var(--zc-nav-active-bg); }
 .zc-icon-btn--on-dark:focus-visible,
 .zc-icon-btn--on-dark[data-focus-visible="true"] { box-shadow: 0 0 0 2px var(--zc-nav-bg), 0 0 0 4px rgba(31, 94, 255, 0.55); }
+/* Round 3 F7: the secondary button on a dark gradient (hero, summary panel): white 14% fill, 1px white 24% border,
+   white text, the sm button's size. Use it for every secondary action on a gradient. */
+.zc-btn-glass {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: var(--zc-control-h-sm); padding: 0 var(--zc-btn-px-sm); border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.24); background: rgba(255, 255, 255, 0.14); color: white;
+  font: 500 13px/18px var(--zc-font-sans); white-space: nowrap; cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+@media (hover: hover) { .zc-btn-glass:hover { background: rgba(255, 255, 255, 0.22); border-color: rgba(255, 255, 255, 0.32); } }
+.zc-btn-glass:focus-visible { outline: none; box-shadow: var(--zc-on-dark-ring); }
+.zc-btn-glass:active { background: rgba(255, 255, 255, 0.1); }
+
 /* glass: only on photos and video */
 .zc-icon-btn--glass { border-color: transparent; background: var(--zc-glass-bg); color: white; box-shadow: var(--zc-glass-ring); }
 
@@ -347,7 +360,15 @@
 
 /* Filter chips (SegmentedSwitch variant="chips"): the Inbox list filters (board 23 .fch). 28px grey pills, the
    selected one ink with white text; counts faded. */
-.zc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Round 3 F6: one row that scrolls sideways with a soft fade at the right edge (they wrapped onto three rows). The
+   padding keeps the last chip clear of the fade and the focus ring inside the scroll box. */
+.zc-chips {
+  display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  padding: 2px 24px 2px 2px; margin: -2px 0 -2px -2px;
+  -webkit-mask-image: linear-gradient(90deg, black calc(100% - 28px), transparent);
+  mask-image: linear-gradient(90deg, black calc(100% - 28px), transparent);
+}
+.zc-chips::-webkit-scrollbar { display: none; }
 .zc-chips__item {
   display: inline-flex; align-items: center; flex: none; gap: 6px; height: 28px; padding: 0 11px;
   border: 0; border-radius: var(--zc-radius-pill); background: var(--zc-surface-sunken); color: var(--zc-fg-muted);
@@ -920,6 +941,8 @@
 .zc-toast:has([data-slot="description"]) { padding: 12px 8px 12px 16px; }
 .zc-toast__title { font: 400 14px/20px var(--zc-font-sans); letter-spacing: -0.006em; color: white; }
 .zc-toast__desc { font: 400 13px/18px var(--zc-font-sans); color: var(--zc-nav-text); }
+/* Round 3 F1: never truncated; the copy is written to fit in two lines, and wraps rather than cutting off. */
+.zc-toast__title, .zc-toast__desc { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
 .zc-toast__icon { width: 16px; height: 16px; flex: none; }
 .zc-toast__close {
   position: static;
@@ -1074,7 +1097,7 @@ body:has([aria-modal="true"]) .zc-askbar-slot { opacity: 0; visibility: hidden; 
    shared layout; radii are set inline). box = the 420 × 560 chat box at the bar's place, no dim; half = the large
    view over the content area (page dimmed 28%); full = the centred full view. Phone: box = bottom sheet at 70%,
    full = the whole screen. Only transform and opacity animate; the sizes below snap and the spring morphs them. */
-.zc-ai-scrim { position: fixed; inset: 0; z-index: var(--zc-z-modal); background: var(--zc-overlay-ai); }
+.zc-ai-scrim { position: fixed; inset: 0; z-index: calc(var(--zc-z-modal) - 1); background: var(--zc-overlay-ai); } /* round 3 B5: one below the box, so the bottom glow sits between them */
 .zc-ai-surface {
   position: fixed;
   z-index: var(--zc-z-modal);
@@ -1587,6 +1610,9 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 .zc-summary--lite .zc-mini-ring { background: conic-gradient(currentColor calc(var(--_p) * 1%), var(--zc-ring-track) 0); }
 /* Round 2 §6.4: no empty rings; a 0 is a grey full ring. */
 .zc-mini-ring[data-zero], .zc-summary--lite .zc-mini-ring[data-zero] { background: var(--zc-ring-zero); }
+/* Round 3 F3: a good zero (all stocked, no failures, all paid) is a full green ring. */
+.zc-mini-ring[data-good] { background: var(--zc-green-on-dark); }
+.zc-summary--lite .zc-mini-ring[data-good] { background: var(--zc-green); }
 .zc-mini-segs { display: flex; align-items: flex-end; gap: 3px; width: 100%; height: 18px; }
 .zc-mini-segs i { flex: 1; height: 16px; border-radius: 3px; background: rgba(255, 255, 255, 0.2); }
 .zc-summary--lite .zc-mini-segs i { background: var(--zc-seg-off); }
@@ -1685,8 +1711,6 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 /* Round 2 §8.4/§8.8: the card is the tap target (it opens the row); it presses to .98; vertical scrolling stays
    with the browser so a swipe left reaches the card (actions sheet). */
 .zc-dt-card__tap { touch-action: pan-y; }
-/* The 2px refresh bar over a list (round 2 §2): only when a refetch takes longer than 300ms; it fades in, never pulses. */
-.zc-dt-progress { opacity: 0; animation: zc-skel-in var(--dur-2) var(--ease-out) var(--zc-skeleton-delay) forwards; }
 .zc-dt-card:has(> .zc-dt-card__tap:active) { transform: scale(var(--zc-press-scale-card)); }
 /* Phone row actions sheet (`RowActionSheet`): 48px rows, 16px icons, red destructive rows. */
 .zc-action-sheet { padding-bottom: 8px; }
@@ -1907,4 +1931,64 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 @media (prefers-reduced-motion: reduce) {
   .zc-route-skeleton__rows { animation: none; opacity: 1; }
   .zc-route-progress__bar { animation: none; }
+}
+
+/* ---------------------------------------------------------------------
+   Round 3 (C, D1, D3): fixed table frames, thumbnails, late values, reserved space, sticky sub-tabs
+   --------------------------------------------------------------------- */
+/* C2: DataTable is table-layout: fixed. The header cells carry each column's width (HeroUI renders no <colgroup>,
+   so the header row is the column group), so the frame never changes between tabs or pages; the flexible
+   identifier column takes the rest and --zc-dt-min-w keeps it at least 200px wide. */
+.zc-dt-table { table-layout: fixed; width: 100%; min-width: max(100%, var(--zc-dt-min-w, 0px)); }
+/* Numbers in every DataTable (round 3 C2, CHANGED from v2's left-aligned money): right-aligned, tabular figures. */
+.zc-dt-num { text-align: end; font-variant-numeric: tabular-nums; }
+.zc-dt-num > div { margin-inline-start: auto; }
+/* Sticky sub-tabs (below) draw the 1px line themselves; the underline track's own hairline would double it. */
+.zc-subtabs .zc-line { box-shadow: none; }
+/* Below: in the components layer, so a page's Tailwind classes (radius, size) still win. The table-frame
+   rules above stay unlayered: they must beat HeroUI's own `min-w-full` on the table. */
+@layer components {
+  /* Skeleton rows: a thumbnail and two lines in the row's own layout (C4). */
+  .zc-dt-skel-lines { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 8px; }
+
+  /* C4 / D3: a late value, row set or image fades into the space kept for it (opacity only). */
+  @keyframes zc-fill-in { from { opacity: 0; } to { opacity: 1; } }
+  .zc-fill-in { animation: zc-fill-in var(--zc-dur-fill) var(--ease-out) both; }
+
+  /* C6 / C7: <Thumb>. A fixed box with a soft placeholder (dominant colour or the 16px blurred preview, else neutral);
+     the photo fades in over it, so a row never moves when its image arrives. */
+  .zc-thumb {
+    position: relative; display: inline-block; flex: none; overflow: hidden; vertical-align: middle;
+    border-radius: var(--zc-radius-thumb); background-color: var(--zc-surface-sunken);
+    background-size: cover; background-position: center;
+  }
+  .zc-thumb::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px var(--zc-border); pointer-events: none; }
+  .zc-thumb--round { border-radius: 50%; }
+  .zc-thumb--flat::after { content: none; }
+  .zc-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity var(--zc-dur-fill) var(--ease-out); }
+  .zc-thumb[data-loaded="true"] img { opacity: 1; }
+
+  /* D3: space kept for a block that may not come (Marketing's suggestion). Without it the block folds away over
+     240ms (grid-template-rows 1fr → 0fr, round 2 §2's summary-panel collapse), never an instant jump. */
+  .zc-collapse { display: grid; grid-template-rows: 1fr; transition: grid-template-rows var(--dur-3) var(--ease-in-out); }
+  .zc-collapse[data-open="false"] { grid-template-rows: 0fr; }
+  .zc-collapse > * { min-height: 0; overflow: hidden; }
+
+  /* D1.4: analytics sub-tabs (Insights sections, Traffic sections) stick under the title row: white with a blur and a
+     1px line under them. Pages add the page-padding bleed classes. */
+  .zc-subtabs {
+    position: sticky; top: var(--zc-sticky-header-h, 0px); z-index: var(--zc-z-sticky);
+    background: color-mix(in srgb, var(--zc-surface) 82%, transparent);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--zc-border);
+  }
+  /* The sections under the sub-tabs stick their own headers (tables) below them, not over them. */
+  .zc-subtabs--seg { padding-block: 8px; }
+  .zc-subtabs--line ~ * { --zc-sticky-top: calc(var(--zc-sticky-header-h, 0px) + 43px); }
+  .zc-subtabs--seg ~ * { --zc-sticky-top: calc(var(--zc-sticky-header-h, 0px) + var(--zc-seg-h-sm) + 17px); }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .zc-subtabs { background: var(--zc-surface); } }
+  @media (prefers-reduced-transparency: reduce) { .zc-subtabs { background: var(--zc-surface); backdrop-filter: none; -webkit-backdrop-filter: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .zc-collapse { transition-duration: var(--dur-1); }
+  }
 }

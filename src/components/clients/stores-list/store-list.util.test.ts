@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Client, Subscription } from "../../../types";
-import { compareNeedsAction, paymentBadge, reminderForToday, storeStatusBadge } from "./store-list.util";
+import { compareNeedsAction, paymentBadge, planShortName, reminderForToday, storeStatusBadge } from "./store-list.util";
 
 const sub = (patch: Partial<Subscription>): Subscription =>
   ({ id: "s", clientId: "c", status: "ACTIVE", renewalDate: "2026-11-15", amountDue: 0, mrr: 2999, ...patch }) as Subscription;
@@ -61,5 +61,18 @@ describe("send reminder: which reminder matches today", () => {
     expect(reminderForToday(reminders, 20)).toBe("Reminder 1 · 7 days before due");
     expect(reminderForToday(reminders, 1)).toBe("Reminder 2 · 1 day before due");
     expect(reminderForToday(reminders, -5)).toBe("Reminder 3 · 3 days after due");
+  });
+});
+
+describe("stores list: plan chip (round 3 F5)", () => {
+  it("drops the store's own name from its custom plan", () => {
+    const kk = client({ storeName: "Kesar & Kin", planRef: { displayName: "Kesar & Kin Sample Store" } as Client["planRef"] });
+    expect(planShortName(kk)).toBe("Sample Store");
+  });
+  it("keeps every other plan name whole", () => {
+    expect(planShortName(client({ storeName: "Nahara", planRef: { displayName: "Standard" } as Client["planRef"] }))).toBe("Standard");
+    expect(planShortName(client({ storeName: "Kesar & Kin", planRef: { displayName: "Kesar & Kin" } as Client["planRef"] }))).toBe(
+      "Kesar & Kin",
+    );
   });
 });

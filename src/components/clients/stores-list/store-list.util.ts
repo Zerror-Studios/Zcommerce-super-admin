@@ -100,7 +100,15 @@ export function isPaymentOwed(kind: PaymentKind): boolean {
 
 /** The plan's short name ("Plus"), never the version (round 2 D16: the same `planLabel` everywhere). */
 export function planShortName(client: Client): string {
-  return clientPlanName(client);
+  const full = clientPlanName(client);
+  // Round 3 F5: a store's own custom plan repeats the store's name ("Kesar & Kin Sample Store" on Kesar & Kin), which
+  // never fits the chip; the chip drops the store's name ("Sample Store"). The full name stays on the Billing tab.
+  const store = client.storeName?.trim();
+  if (store && full.toLowerCase().startsWith(`${store.toLowerCase()} `)) {
+    const rest = full.slice(store.length).trim();
+    if (rest) return rest;
+  }
+  return full;
 }
 
 // ─── Health ───────────────────────────────────────────────────────────────

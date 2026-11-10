@@ -9,9 +9,17 @@
  * - The page scrolls, not the table: the header row sticks under the page top (`--zc-sticky-top`, raised by a
  *   sticky detail header) and shows a soft shadow while stuck. Below 1280px a
  *   table may scroll sideways inside its card (the header then stops sticking).
- * - Rows are 60px (64px with `rowHeight="tall"`: a 40px thumbnail or two lines; v2 §4.4). Every column is left-aligned
- *   (money and dates too), with tabular figures.
- * - First load: 10 skeleton rows shaped like each column. Reloads keep the rows at 60% under a thin progress line.
+ * - Rows are 60px (64px with `rowHeight="tall"`: a 40px thumbnail or two lines; v2 §4.4). Columns are left-aligned;
+ *   numbers (`align: "end"`) are right-aligned with tabular figures (round 3 C2, CHANGED from v2).
+ * - Round 3 C2: a tabbed table (`tabKey` set, or `fixedLayout`) is `table-layout: fixed`. Each column's `width` is
+ *   set on its header cell, which acts as the table's column group (HeroUI renders no <colgroup>), so column edges
+ *   never move between tabs, pages or loads; the flexible identifier column takes the rest (at least 200px). A page
+ *   whose tabs use different tables keeps one frame with `reserveColumns` (an empty 44px selection column, an empty
+ *   chevron column). Other tables keep the automatic layout.
+ * - Round 3 C1/C4: no loading line. First load and a tab that has no rows yet (`tabKey` changed while loading):
+ *   skeleton rows shaped like the row (thumbnail, two lines, chips), as many as the table last showed, so the body
+ *   keeps its height; never the previous tab's rows. Rows of a cached tab cross-fade in over 120ms. Paging or
+ *   sorting within a tab keeps the last page at 60% until the next one arrives.
  * - `rowActions(row)` adds the 56px ⋯ column (RowMenu), shown on row hover / focus only (round 2 G18; always on
  *   touch screens). `hideWhen: "narrow"` columns (the low-priority ones: keep
  *   the identifier, the key number, status and the chevron) hide when the measured card is narrower than the fixed
@@ -32,7 +40,16 @@
  */
 import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/react";
 import type { Selection, SortDescriptor } from "@heroui/react";
-import { useEffect, useRef, useState, type Key, type PointerEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type Key,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 import { cx } from "./cx";
 import { EmptyState } from "./EmptyState";
 import { IconCaret, IconCheck, IconNextPage } from "./icons";
@@ -96,8 +113,20 @@ export interface DataTableProps<T> {
   renderCell: (row: T, columnKey: string) => ReactNode;
   /** First load: skeleton rows. */
   isLoading?: boolean;
-  /** Later loads: fade the rows and show the progress line. */
+  /** Later loads within the same tab (paging, sorting): the last rows stay, faded. */
   isReloading?: boolean;
+  /**
+   * Round 3 C3/C4: the tab (status slice) these rows belong to. When it changes while loading, the table shows
+   * skeleton rows instead of the rows it has (they belong to the old tab); cached rows cross-fade in.
+   */
+  tabKey?: string;
+  /**
+   * Round 3 C2: keep one frame with a sibling table on another tab (Orders' Returns and Abandoned): an empty 44px
+   * selection column when rows aren't selectable, an empty chevron column when rows don't open.
+   */
+  reserveColumns?: { selection?: boolean; chevron?: boolean };
+  /** Round 3 C2: the fixed column frame. Default: on for a tabbed table (`tabKey` set), off otherwise. */
+  fixedLayout?: boolean;
   /** Toolbar above the table card (TableToolbar). Rendered outside the card (v2 §4.3). */
   toolbar?: ReactNode;
   /** Shown at the top of the card while rows are selected (SelectionBar). */
@@ -156,7 +185,13 @@ export interface DataTableProps<T> {
 export type DataTableRowTone = "danger" | "warning";
 
 const SKELETON_ROW_COUNT = 10;
+/** Skeleton rows never exceed this (a 100-row page keeps its height only up to here). */
+const SKELETON_ROW_MAX = 50;
+/** Round 3 C4: a new tab's rows (or the first rows after skeletons) fade in over --dur-1. */
+const ROWS_FADE_MS = 120;
+const ROWS_FADE_EASING = "cubic-bezier(.22,1,.36,1)";
 const ACTIONS_KEY = "__actions";
+const GUTTER_KEY = "__gutter";
 const ACTIONS_WIDTH = 56;
 const CHEVRON_KEY = "__chevron";
 const CHEVRON_WIDTH = 48;
@@ -192,11 +227,8 @@ interface SkeletonRow {
   skeletonKey: string;
   index: number;
 }
-const SKELETON_ROWS: SkeletonRow[] = Array.from({ length: SKELETON_ROW_COUNT }, (_, index) => ({
-  skeletonKey: `skeleton-${index}`,
-  index,
-}));
-const SKELETON_KEYS = SKELETON_ROWS.map((row) => row.skeletonKey);
+const skeletonRows = (count: number): SkeletonRow[] =>
+  Array.from({ length: count }, (_, index) => ({ skeletonKey: `skeleton-${index}`, index }));
 const isSkeletonRow = (row: unknown): row is SkeletonRow =>
   typeof row === "object" && row !== null && "skeletonKey" in row;
 /** The full-width detail row under an expanded row (desktop table). */
@@ -210,12 +242,48 @@ function isExpandedRow<T>(row: unknown): row is ExpandedRow<T> {
 /** Text bars at 40–80% of the column, varied per row so the block reads like text. */
 const SKELETON_WIDTHS = ["w-4/5", "w-3/5", "w-2/3", "w-1/2", "w-3/4", "w-2/5"];
 
-function CellSkeleton({ shape, index, actions }: { shape?: DataTableColumn["skeleton"]; index: number; actions?: boolean }) {
+/**
+ * One skeleton cell in the row's own layout (round 3 C4): a thumbnail with two lines, a chip, an avatar, or text
+ * (two lines in a tall row's identifier / flexible column, one line elsewhere).
+ */
+function CellSkeleton({
+  shape,
+  index,
+  actions,
+  twoLines,
+}: {
+  shape?: DataTableColumn["skeleton"];
+  index: number;
+  actions?: boolean;
+  twoLines?: boolean;
+}) {
+  const width = SKELETON_WIDTHS[index % SKELETON_WIDTHS.length];
+  const lines = (
+    <span className="zc-dt-skel-lines">
+      <Skeleton className={cx("h-3 min-w-10 rounded-md", width)} />
+      <Skeleton className="h-2.5 w-2/5 min-w-8 rounded-md" />
+    </span>
+  );
   if (actions) return <Skeleton className="size-8 rounded-full" />;
-  if (shape === "thumb") return <Skeleton className="size-10 rounded-lg" />;
-  if (shape === "avatar") return <Skeleton className="size-8 rounded-full" />;
-  if (shape === "badge") return <Skeleton className="h-5.5 w-16 rounded-md" />;
-  return <Skeleton className={cx("h-3 min-w-10 rounded-md", SKELETON_WIDTHS[index % SKELETON_WIDTHS.length])} />;
+  if (shape === "thumb") {
+    return (
+      <span className="flex min-w-0 items-center gap-3">
+        <Skeleton className="size-10 shrink-0 rounded-thumb" />
+        {lines}
+      </span>
+    );
+  }
+  if (shape === "avatar") {
+    return (
+      <span className="flex min-w-0 items-center gap-3">
+        <Skeleton className="size-8 shrink-0 rounded-full" />
+        {twoLines ? lines : <Skeleton className={cx("h-3 min-w-10 rounded-md", width)} />}
+      </span>
+    );
+  }
+  if (shape === "badge") return <Skeleton className="h-5.5 w-16 rounded-full" />;
+  if (twoLines) return lines;
+  return <Skeleton className={cx("h-3 min-w-10 rounded-md", width)} />;
 }
 
 /** Room a cell may grow into before it ends in "…": 1.6× a fixed column's width, 560px for the flexible name column. */
@@ -336,6 +404,9 @@ export function DataTable<T>({
   renderCell,
   isLoading = false,
   isReloading = false,
+  tabKey,
+  reserveColumns,
+  fixedLayout,
   toolbar,
   bulkBar,
   chips,
@@ -405,8 +476,13 @@ export function DataTable<T>({
   };
   const expandedId = (key: string) => `zc-dt-x-${key.replace(/[^A-Za-z0-9_-]/g, "_")}`;
 
-  const visible = visibleColumns ? columns.filter((column) => visibleColumns.has(column.key)) : columns;
+  const picked = visibleColumns ? columns.filter((column) => visibleColumns.has(column.key)) : columns;
   const showChevron = rowChevron ?? !!onRowAction;
+  // Round 3 C2: a table that sits on a tab next to a selectable one keeps the 44px selection column, empty.
+  const gutter = !selectable && !!reserveColumns?.selection;
+  const visible: DataTableColumn<T>[] = gutter
+    ? [{ key: GUTTER_KEY, label: "", hideLabel: true, width: CHECKBOX_WIDTH }, ...picked]
+    : picked;
   const withMenu: DataTableColumn<T>[] =
     rowActions && !visible.some((column) => column.key === "actions")
       ? [...visible, { key: ACTIONS_KEY, label: "Actions", hideLabel: true, width: ACTIONS_WIDTH }]
@@ -414,9 +490,10 @@ export function DataTable<T>({
   const withExpand: DataTableColumn<T>[] = renderExpanded
     ? [...withMenu, { key: EXPAND_KEY, label: "Details", hideLabel: true, width: EXPAND_WIDTH }]
     : withMenu;
-  const withActions: DataTableColumn<T>[] = showChevron
-    ? [...withExpand, { key: CHEVRON_KEY, label: "Open", hideLabel: true, width: CHEVRON_WIDTH }]
-    : withExpand;
+  const withActions: DataTableColumn<T>[] =
+    showChevron || reserveColumns?.chevron
+      ? [...withExpand, { key: CHEVRON_KEY, label: "Open", hideLabel: true, width: CHEVRON_WIDTH }]
+      : withExpand;
   // "tablet: hide" columns go when the card can't fit every fixed width plus the flex column's 200px.
   const fixedWidth =
     withActions.reduce((sum, column) => sum + (column.width ?? 0), 0) + (selectable ? CHECKBOX_WIDTH : 0);
@@ -425,11 +502,42 @@ export function DataTable<T>({
   const isActionsColumn = (key: string) =>
     key === "actions" || key === ACTIONS_KEY || key === CHEVRON_KEY || key === EXPAND_KEY;
 
-  // First load: placeholder rows in the real columns, so the header keeps its widths and the blocks line up.
-  const showSkeleton = isLoading && rows.length === 0;
+  // Round 3 C2: the fixed frame needs room for the flexible column(s): the fixed widths plus 200px each.
+  const shownFixed = shown.reduce((sum, column) => sum + (column.width ?? 0), 0) + (selectable ? CHECKBOX_WIDTH : 0);
+  const flexCount = shown.filter((column) => !column.width && !column.className).length;
+  const tableMinWidth = shownFixed + flexCount * FLEX_MIN_WIDTH;
+  const fixedFrame = fixedLayout ?? tabKey !== undefined;
+
+  // Round 3 C3/C4: the rows on screen belong to `shownTab`; while a newly picked tab loads they must not show.
+  const busy = isLoading || isReloading;
+  const shownTab = useRef(tabKey);
+  if (!busy) shownTab.current = tabKey;
+  const otherTab = tabKey !== undefined && shownTab.current !== tabKey;
+  // First load, or a tab with nothing to show yet: placeholder rows in the real columns, so the header keeps its
+  // widths and the blocks line up; as many as the table last showed, so the body keeps its height.
+  const showSkeleton = (isLoading && rows.length === 0) || (otherTab && busy);
+  const lastRowCount = useRef(SKELETON_ROW_COUNT);
+  if (!showSkeleton && rows.length > 0) lastRowCount.current = Math.min(rows.length, SKELETON_ROW_MAX);
+  const placeholderRows = skeletonRows(lastRowCount.current);
+  const placeholderKeys = placeholderRows.map((row) => row.skeletonKey);
+  // Paging or sorting within the tab: the last page stays, faded, until the next one arrives.
+  const fadeRows = isReloading && !otherTab;
+
+  // Round 3 C4: rows that replace skeletons or another tab's rows fade in (opacity only, 120ms, which is also the
+  // reduced-motion fade). The body is found inside the card, so HeroUI's table needs no ref.
+  const painted = useRef<{ tab: string | undefined; skeleton: boolean } | null>(null);
+  useLayoutEffect(() => {
+    const before = painted.current;
+    painted.current = { tab: tabKey, skeleton: showSkeleton };
+    if (!before || showSkeleton || rows.length === 0) return;
+    if (!before.skeleton && before.tab === tabKey) return;
+    const body = cardRef.current?.querySelector<HTMLElement>("tbody, .zc-dt-cards");
+    body?.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: ROWS_FADE_MS, easing: ROWS_FADE_EASING });
+  });
+
   // An expanded row is followed by its detail row: a real <tr> with one cell spanning every column.
   const items: (T | SkeletonRow | ExpandedRow<T>)[] = showSkeleton
-    ? SKELETON_ROWS
+    ? placeholderRows
     : renderExpanded
       ? rows.flatMap((row): (T | ExpandedRow<T>)[] => {
           const key = getRowKey(row);
@@ -496,18 +604,12 @@ export function DataTable<T>({
     );
 
   const checkboxColumn = selectable ? "first:w-11 first:min-w-11 first:pe-0" : undefined;
-  // The pinned name column sits after the 44px checkbox column when rows are selectable.
+  // The pinned name column sits after the 44px checkbox column when rows are selectable (or the column is kept).
   const pinned = stickyFirstColumn
-    ? selectable
+    ? selectable || gutter
       ? "[&_th:nth-child(2)]:sticky [&_th:nth-child(2)]:left-11 [&_td:nth-child(2)]:sticky [&_td:nth-child(2)]:left-11 [&_th:first-child]:sticky [&_th:first-child]:left-0 [&_td:first-child]:sticky [&_td:first-child]:left-0 [&_td:nth-child(-n+2)]:z-10 [&_td:nth-child(-n+2)]:bg-surface"
       : "[&_th:first-child]:sticky [&_th:first-child]:left-0 [&_td:first-child]:sticky [&_td:first-child]:left-0 [&_td:first-child]:z-10 [&_td:first-child]:bg-surface"
     : undefined;
-
-  const progress = isReloading ? (
-    <div aria-hidden className="absolute inset-x-0 top-0 z-30 h-0.5 overflow-hidden">
-      <div className="zc-dt-progress h-full w-1/3 bg-brand" />
-    </div>
-  ) : null;
 
   const prefetchRow = (event: PointerEvent<HTMLDivElement>) => {
     const key = event.target instanceof Element ? event.target.closest("tr[data-key]")?.getAttribute("data-key") : null;
@@ -525,11 +627,11 @@ export function DataTable<T>({
         "relative flex flex-col overflow-clip rounded-[var(--zc-radius-card)] border border-line bg-surface",
         className,
       )}
+      style={fixedFrame ? ({ "--zc-dt-min-w": `${tableMinWidth}px` } as CSSProperties) : undefined}
       aria-busy={isLoading || isReloading || undefined}
       onPointerOver={onRowPrefetch ? prefetchRow : undefined}
     >
       {hasSelection && bulkBar ? bulkBar : null}
-      {progress}
       {body}
       {footer}
     </div>
@@ -549,7 +651,9 @@ export function DataTable<T>({
   // ─── Phone: one card per row (v2 §10) ──────────────────────────────────────
   if (isPhone) {
     // Cards pick columns by role, so the laptop/tablet "narrow" hiding doesn't apply here.
-    const dataColumns = withActions.filter((column) => !isActionsColumn(column.key) && column.mobile !== "hide");
+    const dataColumns = withActions.filter(
+      (column) => !isActionsColumn(column.key) && column.key !== GUTTER_KEY && column.mobile !== "hide",
+    );
     const primary = dataColumns.find((column) => column.mobile === "primary") ?? dataColumns[0];
     const value = dataColumns.find((column) => column.mobile === "value" && column !== primary);
     const titles = dataColumns.filter((column) => column.mobile === "title" && column !== primary);
@@ -607,9 +711,9 @@ export function DataTable<T>({
     );
 
     const cards = (
-      <ul aria-label={rest["aria-label"]} className={cx("zc-dt-cards transition-opacity duration-fast", isReloading && "opacity-60")}>
+      <ul aria-label={rest["aria-label"]} className={cx("zc-dt-cards transition-opacity duration-fast", fadeRows && "opacity-60")}>
         {showSkeleton
-          ? SKELETON_ROWS.map((row) => (
+          ? placeholderRows.map((row) => (
               <li key={row.skeletonKey} className="zc-dt-card flex-col items-stretch justify-center gap-2">
                 <CellSkeleton index={row.index} />
                 <Skeleton className="h-2.5 w-1/2 rounded-md" />
@@ -687,14 +791,11 @@ export function DataTable<T>({
     );
 
     return (
-      <div className={cx("flex flex-col gap-3", className)} aria-busy={isLoading || isReloading || undefined}>
+      <div ref={cardRef} className={cx("flex flex-col gap-3", className)} aria-busy={isLoading || isReloading || undefined}>
         {toolbar ? <div className="zc-table-toolbar">{toolbar}</div> : null}
         {chips}
         {hasSelection && bulkBar ? <div className="zc-dt-panel zc-dt-panel--sticky">{bulkBar}</div> : null}
-        <div className="relative">
-          {progress}
-          {cards}
-        </div>
+        <div className="relative">{cards}</div>
         {footer ? <div className="zc-dt-panel">{footer}</div> : null}
         <RowActionSheet
           items={actionRow ? actionSheetItems(actionRow) : null}
@@ -712,11 +813,12 @@ export function DataTable<T>({
       <Table
         aria-label={rest["aria-label"]}
         removeWrapper
+        layout={fixedFrame ? "fixed" : "auto"}
         selectionMode={selectable ? "multiple" : "none"}
         selectionBehavior="toggle"
         selectedKeys={showSkeleton ? new Set<string>() : selectedKeys}
         // Detail rows can't be selected; they stay readable and their controls work.
-        disabledKeys={showSkeleton ? SKELETON_KEYS : detailKeys.length ? detailKeys : undefined}
+        disabledKeys={showSkeleton ? placeholderKeys : detailKeys.length ? detailKeys : undefined}
         disabledBehavior={detailKeys.length ? "selection" : undefined}
         onSelectionChange={onSelectionChange}
         sortDescriptor={toDescriptor(sort)}
@@ -740,7 +842,7 @@ export function DataTable<T>({
             scrollClassName ? cx("overflow-auto custom-scroll no-scrollbar-x", scrollClassName) : "max-xl:overflow-x-auto max-xl:custom-scroll",
             pinned,
           ),
-          table: "min-w-full",
+          table: fixedFrame ? "zc-dt-table" : "min-w-full",
           thead: cx(
             scrollClassName ? "sticky top-0 z-20" : "xl:sticky xl:top-[var(--zc-sticky-top)] xl:z-20",
             "[&>tr]:first:shadow-none transition-shadow duration-fast",
@@ -749,7 +851,7 @@ export function DataTable<T>({
           th: cx(tableHeaderCellClasses, "whitespace-nowrap data-[sortable=true]:cursor-pointer", checkboxColumn),
           td: cx(tableCellClasses, rowHeight === "tall" && "h-16", "whitespace-nowrap", checkboxColumn),
           tr: cx(tableRowClasses, onRowAction && "cursor-pointer"),
-          tbody: cx("transition-opacity duration-fast", isReloading && "opacity-60"),
+          tbody: cx("transition-opacity duration-fast", fadeRows && "opacity-60"),
         }}
       >
         <TableHeader columns={shown}>
@@ -759,9 +861,13 @@ export function DataTable<T>({
               align="start"
               width={column.width}
               allowsSorting={!!column.sortable && !!onSortChange}
-              className={cx(isActionsColumn(column.key) && tableActionsColumnClass, column.className)}
+              className={cx(
+                isActionsColumn(column.key) && tableActionsColumnClass,
+                column.align === "end" && "!text-end",
+                column.className,
+              )}
             >
-              {column.hideLabel || isActionsColumn(column.key) ? (
+              {column.hideLabel || isActionsColumn(column.key) || column.key === GUTTER_KEY ? (
                 <span className="sr-only">{column.label || "Actions"}</span>
               ) : (
                 column.label
@@ -788,14 +894,23 @@ export function DataTable<T>({
               {(columnKey) => {
                 const key = String(columnKey);
                 const column = shown.find((c) => c.key === key);
-                const content = isSkeletonRow(row) ? (
-                  key === CHEVRON_KEY || key === EXPAND_KEY ? null : <CellSkeleton shape={column?.skeleton} index={row.index} actions={isActionsColumn(key)} />
-                ) : (
-                  cellContent(row, key)
-                );
-                const capped = !isActionsColumn(key) && key !== CHEVRON_KEY && key !== EXPAND_KEY;
+                const firstData = shown.find((c) => c.key !== GUTTER_KEY);
+                const content =
+                  key === GUTTER_KEY ? null : isSkeletonRow(row) ? (
+                    key === CHEVRON_KEY || key === EXPAND_KEY ? null : (
+                      <CellSkeleton
+                        shape={column?.skeleton}
+                        index={row.index}
+                        actions={isActionsColumn(key)}
+                        twoLines={rowHeight === "tall" && (!column?.width || column === firstData)}
+                      />
+                    )
+                  ) : key === CHEVRON_KEY && !showChevron ? null : (
+                    cellContent(row, key)
+                  );
+                const capped = !isActionsColumn(key) && key !== CHEVRON_KEY && key !== EXPAND_KEY && key !== GUTTER_KEY;
                 return (
-                  <TableCell className={column?.align === "end" ? "num" : undefined}>
+                  <TableCell className={column?.align === "end" ? "zc-dt-num" : undefined}>
                     {capped ? (
                       // A runaway value (pasted HTML, a 300-character name) must not stretch the table sideways:
                       // the cell stops at its cap and ends in "…". Real data fits well inside it. Clipped sideways only,

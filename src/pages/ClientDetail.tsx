@@ -26,7 +26,7 @@ import {
 } from "../components/clients/SubscriptionActions";
 import { planShortName, storeStatusBadge } from "../components/clients/stores-list/store-list.util";
 import { StoreActionDialog, type StoreAction } from "../components/clients/storeActions";
-import { logInToStore } from "../components/clients/storeLogin";
+import { logInToStore, storeLoginIntentProps } from "../components/clients/storeLogin";
 import { useStoreBillingRefresh } from "../components/clients/useStoreBillingRefresh";
 import { ConfirmModal } from "../components/common/ConfirmModal";
 import { PageHeader } from "../components/common/PageHeader";
@@ -140,7 +140,7 @@ function subscribePhone(onChange: () => void) {
   return () => query.removeEventListener("change", onChange);
 }
 
-/** Phone: header actions other than "Open store admin" move into ⋯ (04 S-03d). */
+/** Phone: header actions other than "Log in to store" move into ⋯ (04 S-03d). */
 function useIsPhone() {
   return useSyncExternalStore(subscribePhone, () => window.matchMedia(PHONE_QUERY).matches, () => false);
 }
@@ -185,7 +185,7 @@ const sinceFormat = new Intl.DateTimeFormat("en-IN", { month: "short", year: "nu
 /**
  * Store detail (design v2 §7, boards 60–66; round 2 §6.3): the breadcrumb "Stores / Kesar & Kin", the sticky detail
  * header (a neutral initials tile, the store name with status and plan chips, the meta line legal name · domain ·
- * city · on Zcom since, **Message owner** + **Open store admin** ↗ + ⋯) with the underline tabs under it, the missing-owner notice, then the chosen tab. Each tab keeps its URL
+ * city · on Zcom since, **Message owner** + **Log in to store** ↗ + ⋯) with the underline tabs under it, the missing-owner notice, then the chosen tab. Each tab keeps its URL
  * (/stores/:id/:tab); the old section URLs redirect to the tab and the spot that holds them.
  */
 export function ClientDetail() {
@@ -367,8 +367,13 @@ export function ClientDetail() {
   // ── Header actions (§4.1: at most one secondary and one primary, then ⋯) ──
   const openAdmin =
     canImpersonate && !isDeleted ? (
-      <UiButton variant="primary" endIcon={<IconExternalArrow aria-hidden />} onPress={() => void logInToStore(client)}>
-        Open store admin
+      <UiButton
+        variant="primary"
+        endIcon={<IconExternalArrow aria-hidden />}
+        onPress={() => void logInToStore(client)}
+        {...storeLoginIntentProps(client)}
+      >
+        Log in to store
       </UiButton>
     ) : null;
 
@@ -492,7 +497,7 @@ export function ClientDetail() {
         description={metaLine}
         actions={messageButton ?? undefined}
         primaryAction={openAdmin ?? undefined}
-        primaryShortLabel="Open admin"
+        primaryShortLabel="Log in"
         more={storeMenu.length ? storeMenu : undefined}
         moreLabel={`Actions for ${client.storeName}`}
         sticky={!isPhone}

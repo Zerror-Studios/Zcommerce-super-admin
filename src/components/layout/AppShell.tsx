@@ -9,8 +9,9 @@
  * - Phone (under 768): a 56px row with the store switcher, search, the layout's extra icons (`mobileActions`, the
  *   bell) and the menu icon; the menu opens as a full-height drawer from the left.
  * Page padding: 32px (≥1024), 24px (768–1023), 16px (<768). "Skip to content" is the first focusable element.
- * Scroll (round 2 G9): `main` goes back to the top when a link or redirect changes the path (not on hash- or
- * query-only changes), and Back/Forward restore the position saved for that history entry.
+ * Scroll (round 2 G9, round 3 D1): `main` goes back to the top when a link or redirect changes the path or the
+ * in-page tab (`?tab=`, `?section=`; not on other query or hash changes), and Back/Forward restore the position
+ * saved for that history entry.
  * Motion: framer-motion follows the user's reduced-motion setting inside the shell (MotionConfig).
  *
  * `sidebar` must be a <Sidebar> element (or a wrapper that passes its props through): in the rail band its
@@ -84,6 +85,14 @@ const LAYER_SELECTOR = '[role="menu"], [role="dialog"]:not(.zc-rail-overlay), [r
 const RESTORE_MAX_FRAMES = 60;
 /** A fresh load holds the top at most this long (until the user scrolls, taps, clicks or types first). */
 const FIRST_LOAD_HOLD_MS = 8000;
+/** Round 3 D1: query keys that switch an in-page tab; a change to one of them counts as a new page (top). */
+const TAB_PARAMS = ["tab", "section"] as const;
+
+/** "tab=…&section=…" of a search string: the part of the query that names the in-page tab. */
+const tabKeyOf = (search: string) => {
+  const params = new URLSearchParams(search);
+  return TAB_PARAMS.map((name) => `${name}=${params.get(name) ?? ""}`).join("&");
+};
 
 const sidebarProps = (node: ReactNode): Partial<SidebarProps> | undefined =>
   isValidElement<Partial<SidebarProps>>(node) ? node.props : undefined;
@@ -91,8 +100,9 @@ const sidebarProps = (node: ReactNode): Partial<SidebarProps> | undefined =>
 /**
  * Round 2 G9: the app scrolls inside `main`, so the router's own restoration never touches it. A PUSH or REPLACE
  * that changes the pathname scrolls to the top; a POP (Back/Forward) restores the position saved for that history
- * entry (`location.key`), retrying for a few frames while lazy pages and data fill in. Hash- and query-only
- * changes leave the scroll alone. Returns the scroll handler that records the current entry's position.
+ * entry (`location.key`), retrying for a few frames while lazy pages and data fill in. Round 3 D1: a change of
+ * the in-page tab (`?tab=`, `?section=`) scrolls to the top like a new path; other query and hash changes leave
+ * the scroll alone. Returns the scroll handler that records the current entry's position.
  */
 function useMainScrollRestoration(mainRef: { current: HTMLElement | null }) {
   const location = useLocation();
@@ -100,6 +110,7 @@ function useMainScrollRestoration(mainRef: { current: HTMLElement | null }) {
   const positions = useRef(new Map<string, number>());
   const currentKey = useRef(location.key);
   const lastPath = useRef(location.pathname);
+  const lastTab = useRef(tabKeyOf(location.search));
 
   // A fresh load or reload always opens at the top: turn off the browser's own restoration (it would put the
   // page back mid-scroll), then hold the top while the lazy page, its cards and their data fill in, until the
@@ -128,9 +139,11 @@ function useMainScrollRestoration(mainRef: { current: HTMLElement | null }) {
 
   useLayoutEffect(() => {
     const main = mainRef.current;
-    const pathChanged = location.pathname !== lastPath.current;
+    const tabKey = tabKeyOf(location.search);
+    const pathChanged = location.pathname !== lastPath.current || tabKey !== lastTab.current;
     currentKey.current = location.key;
     lastPath.current = location.pathname;
+    lastTab.current = tabKey;
     if (!main) return undefined;
     if (navigationType !== "POP") {
       if (pathChanged) main.scrollTop = 0;
@@ -276,7 +289,7 @@ export function AppShell({
     window.addEventListener("pointerdown", onPointerDown);
     const frame =
       overlayMode === "tap"
-        ? window.requestAnimationFrame(() => overlayRef.current?.querySelector<HTMLElement>("a[href], button")?.focus())
+        ? window.requestAnimationFrame(() => overlayRef.current?.querySelector<HTMLElement>("a[href], button")?.focus({ preventScroll: true }))
         : undefined;
     return () => {
       window.removeEventListener("keydown", onKeyDown);

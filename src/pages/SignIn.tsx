@@ -55,7 +55,7 @@ export function SignIn() {
   // The field that just opened gets the cursor.
   useEffect(() => {
     const target = step === "password" ? passwordRef : step === "totp" ? totpRef : null;
-    if (target) window.setTimeout(() => target.current?.focus(), 50);
+    if (target) window.setTimeout(() => target.current?.focus({ preventScroll: true }), 50);
   }, [step]);
 
   if (isAuthenticated) {
@@ -258,7 +258,7 @@ export function SignIn() {
               setUseRecoveryCode((current) => !current);
               setTotp("");
               setErrors({});
-              window.setTimeout(() => totpRef.current?.focus(), 50);
+              window.setTimeout(() => totpRef.current?.focus({ preventScroll: true }), 50);
             }}
           >
             {useRecoveryCode ? "Use the 6-digit code instead" : "Use a recovery code instead"}

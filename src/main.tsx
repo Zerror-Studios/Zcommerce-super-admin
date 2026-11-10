@@ -11,6 +11,11 @@ if ("scrollRestoration" in window.history) {
   window.history.scrollRestoration = "manual";
 }
 
+// Round 3 D3: dev only, a per-page CLS line in the console (and window.__zcCls()); never in a build.
+if (import.meta.env.DEV) {
+  void import("./lib/dev-cls-logger").then(({ startClsLogger }) => startClsLogger());
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>

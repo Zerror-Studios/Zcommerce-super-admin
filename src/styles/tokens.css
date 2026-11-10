@@ -150,6 +150,22 @@
   --zc-ai-light: radial-gradient(circle, rgba(147, 197, 253, 0.45), rgba(59, 130, 246, 0) 65%); /* the one slow drifting light */
   --zc-ai-edge: linear-gradient(115deg, #BFD3FF, #2563EB 60%, #93B4F8); /* 1px edge of the AI suggestion banner */
   --zc-ai-line-bg: linear-gradient(90deg, #EEF4FF, #FFFFFF);           /* insight line (§4.8) */
+  /* Round 3 (docs/review-r3 B1, B5, A3): the brand AI colours for the bar's hover border, the bottom glow and the steps. */
+  --zc-ai-c-blue: #5B8CFF;
+  --zc-ai-c-cyan: #7FD3FF;
+  --zc-ai-c-violet: #9D7BFF;
+  --zc-ai-c-pink: #FF8FB8;
+  --zc-ai-c-amber: #FFBE73;
+  --zc-ai-hover-glow: 0 10px 40px -10px rgba(91, 140, 255, 0.45);
+  --zc-ai-edge-glow: 0 0 12px 2px rgba(91, 140, 255, 0.65), 0 0 28px 6px rgba(157, 123, 255, 0.35);
+  --zc-ai-edge-highlight: rgba(255, 255, 255, 0.4);
+  --zc-ai-edge-pulse: rgba(255, 255, 255, 0.95);
+  --zc-ai-wave: rgba(157, 184, 255, 0.9);
+  --zc-ai-scrim-hover: rgba(11, 12, 16, 0.08);
+  --zc-ai-scrim-open: rgba(11, 12, 16, 0.14);
+  --zc-step-dot: #C9CDD6;
+  --zc-step-ring-track: #DCE5FF;
+  --zc-step-shimmer: #9DB8FF;
   --zc-ai-line-border: #DCE7FF;
   --zc-ai-divider: rgba(255, 255, 255, 0.12);                          /* summary panel cell dividers */
   --zc-summary-toggle-pinned: rgba(29, 78, 216, 0.94);                 /* phone: the toggle pinned over the scrolling slim line */
@@ -189,7 +205,12 @@
   --zc-chart-4: #6A6F79;
   --zc-chart-projected: #9DB5FF;
   --zc-chart-compare: #B8BCC6;
-  --zc-chart-grid: #F0F0F3;
+  --zc-chart-grid: #EEF0F3;      /* gridlines (round 3 D2) */
+  --zc-chart-axis: #8A8F9A;      /* axis text, 11px Geist Mono (round 3 D2) */
+  --zc-chart-area: rgba(31, 94, 255, 0.18);   /* area fill gradient top; it fades to transparent */
+  --zc-chart-area-end: rgba(31, 94, 255, 0);
+  --zc-chart-pulse: rgba(31, 94, 255, 0.35);  /* live end point pulse ring */
+  --zc-chart-glow: rgba(31, 94, 255, 0.45);   /* hovered KPI sparkline's last segment */
   --zc-chart-best: #1D4ED8;     /* the best day, solid */
   --zc-chart-hatch: #93B4F8;    /* hatched bars */
   --zc-chart-hatch-line: #C7D7FB;
@@ -247,6 +268,7 @@
   --dur-2: 180ms;  /* pop-ups, menus, popovers, toasts */
   --dur-3: 240ms;  /* drawers, sheets, AI chat box */
   --dur-4: 320ms;  /* AI box → large view, page-level layout change */
+  --zc-dur-fill: 160ms; /* round 3 C6/D3: a late value or an image fades into the space kept for it */
   /* LEGACY names, kept as aliases of the tokens above so existing rules move with them. */
   --zc-dur-instant: 80ms;       /* press down (§2: buttons and cards scale .98 in 80ms) */
   --zc-dur-fast: var(--dur-1);

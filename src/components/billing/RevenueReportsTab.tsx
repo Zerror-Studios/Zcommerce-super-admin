@@ -1,13 +1,10 @@
 import { useCallback, useMemo, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Area,
   Bar,
   BarChart,
   CartesianGrid,
-  ComposedChart,
   Legend,
-  Line,
   ResponsiveContainer,
   Tooltip as ChartTooltipSlot,
   XAxis,
@@ -33,10 +30,12 @@ import {
   type AnalyticsTabProps,
 } from "../analytics/analytics-shared";
 import { MONEY_AXIS_WIDTH, legendProps, moneyAxis, storeHref, useRegisterExport } from "../analytics/analytics-tab.util";
-import { areaGradientStops, chartColors, planColors, pointsForViewport, recharts, rechartsEndTicks } from "../ui/chart-theme";
+import { CHART_BAR_RADIUS, RECHARTS_GROW_MS, chartColors, planColors, pointsForViewport, recharts, rechartsEndTicks } from "../ui/chart-theme";
 import { useIsPhone } from "../ui/use-media";
 import {
   Card,
+  LineChart,
+  useLibraryEntrance,
   EmptyState,
   ErrorState,
   Skeleton,
@@ -132,6 +131,8 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
     [trend, mrrMonths],
   );
   // v2 §10: phones keep the shape with fewer months, labelled at the start and end only.
+  // Round 3 D2: the stacked bars grow in the first time they are on screen in a visit; new data morphs.
+  const { ref: planBarsRef, play: planBarsPlay, animate: planBarsAnimate } = useLibraryEntrance<HTMLDivElement>("console-revenue-by-plan");
   const trendShown = useMemo(() => pointsForViewport(trendWithMrr, isPhone, PHONE_MONTHS), [trendWithMrr, isPhone]);
 
   const monthlyLabelled = useMemo(
@@ -266,44 +267,31 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
               }
               padding="none"
             >
-              <div className="h-70 px-3 pb-4">
-                {chartBody(
-                  trend.length === 0,
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={trendShown} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="reportsRevenueFill" x1="0" y1="0" x2="0" y2="1">
-                          {areaGradientStops.map((stop) => (
-                            <stop key={stop.offset} offset={stop.offset} stopColor={chartColors.series[0]} stopOpacity={stop.stopOpacity} />
-                          ))}
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid {...recharts.grid} />
-                      <XAxis dataKey="month" {...(isPhone ? rechartsEndTicks(trendShown, (point) => point.month) : recharts.axis)} />
-                      <YAxis {...recharts.axis} width={MONEY_AXIS_WIDTH} tickFormatter={moneyAxis} />
-                      <ChartTooltipSlot content={<ChartTooltip formatValue={tooltipMoney} />} />
-                      <Legend {...legendProps} />
-                      <Area dataKey="revenue" name="Bookings" stroke={chartColors.series[0]} {...recharts.area} fill="url(#reportsRevenueFill)" />
-                      <Line
-                        type="monotone"
-                        dataKey="mrr"
-                        name="MRR"
-                        stroke={chartColors.axis}
-                        strokeWidth={1.5}
-                        strokeDasharray="4 4"
-                        dot={false}
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>,
-                )}
+              {/* Round 3 D2: the shared LineChart (draws in, morphs, speaks; skeleton while loading). */}
+              <div className="px-3 pb-4">
+                <LineChart
+                  points={trendShown.map((point) => ({ label: String(point.month), value: Number(point.revenue) || 0 }))}
+                  compare={trendShown.map((point) => (point.mrr == null ? null : Number(point.mrr)))}
+                  name="Bookings"
+                  compareName="MRR"
+                  changeWords={null}
+                  format={(value) => formatMoney(value, { whole: true })}
+                  noun="bookings"
+                  peakNoun="Best month"
+                  height={280}
+                  entranceKey="console-earnings-trend"
+                  loading={api.loading}
+                  emptyDescription="This fills in after the first plan bookings."
+                  phoneWindow={false}
+                />
               </div>
             </Card>
 
             <Card title="Revenue by plan" description="Plan bookings per month" padding="none">
-              <div className="h-70 px-3 pb-4">
+              <div ref={planBarsRef} data-play={planBarsPlay} className="h-70 px-3 pb-4">
                 {chartBody(
                   monthly.length === 0,
-                  <ResponsiveContainer width="100%" height="100%">
+                  planBarsPlay ? <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlyShown} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                       <CartesianGrid {...recharts.grid} />
                       <XAxis dataKey="short" {...(isPhone ? rechartsEndTicks(monthlyShown, (row) => row.short) : recharts.axis)} />
@@ -317,11 +305,15 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
                           name={PLAN_LABELS[plan]}
                           stackId="plans"
                           fill={planColors[plan]}
-                          radius={index === PLAN_KEYS.length - 1 ? [4, 4, 0, 0] : undefined}
+                          radius={index === PLAN_KEYS.length - 1 ? [CHART_BAR_RADIUS, CHART_BAR_RADIUS, 0, 0] : undefined}
+                          isAnimationActive={planBarsAnimate}
+                          animationBegin={index * 25}
+                          animationDuration={RECHARTS_GROW_MS}
+                          animationEasing="ease-out"
                         />
                       ))}
                     </BarChart>
-                  </ResponsiveContainer>,
+                  </ResponsiveContainer> : null,
                 )}
               </div>
             </Card>

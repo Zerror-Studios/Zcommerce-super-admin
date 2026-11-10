@@ -6,6 +6,7 @@
 import { DrawerBody, DrawerContent, DrawerFooter, DrawerHeader } from "@heroui/react";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { AiFeedback, AiThinking } from "../ui/Ai";
 import { Orb } from "../ui/Orb";
@@ -53,6 +54,10 @@ export interface AskBarProps {
   onOpen: (question?: string) => void;
   /** LEGACY: ignored. Round 2 G3: the suggestions moved into the chat box. */
   suggestion?: string;
+  /** Round 3 B2: hover or focus, so the app can load the chat box before the click. */
+  onIntent?: () => void;
+  /** Round 3 B3: the store's plan has no Zcom AI; hover shows the plan it comes with ("Standard"). */
+  lockedPlan?: string;
 }
 
 /**
@@ -61,13 +66,27 @@ export interface AskBarProps {
  * placeholder: no chip and no shortcut hint; ⌘J / Ctrl J still works and shows in the tooltip only. A click opens the
  * chat box, which grows out of the bar (shared layout id with AiSheet). The page hides it while the box is open.
  */
-export function AskBar({ placeholder = "Ask Zcom AI anything…", hidden = false, onOpen }: AskBarProps) {
+export function AskBar({ placeholder = "Ask Zcom AI anything…", hidden = false, onOpen, onIntent, lockedPlan }: AskBarProps) {
+  // Round 3 B1: hover dims the page behind by 8% (no blur); the bar's own hover is CSS (ai-motion.css).
+  const [hovered, setHovered] = useState(false);
+  const dim =
+    typeof document === "undefined"
+      ? null
+      : createPortal(<div aria-hidden className="zc-ai-dim" data-state={hovered && !hidden ? "hover" : "idle"} />, document.body);
   return (
+    <>
+    {dim}
     <Tooltip content={`Ask Zcom AI (${MOD_KEY}J)`} placement="top" isDisabled={hidden}>
       <motion.button
         type="button"
         layoutId={AI_SURFACE_LAYOUT_ID}
         onClick={() => onOpen()}
+        onPointerEnter={() => {
+          setHovered(true);
+          onIntent?.();
+        }}
+        onPointerLeave={() => setHovered(false)}
+        onFocus={() => onIntent?.()}
         aria-label={placeholder}
         aria-keyshortcuts="Meta+J Control+J"
         className="zc-askbar pointer-events-auto"
@@ -85,9 +104,11 @@ export function AskBar({ placeholder = "Ask Zcom AI anything…", hidden = false
         >
           <Orb size="bar" />
           <span className="zc-askbar__placeholder">{placeholder}</span>
+          {lockedPlan ? <span className="zc-askbar__chip">{lockedPlan}</span> : null}
         </motion.span>
       </motion.button>
     </Tooltip>
+    </>
   );
 }
 
@@ -152,7 +173,8 @@ export function AssistantPanel({
   }, [isOpen, pendingQuestion]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
+    // Round 3 D1: "nearest" scrolls the chat only, never the page behind it.
+    endRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [turns]);
 
   return (

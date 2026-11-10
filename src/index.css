@@ -3,6 +3,8 @@
 @import "./styles/tokens-expression.css";
 @import "./styles/theme.css";
 @import "./styles/components.css";
+@import "./styles/ai-motion.css";
+@import "./styles/chart-motion.css";
 @plugin "../hero.ts";
 @source "../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}";
 

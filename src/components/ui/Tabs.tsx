@@ -92,6 +92,23 @@ export interface SegmentedSwitchProps<V extends string = string> {
   /** Names the tab list for screen readers ("Order status"). */
   ariaLabel: string;
   className?: string;
+  /**
+   * Round 3 C3: the pointer rests on (or keyboard focus reaches) a tab that isn't selected, so the page can warm
+   * that tab's first page (and its thumbnails) before the click.
+   */
+  onItemIntent?: (value: V) => void;
+}
+
+/**
+ * Round 3 D1: keeps the selected item visible inside a track that scrolls sideways, by scrolling the track only.
+ * Never `scrollIntoView`: it scrolls every scrollable parent too, so a control below the fold dragged `main` down
+ * to it on mount (Analytics › Traffic jumped 2,810px).
+ */
+function revealInTrack(track: HTMLElement, item: HTMLElement | null, smooth: boolean) {
+  if (!item || track.scrollWidth <= track.clientWidth) return;
+  const left = item.offsetLeft - (track.clientWidth - item.offsetWidth) / 2;
+  const reduce = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  track.scrollTo({ left: Math.max(0, left), behavior: smooth && !reduce ? "smooth" : "auto" });
 }
 
 const TRACK: Record<SegmentedVariant, string> = { segmented: "zc-seg", underline: "zc-line", chips: "zc-chips" };
@@ -109,10 +126,13 @@ export function SegmentedSwitch<V extends string = string>({
   variant = "segmented",
   ariaLabel,
   className,
+  onItemIntent,
 }: SegmentedSwitchProps<V>) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
   const [overflowing, setOverflowing] = useState(false);
+  // The first reveal (mount) jumps; later ones (a new selection) glide.
+  const revealed = useRef(false);
 
   // The thumb is one element measured from the selected item; it slides with transform + width.
   useLayoutEffect(() => {
@@ -122,9 +142,10 @@ export function SegmentedSwitch<V extends string = string>({
       const selected = track.querySelector<HTMLElement>('[aria-selected="true"]');
       setThumb(selected ? { x: selected.offsetLeft, w: selected.offsetWidth } : null);
       setOverflowing(track.scrollWidth > track.clientWidth + 1);
-      selected?.scrollIntoView({ block: "nearest", inline: "nearest" });
     };
     measure();
+    revealInTrack(track, track.querySelector<HTMLElement>('[aria-selected="true"]'), revealed.current);
+    revealed.current = true;
     const observer = new ResizeObserver(measure);
     observer.observe(track);
     return () => observer.disconnect();
@@ -142,8 +163,9 @@ export function SegmentedSwitch<V extends string = string>({
     if (event.key === "Home") next = 0;
     if (event.key === "End") next = enabled.length - 1;
     onChange(enabled[next].value);
-    trackRef.current?.querySelector<HTMLElement>(`[data-value="${CSS.escape(enabled[next].value)}"]`)?.focus();
+    trackRef.current?.querySelector<HTMLElement>(`[data-value="${CSS.escape(enabled[next].value)}"]`)?.focus({ preventScroll: true });
   };
+  const intent = (item: SegmentedItem<V>) => (item.value === value || item.disabled ? undefined : () => onItemIntent?.(item.value));
 
   return (
     <div
@@ -179,6 +201,8 @@ export function SegmentedSwitch<V extends string = string>({
             tabIndex={focusable ? 0 : -1}
             disabled={item.disabled}
             onClick={() => onChange(item.value)}
+            onPointerEnter={onItemIntent ? intent(item) : undefined}
+            onFocus={onItemIntent ? intent(item) : undefined}
             className={ITEM[variant]}
           >
             <TabLabel label={item.label} count={item.count} />
