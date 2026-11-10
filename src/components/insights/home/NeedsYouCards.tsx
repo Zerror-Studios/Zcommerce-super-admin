@@ -24,7 +24,13 @@ import { useState, type ReactNode } from "react";
 
 import { Button, ButtonLink, Orb, Skeleton, cx, formatDate, formatMoney, toneDotClasses, toneTextClasses } from "../../ui";
 import { SendReminderDialog } from "../../clients/stores-list/SendReminderDialog";
-import { bulletStoreLinks, developmentDetail, summaryState } from "../../../lib/home-attention.util";
+import {
+  aiCardFallbackSentence,
+  aiCardParts,
+  bulletStoreLinks,
+  developmentDetail,
+  summaryState,
+} from "../../../lib/home-attention.util";
 import { FIRST_SUMMARY_COPY, formatIst, moneyDueWhen } from "../../../lib/platform-insights.util";
 import { SETUP_STALLED_DAYS } from "../../../lib/sa-home.util";
 import { useClients } from "../../../providers/ClientsProvider";
@@ -154,7 +160,8 @@ export function NeedsYouAiCard({
   const [showAll, setShowAll] = useState(false);
   const state = summaryState(summary);
   const items = state.kind === "bullets" ? state.items : [];
-  const [first, second, ...rest] = items;
+  // Round 3 E5: the sentence is about the headline's store; other stores' items go under "+ N more"
+  const { headline: first, sentence: second, rest } = aiCardParts(items);
   const store = first ? bulletStoreLinks(first.storeIds, storeNames)[0] : undefined;
   const client = store ? getClient(store.tenantId) : undefined;
   const storeName = client?.storeName ?? (store && store.name !== "Open store" ? store.name : undefined);
@@ -175,8 +182,8 @@ export function NeedsYouAiCard({
         </>
       ) : (
         <>
-          <Headline title={first.metricKeys.length ? `Metrics: ${first.metricKeys.join(", ")}` : undefined}>{first.text}</Headline>
-          <Sentence>{second ? second.text : "Nothing else is flagged today."}</Sentence>
+          <Headline title={first?.metricKeys.length ? `Metrics: ${first.metricKeys.join(", ")}` : undefined}>{first?.text}</Headline>
+          <Sentence>{second ? second.text : aiCardFallbackSentence(storeName, rest.length)}</Sentence>
           {rest.length ? (
             showAll ? (
               <ul className="flex flex-col gap-1.5">

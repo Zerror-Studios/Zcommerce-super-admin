@@ -5,11 +5,11 @@ import { IconClose } from "./icons";
 import { fadeVariants, toastMotionProps } from "./motion";
 import { TOAST_TIMEOUT_MS } from "./toast";
 
-/** Round 2 G7: 92px from the bottom, so a toast sits above the Zcom AI bar (--zc-toast-bottom). */
-const TOAST_OFFSET_PX = 92;
+/** Round 3 F1: 96px from the bottom, clear of the Zcom AI bar (52px at 24px) and its 2px hover lift. */
+const TOAST_OFFSET_PX = 96;
 
 /**
- * One toast setup for both dashboards (round 2 G7, `.zc-toast`): bottom centre, 92px up (above the AI bar), max
+ * One toast setup for both dashboards (round 2 G7, `.zc-toast`): bottom centre, 96px up (above the AI bar), max
  * width 420, ink background, white 14px, radius 14; 3.2s (longer with an action, errors stay); the timer pauses on
  * hover; up to 3 stack. Enters y 12 → 0 with a fade on the snappy spring, leaves in 140ms (motion.ts). Status
  * colour only on the small leading icon. Use the `toast` helpers in toast.tsx.

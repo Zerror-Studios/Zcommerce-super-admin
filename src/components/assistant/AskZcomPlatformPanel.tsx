@@ -18,7 +18,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import {
-  AiThinking,
+  AiSteps,
+  useMinStepTime,
+  type AiGlowState,
   Button,
   ConfirmDialog,
   EmptyState,
@@ -29,6 +31,7 @@ import {
   toastError,
 } from "../ui";
 import { cx } from "../ui/cx";
+import { thinkingSteps, thinkingSummary } from "../ui/ai-thinking";
 import { IconAdd, IconBack, IconChat, IconDelete, IconTime } from "../ui/icons";
 import {
   AiAnswerFooter,
@@ -91,24 +94,23 @@ export interface AskZcomPlatformPanelProps {
 
 // ─── Sub-components ───────────────────────────────────────────────────────
 
-function ToolChips({ turn }: { turn: AskTurn }) {
+/** Round 3 B6: while the answer is on its way, the steps the AI is really taking, ticking one by one. */
+function ThinkingSteps({ turn }: { turn: AskTurn }) {
+  const running = turn.status === "RUNNING" || turn.status === "SENDING";
+  const real = thinkingSteps(turn.toolActivity, running, Boolean(turn.text));
+  const shown = useMinStepTime(real.map((step) => step.state), 250);
+  return <AiSteps variant="inline" steps={real.map((step, index) => ({ ...step, state: shown[index] ?? step.state }))} />;
+}
+
+/** Round 3 B6: once the answer streams, its steps fold into one grey line that opens on click. */
+function ThinkingSummary({ turn, running }: { turn: AskTurn; running: boolean }) {
   if (!turn.toolActivity.length) return null;
   return (
-    <ul className="flex flex-wrap gap-1.5">
-      {turn.toolActivity.map((tool, index) => (
-        <li
-          key={`${tool.tool}-${index}`}
-          className={cx(
-            "inline-flex items-center gap-1.5 rounded-md border border-line px-2 py-0.5 text-caption",
-            tool.status === "ERROR" ? "text-fg-subtle" : "text-fg-muted",
-          )}
-        >
-          {tool.status === "RUNNING" ? <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-ai" /> : null}
-          {tool.label}
-          {tool.status === "ERROR" ? " · couldn't read" : ""}
-        </li>
-      ))}
-    </ul>
+    <AiSteps
+      variant="inline"
+      summary={thinkingSummary(turn.toolActivity)}
+      steps={thinkingSteps(turn.toolActivity, running, Boolean(turn.text))}
+    />
   );
 }
 
@@ -191,6 +193,9 @@ export function AskZcomPlatformPanel({
 
   const canAsk = !usage || usage.available;
   const tooLong = draft.length > ASK_MAX_LENGTH;
+  // Round 3 B5: the bottom glow follows what the AI is doing.
+  const busyTurn = chat.turns.find((turn) => turn.status === "RUNNING" || turn.status === "SENDING");
+  const activity: AiGlowState = busyTurn ? (busyTurn.text ? "answering" : "thinking") : draft.trim() ? "typing" : "idle";
   const conversations = history.data?.platformAssistantConversations?.items ?? [];
   const needsMfa = chat.turns.some(
     (turn) => turn.sendError?.reason === "MFA_REQUIRED" || turn.sendError?.code === "MFA_REQUIRED",
@@ -216,7 +221,8 @@ export function AskZcomPlatformPanel({
   }, [isOpen, pendingQuestion]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
+    // Round 3 D1: "nearest" scrolls the chat only, never the page behind it.
+    endRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [chat.turns]);
 
   // DUPLICATE_QUESTION: the answer is already stored; reload it
@@ -292,17 +298,14 @@ export function AskZcomPlatformPanel({
     }
     if (isRunning && !turn.text) {
       return (
-        <div className="flex flex-col gap-2">
-          <AiThinking status="Looking at the platform…" />
-          <ToolChips turn={turn} />
-        </div>
+        <ThinkingSteps turn={turn} />
       );
     }
     const endNote = isRunning ? null : runStatusNote(turn.status, turn.runErrorReason);
     const sources = formatSources(turn.sources);
     return (
       <div className={cx("flex flex-col gap-2", turn.status === "CANCELLED" && "opacity-60")}>
-        <ToolChips turn={turn} />
+        <ThinkingSummary turn={turn} running={isRunning} />
         {turn.text ? <AssistantMarkdown text={turn.text} stores={stores} onNavigate={onClose} /> : null}
         {endNote ? <p className="text-caption text-fg-subtle">{endNote}</p> : null}
         {turn.status === "FAILED" ? (
@@ -408,7 +411,7 @@ export function AskZcomPlatformPanel({
 
   return (
     <>
-      <AiSheet isOpen={isOpen} onClose={onClose} size={size} onSizeChange={changeSize}>
+      <AiSheet isOpen={isOpen} onClose={onClose} size={size} onSizeChange={changeSize} activity={activity}>
         <AiSheetContent>
           <AiSheetHeader
             context={pageLabel}

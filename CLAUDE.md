@@ -188,6 +188,8 @@ Zcom UI work follows docs/review-r2/ROUND-2-FIXES.md (wins) and docs/design-v2/R
 
 Deployment is on Vercel (`vercel.json`: SPA rewrite and security headers). The same-origin push service worker `public/push-sw.js` (PRD-033) relies on `script-src 'self'` while the CSP has no `worker-src`; adding a stricter `worker-src` must keep `'self'`. The CSP `connect-src` must list the origin of `VITE_GATEWAY_URL` (`https://api.zerrorstudios.com`; `src/lib/vercel-csp.test.ts` checks it); a build against another API host (UAT) needs its origin added. Never trigger a deploy unless asked.
 
+**Round 3 (2026-11-09; synced kit, not run in a browser).** Tables: the kit `DataTable` has a fixed column frame, no loading line and a `tabKey` prop (a loading tab shows skeleton rows, never another tab's rows); read tabbed lists with `useTableQuery` (`components/ui/use-table-query.ts`) and photos with `Thumb` (`components/ui/Thumb.tsx`). Never call `scrollIntoView` on mount or data load (it scrolls `main`); use `nearest` or `focus({ preventScroll: true })`. AppShell resets `main` on path, `?tab=` and `?section=` changes. Dev only: `src/lib/dev-cls-logger.ts` logs CLS per page (`window.__zcCls()`); the Playwright scroll check is `../Zcomm-frontend/qa/e2e` (`npm run test:console`, README there). Full rules: the dashboard's CLAUDE.md §7.
+
 ## 7. Implementing a change
 
 1. Check the tier (§0). For T1, find or draft the PRD. Anything touching real data or auth is T1 and cross-repo.

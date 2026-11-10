@@ -306,7 +306,8 @@ export function summaryCells(input: SummaryInput): SummaryCell[] {
           pastDue?.count
             ? `${formatCount(pastDue.count)} past due`
             : usable(input.collected)
-              ? `${formatMoney(input.collected.value, { whole: true })} collected this month`
+              ? // Round 3 F5: short enough for the cell (it was "…collected this mo…").
+                `${formatMoney(input.collected.value, { whole: true })} this month`
               : null,
         ]
           .filter(Boolean)
@@ -331,11 +332,10 @@ export function summaryCells(input: SummaryInput): SummaryCell[] {
       ? "No store scored yet"
       : health.rows.length <= 3
         ? health.rows.map((row) => `${row.name} ${row.score}`).join(" · ")
-        : `Lowest: ${health.rows[health.rows.length - 1].name} ${health.rows[health.rows.length - 1].score} · ${plural(
-            health.rows.filter((row) => getHealthBand(row.score).tone === "danger").length,
-            "store",
-            "stores",
-          )} critical`;
+        : // Round 3 F5: the count first and the lowest score, short enough for the cell (it was "…4 stores cri…").
+          `${formatCount(health.rows.filter((row) => getHealthBand(row.score).tone === "danger").length)} critical · lowest ${
+            health.rows[health.rows.length - 1].score
+          }`;
   const partial = health.average != null && input.totalStores > health.scored ? ` (${formatCount(health.scored)} scored)` : "";
   const healthCell: SummaryCell = {
     key: "health",
@@ -362,8 +362,9 @@ export function summaryCells(input: SummaryInput): SummaryCell[] {
     const failing = checkout?.count ?? 0;
     const note = checkout
       ? [
-          failing ? `In ${plural(failing, "store", "stores")}` : "No store affected",
-          payment != null ? plural(payment, "payment failure", "payment failures") : null,
+          // Round 3 F5: short enough for the cell.
+          failing ? `In ${plural(failing, "store", "stores")}` : "No store hit",
+          payment != null ? plural(payment, "failed payment", "failed payments") : null,
         ]
           .filter(Boolean)
           .join(" · ")
@@ -376,7 +377,9 @@ export function summaryCells(input: SummaryInput): SummaryCell[] {
       tone: checkout && checkout.value! > 0 ? "danger" : "default",
       chart:
         checkout && storesForShare > 0
-          ? { kind: "ring", percent: Math.round((100 * (storesForShare - Math.min(failing, storesForShare))) / storesForShare) }
+          ? failing === 0
+            ? { kind: "ring", percent: 100, good: true } // round 3 F3: no failures = a full green ring
+            : { kind: "ring", percent: Math.round((100 * (storesForShare - Math.min(failing, storesForShare))) / storesForShare) }
           : undefined,
     };
   }

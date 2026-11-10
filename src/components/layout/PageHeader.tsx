@@ -178,12 +178,12 @@ function ActionsOverflow({ nodes, more, label }: { nodes: ReactNode[]; more: Row
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || document.querySelector(LAYER_SELECTOR)) return;
       setOpen(false);
-      triggerRef.current?.focus();
+      triggerRef.current?.focus({ preventScroll: true });
     };
     window.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("keydown", onKeyDown);
     const frame = window.requestAnimationFrame(() =>
-      rootRef.current?.querySelector<HTMLElement>(`[id="${panelId}"] :is(button, a[href]):not(:disabled)`)?.focus(),
+      rootRef.current?.querySelector<HTMLElement>(`[id="${panelId}"] :is(button, a[href]):not(:disabled)`)?.focus({ preventScroll: true }),
     );
     return () => {
       window.removeEventListener("pointerdown", onPointerDown);

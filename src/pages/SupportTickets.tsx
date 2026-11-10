@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@apollo/client";
 import { PageHeader } from "../components/common/PageHeader";
@@ -23,7 +23,11 @@ import {
   SegmentedSwitch,
   SummaryPanel,
   cx,
+  prefetchTableQuery,
   toneTextClasses,
+  useIdleTablePrefetch,
+  useTableQuery,
+  useTableQueryClient,
   type DataTableColumn,
   type SummaryCell,
 } from "../components/ui";
@@ -55,13 +59,20 @@ export function SupportTickets() {
   const [search, setSearch] = useState("");
   const debounced = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
   const openId = params.get("ticket");
-  const { data, loading, error, refetch } = useQuery(PLATFORM_SUPPORT_TICKETS, {
+  // Round 3 C3: one cache entry per tab and search (60s fresh); another tab's tickets never stay on screen.
+  const { data, loading, error, refetch, isInitialLoading, isReloading } = useTableQuery(PLATFORM_SUPPORT_TICKETS, {
     variables: { tab, search: debounced || null, limit: PAGE_LIMIT, offset: 0 },
-    fetchPolicy: "cache-and-network",
+    tabKey: tab,
   });
+  const apollo = useTableQueryClient();
+  const prefetchTab = (next: SupportTab) =>
+    prefetchTableQuery(apollo, PLATFORM_SUPPORT_TICKETS, { tab: next, search: debounced || null, limit: PAGE_LIMIT, offset: 0 });
   const { data: summaryData, loading: summaryLoading } = useQuery(PLATFORM_SUPPORT_SUMMARY, { fetchPolicy: "cache-and-network" });
   const rows: SupportTicket[] = data?.platformSupportTickets?.items ?? [];
-  const counts = data?.platformSupportTickets?.counts;
+  // Round 3 C5: the counts come with the list; while a new tab loads, the last counts stay on the tabs.
+  const lastCounts = useRef(data?.platformSupportTickets?.counts);
+  if (data?.platformSupportTickets?.counts) lastCounts.current = data.platformSupportTickets.counts;
+  const counts = data?.platformSupportTickets?.counts ?? lastCounts.current;
   const summary = summaryData?.platformSupportSummary;
 
   const cells: SummaryCell[] = useMemo(() => {
@@ -100,6 +111,11 @@ export function SupportTickets() {
     { value: "SOLVED" as SupportTab, label: "Solved", count: counts?.solved },
     { value: "MINE" as SupportTab, label: "Mine", count: counts?.mine },
   ];
+
+  useIdleTablePrefetch(
+    !!data && !loading,
+    tabs.filter((item) => item.value !== tab).map((item) => () => prefetchTab(item.value)),
+  );
 
   const setOpen = (id: string | null) =>
     setParams(
@@ -150,7 +166,14 @@ export function SupportTickets() {
         <SummaryPanel cells={cells} isLoading={summaryLoading && !summaryData} storageKey="support-tickets" aria-label="Support summary" />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <SegmentedSwitch<SupportTab> ariaLabel="Ticket status" items={tabs} value={tab} onChange={setTab} className="max-w-full" />
+          <SegmentedSwitch<SupportTab>
+            ariaLabel="Ticket status"
+            items={tabs}
+            value={tab}
+            onChange={setTab}
+            onItemIntent={prefetchTab}
+            className="max-w-full"
+          />
           <SearchInput placeholder="Ticket, store or words" value={search} onValueChange={setSearch} onClear={() => setSearch("")} />
         </div>
 
@@ -163,8 +186,9 @@ export function SupportTickets() {
             rows={rows}
             getRowKey={(row) => row.id}
             renderCell={renderCell}
-            isLoading={loading && !data}
-            isReloading={loading && Boolean(data)}
+            isLoading={isInitialLoading}
+            isReloading={isReloading}
+            tabKey={tab}
             onRowAction={(row) => setOpen(row.id)}
             rowHeight="tall"
             emptyContent={

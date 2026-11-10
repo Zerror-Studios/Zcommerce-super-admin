@@ -89,7 +89,10 @@ export type { KpiStripProps, StatCardProps } from "./StatCard";
 export { StatusChip } from "./StatusChip";
 export type { StatusChipProps } from "./StatusChip";
 export {
+  CHART_BAR_RADIUS,
   PHONE_CHART_POINTS,
+  RECHARTS_DRAW_MS,
+  RECHARTS_GROW_MS,
   apexBaseOptions,
   areaGradientStops,
   categoryColor,
@@ -168,6 +171,15 @@ export { BackLink, CopyableId, Kbd, SaveBar, SegmentedControl } from "./Primitiv
 export type { BackLinkProps, CopyableIdProps, SaveBarProps, SegmentedControlProps } from "./Primitives";
 export { RankedBars } from "./RankedBars";
 export type { RankedBarItem } from "./RankedBars";
+// Round 3 D2: chart entrance, morph, states and speech (one system for every chart).
+export { LineChart } from "./LineChart";
+export type { LineChartProps, LinePoint } from "./LineChart";
+export { ChartEmpty, ChartSayPills, ChartSkeleton } from "./ChartParts";
+export type { ChartShape, PlacedSay } from "./ChartParts";
+export { KpiRoll } from "./KpiRoll";
+export { useChartEntrance, useEntranceOnce, useLibraryEntrance, useMorph } from "./use-chart-entrance";
+export { endsToday, flatEndSay, growthSay, peakSay, seriesSays } from "./chart-speak";
+export type { ChartSay, SayPoint } from "./chart-speak";
 export { SelectionBar } from "./SelectionBar";
 export type { SelectionBarProps } from "./SelectionBar";
 export { AiAskInput, AiAvatar, AiFeedback, AiInsightCard, AiSpectrumDefs, AiSuggestion, AiThinking, Sparkle, TodaysBrief, WriteWithAiButton } from "./Ai";
@@ -180,6 +192,21 @@ export { ColorPicker } from "./ColorPicker";
 export type { SettingsMenuAction, SettingsMenuGroup, SettingsMenuItem, SettingsSearchEntry, SettingsShellProps, SetupStatus } from "./SettingsShell";
 export type { PaneGroup, PaneHeaderProps, PaneItem, PaneListProps, TwoPaneCardProps } from "./TwoPane";
 export { CellText, DataTable, TableSkeletonRows } from "./DataTable";
+export { Thumb } from "./Thumb";
+export type { ThumbProps } from "./Thumb";
+export { mediaUrl, thumbSrc } from "./thumb-src";
+export type { ThumbMedia, ThumbVariant } from "./thumb-src";
+export {
+  markTableQueriesStale,
+  prefetchImages,
+  prefetchTableQuery,
+  TABLE_STALE_MS,
+  tableViewKey,
+  useIdleTablePrefetch,
+  useTableQuery,
+  useTableQueryClient,
+} from "./use-table-query";
+export type { TableQueryOptions, TableQueryResult } from "./use-table-query";
 export type { DataTableColumn, DataTableProps, DataTableRowTone } from "./DataTable";
 export { DEFAULT_PAGE_SIZE, PAGE_SIZES, TablePagination } from "./TablePagination";
 export type { TablePaginationProps } from "./TablePagination";
@@ -190,6 +217,12 @@ export type { AvatarProps, ImageControlProps, ViewMode } from "./Media";
 // Design v2 (docs/design-v2/README.md §3.4, §4).
 export { AiCard, AiLine, Orb } from "./Orb";
 export type { AiCardProps, AiLineProps, OrbProps, OrbSize, OrbState } from "./Orb";
+export { AI_STEP_MIN_MS, AiSteps, nextShownSteps, useMinStepTime } from "./AiSteps";
+export type { AiStep, AiStepState, AiStepsProps } from "./AiSteps";
+export { AI_GLOW_EXIT_MS, AiGlow } from "./AiGlow";
+export type { AiGlowProps, AiGlowState } from "./AiGlow";
+export { AiQuota, AiQuotaSkeleton, quotaResetLabel } from "./AiQuota";
+export type { AiQuotaProps } from "./AiQuota";
 export { SummaryPanel } from "./SummaryPanel";
 export type { SummaryCell, SummaryChart, SummaryPanelProps, SummaryTone } from "./SummaryPanel";
 export { RowChevron, rowControlProps, SortButton, TableToolbar, ThumbWithCount, ViewSwitch } from "./TableToolbar";

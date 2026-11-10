@@ -1,8 +1,8 @@
 /**
  * Ask ZCOM usage bar for staff (backend PRD-026 FR-7.2, guide §12)
  *
- * Unlike merchants, staff see the internal budget: "AI budget: 42% of this
- * month's 3M tokens used · resets 1 Dec". When the chat can't answer
+ * Round 3 B4: the same quota row as merchants (<AiQuota>): "11% of this month's
+ * AI budget used" · "resets 1 Dec" (never "30L"). When the chat can't answer
  * (budget used up, resting, switched off, unavailable) it says why; with
  * `platform:ai:manage` the budget message links to AI settings
  * (`zerrorMonthlyTokenBudget`).
@@ -10,6 +10,7 @@
 
 import { Link } from "react-router-dom";
 
+import { AiQuota } from "../ui/AiQuota";
 import { cx } from "../ui/cx";
 import { assistantUsageText } from "../../lib/platform-insights.util";
 import type { PlatformAssistantUsage } from "../../types/platform-insights";
@@ -28,6 +29,13 @@ interface AiUsageBarProps {
   onNavigate?: () => void;
 }
 
+/** "resets 1 Dec" in India time, like the rest of the console. */
+function resetsLabel(iso: string): string | undefined {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return undefined;
+  return `resets ${new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }).format(at)}`;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────
 
 export function AiUsageBar({ usage, canManageAi = false, onNavigate }: AiUsageBarProps) {
@@ -35,22 +43,17 @@ export function AiUsageBar({ usage, canManageAi = false, onNavigate }: AiUsageBa
   const text = assistantUsageText(usage);
   return (
     <div className="flex flex-col gap-2 border-b border-line px-4 py-3">
-      <p className={cx("text-label", usage.available ? "text-fg" : "text-fg-muted")}>{text}</p>
       {usage.available ? (
-        <div
-          className="h-1 rounded-full bg-surface-sunken"
-          role="progressbar"
-          aria-label="Internal AI budget used this month"
-          aria-valuenow={percent}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <div
-            className={cx("h-1 rounded-full", percent >= 80 ? "bg-tone-warning-dot" : "bg-fg")}
-            style={{ width: `${percent}%` }}
-          />
-        </div>
-      ) : null}
+        <AiQuota
+          label={`${Math.round(percent)}% of this month's AI budget used`}
+          resets={resetsLabel(usage.monthResetsAt)}
+          percentUsed={percent}
+          tone={percent >= 80 ? "warning" : "default"}
+          barLabel="Internal AI budget used this month"
+        />
+      ) : (
+        <p className={cx("text-label text-fg-muted")}>{text}</p>
+      )}
       {!usage.available && usage.reason === "AI_TOKEN_BUDGET_EXHAUSTED" && canManageAi ? (
         <Link
           to={AI_SETTINGS_PATH}

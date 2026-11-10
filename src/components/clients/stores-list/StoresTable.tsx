@@ -88,7 +88,7 @@ import {
 } from "../../ui/icons";
 import { useDeletedStoreCount } from "../RemovedStoresPanel";
 import { StoreActionDialog, type StoreAction } from "../storeActions";
-import { logInToStore } from "../storeLogin";
+import { logInToStore, prepareStoreLogin } from "../storeLogin";
 import { ColumnsDialog } from "./ColumnsDialog";
 import { DeletedStoresTable } from "./DeletedStoresTable";
 import { InPlaceDetail } from "./InPlaceDetail";
@@ -159,7 +159,7 @@ const OPEN_KEY = "open";
 const columns: DataTableColumn[] = [
   { key: "store", label: "Store", sortable: true, skeleton: "avatar", mobile: "primary" },
   { key: "owner", label: "Owner", width: 180, hideWhen: "narrow", sortable: true },
-  { key: "plan", label: "Plan", width: 100, hideWhen: "narrow", sortable: true, skeleton: "badge" },
+  { key: "plan", label: "Plan", width: 120, hideWhen: "narrow", sortable: true, skeleton: "badge" },
   { key: "health", label: "Health", width: 100, sortable: true },
   { key: "sales", label: "Sales · 30d", width: 120, sortable: true },
   { key: "orders", label: "Orders", width: 80, hideWhen: "narrow", sortable: true },
@@ -927,7 +927,13 @@ export function StoresTable({ clients, isLoading = false, renderHeader, beforeTa
               )}
               onPointerDown={(event) => event.stopPropagation()}
             >
-              <RowMenu items={rowActions(item)} label={`Actions for ${client.storeName}`} />
+              <RowMenu
+                items={rowActions(item)}
+                label={`Actions for ${client.storeName}`}
+                onOpenChange={(open) => {
+                  if (open && canImpersonate) prepareStoreLogin(client);
+                }}
+              />
             </span>
             {/* G18: › at the row end; the whole row opens the store too. */}
             <Link
@@ -1061,6 +1067,8 @@ export function StoresTable({ clients, isLoading = false, renderHeader, beforeTa
           getRowKey={(item) => (isDetailRow(item) ? `${item.detailOf.client.id}:detail` : item.client.id)}
           renderCell={renderCell}
           isLoading={serverLoading}
+          // Round 3 C4: the tabs filter the loaded stores here, so a switch is instant; the rows cross-fade.
+          tabKey={tab}
           rowHeight="tall"
           stickyFirstColumn
           toolbar={toolbar}

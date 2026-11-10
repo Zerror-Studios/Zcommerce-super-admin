@@ -618,7 +618,7 @@ export function Subscriptions() {
       label: "Paid",
       value: formatCount(summary.paid),
       note: `Stores that paid ${periodLabel}`,
-      chart: allRows.length ? { kind: "ring", percent: (summary.paid / allRows.length) * 100 } : undefined,
+      chart: allRows.length ? { kind: "ring", percent: (summary.paid / allRows.length) * 100, good: summary.paid === allRows.length } : undefined, // round 3 F3
     },
     { key: "due", label: "Due", value: formatCount(summary.due), note: "Payment due, not late yet" },
     {
@@ -680,6 +680,8 @@ export function Subscriptions() {
           renderCell={renderCell}
           isLoading={loading}
           isReloading={api.reloading}
+          // Round 3 C4: the tabs filter the period's rows here, so a switch is instant; the rows cross-fade.
+          tabKey={tab}
           rowHeight="tall"
           stickyFirstColumn
           toolbar={toolbar}

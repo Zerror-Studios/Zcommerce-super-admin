@@ -28,6 +28,8 @@ export interface RowMenuProps {
   size?: IconButtonSize;
   variant?: IconButtonVariant;
   placement?: "bottom-end" | "bottom-start" | "top-end";
+  /** The menu opened or closed (round 3 A2: opening a store's ⋯ prepares "Log in to store"). */
+  onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -42,6 +44,7 @@ export function RowMenu({
   size = "sm",
   variant = "default",
   placement = "bottom-end",
+  onOpenChange,
 }: RowMenuProps) {
   const regular = items.filter((item) => !item.destructive);
   const destructive = items.filter((item) => item.destructive);
@@ -65,7 +68,7 @@ export function RowMenu({
   };
 
   return (
-    <Dropdown placement={placement}>
+    <Dropdown placement={placement} onOpenChange={onOpenChange}>
       <DropdownTrigger>
         <IconButton aria-label={label} variant={variant} size={size} showTooltip={false}>
           <IconMore aria-hidden />

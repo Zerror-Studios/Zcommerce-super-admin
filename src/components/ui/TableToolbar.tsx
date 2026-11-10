@@ -22,6 +22,8 @@ import { IconCheck, IconGridView, IconNextPage, IconSearch, IconSort, IconTable 
 import type { ViewMode } from "./Media";
 import { SearchInput } from "./SearchInput";
 import { SegmentedSwitch, type SegmentedItem } from "./Tabs";
+import { Thumb } from "./Thumb";
+import type { ThumbMedia } from "./thumb-src";
 import { useIsPhone } from "./use-media";
 
 export interface SortOption {
@@ -96,6 +98,8 @@ export interface TableToolbarProps<V extends string> {
   onTabChange?: (tab: V) => void;
   /** Names the tab list ("Order status"). */
   tabsLabel?: string;
+  /** Round 3 C3: the pointer rests on another tab; prefetch its first page (and thumbnails). */
+  onTabIntent?: (tab: V) => void;
   /** Controlled search text. Debounce in the page (useDebouncedInput) when it hits the server. */
   search?: string;
   onSearchChange?: (value: string) => void;
@@ -118,6 +122,7 @@ export function TableToolbar<V extends string>({
   tab,
   onTabChange,
   tabsLabel = "Show",
+  onTabIntent,
   search,
   onSearchChange,
   searchPlaceholder = "Search",
@@ -136,7 +141,7 @@ export function TableToolbar<V extends string>({
     <div className={cx("zc-toolbar zc-toolbar--row", isPhone && "zc-toolbar--phone", className)}>
       {tabs && tab != null && onTabChange ? (
         <div className="zc-toolbar__tabs">
-          <SegmentedSwitch<V> items={tabs} value={tab} onChange={onTabChange} ariaLabel={tabsLabel} />
+          <SegmentedSwitch<V> items={tabs} value={tab} onChange={onTabChange} ariaLabel={tabsLabel} onItemIntent={onTabIntent} />
         </div>
       ) : null}
       <div className="zc-toolbar__end">
@@ -228,6 +233,10 @@ export function RowChevron({ className, href, onPress, "aria-label": ariaLabel }
 
 export interface ThumbWithCountProps {
   src?: string | null;
+  /** The first item's media record (variants, placeholder, colour; round 3 C7). Wins over `src`. */
+  media?: ThumbMedia | null;
+  /** One of the first 6 rows: load at once with high priority. */
+  priority?: boolean;
   alt?: string;
   /** Items beyond the first: shows "+N" on the corner. 0 or less shows no badge. */
   more?: number;
@@ -240,14 +249,11 @@ export interface ThumbWithCountProps {
  * More than one product in a row (§4.4): ONE thumbnail with a small ink "+N" badge on its corner. Never two stacked
  * images, which make the names jump between rows.
  */
-export function ThumbWithCount({ src, alt = "", more = 0, size = 40, className }: ThumbWithCountProps) {
+export function ThumbWithCount({ src, media, priority, alt = "", more = 0, size = 40, className }: ThumbWithCountProps) {
   return (
     <span className={cx("zc-thumb-more", className)} style={{ width: size, height: size }}>
-      {src ? (
-        <img src={src} alt={alt} loading="lazy" className="size-full rounded-thumb border border-line object-cover" />
-      ) : (
-        <span aria-hidden className="size-full rounded-thumb bg-surface-sunken" />
-      )}
+      {/* Round 3 C6: a fixed box with a soft placeholder; the photo fades in and never holds the row up. */}
+      <Thumb media={media} src={src} size={size} alt={alt} priority={priority} />
       {more > 0 ? (
         <span className="zc-thumb-more__n" aria-label={`and ${more} more`}>
           +{more}

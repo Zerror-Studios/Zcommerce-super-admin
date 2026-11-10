@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  aiCardFallbackSentence,
+  aiCardParts,
   bulletStoreLinks,
   knownStoreNames,
   moreCount,
@@ -81,5 +83,32 @@ describe("Home (PRD-026 FR-7.1)", () => {
       { tenantId: "s1", name: "Nahara" },
       { tenantId: "s2", name: "Open store" },
     ]);
+  });
+});
+
+describe("Round 3 E5: the AI card talks about one store", () => {
+  const deveshe = { text: "deveshe-dreams still takes payments through Nimbbl, which is being retired.", storeIds: ["t-deveshe"], metricKeys: [] };
+  const kesar = { text: "Kesar & Kin still takes payments through Nimbbl, which is being retired; 22 unpaid orders expired in 30 days.", storeIds: ["t-kesar"], metricKeys: [] };
+  const devesheMore = { text: "deveshe-dreams had 3 failed payments this week.", storeIds: ["t-deveshe"], metricKeys: [] };
+
+  it("never puts another store's item under the headline (the review's card)", () => {
+    const parts = aiCardParts([deveshe, kesar]);
+    expect(parts.headline).toBe(deveshe);
+    expect(parts.sentence).toBeUndefined();
+    expect(parts.rest).toEqual([kesar]);
+    expect(aiCardFallbackSentence("deveshe-dreams", parts.rest.length)).toBe("Nothing else is flagged for deveshe-dreams.");
+  });
+
+  it("pairs the next item about the same store, keeping the others for + N more", () => {
+    const parts = aiCardParts([deveshe, kesar, devesheMore]);
+    expect(parts.sentence).toBe(devesheMore);
+    expect(parts.rest).toEqual([kesar]);
+  });
+
+  it("never pairs an item without store ids", () => {
+    const loose = { text: "Checkout failures are up.", storeIds: [], metricKeys: [] };
+    expect(aiCardParts([loose, kesar]).sentence).toBeUndefined();
+    expect(aiCardParts([]).headline).toBeUndefined();
+    expect(aiCardFallbackSentence(undefined, 0)).toBe("Nothing else is flagged today.");
   });
 });

@@ -19,6 +19,11 @@ export interface TablePaginationProps {
   onPageSizeChange?: (pageSize: number) => void;
   /** Disable the controls while a page is loading. */
   isDisabled?: boolean;
+  /**
+   * Round 3 C3/C7: the pointer rests on (or focus reaches) "Next page"; prefetch that page and its thumbnails.
+   * Called with the next page number.
+   */
+  onPageIntent?: (page: number) => void;
   className?: string;
 }
 
@@ -34,6 +39,7 @@ export function TablePagination({
   onPageChange,
   onPageSizeChange,
   isDisabled,
+  onPageIntent,
   className,
 }: TablePaginationProps) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
@@ -88,15 +94,21 @@ export function TablePagination({
           >
             <IconPrevPage />
           </IconButton>
-          <IconButton
-            aria-label="Next page"
-            variant="default"
-            size="sm"
-            isDisabled={isDisabled || page >= pages}
-            onPress={() => onPageChange(page + 1)}
+          <span
+            className="inline-flex"
+            onPointerEnter={onPageIntent && page < pages ? () => onPageIntent(page + 1) : undefined}
+            onFocus={onPageIntent && page < pages ? () => onPageIntent(page + 1) : undefined}
           >
-            <IconNextPage />
-          </IconButton>
+            <IconButton
+              aria-label="Next page"
+              variant="default"
+              size="sm"
+              isDisabled={isDisabled || page >= pages}
+              onPress={() => onPageChange(page + 1)}
+            >
+              <IconNextPage />
+            </IconButton>
+          </span>
         </div>
       </div>
     </nav>

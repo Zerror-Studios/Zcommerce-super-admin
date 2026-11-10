@@ -16,13 +16,14 @@ import { changePercent, changePoints, lastDaysRange, type PerformanceRangeDays }
 import { downloadCsv, rowsToCsv } from "../../lib/report-csv";
 import type { StorePerformanceRow } from "../../types/platform-api";
 import { toasts } from "../../copy";
-import { areaGradientStops, chartColors, pointsForViewport, recharts, rechartsEndTicks } from "../ui/chart-theme";
+import { RECHARTS_DRAW_MS, areaGradientStops, chartColors, pointsForViewport, recharts, rechartsEndTicks } from "../ui/chart-theme";
 import { useIsPhone } from "../ui/use-media";
 import { useSummaryKey } from "../../hooks/use-summary-key";
 import {
   Card,
   ErrorState,
-  Skeleton,
+  ChartSkeleton,
+  useLibraryEntrance,
   SummaryPanel,
   formatCount,
   formatDate,
@@ -70,6 +71,9 @@ export function PerformanceTab({ tabRow, registerExport, days }: PerformanceTabP
   const trend = useMemo(() => overview?.trend ?? [], [overview]);
   // v2 §10: phones keep the shape with the last 14 days, labelled at the start and end only.
   const isPhone = useIsPhone();
+  // Round 3 D2: the trend draws in the first time it is on screen in a visit; a new range morphs (Recharts).
+  const { ref: trendRef, play: trendPlay, animate: trendAnimate } = useLibraryEntrance<HTMLDivElement>("console-performance-trend");
+  const trendMotion = { isAnimationActive: trendAnimate, animationDuration: RECHARTS_DRAW_MS, animationEasing: "ease-out" as const };
   const chartTrend = useMemo(() => pointsForViewport(trend, isPhone), [trend, isPhone]);
   const previousLabel = `vs previous ${days} days`;
 
@@ -180,12 +184,12 @@ export function PerformanceTab({ tabRow, registerExport, days }: PerformanceTabP
           <SummaryPanel cells={summaryCells} isLoading={api.loading} storageKey={summaryKey} aria-label="Performance summary" />
 
           <Card title="Trend" description="GMV per day · lines: sessions and orders" padding="none">
-            <div className="h-70 px-3 pb-4">
+            <div ref={trendRef} data-play={trendPlay} className="h-70 px-3 pb-4">
               {api.loading ? (
-                <Skeleton className="h-full w-full rounded-xl" />
+                <ChartSkeleton height={264} shape="line" />
               ) : trend.length === 0 ? (
                 <ChartEmpty />
-              ) : (
+              ) : !trendPlay ? null : (
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={chartTrend} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                     <defs>
@@ -205,8 +209,8 @@ export function PerformanceTab({ tabRow, registerExport, days }: PerformanceTabP
                     <YAxis yAxisId="count" orientation="right" {...recharts.axis} width={COUNT_AXIS_WIDTH} tickFormatter={countAxis} />
                     <ChartTooltipSlot content={<ChartTooltip formatLabel={formatDate} formatValue={tooltipValue} />} />
                     <Legend {...legendProps} />
-                    <Area yAxisId="money" dataKey="gmv" name="GMV" stroke={chartColors.series[0]} {...recharts.area} fill="url(#performanceGmvFill)" />
-                    <Line yAxisId="count" dataKey="sessions" name="Sessions" stroke={chartColors.series[1]} {...recharts.line} />
+                    <Area yAxisId="money" dataKey="gmv" name="GMV" stroke={chartColors.series[0]} {...recharts.area} fill="url(#performanceGmvFill)" {...trendMotion} />
+                    <Line yAxisId="count" dataKey="sessions" name="Sessions" stroke={chartColors.series[1]} {...recharts.line} {...trendMotion} />
                     <Line
                       yAxisId="count"
                       type="monotone"
@@ -216,6 +220,8 @@ export function PerformanceTab({ tabRow, registerExport, days }: PerformanceTabP
                       strokeWidth={1.5}
                       strokeDasharray="4 4"
                       dot={false}
+                      {...trendMotion}
+                      animationBegin={trendMotion.isAnimationActive ? 200 : 0}
                     />
                   </ComposedChart>
                 </ResponsiveContainer>

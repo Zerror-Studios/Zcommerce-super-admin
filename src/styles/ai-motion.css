@@ -1,0 +1,226 @@
+/* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
+/* Round 3 AI motion (docs/review-r3/ROUND-3-FIXES.md A3, B5, B6, §12.1, §12.3).
+   - .zc-ai-steps: the AI-style steps (components/ui/AiSteps.tsx): store opening card, AI thinking, long jobs.
+   - .zc-ai-glow / .zc-ai-edge: the bottom glow while the AI is open (components/ui/AiGlow.tsx).
+   - .zc-shimmer-once: one light sweep across a line of text.
+   Transform, opacity and SVG stroke only; colours from tokens.css. Reduced motion: the global rule in tokens.css
+   stops the loops, and the rules at the end keep a still glow. */
+
+/* ─── AI steps ─────────────────────────────────────────────────────────── */
+
+.zc-ai-steps { display: flex; flex-direction: column; }
+.zc-ai-steps--card {
+  width: min(360px, calc(100vw - 32px));
+  padding: 22px;
+  border-radius: 22px;
+  background: var(--zc-surface);
+  box-shadow: var(--zc-shadow-float);
+}
+.zc-ai-steps--inline { width: 100%; padding: 2px 0; }
+.zc-ai-steps__head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.zc-ai-steps__title { font-size: 15px; line-height: 20px; font-weight: 600; color: var(--zc-fg); }
+.zc-ai-steps__list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.zc-ai-steps--inline .zc-ai-steps__list { gap: 8px; }
+.zc-ai-step { display: flex; align-items: center; gap: 10px; min-height: 20px; font-size: 14px; line-height: 20px; }
+.zc-ai-steps--inline .zc-ai-step { font-size: 13px; line-height: 18px; }
+.zc-ai-step--wait .zc-ai-step__text { color: var(--zc-fg-faint); }
+.zc-ai-step--work .zc-ai-step__text { color: var(--zc-fg); }
+.zc-ai-step--done .zc-ai-step__text { color: var(--zc-fg-muted); }
+.zc-ai-step--error .zc-ai-step__text { color: var(--zc-red); }
+.zc-ai-step__icon { position: relative; flex: none; width: 16px; height: 16px; display: grid; place-items: center; }
+.zc-ai-step__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--zc-step-dot); }
+.zc-ai-step__ring {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--zc-step-ring-track); border-top-color: var(--zc-primary);
+  animation: zc-step-spin 0.8s linear infinite;
+}
+.zc-ai-step__tick { stroke: var(--zc-green); }
+.zc-ai-step__x { color: var(--zc-red); font-size: 16px; line-height: 16px; font-weight: 600; }
+.zc-ai-steps__summary {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+  margin-bottom: 6px; padding: 0; border: 0; background: none; cursor: pointer;
+  font-size: 12px; line-height: 16px; color: var(--zc-fg-faint);
+}
+.zc-ai-steps__summary:hover { color: var(--zc-fg-muted); }
+.zc-ai-steps__summary:focus-visible { outline: none; box-shadow: var(--zc-focus-ring-strong); border-radius: 6px; }
+.zc-ai-steps__chev { transition: transform var(--dur-2) var(--ease-out); }
+.zc-ai-steps__chev.is-open { transform: rotate(180deg); }
+.zc-ai-steps__retry { align-self: flex-start; margin-top: 14px; }
+@keyframes zc-step-spin { to { transform: rotate(360deg); } }
+
+/* One light sweep across the text, left to right (A3 working step, B1 placeholder). */
+.zc-shimmer-once {
+  background: linear-gradient(90deg, var(--zc-ink) 0%, var(--zc-ink) 40%, var(--zc-step-shimmer) 50%, var(--zc-ink) 60%, var(--zc-ink) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: zc-shimmer 0.9s var(--ease-out) 1 both;
+}
+@keyframes zc-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+/* Super Admin → store opening (A3): the card over the page while the dashboard renders underneath. On leave the
+   card scales to .98 and fades in 180ms, the layer fades in 240ms, so the dashboard fades in behind it. */
+.zc-handover {
+  position: fixed; inset: 0; z-index: calc(var(--zc-z-toast) + 1);
+  display: grid; place-items: center; padding: 16px;
+  background: var(--zc-bg);
+  transition: opacity 0.24s var(--ease-out);
+}
+.zc-handover__card { transition: opacity 0.18s var(--ease-out), transform 0.18s var(--ease-out); }
+.zc-handover--leaving { opacity: 0; pointer-events: none; }
+.zc-handover--leaving .zc-handover__card { opacity: 0; transform: scale(0.98); }
+
+/* ─── Zcom AI bar hover (B1, §12.2) ────────────────────────────────────── */
+
+/* A 1.5px brand-gradient border that fades in and turns slowly (masked pseudo-element). */
+.zc-askbar { position: relative; transition: box-shadow 0.2s var(--ease-out), color 0.2s var(--ease-out); }
+.zc-askbar::before {
+  content: ""; position: absolute; inset: -1.5px; padding: 1.5px; border-radius: inherit; pointer-events: none;
+  background: conic-gradient(from var(--zc-ai-angle), var(--zc-ai-c-blue), var(--zc-ai-c-violet), var(--zc-ai-c-pink), var(--zc-ai-c-amber), var(--zc-ai-c-blue));
+  -webkit-mask: linear-gradient(black 0 0) content-box, linear-gradient(black 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.18s var(--ease-out);
+  animation: zc-ai-spin 6s linear infinite paused;
+}
+.zc-askbar__chip {
+  flex: none; padding: 2px 8px; border-radius: 999px;
+  background: var(--zc-surface-sunken); color: var(--zc-fg-muted);
+  font-size: 11px; line-height: 16px; font-weight: 500;
+  opacity: 0; transform: translateX(4px);
+  transition: opacity 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+}
+@media (hover: hover) {
+  .zc-askbar-slot { transition: opacity var(--dur-2) var(--ease-out), transform 0.32s cubic-bezier(0.34, 1.4, 0.64, 1), visibility var(--dur-2); }
+  .zc-askbar-slot:not(.is-hidden):hover { transform: translate(-50%, -2px); }
+  .zc-askbar:hover { box-shadow: var(--zc-ai-hover-glow), 0 0 0 1px rgba(11, 12, 16, 0.04); color: var(--zc-fg-muted); }
+  .zc-askbar:hover::before { opacity: 1; animation-play-state: running; }
+  .zc-askbar:hover .zc-askbar__chip { opacity: 1; transform: none; }
+  .zc-askbar:hover .zc-askbar__placeholder {
+    background: linear-gradient(90deg, var(--zc-fg-muted) 0%, var(--zc-fg-muted) 40%, var(--zc-step-shimmer) 50%, var(--zc-fg-muted) 60%, var(--zc-fg-muted) 100%);
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: zc-shimmer 0.7s var(--ease-out) 1 both;
+  }
+  /* The orb spins twice as fast, brightens and gives one soft pulse. */
+  .zc-askbar:hover .zc-orb::before { animation-duration: calc(var(--zc-dur-orb) / 2); }
+  .zc-askbar:hover .zc-orb { filter: brightness(1.12); animation: zc-orb-pulse 0.6s var(--ease-out) 1; }
+}
+@keyframes zc-orb-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+
+/* The page behind the AI: 8% on hover (no blur), 14% + 3px blur while the box is open. Under the menu (which
+   stays sharp, z 20) and the bar; above the content and its sticky headers. */
+.zc-ai-dim {
+  position: fixed; inset: 0; pointer-events: none;
+  z-index: calc(var(--zc-z-sticky) + 5);
+  background: var(--zc-ai-scrim-hover);
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-out);
+}
+.zc-ai-dim[data-state="hover"] { opacity: 1; }
+.zc-ai-dim--open { background: var(--zc-ai-scrim-open); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+@media (hover: none) { .zc-ai-dim:not(.zc-ai-dim--open) { display: none; } }
+@media (prefers-reduced-transparency: reduce) { .zc-ai-dim--open { -webkit-backdrop-filter: none; backdrop-filter: none; } }
+
+/* ─── Bottom glow (B5) ─────────────────────────────────────────────────── */
+
+/* Phase layer: rises after the edge has drawn, sinks on close. */
+.zc-ai-glow {
+  position: fixed; left: 0; right: 0; bottom: 0; height: 180px;
+  pointer-events: none; z-index: var(--zc-z-modal); overflow: hidden;
+}
+.zc-ai-glow[data-phase="open"] { animation: zc-glow-rise 0.4s var(--ease-out) 0.2s both; }
+.zc-ai-glow[data-phase="closing"] { animation: zc-glow-sink 0.3s var(--ease-in, ease-in) both; }
+@keyframes zc-glow-rise { from { opacity: 0; transform: translateY(60px); } to { opacity: 1; transform: none; } }
+@keyframes zc-glow-sink { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(60px); } }
+
+/* State layer: brightness per state, fading to transparent upwards. */
+.zc-ai-glow__inner {
+  position: absolute; inset: 0;
+  -webkit-mask: linear-gradient(to top, black 25%, transparent);
+  mask: linear-gradient(to top, black 25%, transparent);
+  opacity: 0.55;
+  transition: opacity 0.4s var(--ease-out);
+}
+.zc-ai-glow[data-state="typing"] .zc-ai-glow__inner { opacity: 0.7; }
+.zc-ai-glow[data-state="thinking"] .zc-ai-glow__inner { opacity: 0.85; }
+.zc-ai-glow[data-state="answering"] .zc-ai-glow__inner { opacity: 0.65; }
+
+.zc-ai-glow__b {
+  position: absolute; bottom: -60px; width: 42vw; height: 200px; border-radius: 50%;
+  filter: blur(44px); will-change: transform;
+}
+.zc-ai-glow__b1 { left: -6vw; background: var(--zc-ai-c-blue); animation: zc-glow-flow1 9s ease-in-out infinite; }
+.zc-ai-glow__b2 { left: 22vw; background: var(--zc-ai-c-violet); animation: zc-glow-flow2 11s ease-in-out infinite; }
+.zc-ai-glow__b3 { left: 48vw; background: var(--zc-ai-c-blue); animation: zc-glow-flow1 8s ease-in-out infinite reverse; }
+.zc-ai-glow__b4 { left: 70vw; background: var(--zc-ai-c-cyan); opacity: 0.7; animation: zc-glow-flow2 10s ease-in-out infinite; }
+.zc-ai-glow[data-state="thinking"] .zc-ai-glow__b { animation-duration: 4.5s; }
+/* Typing: the glow under the input (centre) brightens, as if listening. */
+.zc-ai-glow[data-state="typing"] .zc-ai-glow__b3 { opacity: 1; }
+.zc-ai-glow__wave {
+  position: absolute; bottom: 0; left: -30%; width: 30%; height: 90px; opacity: 0;
+  background: radial-gradient(closest-side, var(--zc-ai-wave), transparent);
+  filter: blur(24px);
+}
+.zc-ai-glow[data-state="thinking"] .zc-ai-glow__wave { animation: zc-glow-wave 1.6s var(--ease-in-out) infinite; }
+@keyframes zc-glow-flow1 { 0%, 100% { transform: translateX(0) scale(1); } 50% { transform: translateX(6vw) scale(1.1); } }
+@keyframes zc-glow-flow2 { 0%, 100% { transform: translateX(0) scale(1.02); } 50% { transform: translateX(-5vw) scale(0.95); } }
+@keyframes zc-glow-wave { 0% { transform: translateX(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateX(430%); opacity: 0; } }
+
+/* Edge light: a 3px iridescent line hugging the very bottom, flowing sideways. The wrapper is taller so the
+   line's glow shows, and clips the pulse so nothing overflows the page. */
+.zc-ai-edge {
+  position: fixed; left: 0; right: 0; bottom: 0; height: 40px;
+  pointer-events: none; z-index: var(--zc-z-modal); overflow: hidden;
+  opacity: 0.8; transition: opacity 0.3s var(--ease-out);
+}
+.zc-ai-edge[data-state="thinking"] { opacity: 1; }
+.zc-ai-edge[data-state="answering"] { opacity: 0.9; }
+.zc-ai-edge__line {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+  background: linear-gradient(90deg, var(--zc-ai-c-blue), var(--zc-ai-c-cyan), var(--zc-ai-c-violet), var(--zc-ai-c-pink), var(--zc-ai-c-blue), var(--zc-ai-c-cyan));
+  background-size: 200% 100%;
+  box-shadow: var(--zc-ai-edge-glow);
+  transform-origin: center;
+  animation: zc-edge-in 0.36s var(--ease-out) both, zc-edge-flow 4s linear infinite;
+}
+.zc-ai-edge__line::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--zc-ai-edge-highlight); }
+.zc-ai-edge[data-state="thinking"] .zc-ai-edge__line { animation: zc-edge-in 0.36s var(--ease-out) both, zc-edge-flow 1.6s linear infinite; }
+.zc-ai-edge[data-phase="closing"] .zc-ai-edge__line { animation: zc-edge-out 0.3s var(--ease-in, ease-in) both, zc-edge-flow 4s linear infinite; }
+/* Thinking: a bright pulse travels left → right along the edge every 1.4s (Siri-like). */
+.zc-ai-edge[data-state="thinking"]::before {
+  content: ""; position: absolute; bottom: -3px; height: 9px; width: 18%; left: -18%;
+  background: radial-gradient(closest-side, var(--zc-ai-edge-pulse), transparent);
+  filter: blur(4px);
+  animation: zc-edge-pulse 1.4s var(--ease-in-out) infinite;
+}
+@keyframes zc-edge-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes zc-edge-out { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes zc-edge-flow { to { background-position: -200% 0; } }
+@keyframes zc-edge-pulse { to { transform: translateX(660%); } }
+
+/* Paused while the tab is hidden. */
+.zc-ai-glow[data-paused], .zc-ai-glow[data-paused] *,
+.zc-ai-edge[data-paused], .zc-ai-edge[data-paused] *, .zc-ai-edge[data-paused]::before { animation-play-state: paused !important; }
+
+/* Reduced motion: a still glow at .4, the edge drawn in place. */
+@media (prefers-reduced-motion: reduce) {
+  .zc-ai-glow__b, .zc-ai-glow__wave, .zc-ai-edge::before { animation: none !important; }
+  .zc-ai-glow__inner { opacity: 0.4 !important; }
+  .zc-ai-edge__line { animation: none !important; transform: none; }
+  .zc-ai-step__ring { animation: none; }
+  .zc-shimmer-once { animation: none; color: var(--zc-ink); background: none; }
+}
+
+/* ─── AI quota row (B4) ─────────────────────────────────────────────────── */
+.zc-ai-quota { display: flex; flex-direction: column; gap: 8px; }
+.zc-ai-quota__row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 13px; line-height: 18px; }
+.zc-ai-quota__label { min-width: 0; color: var(--zc-fg); font-variant-numeric: tabular-nums; }
+.zc-ai-quota__resets { flex: none; font-size: 12px; line-height: 16px; color: var(--zc-fg-subtle); }
+.zc-ai-quota__track { height: 3px; border-radius: 999px; background: var(--zc-surface-sunken); overflow: hidden; }
+.zc-ai-quota__fill { height: 100%; border-radius: inherit; background: var(--zc-ink); transform-origin: left; transition: transform 0.4s var(--ease-out); }
+.zc-ai-quota__fill--warning { background: var(--zc-amber); }

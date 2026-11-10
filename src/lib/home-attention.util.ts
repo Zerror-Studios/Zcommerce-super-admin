@@ -86,6 +86,34 @@ export function summaryState(
   return { kind: "bullets", fromDate, items };
 }
 
+type SummaryItem = Extract<SummaryState, { kind: "bullets" }>["items"][number];
+
+/**
+ * Round 3 E5: the Zcom AI card's headline and its one sentence describe the
+ * same store. The sentence is the next item about a store the headline
+ * names (by store id); items about other stores go under "+ N more things".
+ * Before, the sentence was simply the second item, so a headline about
+ * deveshe-dreams sat over a sentence about Kesar & Kin. An item with no
+ * store ids is never paired.
+ */
+export function aiCardParts(items: SummaryItem[]): {
+  headline: SummaryItem | undefined;
+  sentence: SummaryItem | undefined;
+  rest: SummaryItem[];
+} {
+  const [headline, ...others] = items;
+  if (!headline) return { headline: undefined, sentence: undefined, rest: [] };
+  const stores = new Set(headline.storeIds ?? []);
+  const sentence = stores.size ? others.find((item) => (item.storeIds ?? []).some((id) => stores.has(id))) : undefined;
+  return { headline, sentence, rest: others.filter((item) => item !== sentence) };
+}
+
+/** The sentence under the headline when no other item is about the same store. */
+export function aiCardFallbackSentence(storeName: string | undefined, others: number): string {
+  if (others === 0) return "Nothing else is flagged today.";
+  return storeName ? `Nothing else is flagged for ${storeName}.` : "Other stores need a look too.";
+}
+
 /** Store names Home already knows, by id (lists and money due). */
 export function knownStoreNames(attention: PlatformAttention | null | undefined): Map<string, string> {
   const names = new Map<string, string>();

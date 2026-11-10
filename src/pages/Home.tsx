@@ -91,10 +91,10 @@ export function Home() {
         date={heroDate()}
         name={greetingName(user?.name)}
         actions={
-          // Round 2 §6.1 (board 02): Announce (glass) + Create store (on-dark). The kit has no glass button
-          // variant any more (G10 maps "glass" to on-dark), so Announce uses the hero's own glass pill.
+          // Round 2 §6.1 (board 02): Announce (glass) + Create store (on-dark). Round 3 F7: Announce uses the shared
+          // glass button (white 14% fill, 1px white 24% border), not the faint chip.
           <>
-            <Link to="/support/announcements" className="zc-hero__chip outline-none focus-visible:shadow-focus-strong">
+            <Link to="/support/announcements" className="zc-btn-glass">
               Announce
             </Link>
             {can(PLATFORM_PERMISSIONS.TENANTS_MANAGE) ? (

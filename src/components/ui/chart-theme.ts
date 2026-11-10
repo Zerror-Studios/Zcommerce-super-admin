@@ -4,6 +4,9 @@
  * (on first use, when a chart renders), not at module load: if a chart module is imported before the
  * stylesheet, reading at load returns empty strings and charts fall back to black.
  * Presets cover both chart libraries in use: Recharts (Super Admin) and ApexCharts (Store Dashboard).
+ * Round 3 D2: one theme for every chart in both dashboards: line --zc-primary, area 18% → 0, grey dashed compare,
+ * gridlines --zc-chart-grid, axis text 11px Geist Mono --zc-chart-axis (values in tokens.css), bar radius 4px. The
+ * hand-drawn charts (LineChart, ChartParts) read the same tokens through CSS.
  */
 
 interface ThemeValues {
@@ -16,6 +19,7 @@ interface ThemeValues {
   positive: string;
   negative: string;
   fontFamily: string;
+  monoFamily: string;
   popoverShadow: string;
 }
 
@@ -33,12 +37,13 @@ function theme(): ThemeValues {
     series: ["--zc-chart-1", "--zc-chart-2", "--zc-chart-3", "--zc-chart-4"].map(cssVar),
     categorical: ["--zc-chart-cat-1", "--zc-chart-cat-2", "--zc-chart-cat-3", "--zc-chart-cat-4", "--zc-chart-cat-5", "--zc-chart-cat-6"].map(cssVar),
     grid: cssVar("--zc-chart-grid"),
-    axis: cssVar("--zc-fg-subtle"),
+    axis: cssVar("--zc-chart-axis"),
     text: cssVar("--zc-fg"),
     surface: cssVar("--zc-surface"),
     positive: cssVar("--zc-success"),
     negative: cssVar("--zc-danger-text"),
     fontFamily: cssVar("--zc-font-sans"),
+    monoFamily: cssVar("--zc-font-mono"),
     popoverShadow: cssVar("--zc-shadow-popover"),
   };
   if (values.series[0]) cache = values; // only cache once the stylesheet is there
@@ -57,11 +62,19 @@ export const chartColors = {
   get positive() { return theme().positive; },
   get negative() { return theme().negative; },
   get fontFamily() { return theme().fontFamily; },
+  get monoFamily() { return theme().monoFamily; },
   get popoverShadow() { return theme().popoverShadow; },
 };
 
 /** Axis, legend and tooltip text in ApexCharts: the 12px caption size. Recharts takes the number 12. */
 export const CHART_FONT_SIZE = "12px";
+/** Axis tick labels (round 3 D2): 11px Geist Mono. */
+export const CHART_AXIS_FONT_SIZE = "11px";
+/** Bar corner radius in px (round 3 D2). */
+export const CHART_BAR_RADIUS = 4;
+/** Recharts entrance timings (useLibraryEntrance): bars grow in 450ms, lines draw in 700ms (round 3 D2). */
+export const RECHARTS_GROW_MS = 450;
+export const RECHARTS_DRAW_MS = 700;
 
 /** Fixed plan colors in both products (owner decision 2026-10-13: categorical palette instead of blue shades). */
 export const planColors: Record<string, string> = {
@@ -98,7 +111,7 @@ export const recharts = {
     return {
       axisLine: false,
       tickLine: false,
-      tick: { fill: theme().axis, fontSize: 12, fontFamily: theme().fontFamily },
+      tick: { fill: theme().axis, fontSize: 11, fontFamily: theme().monoFamily },
     } as const;
   },
   get tooltip() {
@@ -164,9 +177,9 @@ export function apexEndLabels(categories: readonly string[]) {
   };
 }
 
-/** Gradient stops for area fills (top → bottom): spec §14 soft vertical gradient, 14% → 0%. */
+/** Gradient stops for area fills (top → bottom): round 3 D2, 18% → 0%. */
 export const areaGradientStops = [
-  { offset: "0%", stopOpacity: 0.14 },
+  { offset: "0%", stopOpacity: 0.18 },
   { offset: "100%", stopOpacity: 0 },
 ] as const;
 
@@ -194,9 +207,9 @@ export function apexBaseOptions() {
     xaxis: {
       axisBorder: { show: false },
       axisTicks: { show: false },
-      labels: { style: { colors: t.axis, fontSize: CHART_FONT_SIZE } },
+      labels: { style: { colors: t.axis, fontSize: CHART_AXIS_FONT_SIZE, fontFamily: t.monoFamily } },
     },
-    yaxis: { labels: { style: { colors: t.axis, fontSize: CHART_FONT_SIZE } } },
+    yaxis: { labels: { style: { colors: t.axis, fontSize: CHART_AXIS_FONT_SIZE, fontFamily: t.monoFamily } } },
     tooltip: { theme: "light", style: { fontSize: CHART_FONT_SIZE, fontFamily: t.fontFamily } },
     // Phone (v2 §10): straight labels that drop out instead of overlapping. Fewer points: pointsForViewport.
     responsive: [{ breakpoint: 768, options: { xaxis: { labels: { rotate: 0, hideOverlappingLabels: true } } } }],

@@ -16,6 +16,7 @@ import { cx } from "./cx";
 import { IconCaret, IconInfo } from "./icons";
 import { Skeleton } from "./Skeleton";
 import { Tooltip } from "./Tooltip";
+import { useChartEntrance } from "./use-chart-entrance";
 import { useIsPhone } from "./use-media";
 
 export type SummaryTone = "default" | "warning" | "danger";
@@ -24,7 +25,11 @@ export type SummaryTone = "default" | "warning" | "danger";
 export type SummaryChart =
   | { kind: "bars"; values: number[] }
   | { kind: "dots" }
-  | { kind: "ring"; percent: number }
+  /**
+   * `good`: the ring shows a good "nothing to worry about" (no stock running low, no checkout failures, all paid): a
+   * full green ring (round 3 F3), never a full white one that reads as empty.
+   */
+  | { kind: "ring"; percent: number; good?: boolean }
   | { kind: "segments"; filled: number; total?: number };
 
 export interface SummaryCell {
@@ -69,28 +74,39 @@ function readCollapsed(key: string | undefined, fallback: boolean): boolean {
   }
 }
 
+/** Round 3 D2: the mini chart plays its entrance the first time it is on screen (segments fill one by one, bars grow). */
 function MiniChart({ chart }: { chart: SummaryChart }) {
+  const { ref, play } = useChartEntrance<HTMLSpanElement>();
   if (chart.kind === "dots") return <span className="zc-mini-dots" />;
   if (chart.kind === "ring") {
     const percent = Math.max(0, Math.min(100, chart.percent));
     // Round 2 §6.4: no empty ring at 0; a 0 reads as a grey full ring.
-    return <span className="zc-mini-ring" data-zero={percent === 0 || undefined} style={{ ["--_p" as string]: percent }} />;
+    return (
+      <span ref={ref} data-play={play} className="zc-chart inline-flex">
+        <span
+          className="zc-mini-ring zc-c-center"
+          data-zero={(percent === 0 && !chart.good) || undefined}
+          data-good={chart.good || undefined}
+          style={{ ["--_p" as string]: chart.good ? 100 : percent }}
+        />
+      </span>
+    );
   }
   if (chart.kind === "segments") {
     const total = chart.total ?? 10;
     return (
-      <span className="zc-mini-segs">
+      <span ref={ref} data-play={play} className="zc-mini-segs zc-chart">
         {Array.from({ length: total }, (_, index) => (
-          <i key={index} data-on={index < chart.filled ? "" : undefined} />
+          <i key={index} data-on={index < chart.filled ? "" : undefined} className={index < chart.filled ? "zc-c-seg" : undefined} style={{ ["--i" as string]: index }} />
         ))}
       </span>
     );
   }
   const max = Math.max(1, ...chart.values);
   return (
-    <span className="zc-mini-bars">
+    <span ref={ref} data-play={play} className="zc-mini-bars zc-chart">
       {chart.values.slice(-10).map((value, index) => (
-        <i key={index} style={{ height: `${Math.max(8, (value / max) * 100)}%` }} />
+        <i key={index} className="zc-c-bar" style={{ height: `${Math.max(8, (value / max) * 100)}%`, ["--i" as string]: index }} />
       ))}
     </span>
   );

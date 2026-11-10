@@ -28,12 +28,13 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { AiGlow, type AiGlowState } from "../ui/AiGlow";
 import { Button } from "../ui/Button";
 import { Orb } from "../ui/Orb";
 import { cx } from "../ui/cx";
 import { IconButton } from "../ui/IconButton";
 import { IconAdd, IconArrowRight, IconClose, IconMaximize, IconMinimize } from "../ui/icons";
-import { DUR_1_S, DUR_2_S, EXIT_S, spring } from "../ui/motion";
+import { DUR_1_S, DUR_2_S, DUR_3_S, EXIT_S, spring } from "../ui/motion";
 import { useIsPhone } from "../ui/use-media";
 
 /** The line every answer ends with (v2 §3.3, round 2 G3). */
@@ -114,7 +115,18 @@ export interface AiSheetProps {
   label?: string;
   /** <AiSheetContent> with <AiSheetHeader> and the conversation. */
   children: ReactNode;
+  /**
+   * Round 3 B5: what the AI is doing, for the glow along the bottom of the screen: idle, typing (the reply box has
+   * text), thinking (working on an answer), answering (the answer is streaming).
+   */
+  activity?: AiGlowState;
 }
+
+/** Round 3 B1: devices that report little memory skip the blur behind the open box. */
+const LOW_MEMORY =
+  typeof navigator !== "undefined" && typeof (navigator as Navigator & { deviceMemory?: number }).deviceMemory === "number"
+    ? ((navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8) <= 2
+    : false;
 
 export function AiSheet({
   isOpen,
@@ -125,6 +137,7 @@ export function AiSheet({
   onExpandedChange,
   label = "Zcom AI",
   children,
+  activity = "idle",
 }: AiSheetProps) {
   const isPhone = useIsPhone();
   const reduced = useReducedMotion() ?? false;
@@ -184,7 +197,24 @@ export function AiSheet({
   if (typeof document === "undefined") return null;
 
   return createPortal(
+    <>
+    {/* Round 3 B5: the flowing glow along the bottom edge while the AI is open (any size). */}
+    <AiGlow open={isOpen} state={activity} />
     <AnimatePresence>
+      {/* Round 3 B1 (CHANGED from round 2's undimmed box): the box dims the page 14% with a 3px blur; the menu
+          stays sharp. Presses still go through to the page, which closes the box (below). */}
+      {isOpen && !dimmed ? (
+        <motion.div
+          key="zc-ai-dim"
+          aria-hidden
+          className="zc-ai-dim zc-ai-dim--open"
+          data-state="hover"
+          style={LOW_MEMORY ? { backdropFilter: "none", WebkitBackdropFilter: "none" } : undefined}
+          initial={{ opacity: reduced ? 0 : 0.5 }}
+          animate={{ opacity: 1, transition: { duration: DUR_3_S } }}
+          exit={{ opacity: 0, transition: { duration: EXIT_S } }}
+        />
+      ) : null}
       {isOpen && dimmed ? (
         <motion.div
           key="zc-ai-scrim"
@@ -223,7 +253,8 @@ export function AiSheet({
           </AiSheetContext.Provider>
         </motion.div>
       ) : null}
-    </AnimatePresence>,
+    </AnimatePresence>
+    </>,
     document.body,
   );
 }

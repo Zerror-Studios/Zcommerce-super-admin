@@ -221,12 +221,8 @@ export function ClientOverviewTab({ client, subscription, setup }: ClientOvervie
             title="Store health"
             description={healthLoading ? "Checking…" : storeHealthLine(band.label, healthRows)}
             leading={
-              <span className="relative inline-flex size-10 items-center justify-center">
-                <ProgressRing value={health.score} label={`Store health ${health.score} of 100`} />
-                <span aria-hidden className="absolute inset-0 flex items-center justify-center text-label font-semibold text-fg num">
-                  {health.score}
-                </span>
-              </span>
+              // Round 3 F4: one number in the ring (the score), not the score drawn over the ring's own "NN%".
+              <ProgressRing value={health.score} label={`Store health ${health.score} of 100`} center={health.score} />
             }
           >
             {healthLoading ? (
