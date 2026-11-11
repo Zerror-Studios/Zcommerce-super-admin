@@ -386,19 +386,19 @@ export function StoresTab({ registerExport, range, subTab, onSubTabChange }: Sto
 
   return (
     <div className="flex flex-col gap-4">
-      <SummaryPanel cells={summaryCells} isLoading={overviewApi.loading} storageKey={summaryKey} aria-label="Stores summary" />
-
-      {/* §4, round 3 D1.4: the sub-tabs stick under the title row (white with a blur, 1px line under it). */}
-      <div className="zc-subtabs zc-subtabs--line -mx-4 px-4 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">
+      {/* §4, round 3 D1.4: the sub-tabs stick under the title row (white with a blur, 1px line under it); the app's
+          pill switch, as on the store's Analytics (owner, 2026-11-11). */}
+      <div className="zc-subtabs zc-subtabs--seg -mx-4 px-4 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">
         <SegmentedSwitch<StoresSubTab>
           ariaLabel="Stores sections"
-          variant="underline"
           items={[...STORES_SUB_TABS]}
           value={subTab}
           onChange={onSubTabChange}
           className="max-w-full"
         />
       </div>
+
+      <SummaryPanel cells={summaryCells} isLoading={overviewApi.loading} storageKey={summaryKey} aria-label="Stores summary" />
 
       {subTab === "overview" ? (
         <>

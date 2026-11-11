@@ -21,7 +21,7 @@ Store side (A1–A3): `D:\zcom\Zcomm-frontend\docs\analytics-upgrade\progress.md
   sub-tabs) and the existing "Open Merchant sales / Retention / Usage" views.
 - Summary panel: **GMV, Orders, Visits, Conversion rate** (from `platformAnalyticsOverview`), compared with the window
   before.
-- Sticky underline sub-tabs (`.zc-subtabs`, the same markup as the store side). The sub-tab is kept in `?tab=`
+- Sticky sub-tabs (`.zc-subtabs`, the same markup as the store side; the pill `SegmentedSwitch` above the summary panel since the owner follow-up of 2026-11-11, was underline). The sub-tab is kept in `?tab=`
   (Overview has none; `top`, `needs-look`). The URL is replaced, not pushed, and AppShell already opens a `?tab=`
   change at the top.
   - **Overview:** GMV over time (GMV area with visits and orders lines, full width, round 3 draw-in and morph). **Totals
