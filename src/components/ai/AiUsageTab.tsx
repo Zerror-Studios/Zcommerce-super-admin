@@ -10,6 +10,7 @@ import { aiUsageCsvFile, formatRate, formatUsdInr } from "../../lib/platform-ai.
 import { downloadCsv } from "../../lib/report-csv";
 import type { PlatformAiUsageRow } from "../../types/platform-api";
 import { toasts } from "../../copy";
+import { AiQuota } from "../ui/AiQuota";
 import { IconAi } from "../ui/icons";
 import {
   Button,
@@ -20,10 +21,8 @@ import {
   FilterDrawer,
   TablePagination,
   countActiveFilters,
-  cx,
   formatCount,
   toastError,
-  toneTextClasses,
   useTableUrlState,
   type DataTableColumn,
   type FilterGroup,
@@ -131,11 +130,20 @@ export function AiUsageTab({ tabs, exportRef }: AiTabProps) {
                 </div>
               );
             case "week":
+              // Analytics Level 1 §3.7: a weekly limit shows as the round 3 quota row (<AiQuota>, as merchants see it).
+              if (row.questionsPerWeek > 0) {
+                return (
+                  <AiQuota
+                    className="w-full"
+                    label={`${formatCount(row.questionsThisWeek)} / ${formatCount(row.questionsPerWeek)}`}
+                    percentUsed={row.percentOfLimit}
+                    tone={row.percentOfLimit >= 80 ? "warning" : "default"}
+                    barLabel={`${row.name}: AI questions used this week`}
+                  />
+                );
+              }
               return (
-                <span className={cx("whitespace-nowrap num", row.percentOfLimit >= 100 && toneTextClasses.danger)}>
-                  {formatCount(row.questionsThisWeek)}
-                  {row.questionsPerWeek > 0 ? ` / ${formatCount(row.questionsPerWeek)}` : ""}
-                </span>
+                <span className="whitespace-nowrap num">{formatCount(row.questionsThisWeek)}</span>
               );
             case "month":
               return <span className="num">{formatCount(row.questionsThisMonth)}</span>;

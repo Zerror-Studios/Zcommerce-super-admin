@@ -4,9 +4,10 @@ import { IconAnalytics, IconHome, IconPayments, IconSettings, IconStore, IconSto
 
 /**
  * The black menu (docs/design-v2/README.md §3.1, 5 Nov 2026): Home, Stores, Billing, Analytics ▸ (Revenue, Stores,
- * AI usage, System), then Notifications and Settings at the bottom. Analytics' sub-pages are the existing pages and
- * tabs: Revenue and Stores are /analytics tabs, AI usage is the ZCOM AI page (/ai, its other tabs stay inside it),
- * System is the Performance tab. Counts: Stores a plain grey total, Billing an orange pill (owed now or due within 7
+ * AI usage), then Notifications and Settings at the bottom. Analytics' sub-pages are the existing pages and tabs:
+ * Revenue and Stores are /analytics tabs, AI usage is the ZCOM AI page (/ai, its other tabs stay inside it).
+ * Analytics Level 1 §3.7 (2026-11-11): the "System" item (store performance) is merged into Stores; platform health
+ * is the System health item. Counts: Stores a plain grey total, Billing an orange pill (owed now or due within 7
  * days), Analytics a blue pill (open AI top-up requests); DashboardLayout fills them in.
  *
  * Round 2 §4 (PRD-036 R2-8/R2-9, 2026-11-06): Support ▸ (Tickets, Announcements, Guides & videos) after Billing and
@@ -36,7 +37,6 @@ export const mainNavItems: NavItem[] = [
       { to: "/analytics/store-sales", label: "Stores" },
       // PRD-021 FR-6: shown only with platform:ai:read (`visibleNavItems`).
       { to: "/ai", label: "AI usage" },
-      { to: "/analytics/performance", label: "System" },
     ],
   },
   { key: "system-health", label: "System health", to: "/system-health", icon: IconStoreHealth },

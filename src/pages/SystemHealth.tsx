@@ -14,10 +14,13 @@ import {
   cx,
   formatRelative,
   type DataTableColumn,
+  type RowMenuItem,
   type SummaryCell,
   type Tone,
 } from "../components/ui";
-import { IconStoreHealth } from "../components/ui/icons";
+import { IconChartBar, IconStoreHealth } from "../components/ui/icons";
+import { PLATFORM_PERMISSIONS } from "../lib/permissions";
+import { useAuth } from "../providers/AuthProvider";
 import { PLATFORM_SYSTEM_HEALTH } from "../graphql/system-health";
 
 interface Metric {
@@ -82,7 +85,21 @@ const WEBHOOK_COLUMNS: DataTableColumn<WebhookRow>[] = [
  * store and payment provider status, read from data Zcom already keeps (`platformSystemHealth`). Nothing measures
  * uptime, page speed or error rate yet, so those say "Not measured" with the reason instead of a number.
  */
+/**
+ * Analytics Level 1 §3.7: the old Analytics › System item is gone; its integration, sync and platform-health views
+ * keep their URLs and open from this page's ⋯ (they need report access, like every Analytics view).
+ */
+const SYSTEM_VIEWS: { key: string; label: string; href: string }[] = [
+  { key: "integrations", label: "Open Integration health", href: "/analytics/integrations" },
+  { key: "sync", label: "Open Sync monitor", href: "/analytics/sync" },
+  { key: "health", label: "Open Platform health (snapshot)", href: "/analytics/health" },
+];
+
 export function SystemHealth() {
+  const { can } = useAuth();
+  const more: RowMenuItem[] | undefined = can(PLATFORM_PERMISSIONS.REPORTS_READ)
+    ? SYSTEM_VIEWS.map((view) => ({ ...view, icon: IconChartBar }))
+    : undefined;
   const { data, loading, error, refetch } = useQuery(PLATFORM_SYSTEM_HEALTH, { fetchPolicy: "cache-and-network", pollInterval: 60_000 });
   const health = data?.platformSystemHealth;
   const uptime: Metric | undefined = health?.uptime;
@@ -122,7 +139,7 @@ export function SystemHealth() {
   if (error && !health) {
     return (
       <>
-        <PageHeader title="System health" icon={<IconStoreHealth aria-hidden />} />
+        <PageHeader title="System health" icon={<IconStoreHealth aria-hidden />} more={more} moreLabel="More system health views" />
         <ErrorState title="Couldn't load system health." onRetry={() => void refetch()} />
       </>
     );
@@ -134,6 +151,8 @@ export function SystemHealth() {
         title="System health"
         icon={<IconStoreHealth aria-hidden />}
         description={health ? `Webhooks, queues, syncs and payment providers · updated ${formatRelative(health.generatedAt)}` : "Webhooks, queues, syncs and payment providers"}
+        more={more}
+        moreLabel="More system health views"
       />
       <div className="space-y-6">
         <SummaryPanel cells={cells} isLoading={loading && !health} storageKey="system-health" aria-label="System health summary" />
