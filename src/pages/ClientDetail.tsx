@@ -302,11 +302,11 @@ export function ClientDetail() {
           sticky={!isPhone}
         >
           <SegmentedSwitch<StoreTab>
-            variant="underline"
             ariaLabel="Store sections"
             value={isStoreTab(section) ? section : DEFAULT_TAB}
             onChange={() => undefined}
             items={STORE_TABS.map((tab) => ({ value: tab.key, label: tab.label }))}
+            className="max-w-full"
           />
         </PageHeader>
       </div>
@@ -532,13 +532,13 @@ export function ClientDetail() {
         moreLabel={`Actions for ${client.storeName}`}
         sticky={!isPhone}
       >
-        {/* The tabs (§7), the kit's one tab style; each keeps its URL. */}
+        {/* The tabs (§7): the app's pill switch (owner 2026-11-11: one tab style); each keeps its URL. */}
         <SegmentedSwitch<StoreTab>
-          variant="underline"
           ariaLabel="Store sections"
           value={active}
           onChange={(key) => navigate(hrefOf(key))}
           items={STORE_TABS.map((tab) => ({ value: tab.key, label: tab.label }))}
+          className="max-w-full"
         />
       </PageHeader>
 

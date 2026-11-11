@@ -1970,7 +1970,7 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
   .zc-collapse[data-open="false"] { grid-template-rows: 0fr; }
   .zc-collapse > * { min-height: 0; overflow: hidden; }
 
-  /* D1.4: analytics sub-tabs (Insights sections, Traffic sections) stick under the title row: white with a blur and a
+  /* D1.4: analytics sub-tabs (the pill switch since 2026-11-11) stick under the title row: white with a blur and a
      1px line under them. Pages add the page-padding bleed classes. */
   .zc-subtabs {
     position: sticky; top: var(--zc-sticky-header-h, 0px); z-index: var(--zc-z-sticky);
@@ -1981,7 +1981,7 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
   /* The sections under the sub-tabs stick their own headers (tables) below them, not over them. */
   .zc-subtabs--seg { padding-block: 8px; }
   .zc-subtabs--line ~ * { --zc-sticky-top: calc(var(--zc-sticky-header-h, 0px) + 43px); }
-  .zc-subtabs--seg ~ * { --zc-sticky-top: calc(var(--zc-sticky-header-h, 0px) + var(--zc-seg-h-sm) + 17px); }
+  .zc-subtabs--seg ~ * { --zc-sticky-top: calc(var(--zc-sticky-header-h, 0px) + var(--zc-seg-h) + 17px); }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .zc-subtabs { background: var(--zc-surface); } }
   @media (prefers-reduced-transparency: reduce) { .zc-subtabs { background: var(--zc-surface); backdrop-filter: none; -webkit-backdrop-filter: none; } }
   @media (prefers-reduced-motion: reduce) {
