@@ -222,6 +222,15 @@
   --zc-chart-cat-4: #B8C9F5;
   --zc-chart-cat-5: #6A6F79;
   --zc-chart-cat-6: #C9CCD3;
+  /* Analytics L1 (ANALYTICS-UPGRADE §5): treemap and donut parts use the blue scale, then grey for Other and
+     compare; green only for profit or good, red only for loss, drop or "left here". */
+  --zc-chart-scale-1: #1F5EFF;
+  --zc-chart-scale-2: #6E92FF;
+  --zc-chart-scale-3: #A9C0FF;
+  --zc-chart-scale-4: #D6E2FF;
+  --zc-chart-other: #C9CDD6;
+  --zc-chart-good: var(--zc-green);
+  --zc-chart-bad: var(--zc-red);
 
   /* ---------- Elevation: cards have a border and no shadow; only floating things cast one (§2.3) ---------- */
   --zc-shadow-card: none;

@@ -27,6 +27,7 @@ import {
   TableCard,
   TwoLine,
   NoDataEmpty,
+  SourceChip,
   type AnalyticsTabProps,
 } from "../analytics/analytics-shared";
 import { MONEY_AXIS_WIDTH, legendProps, moneyAxis, storeHref, useRegisterExport } from "../analytics/analytics-tab.util";
@@ -260,6 +261,7 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
           <div className="grid grid-cols-1 gap-4 @3xl:grid-cols-2">
             <Card
               title="Earnings trend"
+              actions={<SourceChip source="billing" />}
               description={
                 mrrSince
                   ? `Plan bookings per month · dashed: MRR at each month end, recorded since ${formatDate(mrrSince)}`
@@ -287,7 +289,7 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
               </div>
             </Card>
 
-            <Card title="Revenue by plan" description="Plan bookings per month" padding="none">
+            <Card title="Revenue by plan" description="Plan bookings per month" actions={<SourceChip source="billing" />} padding="none">
               <div ref={planBarsRef} data-play={planBarsPlay} className="h-70 px-3 pb-4">
                 {chartBody(
                   monthly.length === 0,
@@ -322,6 +324,7 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
 
         <TableCard<MrrMonthRow>
           title="MRR movement"
+          actions={<SourceChip source="billing" />}
           description={
             // Loading pass: no "nothing recorded" claim before the history has answered.
             mrrApi.loading
@@ -392,6 +395,7 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
           <div className="grid grid-cols-1 gap-4 @3xl:grid-cols-2">
             <TableCard<PlanBreakdownRow>
               title="Plan breakdown"
+              actions={<SourceChip source="billing" />}
               aria-label="Plan breakdown"
               columns={planColumns}
               rows={planRows}
@@ -418,6 +422,7 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
 
             <TableCard<GatewayBreakdownRow>
               title="Gateway split"
+              actions={<SourceChip source="billing" />}
               aria-label="Gateway split"
               columns={gatewayColumns}
               rows={gatewayRows}
@@ -453,6 +458,7 @@ export function RevenueReportsTab({ tabRow, registerExport, range }: RevenueRepo
 
         <TableCard<TopStoreRevenueRow>
           title="Top stores by collected revenue"
+          actions={<SourceChip source="billing" />}
           aria-label="Top stores by collected revenue"
           columns={topStoreColumns}
           rows={topStores}

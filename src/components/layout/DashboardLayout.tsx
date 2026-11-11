@@ -38,13 +38,14 @@ function sectionRoot(href: string): string {
 }
 
 /**
- * Analytics ▸ Revenue, Stores and System each open a group of views (pages/Analytics.tsx GROUPS); the menu item stays
- * lit on every view of its group, and only that item.
+ * Analytics ▸ Revenue and Stores each open a group of views (pages/Analytics.tsx GROUPS); the menu item stays lit on
+ * every view of its group, and only that item. Analytics Level 1 §3.7: the old System item is gone; its integration,
+ * sync and platform-health views light System health, and the old Performance URL (redirected) lights Stores.
  */
 const NAV_GROUP_ALIASES: Record<string, string[]> = {
   "/analytics/revenue": ["/analytics/money", "/analytics/ai-cost"],
-  "/analytics/store-sales": ["/analytics/merchant-sales", "/analytics/retention", "/analytics/usage"],
-  "/analytics/performance": ["/analytics/integrations", "/analytics/sync", "/analytics/health"],
+  "/analytics/store-sales": ["/analytics/performance", "/analytics/merchant-sales", "/analytics/retention", "/analytics/usage"],
+  "/system-health": ["/analytics/integrations", "/analytics/sync", "/analytics/health"],
 };
 
 function pathMatches(pathname: string, href: string, end = false): boolean {

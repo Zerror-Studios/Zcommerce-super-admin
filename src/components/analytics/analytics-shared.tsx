@@ -4,13 +4,11 @@
  * Analytics page hands to each tab.
  */
 import type { ReactNode } from "react";
-import { PERFORMANCE_RANGE_DAYS, type PerformanceRangeDays } from "../../lib/analytics-health";
 import { NO_PREVIOUS_SALES_COPY } from "../../lib/store-sales";
 import { emptyStates } from "../../copy";
 import {
   DataTable,
   EmptyState,
-  SegmentedSwitch,
   Tooltip,
   cx,
   formatDelta,
@@ -144,17 +142,19 @@ export function LogoTile({ name }: { name: string }) {
   );
 }
 
-const DAY_ITEMS = PERFORMANCE_RANGE_DAYS.map((days) => ({ value: String(days), label: `${days} days` }));
+/** Where a card's numbers come from (Analytics Level 1 §4): a small grey chip on the right of the card header. */
+export type AnalyticsSource = "orders" | "mixed" | "billing";
 
-/** Store sales and Performance period: segmented switch sm, 7 · 30 · 90 days (default 30, as live). */
-export function DaysSwitch({ value, onChange }: { value: PerformanceRangeDays; onChange: (days: PerformanceRangeDays) => void }) {
+const SOURCE_LABELS: Record<AnalyticsSource, string> = {
+  orders: "Store orders",
+  mixed: "Orders and Google Analytics",
+  billing: "Zcom billing",
+};
+
+export function SourceChip({ source }: { source: AnalyticsSource }) {
   return (
-    <SegmentedSwitch
-      ariaLabel="Period"
-      size="sm"
-      items={DAY_ITEMS}
-      value={String(value)}
-      onChange={(next) => onChange(Number(next) as PerformanceRangeDays)}
-    />
+    <span className="inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-xs bg-surface-sunken px-1.5 text-caption text-fg-muted">
+      {SOURCE_LABELS[source]}
+    </span>
   );
 }

@@ -34,3 +34,23 @@ export const legendProps = {
   wrapperStyle: { fontSize: 12 },
 } as const;
 
+/**
+ * Analytics › Stores sub-tabs (Analytics Level 1 §3.7): the old Stores and System (performance) pages in one, kept in
+ * the URL as `?tab=` (Overview has none).
+ */
+export const STORES_SUB_TABS = [
+  { value: "overview", label: "Overview" },
+  { value: "top", label: "Top stores" },
+  { value: "needs-look", label: "Needs a look" },
+] as const;
+
+export type StoresSubTab = (typeof STORES_SUB_TABS)[number]["value"];
+
+export const isStoresSubTab = (value: string | null | undefined): value is StoresSubTab =>
+  STORES_SUB_TABS.some((tab) => tab.value === value);
+
+/**
+ * `platformAnalyticsOverview` and `platformStoreSales` take any window of 1 to 366 days (backend
+ * `dailyWindows`), so the shared date picker maps straight onto them; it offers no day before this many days ago.
+ */
+export const STORES_MAX_WINDOW_DAYS = 366;
