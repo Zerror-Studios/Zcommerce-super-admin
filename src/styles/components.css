@@ -1453,19 +1453,26 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
   background: var(--zc-ink); color: white; font: 600 10px/14px var(--zc-font-sans); font-variant-numeric: tabular-nums;
 }
 
-/* ---- Orb glyph (§3.4): deep blue base, a rotating layer of soft light, a breathing white core ---- */
+/* ---- Orb (§3.4; dot sphere since 2026-11-11): Orb.tsx draws a sphere of dots on a canvas (orb-dots.ts). The box
+   keeps the orb's size in the layout; the canvas spills 30% past it on each side for the soft glow. ---- */
+.zc-orb-dots {
+  --_s: var(--zc-orb);
+  position: relative; display: inline-flex; flex: none; width: var(--_s); height: var(--_s); vertical-align: middle;
+}
+.zc-orb-dots--lg { --_s: var(--zc-orb-lg); }
+.zc-orb-dots--bar { --_s: var(--zc-orb-bar); }
+.zc-orb-dots__canvas { position: absolute; left: -30%; top: -30%; width: 160%; height: 160%; pointer-events: none; }
+
+/* ---- The sign-in character's orb (AuthBuddy, §5): deep blue base, a rotating layer of soft light, a breathing
+   white core under its eyes ---- */
 @keyframes zc-orb-spin { to { transform: rotate(360deg); } }
 @keyframes zc-orb-breathe { 0%, 100% { transform: scale(0.86); opacity: 0.8; } 50% { transform: scale(1.06); opacity: 1; } }
-@keyframes zc-orb-ring { from { transform: scale(1); opacity: 0.55; } to { transform: scale(1.9); opacity: 0; } }
 .zc-orb {
   --_s: var(--zc-orb);
   position: relative; display: inline-block; flex: none; width: var(--_s); height: var(--_s); vertical-align: middle;
   border-radius: 50%; overflow: hidden; isolation: isolate; background: var(--zc-orb-base);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45), 0 2px 8px -2px rgba(37, 99, 235, 0.55);
 }
-.zc-orb--lg { --_s: var(--zc-orb-lg); }
-.zc-orb--bar { --_s: var(--zc-orb-bar); box-shadow: inset 0 0 0 1px rgba(191, 219, 254, 0.5), 0 0 16px rgba(59, 130, 246, 0.45); }
-.zc-orb--white { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7), 0 0 0 1.5px rgba(255, 255, 255, 0.55), 0 0 12px rgba(191, 219, 254, 0.55); }
 .zc-orb::before {
   content: ""; position: absolute; inset: -30%; border-radius: 50%;
   background:
@@ -1481,18 +1488,7 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
   animation: zc-orb-breathe var(--zc-dur-orb-breathe) ease-in-out infinite;
 }
 .zc-orb-wrap { position: relative; display: inline-flex; flex: none; vertical-align: middle; }
-.zc-orb-wrap__ring { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid rgba(59, 130, 246, 0.6); opacity: 0; pointer-events: none; }
-.zc-orb-wrap[data-state="listening"] .zc-orb::after { animation-duration: 0.9s; }
-.zc-orb-wrap[data-state="listening"] .zc-orb-wrap__ring { animation: zc-orb-ring 1.4s ease-out infinite; }
 .zc-orb-wrap[data-state="thinking"] .zc-orb::before { animation-duration: var(--zc-dur-orb-think); }
-.zc-orb-wrap[data-state="thinking"] .zc-orb-wrap__ring { animation: zc-orb-ring 1.1s ease-out infinite; }
-.zc-orb-wrap[data-state="done"] .zc-orb::before,
-.zc-orb-wrap[data-state="done"] .zc-orb::after { animation: none; }
-.zc-orb-wrap__tick {
-  position: absolute; right: -3px; bottom: -3px; width: 12px; height: 12px; border-radius: 50%;
-  display: grid; place-items: center; background: var(--zc-green); color: white; border: 1.5px solid var(--zc-surface);
-}
-.zc-orb-wrap__tick svg { width: 8px; height: 8px; }
 
 /* ---- One slow drifting light (§2.4): AI card 10s, summary panel 12s ---- */
 @keyframes zc-drift { to { transform: translate(-70px, 50px) scale(1.2); } }
@@ -1751,7 +1747,7 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 .zc-popup-title__text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .zc-orb::before, .zc-orb::after, .zc-orb-wrap__ring, .zc-ai-panel::after, .zc-summary::after { animation: none !important; }
+  .zc-orb::before, .zc-orb::after, .zc-ai-panel::after, .zc-summary::after { animation: none !important; }
 }
 /* Round 2 §8.10: under 768px no drifting light anywhere (AI cards, summary panel, the Home hero), and the idle orb
    stands still; only the listening/thinking ring moves while the AI works. */

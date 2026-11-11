@@ -195,6 +195,7 @@ Screen refs: `05-V4-AI`, `46-AI-Full`.
 - An 18px circle (28px large; 30px in the bar). A deep blue base with a rotating layer of soft blue, cyan and periwinkle light, and a breathing white core (see `.glyph` in the styles file). The white variant `.glyph.w` is for dark backgrounds.
 - It goes in front of every AI suggestion: suggestion lines, insight cards, draft replies, the AI bar.
 - States: **idle** (slow), **listening** (core pulses, ring ripples), **thinking** (fast spin and ring), **done** (still, with a tick). Shown on `05-V4-AI`.
+- **Update 2026-11-11 (owner): the orb is now a dot sphere** (`components/ui/Orb.tsx` + `orb-dots.ts`, same sizes and the same orb blues): a sphere of dots that turns slowly in a soft glow. States: **idle** (slow turn), **listening** (gentle bubbling, the glow breathes), **thinking** (the surface bubbles outwards), **working** (a line of dots sweeps across, horizontally, vertically and at angles), **done** (slow turn, brighter glow, no tick), **waiting** (folds into a still cube: stuck, waiting for the user). The sign-in character (§5) keeps the gradient orb with eyes. All states are on `/admin/dev/ui`.
 
 ---
 
