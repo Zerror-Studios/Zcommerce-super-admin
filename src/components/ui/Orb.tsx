@@ -1,45 +1,66 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
- * Design v2 AI pieces (docs/design-v2/README.md §3.4, §4.8; styles `.zc-orb`, `.zc-ai-panel`, `.zc-ai-line` in
+ * Design v2 AI pieces (docs/design-v2/README.md §3.4, §4.8; styles `.zc-orb-dots`, `.zc-ai-panel`, `.zc-ai-line` in
  * src/styles/components.css). The orb goes in front of every AI suggestion: suggestion lines, insight cards, draft
- * replies, the Zcom AI bar. It replaces the static sparkle.
+ * replies, the Zcom AI bar. It replaces the static sparkle. Since 2026-11-11 (owner) it is a sphere of dots drawn by
+ * `orb-dots.ts`, with a state for each phase of the AI's work.
  */
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { cx } from "./cx";
-import { IconCheck } from "./icons";
+import { mountOrb, type OrbHandle } from "./orb-dots";
 
-export type OrbState = "idle" | "listening" | "thinking" | "done";
+export type OrbState = "idle" | "listening" | "thinking" | "working" | "done" | "waiting";
 export type OrbSize = "sm" | "lg" | "bar";
 
 export interface OrbProps {
-  /** idle: slow; listening: the core pulses and a ring ripples; thinking: fast spin and ring; done: still, with a tick. */
+  /**
+   * idle: a slow turn · listening: gentle bubbling, the glow breathes · thinking: the surface bubbles outwards ·
+   * working: a line of dots sweeps across (steps running, answer streaming) · done: a slow turn, brighter glow ·
+   * waiting: folds into a still cube (stuck, waiting for the user).
+   */
   state?: OrbState;
   /** sm 18px (default), lg 28px, bar 30px (the Zcom AI bar). */
   size?: OrbSize;
-  /** The white-edged variant for dark backgrounds (AI card, summary panel, sign-in). */
+  /** White dots and a cyan glow for dark and blue backgrounds (AI card, summary panel, Home hero). */
   onDark?: boolean;
   /** Screen-reader text; the orb is decorative by default. */
   label?: string;
   className?: string;
 }
 
-/** The animated orb glyph (§3.4). Transform and opacity only; still under reduced motion. */
+/** The animated dot-sphere orb (§3.4). Draws one still frame under reduced motion. */
 export function Orb({ state = "idle", size = "sm", onDark = false, label, className }: OrbProps) {
+  const boxRef = useRef<HTMLSpanElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const handleRef = useRef<OrbHandle | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  // A new size or colour builds a new drawing; the state alone only blends the motion.
+  useEffect(() => {
+    if (!canvasRef.current || !boxRef.current) return undefined;
+    const handle = mountOrb(canvasRef.current, boxRef.current, stateRef.current, onDark);
+    handleRef.current = handle;
+    return () => {
+      handle.destroy();
+      handleRef.current = null;
+    };
+  }, [size, onDark]);
+
+  useEffect(() => {
+    handleRef.current?.setMotion(state);
+  }, [state]);
+
   return (
     <span
-      className={cx("zc-orb-wrap", className)}
+      ref={boxRef}
+      className={cx("zc-orb-dots", size !== "sm" && `zc-orb-dots--${size}`, className)}
       data-state={state}
       role={label ? "img" : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
     >
-      <span className={cx("zc-orb", size !== "sm" && `zc-orb--${size}`, onDark && "zc-orb--white")} />
-      {state === "listening" || state === "thinking" ? <span className="zc-orb-wrap__ring" /> : null}
-      {state === "done" ? (
-        <span className="zc-orb-wrap__tick">
-          <IconCheck aria-hidden />
-        </span>
-      ) : null}
+      <canvas ref={canvasRef} className="zc-orb-dots__canvas" />
     </span>
   );
 }

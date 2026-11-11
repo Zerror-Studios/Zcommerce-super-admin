@@ -120,6 +120,7 @@ export function AiSteps({ steps, title, variant = "card", summary, onRetry, clas
   const reduced = useReducedMotion() ?? false;
   const [expanded, setExpanded] = useState(false);
   const failed = steps.some((step) => step.state === "error");
+  const allDone = steps.length > 0 && steps.every((step) => step.state === "done");
   const collapsed = !!summary && !expanded;
 
   const list = (
@@ -155,7 +156,7 @@ export function AiSteps({ steps, title, variant = "card", summary, onRetry, clas
     >
       {title ? (
         <div className="zc-ai-steps__head">
-          <Orb size="lg" state={failed ? "idle" : "thinking"} />
+          <Orb size="lg" state={failed ? "idle" : allDone ? "done" : "working"} />
           <span className="zc-ai-steps__title">{title}</span>
         </div>
       ) : null}

@@ -30,7 +30,7 @@ import {
 import { createPortal } from "react-dom";
 import { AiGlow, type AiGlowState } from "../ui/AiGlow";
 import { Button } from "../ui/Button";
-import { Orb } from "../ui/Orb";
+import { Orb, type OrbState } from "../ui/Orb";
 import { cx } from "../ui/cx";
 import { IconButton } from "../ui/IconButton";
 import { IconAdd, IconArrowRight, IconClose, IconMaximize, IconMinimize } from "../ui/icons";
@@ -295,6 +295,8 @@ export interface AiSheetHeaderProps {
   onClose?: () => void;
   /** Busy: the orb thinks. */
   thinking?: boolean;
+  /** The orb's state (thinking → working → done); wins over `thinking`. */
+  orbState?: OrbState;
   /** Full view: the conversation title in the plain header. Default "New chat". */
   fullTitle?: ReactNode;
 }
@@ -304,7 +306,7 @@ export interface AiSheetHeaderProps {
  * actions, expand ⤢ and close; the half size adds shrink). Full view (board 46): a plain header with the
  * conversation title, shrink and close; the app's actions stay on phone, where the history column is hidden.
  */
-export function AiSheetHeader({ context, title, leading, actions, onClose, thinking = false, fullTitle }: AiSheetHeaderProps) {
+export function AiSheetHeader({ context, title, leading, actions, onClose, thinking = false, orbState, fullTitle }: AiSheetHeaderProps) {
   const sheet = useContext(AiSheetContext);
   const size = sheet?.size ?? "box";
   const isPhone = sheet?.isPhone ?? false;
@@ -364,7 +366,7 @@ export function AiSheetHeader({ context, title, leading, actions, onClose, think
           }}
         />
       ) : null}
-      {leading ?? <Orb state={thinking ? "thinking" : "idle"} />}
+      {leading ?? <Orb state={orbState ?? (thinking ? "thinking" : "idle")} />}
       <h2 className="zc-ai-surface__title">
         {title ?? (
           <>

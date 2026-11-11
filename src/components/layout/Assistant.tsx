@@ -102,7 +102,7 @@ export function AskBar({ placeholder = "Ask Zcom AI anything…", hidden = false
           animate={{ opacity: 1 }}
           transition={{ opacity: { duration: DUR_2_S, delay: DUR_2_S, ease: EASE_OUT } }}
         >
-          <Orb size="bar" />
+          <Orb size="bar" state={hovered && !hidden ? "listening" : "idle"} />
           <span className="zc-askbar__placeholder">{placeholder}</span>
           {lockedPlan ? <span className="zc-askbar__chip">{lockedPlan}</span> : null}
         </motion.span>

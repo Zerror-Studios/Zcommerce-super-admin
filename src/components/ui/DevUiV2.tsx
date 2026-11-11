@@ -115,7 +115,7 @@ function renderOrderCell(row: SampleOrder, key: string): ReactNode {
   }
 }
 
-const ORB_STATES: OrbState[] = ["idle", "listening", "thinking", "done"];
+const ORB_STATES: OrbState[] = ["idle", "listening", "thinking", "working", "done", "waiting"];
 
 interface SampleStore {
   id: string;
@@ -435,7 +435,7 @@ export default function DevUiV2() {
         <AiComposer value={question} onValueChange={setQuestion} onSubmit={() => setQuestion("")} canSend={!!question.trim()} meta={`${question.length}/500`} />
       </Section>
 
-      <Section title="Orb glyph: idle, listening, thinking, done · sizes 18 / 28 / 30 · white on dark">
+      <Section title="Orb (dot sphere): idle, listening, thinking, working, done, waiting · sizes 18 / 28 / 30 · white on dark">
         <div className="flex flex-wrap items-center gap-6">
           {ORB_STATES.map((state) => (
             <span key={state} className="flex items-center gap-2 text-label text-fg-muted">

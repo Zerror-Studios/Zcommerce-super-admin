@@ -106,9 +106,8 @@
     color: transparent;
     animation: zc-shimmer 0.7s var(--ease-out) 1 both;
   }
-  /* The orb spins twice as fast, brightens and gives one soft pulse. */
-  .zc-askbar:hover .zc-orb::before { animation-duration: calc(var(--zc-dur-orb) / 2); }
-  .zc-askbar:hover .zc-orb { filter: brightness(1.12); animation: zc-orb-pulse 0.6s var(--ease-out) 1; }
+  /* The orb brightens and gives one soft pulse (the bar also sets it listening while hovered). */
+  .zc-askbar:hover .zc-orb-dots { filter: brightness(1.12); animation: zc-orb-pulse 0.6s var(--ease-out) 1; }
 }
 @keyframes zc-orb-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
 
