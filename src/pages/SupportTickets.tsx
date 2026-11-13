@@ -19,9 +19,8 @@ import {
   DataTable,
   EmptyState,
   ErrorState,
-  SearchInput,
-  SegmentedSwitch,
   SummaryPanel,
+  TableToolbar,
   cx,
   prefetchTableQuery,
   toneTextClasses,
@@ -165,17 +164,17 @@ export function SupportTickets() {
       <div className="space-y-4">
         <SummaryPanel cells={cells} isLoading={summaryLoading && !summaryData} storageKey="support-tickets" aria-label="Support summary" />
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <SegmentedSwitch<SupportTab>
-            ariaLabel="Ticket status"
-            items={tabs}
-            value={tab}
-            onChange={setTab}
-            onItemIntent={prefetchTab}
-            className="max-w-full"
-          />
-          <SearchInput placeholder="Ticket, store or words" value={search} onValueChange={setSearch} onClear={() => setSearch("")} />
-        </div>
+        {/* The kit toolbar: tabs on the left, the 240px search on the right in the same row (phone: a search icon). */}
+        <TableToolbar<SupportTab>
+          tabs={tabs}
+          tab={tab}
+          onTabChange={setTab}
+          tabsLabel="Ticket status"
+          onTabIntent={prefetchTab}
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Ticket, store or words"
+        />
 
         {error && !rows.length ? (
           <ErrorState title="Couldn't load tickets." onRetry={() => void refetch()} />

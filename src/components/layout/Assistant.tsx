@@ -16,7 +16,6 @@ import { Drawer } from "../ui/Drawer";
 import { IconAdd, IconArrowRight, IconClose } from "../ui/icons";
 import { IconButton } from "../ui/IconButton";
 import { DUR_2_S, EASE_OUT, spring } from "../ui/motion";
-import { Tooltip } from "../ui/Tooltip";
 import { AI_SURFACE_LAYOUT_ID } from "./AiSheet";
 
 export interface AiAnswer {
@@ -41,8 +40,6 @@ interface Turn {
 /** The bar's corner radius (G3: 26), inline so the shared-layout morph keeps it round. */
 const ASK_BAR_RADIUS = 26;
 
-const MOD_KEY = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl ";
-
 // ─── Ask bar ─────────────────────────────────────────────────────────────────
 
 export interface AskBarProps {
@@ -63,8 +60,9 @@ export interface AskBarProps {
 /**
  * The Zcom AI bar (round 2 G3, `.zc-askbar`): the ONLY AI entry point. A white 52px pill, radius 26, at most 560px
  * wide, fixed at the bottom centre of the whole viewport (the shell's slot places it). Only the orb (28px) and the
- * placeholder: no chip and no shortcut hint; ⌘J / Ctrl J still works and shows in the tooltip only. A click opens the
- * chat box, which grows out of the bar (shared layout id with AiSheet). The page hides it while the box is open.
+ * placeholder: no chip, no shortcut hint and no tooltip (owner, 2026-11-13); ⌘J / Ctrl J still works (named to screen
+ * readers by aria-keyshortcuts). A click opens the chat box, which grows out of the bar (shared layout id with
+ * AiSheet). The page hides it while the box is open.
  */
 export function AskBar({ placeholder = "Ask Zcom AI anything…", hidden = false, onOpen, onIntent, lockedPlan }: AskBarProps) {
   // Round 3 B1: hover dims the page behind by 8% (no blur); the bar's own hover is CSS (ai-motion.css).
@@ -76,7 +74,6 @@ export function AskBar({ placeholder = "Ask Zcom AI anything…", hidden = false
   return (
     <>
     {dim}
-    <Tooltip content={`Ask Zcom AI (${MOD_KEY}J)`} placement="top" isDisabled={hidden}>
       <motion.button
         type="button"
         layoutId={AI_SURFACE_LAYOUT_ID}
@@ -107,7 +104,6 @@ export function AskBar({ placeholder = "Ask Zcom AI anything…", hidden = false
           {lockedPlan ? <span className="zc-askbar__chip">{lockedPlan}</span> : null}
         </motion.span>
       </motion.button>
-    </Tooltip>
     </>
   );
 }

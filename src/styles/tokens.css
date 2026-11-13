@@ -297,7 +297,7 @@
   /* ---------- Layers ---------- */
   --zc-z-sticky: 10;
   --zc-z-sidebar: 20;
-  --zc-z-ask: 30;
+  --zc-z-ask: 39;       /* the Zcom AI bar: above page chrome (sticky headers, sidebar, z ≤ 30), under popovers */
   --zc-z-popover: 40;
   --zc-z-drawer: 50;
   --zc-z-modal: 60;

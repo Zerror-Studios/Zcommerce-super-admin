@@ -1,7 +1,8 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /* Round 3 AI motion (docs/review-r3/ROUND-3-FIXES.md A3, B5, B6, §12.1, §12.3).
    - .zc-ai-steps: the AI-style steps (components/ui/AiSteps.tsx): store opening card, AI thinking, long jobs.
-   - .zc-ai-glow / .zc-ai-edge: the bottom glow while the AI is open (components/ui/AiGlow.tsx).
+   - .zc-ai-frame / .zc-ai-glow: the Apple Intelligence style edge light round the screen while the AI is open
+     (components/ui/AiGlow.tsx).
    - .zc-shimmer-once: one light sweep across a line of text.
    Transform, opacity and SVG stroke only; colours from tokens.css. Reduced motion: the global rule in tokens.css
    stops the loops, and the rules at the end keep a still glow. */
@@ -111,11 +112,12 @@
 }
 @keyframes zc-orb-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
 
-/* The page behind the AI: 8% on hover (no blur), 14% + 3px blur while the box is open. Under the menu (which
-   stays sharp, z 20) and the bar; above the content and its sticky headers. */
+/* The page behind the AI: 8% on hover (no blur), 14% + 3px blur while the box is open. Both cover the whole screen
+   (sidebar, top bar, sticky page and table headers, z ≤ 30) just under the bar (z-ask 39), and stay under popovers
+   and menus (z 40+) and the open box. */
 .zc-ai-dim {
   position: fixed; inset: 0; pointer-events: none;
-  z-index: calc(var(--zc-z-sticky) + 5);
+  z-index: calc(var(--zc-z-ask) - 1);
   background: var(--zc-ai-scrim-hover);
   opacity: 0;
   transition: opacity 0.2s var(--ease-out);
@@ -125,92 +127,70 @@
 @media (hover: none) { .zc-ai-dim:not(.zc-ai-dim--open) { display: none; } }
 @media (prefers-reduced-transparency: reduce) { .zc-ai-dim--open { -webkit-backdrop-filter: none; backdrop-filter: none; } }
 
-/* ─── Bottom glow (B5) ─────────────────────────────────────────────────── */
+/* ─── Edge glow (B5; Apple Intelligence style, owner 2026-11-13) ────────── */
 
-/* Phase layer: rises after the edge has drawn, sinks on close. */
-.zc-ai-glow {
-  position: fixed; left: 0; right: 0; bottom: 0; height: 180px;
-  pointer-events: none; z-index: var(--zc-z-modal); overflow: hidden;
+/* A soft iridescent light around every edge of the screen whose colours keep turning round the frame
+   (components/ui/AiGlow.tsx). Each layer is one large conic gradient spinning (transform only) under a static mask
+   that keeps the edges and fades inwards; no blur filter. The open light (.zc-ai-glow) sits above the page dim and
+   under the AI box. Not shown on the AI bar's hover (owner, 2026-11-13). */
+.zc-ai-frame {
+  --zc-frame-soft: 72px;   /* how far the soft glow reaches in from the edge */
+  --zc-frame-rim: 5px;     /* the bright rim */
+  --zc-frame-turn: 9s;     /* one full turn of the colours */
+  position: fixed; inset: 0; pointer-events: none; overflow: hidden;
 }
-.zc-ai-glow[data-phase="open"] { animation: zc-glow-rise 0.4s var(--ease-out) 0.2s both; }
-.zc-ai-glow[data-phase="closing"] { animation: zc-glow-sink 0.3s var(--ease-in, ease-in) both; }
-@keyframes zc-glow-rise { from { opacity: 0; transform: translateY(60px); } to { opacity: 1; transform: none; } }
-@keyframes zc-glow-sink { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(60px); } }
-
-/* State layer: brightness per state, fading to transparent upwards. */
-.zc-ai-glow__inner {
+.zc-ai-glow { z-index: var(--zc-z-modal); }
+.zc-ai-frame__layer {
+  --zc-frame-w: var(--zc-frame-soft);
   position: absolute; inset: 0;
-  -webkit-mask: linear-gradient(to top, black 25%, transparent);
-  mask: linear-gradient(to top, black 25%, transparent);
-  opacity: 0.55;
+  -webkit-mask-image:
+    linear-gradient(to right, black, rgba(0, 0, 0, 0.35) calc(var(--zc-frame-w) * 0.45), transparent var(--zc-frame-w)),
+    linear-gradient(to left, black, rgba(0, 0, 0, 0.35) calc(var(--zc-frame-w) * 0.45), transparent var(--zc-frame-w)),
+    linear-gradient(to bottom, black, rgba(0, 0, 0, 0.35) calc(var(--zc-frame-w) * 0.45), transparent var(--zc-frame-w)),
+    linear-gradient(to top, black, rgba(0, 0, 0, 0.35) calc(var(--zc-frame-w) * 0.45), transparent var(--zc-frame-w));
+  mask-image:
+    linear-gradient(to right, black, rgba(0, 0, 0, 0.35) calc(var(--zc-frame-w) * 0.45), transparent var(--zc-frame-w)),
+    linear-gradient(to left, black, rgba(0, 0, 0, 0.35) calc(var(--zc-frame-w) * 0.45), transparent var(--zc-frame-w)),
+    linear-gradient(to bottom, black, rgba(0, 0, 0, 0.35) calc(var(--zc-frame-w) * 0.45), transparent var(--zc-frame-w)),
+    linear-gradient(to top, black, rgba(0, 0, 0, 0.35) calc(var(--zc-frame-w) * 0.45), transparent var(--zc-frame-w));
   transition: opacity 0.4s var(--ease-out);
 }
-.zc-ai-glow[data-state="typing"] .zc-ai-glow__inner { opacity: 0.7; }
-.zc-ai-glow[data-state="thinking"] .zc-ai-glow__inner { opacity: 0.85; }
-.zc-ai-glow[data-state="answering"] .zc-ai-glow__inner { opacity: 0.65; }
+/* The soft glow breathes: it grows a little past the screen edge and back, so its width swells and eases. */
+.zc-ai-frame__layer--soft { opacity: 0.6; animation: zc-frame-breathe 2.8s var(--ease-in-out) infinite alternate; }
+.zc-ai-frame__layer--rim { --zc-frame-w: var(--zc-frame-rim); opacity: 0.9; }
+.zc-ai-frame__spin {
+  position: absolute; left: 50%; top: 50%;
+  width: 150vmax; height: 150vmax; margin: -75vmax 0 0 -75vmax;
+  background: conic-gradient(var(--zc-ai-c-blue), var(--zc-ai-c-violet), var(--zc-ai-c-pink), var(--zc-ai-c-amber), var(--zc-ai-c-cyan), var(--zc-ai-c-blue));
+  animation: zc-frame-spin var(--zc-frame-turn) linear infinite;
+  will-change: transform;
+}
+/* The rim runs a sixth of a turn ahead of the glow, so the two shimmer against each other. */
+.zc-ai-frame__layer--rim .zc-ai-frame__spin { animation-delay: calc(var(--zc-frame-turn) / -6); }
 
-.zc-ai-glow__b {
-  position: absolute; bottom: -60px; width: 42vw; height: 200px; border-radius: 50%;
-  filter: blur(44px); will-change: transform;
-}
-.zc-ai-glow__b1 { left: -6vw; background: var(--zc-ai-c-blue); animation: zc-glow-flow1 9s ease-in-out infinite; }
-.zc-ai-glow__b2 { left: 22vw; background: var(--zc-ai-c-violet); animation: zc-glow-flow2 11s ease-in-out infinite; }
-.zc-ai-glow__b3 { left: 48vw; background: var(--zc-ai-c-blue); animation: zc-glow-flow1 8s ease-in-out infinite reverse; }
-.zc-ai-glow__b4 { left: 70vw; background: var(--zc-ai-c-cyan); opacity: 0.7; animation: zc-glow-flow2 10s ease-in-out infinite; }
-.zc-ai-glow[data-state="thinking"] .zc-ai-glow__b { animation-duration: 4.5s; }
-/* Typing: the glow under the input (centre) brightens, as if listening. */
-.zc-ai-glow[data-state="typing"] .zc-ai-glow__b3 { opacity: 1; }
-.zc-ai-glow__wave {
-  position: absolute; bottom: 0; left: -30%; width: 30%; height: 90px; opacity: 0;
-  background: radial-gradient(closest-side, var(--zc-ai-wave), transparent);
-  filter: blur(24px);
-}
-.zc-ai-glow[data-state="thinking"] .zc-ai-glow__wave { animation: zc-glow-wave 1.6s var(--ease-in-out) infinite; }
-@keyframes zc-glow-flow1 { 0%, 100% { transform: translateX(0) scale(1); } 50% { transform: translateX(6vw) scale(1.1); } }
-@keyframes zc-glow-flow2 { 0%, 100% { transform: translateX(0) scale(1.02); } 50% { transform: translateX(-5vw) scale(0.95); } }
-@keyframes zc-glow-wave { 0% { transform: translateX(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateX(430%); opacity: 0; } }
+/* States of the open light: typing brightens, thinking is brightest and turns 3× faster, answering stays bright. */
+.zc-ai-glow[data-state="typing"] .zc-ai-frame__layer--soft { opacity: 0.75; }
+.zc-ai-glow[data-state="thinking"] { --zc-frame-turn: 3s; }
+.zc-ai-glow[data-state="thinking"] .zc-ai-frame__layer--soft { opacity: 0.9; }
+.zc-ai-glow[data-state="thinking"] .zc-ai-frame__layer--rim { opacity: 1; }
+.zc-ai-glow[data-state="answering"] .zc-ai-frame__layer--soft { opacity: 0.75; }
 
-/* Edge light: a 3px iridescent line hugging the very bottom, flowing sideways. The wrapper is taller so the
-   line's glow shows, and clips the pulse so nothing overflows the page. */
-.zc-ai-edge {
-  position: fixed; left: 0; right: 0; bottom: 0; height: 40px;
-  pointer-events: none; z-index: var(--zc-z-modal); overflow: hidden;
-  opacity: 0.8; transition: opacity 0.3s var(--ease-out);
-}
-.zc-ai-edge[data-state="thinking"] { opacity: 1; }
-.zc-ai-edge[data-state="answering"] { opacity: 0.9; }
-.zc-ai-edge__line {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
-  background: linear-gradient(90deg, var(--zc-ai-c-blue), var(--zc-ai-c-cyan), var(--zc-ai-c-violet), var(--zc-ai-c-pink), var(--zc-ai-c-blue), var(--zc-ai-c-cyan));
-  background-size: 200% 100%;
-  box-shadow: var(--zc-ai-edge-glow);
-  transform-origin: center;
-  animation: zc-edge-in 0.36s var(--ease-out) both, zc-edge-flow 4s linear infinite;
-}
-.zc-ai-edge__line::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--zc-ai-edge-highlight); }
-.zc-ai-edge[data-state="thinking"] .zc-ai-edge__line { animation: zc-edge-in 0.36s var(--ease-out) both, zc-edge-flow 1.6s linear infinite; }
-.zc-ai-edge[data-phase="closing"] .zc-ai-edge__line { animation: zc-edge-out 0.3s var(--ease-in, ease-in) both, zc-edge-flow 4s linear infinite; }
-/* Thinking: a bright pulse travels left → right along the edge every 1.4s (Siri-like). */
-.zc-ai-edge[data-state="thinking"]::before {
-  content: ""; position: absolute; bottom: -3px; height: 9px; width: 18%; left: -18%;
-  background: radial-gradient(closest-side, var(--zc-ai-edge-pulse), transparent);
-  filter: blur(4px);
-  animation: zc-edge-pulse 1.4s var(--ease-in-out) infinite;
-}
-@keyframes zc-edge-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-@keyframes zc-edge-out { from { transform: scaleX(1); } to { transform: scaleX(0); } }
-@keyframes zc-edge-flow { to { background-position: -200% 0; } }
-@keyframes zc-edge-pulse { to { transform: translateX(660%); } }
+/* Open: the light sweeps in from just past the screen edges; close: it fades back out. */
+.zc-ai-glow[data-phase="open"] { animation: zc-frame-in 0.45s var(--ease-out) both; }
+.zc-ai-glow[data-phase="closing"] { animation: zc-frame-out 0.3s var(--ease-in, ease-in) both; }
+
+
+@keyframes zc-frame-spin { to { transform: rotate(360deg); } }
+@keyframes zc-frame-breathe { from { transform: scale(1); } to { transform: scale(1.025); } }
+@keyframes zc-frame-in { from { opacity: 0; transform: scale(1.08); } to { opacity: 1; transform: none; } }
+@keyframes zc-frame-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(1.05); } }
 
 /* Paused while the tab is hidden. */
-.zc-ai-glow[data-paused], .zc-ai-glow[data-paused] *,
-.zc-ai-edge[data-paused], .zc-ai-edge[data-paused] *, .zc-ai-edge[data-paused]::before { animation-play-state: paused !important; }
+.zc-ai-frame[data-paused] * { animation-play-state: paused !important; }
 
-/* Reduced motion: a still glow at .4, the edge drawn in place. */
+/* Reduced motion: the light stands still (no turn, breathe or sweep). */
 @media (prefers-reduced-motion: reduce) {
-  .zc-ai-glow__b, .zc-ai-glow__wave, .zc-ai-edge::before { animation: none !important; }
-  .zc-ai-glow__inner { opacity: 0.4 !important; }
-  .zc-ai-edge__line { animation: none !important; transform: none; }
+  .zc-ai-frame, .zc-ai-frame * { animation: none !important; }
   .zc-ai-step__ring { animation: none; }
   .zc-shimmer-once { animation: none; color: var(--zc-ink); background: none; }
 }

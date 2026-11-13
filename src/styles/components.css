@@ -1394,6 +1394,8 @@ body:has([aria-modal="true"]) .zc-askbar-slot { opacity: 0; visibility: hidden; 
   .zc-toolbar--row { flex-wrap: nowrap; }
   .zc-toolbar--row .zc-toolbar__tabs { flex: 0 1 auto; }
   .zc-toolbar--row .zc-toolbar__end { flex: none; }
+  /* Narrow tabs (Customers groups, owner 2026-11-13): at most half the row; the rest scroll sideways. */
+  .zc-toolbar--narrow-tabs .zc-toolbar__tabs { max-width: 50%; }
 }
 /* Laptop and tablet: the search shrinks to 200px. */
 @media (min-width: 768px) and (max-width: 1279px) { .zc-toolbar__search { width: var(--zc-search-w-tablet); } }
@@ -1978,10 +1980,18 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
     -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--zc-border);
   }
+  /* The pill sub-tabs (owner, 2026-11-13): no white strip and no line; the band is the page colour, so only the
+     pills show, and content scrolling under the stuck tabs is still hidden. Two classes so it beats the fallbacks
+     below. */
+  .zc-subtabs.zc-subtabs--seg {
+    padding-block: 8px;
+    background: var(--zc-bg);
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    border-bottom: 0;
+  }
   /* The sections under the sub-tabs stick their own headers (tables) below them, not over them. */
-  .zc-subtabs--seg { padding-block: 8px; }
   .zc-subtabs--line ~ * { --zc-sticky-top: calc(var(--zc-sticky-header-h, 0px) + 43px); }
-  .zc-subtabs--seg ~ * { --zc-sticky-top: calc(var(--zc-sticky-header-h, 0px) + var(--zc-seg-h) + 17px); }
+  .zc-subtabs--seg ~ * { --zc-sticky-top: calc(var(--zc-sticky-header-h, 0px) + var(--zc-seg-h) + 16px); }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .zc-subtabs { background: var(--zc-surface); } }
   @media (prefers-reduced-transparency: reduce) { .zc-subtabs { background: var(--zc-surface); backdrop-filter: none; -webkit-backdrop-filter: none; } }
   @media (prefers-reduced-motion: reduce) {
