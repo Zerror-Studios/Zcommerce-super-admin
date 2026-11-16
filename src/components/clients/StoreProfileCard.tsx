@@ -54,6 +54,7 @@ import {
 } from "../ui";
 import { IconClose, IconStore } from "../ui/icons";
 import { SkelButton, SkelChip, SkelLine } from "../common/SkeletonBits";
+import { useUnsavedChangesGuard } from "../settings/SettingsSaveBar";
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
@@ -215,6 +216,8 @@ function StoreProfileForm({ client, initial, onDone }: StoreProfileFormProps) {
   );
   const patch = storeProfilePatch(initial, draft);
   const changed = Object.keys(patch).length > 0;
+  // Leaving the page (or closing the tab) with unsaved profile edits asks first.
+  const { dialog: discardDialog } = useUnsavedChangesGuard(changed);
 
   const set = (key: StoreProfileField, value: string) => {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -267,7 +270,9 @@ function StoreProfileForm({ client, initial, onDone }: StoreProfileFormProps) {
   const selected = (value: string) => new Set([value || NONE_KEY]);
 
   return (
-    <Card
+    <>
+      {discardDialog}
+      <Card
       title="Profile"
       description="Who this store is, for Zerror's records."
       actions={
@@ -405,7 +410,8 @@ function StoreProfileForm({ client, initial, onDone }: StoreProfileFormProps) {
           )}
         </div>
       </div>
-    </Card>
+      </Card>
+    </>
   );
 }
 

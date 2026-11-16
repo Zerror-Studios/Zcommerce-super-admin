@@ -392,8 +392,16 @@ export function storeDetailsDraftOf(client: Client): StoreDetailsDraft {
   };
 }
 
-/** Local checks the server would refuse anyway, shown on the field. */
-export function validateStoreDetails(draft: StoreDetailsDraft): StoreDetailsErrors {
+/**
+ * Local checks the server would refuse anyway, shown on the field. A store
+ * always has a time zone and a currency (the server keeps the old one when
+ * an empty value is sent), so clearing one that was set is refused here
+ * instead of looking saved.
+ */
+export function validateStoreDetails(
+  draft: StoreDetailsDraft,
+  before?: StoreDetailsDraft,
+): StoreDetailsErrors {
   const errors: StoreDetailsErrors = {};
   if (!draft.name.trim()) errors.name = "Enter a store name.";
   if (!draft.ownerEmail.trim().includes("@")) errors.ownerEmail = "Enter a valid email.";
@@ -401,6 +409,12 @@ export function validateStoreDetails(draft: StoreDetailsDraft): StoreDetailsErro
   if (billing && !billing.includes("@")) errors.billingContactEmail = "Enter a valid email.";
   if (draft.currency.trim() && !/^[a-z]{3}$/i.test(draft.currency.trim())) {
     errors.currency = "Use a three-letter code, like INR.";
+  }
+  if (before?.timezone.trim() && !draft.timezone.trim()) {
+    errors.timezone = "A store needs a time zone, like Asia/Kolkata.";
+  }
+  if (before?.currency.trim() && !draft.currency.trim()) {
+    errors.currency = "A store needs a currency, like INR.";
   }
   return errors;
 }

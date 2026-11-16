@@ -141,7 +141,7 @@ export function StoreDetailsDialog({ client, onClose }: { client: Client; onClos
   };
 
   const save = async () => {
-    const local = validateStoreDetails(draft);
+    const local = validateStoreDetails(draft, initial);
     if (Object.keys(local).length > 0) {
       setErrors(local);
       return;

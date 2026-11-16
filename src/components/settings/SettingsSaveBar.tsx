@@ -18,8 +18,8 @@ function targetPath(to: Parameters<NavigateFn>[0]): string {
   return to.pathname ? new URL(to.pathname, window.location.href).pathname : window.location.pathname;
 }
 
-/** Holds navigation away from the page while `isDirty`; render `dialog` once. */
-function useUnsavedChangesGuard(isDirty: boolean) {
+/** Holds navigation away from the page while `isDirty`; render `dialog` once. Also used by inline editors. */
+export function useUnsavedChangesGuard(isDirty: boolean) {
   const { navigator } = useContext(UNSAFE_NavigationContext);
   const [pending, setPending] = useState<(() => void) | null>(null);
   const allowRef = useRef(false);

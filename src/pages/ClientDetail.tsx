@@ -15,6 +15,7 @@ import { StoreDetailsCard, StoreDetailsDialog } from "../components/clients/Stor
 import { StoreGoLiveCard } from "../components/clients/StoreGoLiveCard";
 import { StoreSetupCard } from "../components/clients/StoreSetupCard";
 import { StoreHistoryCard } from "../components/clients/StoreHistoryCard";
+import { StoreImageGuidelinesCard } from "../components/clients/StoreImageGuidelinesCard";
 import { StoreLifecycleCard } from "../components/clients/StoreLifecycleCard";
 import { StoreProfileCard } from "../components/clients/StoreProfileCard";
 import { StoreTabsPrefetch } from "../components/clients/StoreTabsPrefetch";
@@ -626,10 +627,16 @@ export function ClientDetail() {
           // Board 66: the store's settings on the left, the careful actions on the right.
           <div className="@container">
             <div className={canManage ? settingsColumnsClass : undefined}>
-              {/* PRD-017 FR-4.5: name, owner, contacts, GSTIN, time zone and currency; the domain changes in Go live. */}
-              <Section id="details">
-                <StoreDetailsCard client={client} goLiveHref={hrefOf("overview", "go-live")} />
-              </Section>
+              <div className="flex min-w-0 flex-col gap-4">
+                {/* PRD-017 FR-4.5: name, owner, contacts, GSTIN, time zone and currency; the domain changes in Go live. */}
+                <Section id="details">
+                  <StoreDetailsCard client={client} goLiveHref={hrefOf("overview", "go-live")} />
+                </Section>
+                {/* PRD-045 D7: the upload sizes the store's dashboard recommends; Zerror sets them per storefront. */}
+                <Section id="image-guidelines">
+                  <StoreImageGuidelinesCard client={client} />
+                </Section>
+              </div>
               {/* PRD-018 FR-1, FR-2: suspend (pause), reactivate, delete or restore, after checking money in flight. */}
               {canManage ? (
                 <Section id="lifecycle">

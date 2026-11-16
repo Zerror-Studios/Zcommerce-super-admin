@@ -491,6 +491,34 @@ export interface PlatformTenant {
   profile?: StoreProfile | null;
   /** Newest first. */
   statusHistory?: TenantStatusEvent[];
+  /** PRD-045 D7: platform defaults merged with the store's overrides, in slot order. */
+  imageGuidelines?: PlatformImageGuideline[];
+}
+
+/** PRD-045 D7: a recommended upload size (px); `height` null = any height. */
+export interface PlatformImageGuideline {
+  slot: string;
+  width: number;
+  height: number | null;
+  minWidth: number;
+  minHeight: number | null;
+  /** "16:9", "1:1"…; null when only the width is set. */
+  ratio: string | null;
+  note: string | null;
+  /** The store overrides the platform default. */
+  isCustom: boolean;
+}
+
+/** PRD-045 D7: one override; the list sent replaces all of them. */
+export interface PlatformImageGuidelineInput {
+  slot: string;
+  width: number;
+  height: number | null;
+  /** Defaults to `width` on the server. */
+  minWidth?: number | null;
+  /** Defaults to `height` on the server. */
+  minHeight?: number | null;
+  note?: string | null;
 }
 
 // ─── Tenant data lifecycle (PRD-018 §5.1) ─────────────────────────────────
@@ -633,6 +661,8 @@ export interface UpdateTenantInput {
   currency?: string;
   /** PRD-025 FR-2.4: audited as `tenant.profile_updated` (field names only). */
   profile?: StoreProfileInput;
+  /** PRD-045 D7: replaces every image guideline override; null or [] clears them. */
+  imageGuidelines?: PlatformImageGuidelineInput[] | null;
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────

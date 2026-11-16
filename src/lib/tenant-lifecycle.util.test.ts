@@ -166,6 +166,11 @@ describe("store details form (PRD-017 FR-4.5)", () => {
       ownerPhone: "+91 90000 00000",
     });
     expect(storeDetailsPatch(before, { ...before, currency: "" })).toEqual({});
+    // ...and the form refuses the cleared value instead of looking saved
+    expect(validateStoreDetails({ ...before, currency: "", timezone: " " }, before)).toEqual({
+      currency: "A store needs a currency, like INR.",
+      timezone: "A store needs a time zone, like Asia/Kolkata.",
+    });
     expect("domain" in storeDetailsPatch(before, after)).toBe(false);
   });
 
