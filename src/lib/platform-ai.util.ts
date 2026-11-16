@@ -598,6 +598,16 @@ export function aiUsageCsvFile(
   return { filename: `ai-usage-${day}.csv`, content: `${UTF8_BOM}${body}` };
 }
 
+/**
+ * The Usage table's AI filter (`?ai=on|off`) as the server's `aiEnabled`
+ * argument: null for no filter. The table and the export send the same.
+ */
+export function aiEnabledFilterOf(value: unknown): boolean | null {
+  if (value === "on") return true;
+  if (value === "off") return false;
+  return null;
+}
+
 // ─── Data health ──────────────────────────────────────────────────────────
 
 /** Why a store is on the data-health list, in the order to fix them. */

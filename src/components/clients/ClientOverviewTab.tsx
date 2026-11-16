@@ -17,7 +17,6 @@ import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { useAuth } from "../../providers/AuthProvider";
 import type { PlatformStoreSetupCheck } from "../../types/platform-api";
 import {
-  AiLine,
   Avatar,
   Button,
   ButtonLink,
@@ -29,9 +28,9 @@ import {
   formatMoney,
   formatPercent,
   getHealthBand,
-  useAiEnabled,
   type SummaryCell,
 } from "../ui";
+import { IconTip } from "../ui/icons";
 import { SkelChip, SkelLine } from "../common/SkeletonBits";
 import { ClientActivityCard } from "./ClientActivityCard";
 import { ClientPerformanceCard } from "./ClientPerformanceCard";
@@ -64,6 +63,17 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 const whatsappHref = (phone: string) => `https://wa.me/${phone.replace(/\D/g, "")}`;
 
 const knownEmail = (value: string | undefined) => (value && value.includes("@") ? value : null);
+
+/** The one thing to do, as a plain line with a tip icon (the AI orb is only for real AI output). */
+function NextStepLine({ children, action }: { children: ReactNode; action?: ReactNode }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2.5 rounded-card border border-line bg-surface px-3.5 py-2.5">
+      <IconTip aria-hidden className="size-4 shrink-0 text-fg-muted" />
+      <p className="min-w-0 flex-1 text-label text-fg">{children}</p>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </div>
+  );
+}
 
 /**
  * The AI banner's one thing to do (board 60): a payment problem first (the server's health issues: payment app
@@ -102,8 +112,7 @@ export function ClientOverviewTab({ client, subscription, setup }: ClientOvervie
   // PRD-024 FR-1.7: snapshot figures say when they were taken.
   const measured = client.hasUsage !== false;
   const asOf = measured && client.usageAsOf ? `As of ${formatDate(client.usageAsOf)}` : undefined;
-  const aiEnabled = useAiEnabled();
-  const todo = aiEnabled ? oneThingToDo(client, subscription) : null;
+  const todo = oneThingToDo(client, subscription);
   const band = getHealthBand(health.score);
   const productLimit = client.planRef?.limits.products ?? null;
   const staffLimit = client.planRef?.limits.staff ?? null;
@@ -194,7 +203,8 @@ export function ClientOverviewTab({ client, subscription, setup }: ClientOvervie
   return (
     <div className="@container flex flex-col gap-4">
       {todo ? (
-        <AiLine
+        // Rule-based (payments, health, sales, setup), not AI output: a plain tip line, no orb or AI colours.
+        <NextStepLine
           action={
             ownerEmail ? (
               <Button
@@ -210,7 +220,7 @@ export function ClientOverviewTab({ client, subscription, setup }: ClientOvervie
           }
         >
           <span className="font-semibold">{todo.title}.</span> {todo.body}
-        </AiLine>
+        </NextStepLine>
       ) : null}
 
       <SummaryPanel cells={cells} storageKey="store:overview" aria-label={`${client.storeName} summary`} />

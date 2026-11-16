@@ -122,11 +122,28 @@ export interface AiInsightCardProps {
   onDismiss?: () => void;
   /** "just now", "2h ago". */
   when?: string;
+  /**
+   * Records Helpful / Not helpful (with the optional reason given after Not helpful). When it is set, Not helpful
+   * asks "What was wrong?" first. A rejected promise shows a retry line. Without it the feedback stays local.
+   */
+  onFeedback?: (helpful: boolean, reason?: string) => void | Promise<unknown>;
+  /** The choice already recorded (e.g. earlier today), shown highlighted. */
+  feedback?: boolean | null;
   className?: string;
 }
 
-/** Insight (Analytics, store detail): max one per page. Helpful / Not helpful feedback is local for now. */
-export function AiInsightCard({ title, body, action, source, onDismiss, when = "just now", className }: AiInsightCardProps) {
+/** Insight (Analytics, store detail): max one per page. Helpful / Not helpful is recorded through `onFeedback`. */
+export function AiInsightCard({
+  title,
+  body,
+  action,
+  source,
+  onDismiss,
+  when = "just now",
+  onFeedback,
+  feedback,
+  className,
+}: AiInsightCardProps) {
   return (
     <section className={cx("ai-edge p-5", className)}>
       <p className="flex items-center gap-1.5 text-caption text-fg-subtle">
@@ -151,7 +168,7 @@ export function AiInsightCard({ title, body, action, source, onDismiss, when = "
       ) : null}
       <div className="mt-4 border-t border-line-subtle pt-3 text-caption text-fg-subtle">
         <p>{source}</p>
-        <AiFeedback className="mt-1" />
+        <AiFeedback className="mt-1" onFeedback={onFeedback} value={feedback} askReason={!!onFeedback} />
       </div>
     </section>
   );
@@ -159,31 +176,115 @@ export function AiInsightCard({ title, body, action, source, onDismiss, when = "
 
 // ─── Feedback ────────────────────────────────────────────────────────────────
 
+export interface AiFeedbackProps {
+  /** Records the choice; may return a promise (a rejection shows "Couldn't save" with a retry). */
+  onFeedback?: (helpful: boolean, reason?: string) => void | Promise<unknown>;
+  /** The choice already recorded, shown highlighted (null/undefined: none yet). */
+  value?: boolean | null;
+  /** Not helpful asks "What was wrong?" (optional) before it is sent. */
+  askReason?: boolean;
+  className?: string;
+}
+
+const FEEDBACK_REASON_MAX = 300;
+
 /**
- * "Helpful · Not helpful" under every AI answer and insight (docs/design/06-qa-checklist.md §AI).
- * Local only until there's an endpoint; `onFeedback` lets the app record it.
+ * "Helpful · Not helpful" under every AI answer and insight (docs/design/06-qa-checklist.md §AI). After a choice it
+ * says "Thanks for the feedback." and keeps the choice highlighted; choosing again changes it.
  */
-export function AiFeedback({ onFeedback, className }: { onFeedback?: (helpful: boolean) => void; className?: string }) {
-  const [sent, setSent] = useState(false);
-  const send = (helpful: boolean) => {
-    setSent(true);
-    onFeedback?.(helpful);
+export function AiFeedback({ onFeedback, value, askReason = false, className }: AiFeedbackProps) {
+  const [chosen, setChosen] = useState<boolean | null>(null);
+  const [asking, setAsking] = useState(false);
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState<{ helpful: boolean; reason?: string } | null>(null);
+  const current = chosen ?? value ?? null;
+
+  const send = async (helpful: boolean, why?: string) => {
+    const previous = chosen;
+    setChosen(helpful);
+    setAsking(false);
+    setFailed(null);
+    if (!onFeedback) return;
+    setSaving(true);
+    try {
+      await onFeedback(helpful, why);
+    } catch {
+      setChosen(previous);
+      setFailed({ helpful, reason: why });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const choice = (helpful: boolean, label: string) => (
+    <button
+      type="button"
+      aria-pressed={current === helpful}
+      disabled={saving}
+      className={cx("rounded-xs hover:text-fg", current === helpful && "font-semibold text-fg")}
+      onClick={() => {
+        if (!helpful && askReason) {
+          setReason("");
+          setAsking(true);
+          return;
+        }
+        void send(helpful);
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  if (asking) {
+    return (
+      <form
+        className={cx("flex flex-wrap items-center gap-2 text-caption text-fg-subtle", className)}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void send(false, reason.trim() || undefined);
+        }}
+      >
+        <label className="sr-only" htmlFor="ai-feedback-reason">
+          What was wrong? (optional)
+        </label>
+        <input
+          id="ai-feedback-reason"
+          autoFocus
+          value={reason}
+          maxLength={FEEDBACK_REASON_MAX}
+          placeholder="What was wrong? (optional)"
+          onChange={(event) => setReason(event.target.value)}
+          className="h-8 min-w-0 flex-1 rounded-field border border-line bg-surface px-2.5 text-body text-fg outline-none placeholder:text-fg-placeholder focus-visible:shadow-focus"
+        />
+        <Button size="sm" type="submit">
+          Send
+        </Button>
+        <Button variant="ghost" size="sm" onPress={() => setAsking(false)}>
+          Cancel
+        </Button>
+      </form>
+    );
+  }
+
   return (
-    <p className={cx("text-caption text-fg-subtle", className)}>
-      {sent ? (
-        "Thanks for the feedback."
-      ) : (
+    <p className={cx("text-caption text-fg-subtle", className)} aria-live="polite">
+      {choice(true, "Helpful")} · {choice(false, "Not helpful")}
+      {failed ? (
         <>
-          <button type="button" className="rounded-xs hover:text-fg" onClick={() => send(true)}>
-            Helpful
-          </button>{" "}
-          ·{" "}
-          <button type="button" className="rounded-xs hover:text-fg" onClick={() => send(false)}>
-            Not helpful
+          {" "}
+          · Couldn't save your feedback.{" "}
+          <button
+            type="button"
+            className="rounded-xs font-medium text-fg hover:underline"
+            onClick={() => void send(failed.helpful, failed.reason)}
+          >
+            Try again
           </button>
         </>
-      )}
+      ) : current !== null ? (
+        " · Thanks for the feedback."
+      ) : null}
     </p>
   );
 }

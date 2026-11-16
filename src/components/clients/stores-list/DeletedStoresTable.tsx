@@ -2,6 +2,7 @@
  * Stores › Deleted (04 S-02, PRD-018 FR-2.3, FR-2.5). Two server-paged lists behind a small switch with counts:
  * stores deleted and still inside their grace period (they open the store page, where they can be restored) and
  * the records of purged stores. Live columns, labels and empty text are kept ("Purged on" stays: 05 #14).
+ * Search runs on the server (name, slug or domain), so "Load more" pages through the matches, not the loaded rows.
  */
 
 import { useQuery } from "@apollo/client";
@@ -37,14 +38,21 @@ const purgedColumns: DataTableColumn[] = [
 
 const dash = <span className="text-fg-subtle">—</span>;
 
-function usePaged<T>(document: typeof PLATFORM_DELETED_TENANTS, field: "platformTenants" | "platformPurgedTenants") {
+function usePaged<T>(
+  document: typeof PLATFORM_DELETED_TENANTS,
+  field: "platformTenants" | "platformPurgedTenants",
+  search: string,
+) {
+  // No search sends the same variables as the Deleted tab's count (one cache entry).
   const query = useQuery<Record<string, PlatformList<T>>>(document, {
-    variables: { limit: PAGE_LIMIT, offset: 0 },
+    variables: search ? { limit: PAGE_LIMIT, offset: 0, search } : { limit: PAGE_LIMIT, offset: 0 },
     fetchPolicy: "cache-and-network",
   });
   const page = query.data?.[field];
   const rows = useMemo(() => page?.items ?? [], [page]);
-  const [lastPageSize, setLastPageSize] = useState<number | null>(null);
+  // The last "Load more" size belongs to the search it was read under; a new search starts over.
+  const [lastPage, setLastPage] = useState<{ search: string; size: number } | null>(null);
+  const lastPageSize = lastPage?.search === search ? lastPage.size : null;
   const [loadingMore, setLoadingMore] = useState(false);
   const offset = nextOffset(page, PAGE_LIMIT, lastPageSize);
   const { fetchMore } = query;
@@ -53,11 +61,11 @@ function usePaged<T>(document: typeof PLATFORM_DELETED_TENANTS, field: "platform
     setLoadingMore(true);
     try {
       const result = await fetchMore({ variables: { offset } });
-      setLastPageSize(result.data[field]?.items.length ?? 0);
+      setLastPage({ search, size: result.data[field]?.items.length ?? 0 });
     } finally {
       setLoadingMore(false);
     }
-  }, [fetchMore, field, offset]);
+  }, [fetchMore, field, offset, search]);
   return { query, rows, total: page?.totalCount, hasMore: offset !== null, loadMore, loadingMore };
 }
 
@@ -84,11 +92,9 @@ export interface DeletedStoresTableProps {
 export function DeletedStoresTable({ tabs, tab, onTabChange, search, onSearchChange, query }: DeletedStoresTableProps) {
   const navigate = useNavigate();
   const [view, setView] = useState<View>("deleted");
-  const deleted = usePaged<DeletedRow>(PLATFORM_DELETED_TENANTS, "platformTenants");
-  const purged = usePaged<TenantPurgeRecord>(PLATFORM_PURGED_TENANTS, "platformPurgedTenants");
-  const term = query.trim().toLowerCase();
-  const matches = (row: { name: string; slug: string; domain?: string | null }) =>
-    !term || [row.name, row.slug, row.domain ?? ""].some((text) => text.toLowerCase().includes(term));
+  const term = query.trim();
+  const deleted = usePaged<DeletedRow>(PLATFORM_DELETED_TENANTS, "platformTenants", term);
+  const purged = usePaged<TenantPurgeRecord>(PLATFORM_PURGED_TENANTS, "platformPurgedTenants", term);
 
   const toolbar = (
     <TableToolbar<string>
@@ -152,7 +158,7 @@ export function DeletedStoresTable({ tabs, tab, onTabChange, search, onSearchCha
     <DataTable
       aria-label="Deleted stores in their grace period"
       columns={deletedColumns}
-      rows={deleted.rows.filter(matches)}
+      rows={deleted.rows}
       getRowKey={(row) => row.id}
       isLoading={!deleted.query.data && deleted.query.loading}
       rowHeight="tall"
@@ -191,7 +197,7 @@ export function DeletedStoresTable({ tabs, tab, onTabChange, search, onSearchCha
     <DataTable
       aria-label="Purged stores"
       columns={purgedColumns}
-      rows={purged.rows.filter(matches)}
+      rows={purged.rows}
       getRowKey={(row) => row.tenantId}
       isLoading={!purged.query.data && purged.query.loading}
       rowHeight="tall"

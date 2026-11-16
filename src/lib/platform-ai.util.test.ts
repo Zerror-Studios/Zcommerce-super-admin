@@ -6,6 +6,7 @@ import {
   aiConfigDraft,
   aiConfigPatch,
   aiDataHealthIssues,
+  aiEnabledFilterOf,
   aiFieldErrorsFromServer,
   aiKnownModels,
   aiOverrideDraft,
@@ -235,6 +236,14 @@ describe("usage CSV", () => {
       content: "﻿store,cost\na,1",
     });
     expect(aiUsageCsvFile("store,cost", now).content).toBe("﻿store,cost");
+  });
+
+  it("sends the AI filter to the server as aiEnabled, null without one", () => {
+    expect(aiEnabledFilterOf("on")).toBe(true);
+    expect(aiEnabledFilterOf("off")).toBe(false);
+    expect(aiEnabledFilterOf("")).toBeNull();
+    expect(aiEnabledFilterOf(undefined)).toBeNull();
+    expect(aiEnabledFilterOf(["on"])).toBeNull();
   });
 });
 

@@ -83,7 +83,8 @@ const WEBHOOK_COLUMNS: DataTableColumn<WebhookRow>[] = [
 /**
  * Super Admin › System health (board 70, round 2 §6.4): uptime, queue lag, failed webhooks, Google Analytics sync per
  * store and payment provider status, read from data Zcom already keeps (`platformSystemHealth`). Nothing measures
- * uptime, page speed or error rate yet, so those say "Not measured" with the reason instead of a number.
+ * uptime, page speed or error rate yet: until the server measures uptime, its cell shows the Google Analytics sync
+ * count instead of a placeholder (as Home shows checkout failures), and the "Not measured yet" card says why.
  */
 /**
  * Analytics Level 1 §3.7: the old Analytics › System item is gone; its integration, sync and platform-health views
@@ -106,13 +107,22 @@ export function SystemHealth() {
   const providers: ProviderRow[] = health?.paymentProviders ?? [];
   const failing = providers.filter((row) => row.state === "DOWN" || row.state === "DEGRADED");
 
+  const sync = health?.analyticsSync;
   const cells: SummaryCell[] = [
-    {
-      key: "uptime",
-      label: "Uptime",
-      value: uptime?.available && uptime.value != null ? `${uptime.value}%` : "Not measured",
-      note: uptime?.available ? undefined : "No uptime monitor is connected yet",
-    },
+    // No uptime monitor is connected yet: rather than a "Not measured" placeholder, the cell shows a live number.
+    uptime?.available && uptime.value != null
+      ? { key: "uptime", label: "Uptime", value: `${uptime.value}%` }
+      : {
+          key: "sync",
+          label: "Analytics syncs",
+          value: !sync ? "—" : !sync.installations ? "None" : sync.failing ? `${sync.failing} failing` : "All syncing",
+          note: !sync
+            ? undefined
+            : !sync.installations
+              ? "No store syncs Google Analytics"
+              : `${sync.healthy} syncing · ${sync.paused} paused`,
+          tone: sync?.failing ? "danger" : "default",
+        },
     {
       key: "queue",
       label: "Queue lag",

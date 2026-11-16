@@ -1,7 +1,7 @@
 /**
  * Stores › a row opened in place (design v2 §1A "SA Stores", §7, board 59): four small cards under the row:
- * Sales · 30 days, the store's numbers, its apps, and what to do (the store insight with the orb, or the warning
- * signs), with Message owner and Open store. A store in setup also gets its setup and go-live links, which is
+ * Sales · 30 days, the store's numbers, its apps, and what to do (the rule-based store insight with a tip icon, or
+ * the warning signs), with Message owner and Open store. A store in setup also gets its setup and go-live links, which is
  * where today's onboarding actions live (setup checklist, provisioning retry, domain and Mark live).
  *
  * Read only when the row opens: the apps come from `platformIntegrationHealth` (one call per opened row; audit
@@ -21,7 +21,6 @@ import { IntegrationStatusChip } from "../../analytics/AnalyticsHealthChip";
 import {
   Button,
   ButtonLink,
-  Orb,
   Skeleton,
   formatCount,
   formatDate,
@@ -29,9 +28,8 @@ import {
   formatPercent,
   getHealthBand,
   toneTextClasses,
-  useAiEnabled,
 } from "../../ui";
-import { IconMessages, IconNextPage } from "../../ui/icons";
+import { IconMessages, IconNextPage, IconTip } from "../../ui/icons";
 import { lastSyncOf, needsAttention, useStoreApps } from "../use-store-apps";
 import { isInSetup } from "./stores-tabs.util";
 
@@ -109,8 +107,7 @@ export function StoreRowDetail({ client, subscription, riskText }: StoreRowDetai
   const health = getStoreHealth(client);
   const band = getHealthBand(health.score);
   const limits = client.planRef?.limits;
-  const aiEnabled = useAiEnabled();
-  const insight = aiEnabled ? storeInsight(client, subscription) : null;
+  const insight = storeInsight(client, subscription);
   const setup = isInSetup(client);
   const growth = client.growthPercent;
 
@@ -149,10 +146,10 @@ export function StoreRowDetail({ client, subscription, riskText }: StoreRowDetai
 
       <AppsCard client={client} />
 
-      {/* The insight-line fill (§4.8) as a small card: light blue, the orb, one finding, then the next step. */}
-      <section className="flex min-w-0 flex-col gap-3 rounded-card border border-ai-line-border bg-[image:var(--zc-ai-line-bg)] p-4">
+      {/* One finding, then the next step. Rule-based, not AI output, so a plain card with a tip icon (no orb). */}
+      <section className="flex min-w-0 flex-col gap-3 rounded-card border border-line bg-surface p-4">
         <div className="flex items-start gap-2">
-          {insight ? <Orb /> : null}
+          {insight ? <IconTip aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-muted" /> : null}
           <div className="min-w-0 text-body">
             {insight ? (
               <>

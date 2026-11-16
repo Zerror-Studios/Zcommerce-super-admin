@@ -41,8 +41,8 @@ export const AI_PLATFORM_TOTALS = gql`
 `;
 
 export const AI_USAGE_BY_TENANT = gql`
-  query AiUsageByTenant($limit: Int, $offset: Int, $search: String, $tenantId: ID) {
-    aiUsageByTenant(limit: $limit, offset: $offset, search: $search, tenantId: $tenantId) {
+  query AiUsageByTenant($limit: Int, $offset: Int, $search: String, $tenantId: ID, $aiEnabled: Boolean) {
+    aiUsageByTenant(limit: $limit, offset: $offset, search: $search, tenantId: $tenantId, aiEnabled: $aiEnabled) {
       totalCount
       items {
         tenantId
@@ -65,8 +65,8 @@ export const AI_USAGE_BY_TENANT = gql`
 `;
 
 export const AI_USAGE_CSV = gql`
-  query AiUsageCsv {
-    aiUsageCsv
+  query AiUsageCsv($search: String, $aiEnabled: Boolean) {
+    aiUsageCsv(search: $search, aiEnabled: $aiEnabled)
   }
 `;
 
@@ -137,8 +137,9 @@ export const AI_TOP_UP_REQUESTS = gql`
     $status: PlatformAiTopupRequestStatus
     $limit: Int
     $offset: Int
+    $search: String
   ) {
-    aiTopUpRequests(status: $status, limit: $limit, offset: $offset) {
+    aiTopUpRequests(status: $status, limit: $limit, offset: $offset, search: $search) {
       totalCount
       items {
         id
@@ -154,11 +155,12 @@ export const AI_TOP_UP_REQUESTS = gql`
 `;
 
 export const AI_DATA_HEALTH = gql`
-  query AiDataHealth($needsAttention: Boolean, $limit: Int, $offset: Int) {
+  query AiDataHealth($needsAttention: Boolean, $limit: Int, $offset: Int, $search: String) {
     aiDataHealth(
       needsAttention: $needsAttention
       limit: $limit
       offset: $offset
+      search: $search
     ) {
       totalCount
       items {

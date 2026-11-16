@@ -20,6 +20,7 @@ import {
   EmptyState,
   ErrorState,
   SummaryPanel,
+  TablePagination,
   TableToolbar,
   cx,
   prefetchTableQuery,
@@ -27,6 +28,7 @@ import {
   useIdleTablePrefetch,
   useTableQuery,
   useTableQueryClient,
+  useTableUrlState,
   type DataTableColumn,
   type SummaryCell,
 } from "../components/ui";
@@ -34,7 +36,6 @@ import { IconSupport } from "../components/ui/icons";
 import { PLATFORM_SUPPORT_SUMMARY, PLATFORM_SUPPORT_TICKETS } from "../graphql/support";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
 
-const PAGE_LIMIT = 100;
 const SEARCH_DEBOUNCE_MS = 300;
 
 const COLUMNS: DataTableColumn<SupportTicket>[] = [
@@ -50,7 +51,8 @@ const COLUMNS: DataTableColumn<SupportTicket>[] = [
  * Super Admin › Support › Tickets (board 45, round 2 §6.4): every store's tickets. The KPI band (open, waiting on a
  * store, median first reply this week against the target, solved this week), tabs Open · Waiting on store · Solved
  * · Mine, search, and the table with the SLA timer ("Reply due"), store, priority, status and assignee. A row opens
- * the drawer with the thread, internal notes and assign-to. `?ticket=<id>` opens one.
+ * the drawer with the thread, internal notes and assign-to. `?ticket=<id>` opens one. The server pages each tab
+ * (`?page=`, rows per page remembered); a new tab or search starts at page 1.
  */
 export function SupportTickets() {
   const [params, setParams] = useSearchParams();
@@ -58,14 +60,31 @@ export function SupportTickets() {
   const [search, setSearch] = useState("");
   const debounced = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
   const openId = params.get("ticket");
-  // Round 3 C3: one cache entry per tab and search (60s fresh); another tab's tickets never stay on screen.
+  // Page and rows per page live in the URL (`?ticket=` is the drawer, not a filter).
+  const table = useTableUrlState({ ignore: ["ticket"] });
+  // Round 3 C3: one cache entry per tab, search and page (60s fresh); another tab's tickets never stay on screen.
   const { data, loading, error, refetch, isInitialLoading, isReloading } = useTableQuery(PLATFORM_SUPPORT_TICKETS, {
-    variables: { tab, search: debounced || null, limit: PAGE_LIMIT, offset: 0 },
+    variables: { tab, search: debounced || null, limit: table.pageSize, offset: table.offset },
     tabKey: tab,
   });
   const apollo = useTableQueryClient();
   const prefetchTab = (next: SupportTab) =>
-    prefetchTableQuery(apollo, PLATFORM_SUPPORT_TICKETS, { tab: next, search: debounced || null, limit: PAGE_LIMIT, offset: 0 });
+    prefetchTableQuery(apollo, PLATFORM_SUPPORT_TICKETS, { tab: next, search: debounced || null, limit: table.pageSize, offset: 0 });
+  const prefetchPage = (page: number) =>
+    prefetchTableQuery(apollo, PLATFORM_SUPPORT_TICKETS, {
+      tab,
+      search: debounced || null,
+      limit: table.pageSize,
+      offset: (page - 1) * table.pageSize,
+    });
+  const changeTab = (next: SupportTab) => {
+    setTab(next);
+    table.setPage(1);
+  };
+  const changeSearch = (value: string) => {
+    setSearch(value);
+    if (table.page !== 1) table.setPage(1);
+  };
   const { data: summaryData, loading: summaryLoading } = useQuery(PLATFORM_SUPPORT_SUMMARY, { fetchPolicy: "cache-and-network" });
   const rows: SupportTicket[] = data?.platformSupportTickets?.items ?? [];
   // Round 3 C5: the counts come with the list; while a new tab loads, the last counts stay on the tabs.
@@ -168,11 +187,11 @@ export function SupportTickets() {
         <TableToolbar<SupportTab>
           tabs={tabs}
           tab={tab}
-          onTabChange={setTab}
+          onTabChange={changeTab}
           tabsLabel="Ticket status"
           onTabIntent={prefetchTab}
           search={search}
-          onSearchChange={setSearch}
+          onSearchChange={changeSearch}
           searchPlaceholder="Ticket, store or words"
         />
 
@@ -190,6 +209,20 @@ export function SupportTickets() {
             tabKey={tab}
             onRowAction={(row) => setOpen(row.id)}
             rowHeight="tall"
+            footer={
+              // A page emptied by solved tickets still shows the controls to step back.
+              rows.length > 0 || table.page > 1 ? (
+                <TablePagination
+                  page={table.page}
+                  pageSize={table.pageSize}
+                  total={data?.platformSupportTickets?.totalCount ?? rows.length}
+                  onPageChange={table.setPage}
+                  onPageSizeChange={table.setPageSize}
+                  onPageIntent={prefetchPage}
+                  isDisabled={isReloading}
+                />
+              ) : null
+            }
             emptyContent={
               <EmptyState
                 icon={IconSupport}

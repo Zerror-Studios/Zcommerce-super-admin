@@ -4,7 +4,6 @@ import { useAiDataHealth } from "../../hooks/use-platform-ai";
 import { useUrlSearch } from "../../hooks/use-url-search";
 import { aiDataHealthIssues } from "../../lib/platform-ai.util";
 import { downloadCsv, rowsToCsv } from "../../lib/report-csv";
-import { matchesText } from "../../lib/text-search.util";
 import type { PlatformAiDataHealthRow } from "../../types/platform-api";
 import { toasts } from "../../copy";
 import { IconStoreHealth } from "../ui/icons";
@@ -37,7 +36,7 @@ const columns: DataTableColumn[] = [
 /**
  * ZCOM AI › Data health (PRD-021 FR-6.5): stores whose Business Insights are held back by missing data (cost prices
  * under 80%, Business settings not filled in) or a failed run. "Show all stores" lists every store with insights.
- * Search matches the stores on this page (data health has no server search).
+ * Search runs on the server over every store (name or slug), so paging covers the matches.
  */
 export function AiDataHealthTab({ tabs, exportRef }: AiTabProps) {
   const navigate = useNavigate();
@@ -45,9 +44,9 @@ export function AiDataHealthTab({ tabs, exportRef }: AiTabProps) {
   const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
   // PRD-024 FR-1.10 (B-11): every store with insights, not only those needing a nudge.
   const showAll = table.filters.all === "1";
-  const api = useAiDataHealth({ needsAttention: !showAll, limit: table.pageSize, offset: table.offset });
+  const api = useAiDataHealth({ needsAttention: !showAll, search: table.search, limit: table.pageSize, offset: table.offset });
   const loaded = useMemo(() => api.data?.items ?? [], [api.data]);
-  const rows = loaded.filter((row) => matchesText(table.search, row.storeName, row.slug));
+  const rows = loaded;
   const total = api.data?.totalCount ?? 0;
 
   const runExport = useCallback(() => {
@@ -145,7 +144,7 @@ export function AiDataHealthTab({ tabs, exportRef }: AiTabProps) {
             kind="no-results"
             icon={IconStoreHealth}
             title="No matching stores"
-            description="No store on this page matches that search."
+            description="No store matches that search."
             action={
               <Button variant="secondary" size="sm" onPress={() => setSearch("")}>
                 Clear search

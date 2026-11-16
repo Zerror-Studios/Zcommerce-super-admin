@@ -9,7 +9,6 @@ import { mutationFailureCopy } from "../../lib/mutation-errors";
 import { TOP_UP_STATUS_OPTIONS, topUpEmptyCopy } from "../../lib/platform-ai.util";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { downloadCsv, rowsToCsv } from "../../lib/report-csv";
-import { matchesText } from "../../lib/text-search.util";
 import { useAuth } from "../../providers/AuthProvider";
 import type { PlatformAiTopUpRequest, PlatformAiTopUpRequestStatus } from "../../types/platform-api";
 import { toasts } from "../../copy";
@@ -55,8 +54,8 @@ function statusFromParam(value: string | undefined): PlatformAiTopUpRequestStatu
 /**
  * ZCOM AI › Top-up requests (PRD-021 FR-6.4): stores that ran out of questions and asked for more (one request per
  * store per week). Grant adds questions until the end of the store's month and closes its open requests; Dismiss
- * closes one without granting. Both need `platform:ai:manage`. Search matches the stores on this page (the
- * requests have no server search).
+ * closes one without granting. Both need `platform:ai:manage`. Search runs on the server over every request
+ * (store name or slug), so paging covers the matches.
  */
 export function AiTopUpsTab({ tabs, exportRef }: AiTabProps) {
   const navigate = useNavigate();
@@ -72,7 +71,7 @@ export function AiTopUpsTab({ tabs, exportRef }: AiTabProps) {
   const [busy, setBusy] = useState(false);
   const [dismiss] = useMutation(DISMISS_AI_TOP_UP_REQUEST);
 
-  const api = useAiTopUpRequests({ status, limit: table.pageSize, offset: table.offset });
+  const api = useAiTopUpRequests({ status, search: table.search, limit: table.pageSize, offset: table.offset });
   // The switch's counts: one row per status is enough to read each total.
   const open = useAiTopUpRequests({ status: "OPEN", limit: 1, offset: 0 });
   const granted = useAiTopUpRequests({ status: "GRANTED", limit: 1, offset: 0 });
@@ -83,7 +82,7 @@ export function AiTopUpsTab({ tabs, exportRef }: AiTabProps) {
     DISMISSED: dismissed.data?.totalCount ?? null,
   };
   const loaded = useMemo(() => api.data?.items ?? [], [api.data]);
-  const rows = loaded.filter((row) => matchesText(table.search, row.storeName));
+  const rows = loaded;
   const total = api.data?.totalCount ?? 0;
 
   const refetchAll = useCallback(
@@ -207,7 +206,7 @@ export function AiTopUpsTab({ tabs, exportRef }: AiTabProps) {
               kind="no-results"
               icon={IconGift}
               title="No matching requests"
-              description="No store on this page matches that search."
+              description="No store matches that search."
               action={
                 <Button variant="secondary" size="sm" onPress={() => setSearch("")}>
                   Clear search

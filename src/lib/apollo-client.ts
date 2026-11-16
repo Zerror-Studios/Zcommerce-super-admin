@@ -497,8 +497,8 @@ const cache = new InMemoryCache({
         // PRD-024 FR-3.5: one cached list per search and status filter.
         platformCoupons: offsetListPolicy(["search", "status"]),
         platformSubscriptions: { keyArgs: ["filter", "sort"] },
-        // PRD-018 FR-2.5: purged-store tombstones, paged the same way.
-        platformPurgedTenants: offsetPagingPolicy([]),
+        // PRD-018 FR-2.5: purged-store tombstones, paged the same way; one list per search.
+        platformPurgedTenants: offsetPagingPolicy(["search"]),
       },
     },
     // A tombstone has no `id`; one per purged tenant.

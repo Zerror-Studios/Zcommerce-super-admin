@@ -6,7 +6,7 @@ import { useAiUsageByTenant } from "../../hooks/use-platform-ai";
 import { useUrlSearch } from "../../hooks/use-url-search";
 import { getPlanLabel } from "../../lib/display-labels.util";
 import { mutationFailureCopy } from "../../lib/mutation-errors";
-import { aiUsageCsvFile, formatRate, formatUsdInr } from "../../lib/platform-ai.util";
+import { aiEnabledFilterOf, aiUsageCsvFile, formatRate, formatUsdInr } from "../../lib/platform-ai.util";
 import { downloadCsv } from "../../lib/report-csv";
 import type { PlatformAiUsageRow } from "../../types/platform-api";
 import { toasts } from "../../copy";
@@ -54,9 +54,6 @@ const filterGroups: FilterGroup[] = [
   },
 ];
 
-/** The server has no AI on/off filter: with one set, read the largest page it serves and filter here. */
-const FILTERED_READ_LIMIT = 200;
-
 /**
  * ZCOM AI › Usage by store (PRD-021 FR-6.2, 04 S-06): this week's and this month's questions, tokens and cost per
  * store, most expensive first (the server's order). Each row opens the store's ZCOM AI section.
@@ -68,30 +65,29 @@ export function AiUsageTab({ tabs, exportRef }: AiTabProps) {
   const [search, setSearch] = useUrlSearch(table.search, table.setSearch);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const aiFilter = table.filters.ai === "on" || table.filters.ai === "off" ? table.filters.ai : "";
+  const aiEnabled = aiEnabledFilterOf(aiFilter);
+  const searchText = table.search.trim();
 
-  const api = useAiUsageByTenant({
-    search: table.search.trim(),
-    limit: aiFilter ? FILTERED_READ_LIMIT : table.pageSize,
-    offset: aiFilter ? 0 : table.offset,
-  });
-  const serverRows = useMemo(() => api.data?.items ?? [], [api.data]);
-  const filteredRows = useMemo(
-    () => (aiFilter ? serverRows.filter((row) => row.aiEnabled === (aiFilter === "on")) : serverRows),
-    [aiFilter, serverRows],
-  );
-  const rows = aiFilter ? filteredRows.slice(table.offset, table.offset + table.pageSize) : serverRows;
-  const total = aiFilter ? filteredRows.length : (api.data?.totalCount ?? 0);
+  // Search and the AI on/off filter both run on the server, so paging covers every store.
+  const api = useAiUsageByTenant({ search: searchText, aiEnabled, limit: table.pageSize, offset: table.offset });
+  const rows = useMemo(() => api.data?.items ?? [], [api.data]);
+  const total = api.data?.totalCount ?? 0;
 
   const runExport = useCallback(async () => {
     try {
-      const result = await client.query<{ aiUsageCsv: string }>({ query: AI_USAGE_CSV, fetchPolicy: "network-only" });
+      // The export is what the table shows: the same search and AI filter (every page, not one).
+      const result = await client.query<{ aiUsageCsv: string }>({
+        query: AI_USAGE_CSV,
+        variables: { search: searchText || null, aiEnabled },
+        fetchPolicy: "network-only",
+      });
       const file = aiUsageCsvFile(result.data.aiUsageCsv);
       downloadCsv(file.filename, file.content);
     } catch (error) {
       const message = mutationFailureCopy(error);
       if (message) toastError(message);
     }
-  }, [client]);
+  }, [aiEnabled, client, searchText]);
   useAiExport(exportRef, runExport);
 
   const filterValues: FilterValues = { ai: aiFilter };

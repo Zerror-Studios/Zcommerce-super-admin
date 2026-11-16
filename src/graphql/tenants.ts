@@ -311,10 +311,10 @@ export const TENANT_MONEY_IN_FLIGHT = gql`
   }
 `;
 
-/** FR-2.5: tombstones of purged stores, newest first. */
+/** FR-2.5: tombstones of purged stores, newest first; `search` matches the name, slug or domain on the server. */
 export const PLATFORM_PURGED_TENANTS = gql`
-  query PlatformPurgedTenants($limit: Int, $offset: Int) {
-    platformPurgedTenants(limit: $limit, offset: $offset) {
+  query PlatformPurgedTenants($limit: Int, $offset: Int, $search: String) {
+    platformPurgedTenants(limit: $limit, offset: $offset, search: $search) {
       items {
         tenantId
         slug
@@ -329,11 +329,11 @@ export const PLATFORM_PURGED_TENANTS = gql`
   }
 `;
 
-/** FR-2.3: deleted stores still inside their grace period. */
+/** FR-2.3: deleted stores still inside their grace period; `search` matches the name, slug or domain on the server. */
 export const PLATFORM_DELETED_TENANTS = gql`
-  query PlatformDeletedTenants($limit: Int, $offset: Int) {
+  query PlatformDeletedTenants($limit: Int, $offset: Int, $search: String) {
     platformTenants(
-      filter: { status: [DELETED] }
+      filter: { status: [DELETED], search: $search }
       sort: NAME_ASC
       limit: $limit
       offset: $offset
