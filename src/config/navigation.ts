@@ -11,7 +11,7 @@ import { IconAnalytics, IconHome, IconPayments, IconSettings, IconStore, IconSto
  * days), Analytics a blue pill (open AI top-up requests); DashboardLayout fills them in.
  *
  * Round 2 §4 (PRD-036 R2-8/R2-9, 2026-11-06): Support ▸ (Tickets, Announcements, Guides & videos) after Billing and
- * System health after Analytics. Billing is one page today, so it has no sub-items until §7 adds them.
+ * System health after Analytics. PRD-049 FR-A33 (2026-11-19) adds Support › Settings. Billing is one page today, so it has no sub-items until §7 adds them.
  */
 export const mainNavItems: NavItem[] = [
   { key: "home", label: "Home", to: "/", end: true, icon: IconHome },
@@ -25,6 +25,8 @@ export const mainNavItems: NavItem[] = [
       { to: "/support/tickets", label: "Tickets" },
       { to: "/support/announcements", label: "Announcements" },
       { to: "/support/guides", label: "Guides & videos" },
+      // PRD-049 FR-A33: shown only with platform:support:read (`visibleNavItems`).
+      { to: "/support/settings", label: "Settings" },
     ],
   },
   {
@@ -67,6 +69,9 @@ export const allNavItems: NavItem[] = [
 const NAV_PERMISSIONS: Partial<Record<string, PlatformPermission>> = {
   ai: PLATFORM_PERMISSIONS.AI_READ,
   "/ai": PLATFORM_PERMISSIONS.AI_READ,
+  // PRD-049 FR-A34: the ticket queue and its settings need platform:support:read.
+  "/support/tickets": PLATFORM_PERMISSIONS.SUPPORT_READ,
+  "/support/settings": PLATFORM_PERMISSIONS.SUPPORT_READ,
 };
 
 /** `items` without the entries and sub-items the caller's role can't open (PRD-021 FR-6). */

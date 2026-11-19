@@ -31,6 +31,16 @@ export const PLATFORM_PERMISSIONS = {
   AI_MANAGE: "platform:ai:manage",
   /** PRD-026 Q3: the internal Ask ZCOM chat (Owner and Admin; MFA) */
   AI_ASK: "platform:ai:ask",
+  /** PRD-049 FR-A34: the support queue, tickets and their notes */
+  SUPPORT_READ: "platform:support:read",
+  /** PRD-049: reply, note, status, resolve, assign to self */
+  SUPPORT_REPLY: "platform:support:reply",
+  /** PRD-049: assign others, priority, Support › Settings */
+  SUPPORT_MANAGE: "platform:support:manage",
+  /** PRD-049 FR-A29 (step A3): the feature board */
+  FEEDBACK_MANAGE: "platform:feedback:manage",
+  /** PRD-049 FR-A20 (step A4): tutorials and docs */
+  HELP_MANAGE: "platform:help:manage",
 } as const;
 
 export type PlatformPermission =
@@ -62,6 +72,8 @@ export const PLATFORM_ROLE_PERMISSIONS: Record<
     PLATFORM_PERMISSIONS.COUPONS_MANAGE,
     PLATFORM_PERMISSIONS.REPORTS_READ,
     PLATFORM_PERMISSIONS.AI_READ,
+    // PRD-049: keeps the ticket read billing managers had through tenants:read
+    PLATFORM_PERMISSIONS.SUPPORT_READ,
   ],
   SUPPORT_AGENT: [
     PLATFORM_PERMISSIONS.TENANTS_READ,
@@ -69,6 +81,8 @@ export const PLATFORM_ROLE_PERMISSIONS: Record<
     PLATFORM_PERMISSIONS.BILLING_READ,
     PLATFORM_PERMISSIONS.REPORTS_READ,
     PLATFORM_PERMISSIONS.NOTES_WRITE,
+    PLATFORM_PERMISSIONS.SUPPORT_READ,
+    PLATFORM_PERMISSIONS.SUPPORT_REPLY,
   ],
   READ_ONLY: READ_PERMISSIONS,
 };

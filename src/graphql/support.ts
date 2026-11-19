@@ -1,9 +1,11 @@
 /**
- * Support (backend PRD-036 R2-8, platform-admin subgraph): every store's tickets, the thread with internal notes,
- * assign / status / priority, the KPI band, release notes for the stores' What's new, and tickets per topic.
+ * Support (backend PRD-036 R2-8 and PRD-049 step A1, platform-admin subgraph): every store's tickets, the thread
+ * with internal notes, assign / status / priority / resolve, the KPI band, Support › Settings, release notes for the
+ * stores' What's new, and tickets per topic.
  *
- * Reads need platform:tenants:read; replies, notes, assign, status and priority platform:notes:write; release notes
- * platform:tenants:manage.
+ * PRD-049 FR-A34: ticket reads and the settings need platform:support:read; replies, notes, status, resolve and
+ * assigning yourself platform:support:reply; priority, assigning anyone else and saving the settings
+ * platform:support:manage. Release notes, topic counts and system health keep platform:tenants:read / :manage.
  */
 
 import { gql } from "@apollo/client";
@@ -17,9 +19,12 @@ const TICKET_FIELDS = gql`
     tenantId
     storeName
     storeSlug
+    type
+    typeLabel
     topic
     topicLabel
     title
+    impact
     priority
     priorityAuto
     status
@@ -35,7 +40,12 @@ const TICKET_FIELDS = gql`
     }
     replyDueAt
     firstReplyAt
-    solvedAt
+    outcome
+    outcomeLabel
+    resolvedAt
+    closedAt
+    closedBy
+    reopenedCount
     quickReplies
     messageCount
     attachmentCount
@@ -49,6 +59,39 @@ const TICKET_FIELDS = gql`
 const THREAD_FIELDS = gql`
   fragment PlatformSupportThreadFields on PlatformSupportTicket {
     description
+    steps
+    neededBy
+    linkedCustomer {
+      id
+      label
+    }
+    followUpOf {
+      id
+      label
+    }
+    contact {
+      name
+      email
+      phone
+      role
+      whatsappOk
+      bestTime
+    }
+    context {
+      pageUrl
+      browser
+      os
+      screen
+      appVersion
+      plan
+      recentErrors
+    }
+    outcomeNote
+    resolvedByName
+    rating {
+      score
+      comment
+    }
     linkedOrder {
       id
       label
@@ -80,7 +123,7 @@ const THREAD_FIELDS = gql`
   }
 `;
 
-/** One tab of the queue (the reply due soonest first; Solved newest first) with the tab counts. */
+/** One view of the queue (the reply due soonest first; Closed newest first) with every view's count (PRD-049 FR-A32). */
 export const PLATFORM_SUPPORT_TICKETS = gql`
   query PlatformSupportTickets($tab: PlatformSupportTab, $search: String, $limit: Int, $offset: Int) {
     platformSupportTickets(tab: $tab, search: $search, limit: $limit, offset: $offset) {
@@ -90,9 +133,14 @@ export const PLATFORM_SUPPORT_TICKETS = gql`
       totalCount
       counts {
         open
-        waitingOnStore
-        solved
+        unassigned
         mine
+        urgent
+        dueSoon
+        waitingOnStore
+        resolved
+        closed
+        all
       }
     }
   }
@@ -108,6 +156,7 @@ export const PLATFORM_SUPPORT_SUMMARY = gql`
       overdue
       waitingOnStore
       waitingStoreNames
+      resolvedAwaitingConfirmation
       solvedThisWeek
       firstReplyMedianMinutes
       firstReplyCountThisWeek
@@ -187,14 +236,73 @@ export const SET_PLATFORM_SUPPORT_TICKET_STATUS = gql`
 `;
 
 export const SET_PLATFORM_SUPPORT_TICKET_PRIORITY = gql`
-  mutation SetPlatformSupportTicketPriority($id: ID!, $priority: PlatformSupportPriority!) {
-    setPlatformSupportTicketPriority(id: $id, priority: $priority) {
+  mutation SetPlatformSupportTicketPriority($id: ID!, $priority: PlatformSupportPriority!, $note: String) {
+    setPlatformSupportTicketPriority(id: $id, priority: $priority, note: $note) {
       ...PlatformSupportTicketFields
       ...PlatformSupportThreadFields
     }
   }
   ${TICKET_FIELDS}
   ${THREAD_FIELDS}
+`;
+
+/** PRD-049 FR-A13: resolve with an outcome and a note (posted to the store's thread); the store confirms or reopens. */
+export const RESOLVE_PLATFORM_SUPPORT_TICKET = gql`
+  mutation ResolvePlatformSupportTicket($id: ID!, $input: PlatformSupportResolveInput!) {
+    resolvePlatformSupportTicket(id: $id, input: $input) {
+      ...PlatformSupportTicketFields
+      ...PlatformSupportThreadFields
+    }
+  }
+  ${TICKET_FIELDS}
+  ${THREAD_FIELDS}
+`;
+
+// ─── Support › Settings (PRD-049 FR-A33) ─────────────────────────────────
+
+const SUPPORT_SETTINGS_FIELDS = gql`
+  fragment PlatformSupportSettingsFields on PlatformSupportSettings {
+    calendar {
+      timezone
+      weekly {
+        open
+        close
+      }
+      holidays
+    }
+    firstReplyHours {
+      URGENT
+      HIGH
+      NORMAL
+      LOW
+    }
+    reopenReplyHours
+    autoCloseDays
+    reminderDays
+    reopenDays
+    waitingReminderWorkingDays
+    version
+    updatedAt
+  }
+`;
+
+export const PLATFORM_SUPPORT_SETTINGS = gql`
+  query PlatformSupportSettings {
+    platformSupportSettings {
+      ...PlatformSupportSettingsFields
+    }
+  }
+  ${SUPPORT_SETTINGS_FIELDS}
+`;
+
+/** Omitted fields keep their value; `expectedVersion` answers CONFLICT VERSION_CONFLICT when someone saved first. */
+export const UPDATE_PLATFORM_SUPPORT_SETTINGS = gql`
+  mutation UpdatePlatformSupportSettings($input: PlatformSupportSettingsInput!) {
+    updatePlatformSupportSettings(input: $input) {
+      ...PlatformSupportSettingsFields
+    }
+  }
+  ${SUPPORT_SETTINGS_FIELDS}
 `;
 
 /** Guides & videos: what stores raise tickets about. */

@@ -8,8 +8,12 @@ import {
   PRIORITY_TONE,
   STATUS_LABEL,
   STATUS_TONE,
+  SUPPORT_TABS,
   durationLabel,
+  emptyTabTitle,
   replyDue,
+  supportAbilities,
+  type SupportCounts,
   type SupportTab,
   type SupportTicket,
 } from "../components/support/support.util";
@@ -32,9 +36,10 @@ import {
   type DataTableColumn,
   type SummaryCell,
 } from "../components/ui";
-import { IconSupport } from "../components/ui/icons";
+import { IconLock, IconSupport } from "../components/ui/icons";
 import { PLATFORM_SUPPORT_SUMMARY, PLATFORM_SUPPORT_TICKETS } from "../graphql/support";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
+import { useAuth } from "../providers/AuthProvider";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -48,13 +53,17 @@ const COLUMNS: DataTableColumn<SupportTicket>[] = [
 ];
 
 /**
- * Super Admin › Support › Tickets (board 45, round 2 §6.4): every store's tickets. The KPI band (open, waiting on a
- * store, median first reply this week against the target, solved this week), tabs Open · Waiting on store · Solved
- * · Mine, search, and the table with the SLA timer ("Reply due"), store, priority, status and assignee. A row opens
- * the drawer with the thread, internal notes and assign-to. `?ticket=<id>` opens one. The server pages each tab
- * (`?page=`, rows per page remembered); a new tab or search starts at page 1.
+ * Super Admin › Support › Tickets (board 45, round 2 §6.4; PRD-049 FR-A32): every store's tickets. The KPI band
+ * (open, waiting on a store, resolved and awaiting the store's confirmation, median first reply this week against
+ * the target), the views Open · Unassigned · Mine · Urgent · Due soon · Waiting on store · Resolved · Closed · All,
+ * search, and the table with the SLA timer ("Reply due"), store, type, priority (and the store's own impact),
+ * status and assignee. A row opens the drawer with the thread, internal notes, Resolve and assign-to.
+ * `?ticket=<id>` opens one (the console feed links there). The server pages each view (`?page=`, rows per page
+ * remembered); a new view or search starts at page 1. Needs platform:support:read.
  */
 export function SupportTickets() {
+  const { can } = useAuth();
+  const abilities = supportAbilities(can);
   const [params, setParams] = useSearchParams();
   const [tab, setTab] = useState<SupportTab>("OPEN");
   const [search, setSearch] = useState("");
@@ -66,6 +75,7 @@ export function SupportTickets() {
   const { data, loading, error, refetch, isInitialLoading, isReloading } = useTableQuery(PLATFORM_SUPPORT_TICKETS, {
     variables: { tab, search: debounced || null, limit: table.pageSize, offset: table.offset },
     tabKey: tab,
+    skip: !abilities.read,
   });
   const apollo = useTableQueryClient();
   const prefetchTab = (next: SupportTab) =>
@@ -85,12 +95,15 @@ export function SupportTickets() {
     setSearch(value);
     if (table.page !== 1) table.setPage(1);
   };
-  const { data: summaryData, loading: summaryLoading } = useQuery(PLATFORM_SUPPORT_SUMMARY, { fetchPolicy: "cache-and-network" });
+  const { data: summaryData, loading: summaryLoading } = useQuery(PLATFORM_SUPPORT_SUMMARY, {
+    fetchPolicy: "cache-and-network",
+    skip: !abilities.read,
+  });
   const rows: SupportTicket[] = data?.platformSupportTickets?.items ?? [];
   // Round 3 C5: the counts come with the list; while a new tab loads, the last counts stay on the tabs.
   const lastCounts = useRef(data?.platformSupportTickets?.counts);
   if (data?.platformSupportTickets?.counts) lastCounts.current = data.platformSupportTickets.counts;
-  const counts = data?.platformSupportTickets?.counts ?? lastCounts.current;
+  const counts: SupportCounts | undefined = data?.platformSupportTickets?.counts ?? lastCounts.current;
   const summary = summaryData?.platformSupportSummary;
 
   const cells: SummaryCell[] = useMemo(() => {
@@ -110,6 +123,13 @@ export function SupportTickets() {
         note: summary?.waitingStoreNames?.length ? summary.waitingStoreNames.join(", ") : undefined,
       },
       {
+        key: "resolved",
+        label: "Resolved, awaiting confirmation",
+        value: summary?.resolvedAwaitingConfirmation ?? "—",
+        note: summary ? `${summary.solvedThisWeek} closed this week` : undefined,
+        info: "The store confirms the fix, says it's still a problem, or the ticket closes itself.",
+      },
+      {
         key: "first-reply",
         label: "First reply",
         value: summary?.firstReplyMedianMinutes == null ? "—" : durationLabel(summary.firstReplyMedianMinutes * 60_000),
@@ -119,16 +139,14 @@ export function SupportTickets() {
             : `Median this week${highTarget ? ` · target ${highTarget} h for high` : ""}`
           : undefined,
       },
-      { key: "solved", label: "Solved this week", value: summary?.solvedThisWeek ?? "—" },
     ];
   }, [summary]);
 
-  const tabs = [
-    { value: "OPEN" as SupportTab, label: "Open", count: counts?.open },
-    { value: "WAITING_ON_STORE" as SupportTab, label: "Waiting on store", count: counts?.waitingOnStore },
-    { value: "SOLVED" as SupportTab, label: "Solved", count: counts?.solved },
-    { value: "MINE" as SupportTab, label: "Mine", count: counts?.mine },
-  ];
+  const tabs = SUPPORT_TABS.map((item) => ({
+    value: item.value,
+    label: item.label,
+    count: item.count ? counts?.[item.count] : undefined,
+  }));
 
   useIdleTablePrefetch(
     !!data && !loading,
@@ -154,7 +172,7 @@ export function SupportTickets() {
           <div className="min-w-0">
             <p className="truncate text-body font-medium text-fg">{row.title}</p>
             <p className="font-mono text-label text-fg-muted">
-              {row.ref} · {row.topicLabel}
+              {row.ref} · {row.typeLabel} · {row.topicLabel}
               {row.attachmentCount ? ` · ${row.attachmentCount} ${row.attachmentCount === 1 ? "file" : "files"}` : ""}
             </p>
           </div>
@@ -162,7 +180,14 @@ export function SupportTickets() {
       case "store":
         return <CellText>{row.storeName || row.storeSlug}</CellText>;
       case "priority":
-        return <Chip tone={PRIORITY_TONE[row.priority]}>{PRIORITY_LABEL[row.priority]}</Chip>;
+        return (
+          <div className="min-w-0">
+            <Chip tone={PRIORITY_TONE[row.priority]}>{PRIORITY_LABEL[row.priority]}</Chip>
+            {row.impact && row.impact !== row.priority ? (
+              <p className="mt-0.5 truncate text-caption text-fg-muted">Store said {PRIORITY_LABEL[row.impact].toLowerCase()}</p>
+            ) : null}
+          </div>
+        );
       case "status":
         return <Chip tone={STATUS_TONE[row.status]}>{STATUS_LABEL[row.status]}</Chip>;
       case "assigned":
@@ -175,6 +200,15 @@ export function SupportTickets() {
         return null;
     }
   };
+
+  if (!abilities.read) {
+    return (
+      <>
+        <PageHeader title="Tickets" eyebrow="Support" description="Every store's questions to Zcom support" />
+        <EmptyState icon={IconLock} title="Support tickets aren't available to your role" description="Ask a platform owner for support access." />
+      </>
+    );
+  }
 
   return (
     <>
@@ -226,7 +260,7 @@ export function SupportTickets() {
             emptyContent={
               <EmptyState
                 icon={IconSupport}
-                title={debounced ? `No tickets match "${debounced}"` : tab === "OPEN" ? "No open tickets" : "Nothing here"}
+                title={debounced ? `No tickets match "${debounced}"` : emptyTabTitle(tab)}
                 description="Tickets stores raise from Help & support show here."
               />
             }

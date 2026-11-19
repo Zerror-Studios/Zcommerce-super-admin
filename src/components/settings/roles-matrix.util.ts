@@ -28,6 +28,8 @@ export const ROLE_AREAS: Area[] = [
   { key: "stores", label: "Stores and logging in", edit: [P.TENANTS_MANAGE], view: [P.TENANTS_READ] },
   { key: "billing", label: "Subscriptions and billing", edit: [P.BILLING_MANAGE], view: [P.BILLING_READ] },
   { key: "plans", label: "Plans and discounts", edit: [P.PLANS_MANAGE, P.COUPONS_MANAGE], view: [P.PLANS_READ] },
+  // PRD-049 FR-A34: replying is "edit" for the queue; manage adds priority, assigning others and Support › Settings
+  { key: "support", label: "Support tickets", edit: [P.SUPPORT_REPLY, P.SUPPORT_MANAGE], view: [P.SUPPORT_READ] },
   { key: "ai", label: "Zcom AI", edit: [P.AI_MANAGE], view: [P.AI_READ] },
   // Every role can open Settings; only settings:manage changes the platform rules.
   { key: "settings", label: "Settings", edit: [P.SETTINGS_MANAGE], view: "everyone" },
@@ -43,8 +45,8 @@ export const MATRIX_ROLES: PlatformRole[] = ["PLATFORM_OWNER", "PLATFORM_ADMIN",
 export const ROLE_DESCRIPTIONS: Record<PlatformRole, string> = {
   PLATFORM_OWNER: "Everything, including the team and platform settings.",
   PLATFORM_ADMIN: "Everything except the team and platform settings.",
-  BILLING_MANAGER: "Subscriptions, billing and discounts; sees stores and plans.",
-  SUPPORT_AGENT: "Helps stores: logs in to them and adds notes; sees billing.",
+  BILLING_MANAGER: "Subscriptions, billing and discounts; sees stores, plans and tickets.",
+  SUPPORT_AGENT: "Helps stores: answers tickets, logs in to them and adds notes; sees billing.",
   READ_ONLY: "Sees everything it may read; changes nothing.",
 };
 

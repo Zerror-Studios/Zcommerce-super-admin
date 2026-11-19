@@ -41,6 +41,17 @@ describe("platform permissions", () => {
     expect(can("READ_ONLY", PLATFORM_PERMISSIONS.AI_MANAGE)).toBe(false);
   });
 
+  it("matches the backend matrix for the support permissions (PRD-049 FR-A34)", () => {
+    expect(can("PLATFORM_ADMIN", PLATFORM_PERMISSIONS.SUPPORT_MANAGE)).toBe(true);
+    expect(can("SUPPORT_AGENT", PLATFORM_PERMISSIONS.SUPPORT_READ)).toBe(true);
+    expect(can("SUPPORT_AGENT", PLATFORM_PERMISSIONS.SUPPORT_REPLY)).toBe(true);
+    expect(can("SUPPORT_AGENT", PLATFORM_PERMISSIONS.SUPPORT_MANAGE)).toBe(false);
+    expect(can("BILLING_MANAGER", PLATFORM_PERMISSIONS.SUPPORT_READ)).toBe(true);
+    expect(can("BILLING_MANAGER", PLATFORM_PERMISSIONS.SUPPORT_REPLY)).toBe(false);
+    expect(can("READ_ONLY", PLATFORM_PERMISSIONS.SUPPORT_READ)).toBe(true);
+    expect(can("READ_ONLY", PLATFORM_PERMISSIONS.SUPPORT_REPLY)).toBe(false);
+  });
+
   it("grants nothing without a role", () => {
     expect(can(null, PLATFORM_PERMISSIONS.TENANTS_READ)).toBe(false);
     expect(can(undefined, PLATFORM_PERMISSIONS.TENANTS_READ)).toBe(false);

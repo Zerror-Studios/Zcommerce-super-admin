@@ -13,5 +13,8 @@ describe("roles matrix (04 S-07b)", () => {
     expect(roleAccess("SUPPORT_AGENT", area("audit"))).toBe("none");
     expect(roleAccess("READ_ONLY", area("audit"))).toBe("view");
     expect(roleAccess("READ_ONLY", area("stores"))).toBe("view");
+    expect(roleAccess("SUPPORT_AGENT", area("support"))).toBe("edit");
+    expect(roleAccess("BILLING_MANAGER", area("support"))).toBe("view");
+    expect(roleAccess("READ_ONLY", area("support"))).toBe("view");
   });
 });
