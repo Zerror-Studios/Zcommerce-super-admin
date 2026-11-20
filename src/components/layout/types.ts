@@ -1,5 +1,6 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 import type { ComponentType, ReactNode } from "react";
+import type { ThumbMedia } from "../ui/thumb-src";
 
 /** Icon component from the shared registry (src/components/ui/icons.ts). */
 export type NavIcon = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
@@ -73,6 +74,8 @@ export interface CommandItem {
   description?: string;
   /** Product thumbnail instead of the icon tile. */
   imageUrl?: string | null;
+  /** The thumbnail's media record with its small copies (PRD-037 R3-4); wins over `imageUrl`. */
+  image?: ThumbMedia | null;
   icon?: NavIcon;
   /** Extra words that should match the query. */
   keywords?: string;

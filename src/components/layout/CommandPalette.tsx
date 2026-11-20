@@ -32,6 +32,7 @@ import { IconSearch } from "../ui/icons";
 import { DUR_2_S, EXIT_S, usePresetMotion } from "../ui/motion";
 import { Kbd } from "../ui/Primitives";
 import { Spinner } from "../ui/Spinner";
+import { Thumb } from "../ui/Thumb";
 import { useIsPhone } from "../ui/use-media";
 
 import type { CommandGroup, CommandItem } from "./types";
@@ -373,8 +374,8 @@ export function CommandPalette({
                           }}
                           className={cx("zc-palette__row", seeAll && "zc-palette__row--more", current === cursor && "is-active")}
                         >
-                          {seeAll ? null : item.imageUrl ? (
-                            <img src={item.imageUrl} alt="" loading="lazy" className="zc-palette__thumb" />
+                          {seeAll ? null : item.image || item.imageUrl ? (
+                            <Thumb media={item.image ?? { url: item.imageUrl }} size={32} alt="" className="zc-palette__thumb" />
                           ) : (
                             <span aria-hidden className="zc-palette__tile">
                               {Icon ? <Icon className="size-4" /> : <IconSearch className="size-4" />}

@@ -40,8 +40,9 @@
   --zc-green: #16A34A;          /* paid, delivered, healthy */
   --zc-green-tint: #E8F6EE;
   --zc-green-on-dark: #86EFAC;
-  --zc-red-note-on-dark: #FECACA;
-  --zc-amber-note-on-dark: #FDE68A;
+  --zc-red-note-on-dark: #FFEDED;    /* KPI band notes (board 2026-11-20): something is wrong */
+  --zc-amber-note-on-dark: #FEF3C7;  /* needs a look */
+  --zc-green-note-on-dark: #DCFCE7;  /* all good */
   --zc-green-line: #BFE5CD;     /* wallet capsule edges */
   --zc-amber-line: #F4DDB0;
 
@@ -147,6 +148,15 @@
   /* ---------- AI: one blue gradient (§2.1), the only gradient in the product. ---------- */
   --zc-ai-gradient: radial-gradient(120% 120% at 100% 0%, #60A5FA 0%, #1D4ED8 38%, #0B1A4F 78%, #070E2B 100%);
   --zc-ai-gradient-wide: radial-gradient(140% 180% at 100% 0%, #60A5FA 0%, #1D4ED8 32%, #0B1A4F 72%, #070E2B 100%); /* summary panel */
+  /* KPI band ("KPI bands · all tabs · chart slots" board, 2026-11-20): navy to blue left to right, its chart colours. */
+  --zc-summary-band: linear-gradient(90deg, #071233 0%, #0C2577 45%, #1F5EFF 100%);
+  --zc-summary-band-shadow: 0 14px 32px -10px rgba(7, 18, 51, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  --zc-band-navy: #071233;
+  --zc-band-deep: #0C2577;
+  --zc-band-blue: #1F5EFF;
+  --zc-band-light: #A9C0FF;   /* the "rest" of a ring, previous-period bars, light squares */
+  --zc-band-pale: #D6E2FF;
+  --zc-band-mid: #6E92FF;
   --zc-ai-light: radial-gradient(circle, rgba(147, 197, 253, 0.45), rgba(59, 130, 246, 0) 65%); /* the one slow drifting light */
   --zc-ai-edge: linear-gradient(115deg, #BFD3FF, #2563EB 60%, #93B4F8); /* 1px edge of the AI suggestion banner */
   --zc-ai-line-bg: linear-gradient(90deg, #EEF4FF, #FFFFFF);           /* insight line (§4.8) */
@@ -318,6 +328,7 @@
   --zc-text-micro-size: 11px;     --zc-text-micro-line: 14px;     --zc-text-micro-weight: 500;     --zc-text-micro-tracking: 0.06em;      /* UPPERCASE Geist Mono labels */
   --zc-text-kpi-xl-size: 32px;    --zc-text-kpi-xl-line: 40px;    --zc-text-kpi-xl-weight: 600;    --zc-text-kpi-xl-tracking: -0.021em;   /* KPI strips whose cells are all >= 200px */
   --zc-text-kpi-banner-size: 28px; --zc-text-kpi-banner-line: 34px; --zc-text-kpi-banner-weight: 600; --zc-text-kpi-banner-tracking: -0.021em; /* banner tiles */
+  --zc-text-kpi-band-size: 28px; --zc-text-kpi-band-line: 32px;   /* KPI band value (board 2026-11-20) */
   --zc-text-kpi-panel-size: 26px; --zc-text-kpi-panel-line: 32px; --zc-text-kpi-panel-weight: 600; --zc-text-kpi-panel-tracking: -0.02em;   /* summary panel value (v2 §2.2) */
   --zc-text-kpi-l-size: 24px;     --zc-text-kpi-l-line: 32px;     --zc-text-kpi-l-weight: 600;     --zc-text-kpi-l-tracking: -0.019em;    /* metric cards, attention counts, narrow KPI cells */
   --zc-text-display-size-phone: 30px;  --zc-text-display-line-phone: 36px;  --zc-text-display-tracking-phone: -0.025em;
@@ -435,7 +446,8 @@
   --zc-popup-tile: 36px;             /* pop-up title icon tile */
   --zc-summary-h: 122px;             /* summary panel cell min height */
   --zc-summary-h-collapsed: 48px;
-  --zc-summary-toggle: 28px;
+  --zc-summary-toggle: 26px;
+  --zc-radius-summary: 24px;         /* KPI band corners (board 2026-11-20) */
   --zc-ask-h: 52px;                  /* Zcom AI bar */
   --zc-ask-w: 560px;
   --zc-ask-bottom: 24px;

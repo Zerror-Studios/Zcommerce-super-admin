@@ -1,7 +1,7 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * The black menu (docs/design-v2/README.md §3.1). Top to bottom: the store switcher (neutral initials badge, store
- * name, domain, switch chevron), or the brand block in the Super Admin (round 2 §6.1: Z tile, "Zcom", "Platform
+ * name, domain, switch chevron), or the brand block in the Super Admin (round 2 §6.1: the Zcom logo, "Platform
  * admin" in purple) → the search box with the ⌘K hint
  * (search only, it never asks AI) → one flat list with no group headings → pushed to the bottom: Notifications (red
  * count), Settings → one divider → the profile row, whose menu ends with the Zcom version and a What's new link.
@@ -18,6 +18,7 @@ import { IconButton } from "../ui/IconButton";
 import { IconCaret, IconClose, IconCollapseSidebar, IconLogout, IconNotifications, IconSearch } from "../ui/icons";
 import { menuItemDangerClasses, menuSectionClasses } from "../ui/menu-styles";
 import { Kbd } from "../ui/Primitives";
+import { ZcomLogo, ZcomMark } from "../ui/ZcomLogo";
 import { Tooltip } from "../ui/Tooltip";
 import type { NavItem, UserMenuItem } from "./types";
 
@@ -228,15 +229,12 @@ export function Sidebar({
         {store ? (
           <StoreSwitcher store={store} collapsed={collapsed} />
         ) : collapsed ? (
-          <span aria-label="Zcom" className="zc-brand-tile">Z</span>
+          <ZcomMark className="size-6 text-nav-fg-strong" />
         ) : (
-          // Round 2 §6.1: the Z tile, "Zcom", and the product label ("Platform admin") in the console purple, 12px.
-          <span className="flex min-w-0 flex-1 items-center gap-2.5">
-            <span aria-hidden className="zc-brand-tile">Z</span>
-            <span className="flex min-w-0 flex-col leading-none">
-              <span className="zc-brand-word">Zcom</span>
-              {productLabel ? <span className="mt-1 truncate text-caption text-nav-product">{productLabel}</span> : null}
-            </span>
+          // Round 2 §6.1: the Zcom logo and the product label ("Platform admin") in the console purple, 12px.
+          <span className="flex min-w-0 flex-1 flex-col items-start leading-none">
+            <ZcomLogo className="h-4.5 w-auto text-nav-fg-strong" />
+            {productLabel ? <span className="mt-1.5 truncate text-caption text-nav-product">{productLabel}</span> : null}
           </span>
         )}
         {onClose ? (

@@ -992,14 +992,6 @@
   tr:hover .zc-row-actions, tr:focus-within .zc-row-actions, .zc-row-actions:has([aria-expanded="true"]) { opacity: 1; }
 }
 
-/* Menu brand block (round 2 §6.1, console): a 32px Z tile, the wordmark, the product label in purple (12px). */
-.zc-brand-tile {
-  display: inline-grid; flex: none; place-items: center; width: 32px; height: 32px; border-radius: var(--zc-radius-thumb);
-  background: var(--zc-nav-store-badge); color: var(--zc-nav-text-strong);
-  font: 600 16px/1 var(--zc-font-sans); letter-spacing: -0.04em;
-}
-.zc-brand-word { font: 600 17px/1 var(--zc-font-sans); letter-spacing: -0.04em; color: var(--zc-nav-text-strong); }
-
 /* Phone top bar (round 2 §8.2): the only sticky part on a phone, 56px plus the top safe area. The page colour at
    rest, white 92% with a 1px line once the page scrolls under it. The menu's store switcher and the on-dark icon
    buttons it reuses read ink on light here (their nav tokens are re-pointed for this bar only). */
@@ -1514,68 +1506,91 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
   background: var(--zc-ai-line-bg); border: 1px solid var(--zc-ai-line-border);
 }
 
-/* ---- Summary panel (§4.2): one gradient panel, four equal cells, collapsible ---- */
+/* ---- Summary panel (§4.2), restyled to the "KPI bands · all tabs · chart slots" board (2026-11-20): navy to blue
+   left to right, 24px corners, a soft drop shadow and a 1px light top edge; three or four equal cells; a picture on
+   each cell's right (SummaryArt). Collapsible. ---- */
 .zc-summary {
-  position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; isolation: isolate;
-  border-radius: var(--zc-radius-card); background: var(--zc-ai-gradient-wide); color: white;
-}
-.zc-summary::after {
-  content: ""; position: absolute; z-index: -1; width: 420px; height: 420px; right: -120px; top: -220px; border-radius: 50%;
-  background: var(--zc-ai-light); animation: zc-drift var(--zc-dur-drift) ease-in-out infinite alternate; pointer-events: none;
+  --_cols: 4;
+  position: relative; display: grid; grid-template-columns: repeat(var(--_cols), minmax(0, 1fr)); overflow: hidden; isolation: isolate;
+  border-radius: var(--zc-radius-summary); background: var(--zc-summary-band); box-shadow: var(--zc-summary-band-shadow); color: white;
 }
 .zc-summary__cell {
-  position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; min-height: var(--zc-summary-h);
-  padding: 16px 18px 18px; border-left: 1px solid var(--zc-ai-divider);
-  --_a: white; --_note: rgba(255, 255, 255, 0.72);
+  position: relative; display: flex; flex-direction: column; min-width: 0; min-height: var(--zc-summary-h);
+  padding: 19px 18px 20px; border-left: 1px solid var(--zc-ai-divider);
+  --_a: white; --_note: white; --_art-n: 0;
 }
 .zc-summary__cell:first-of-type { border-left: 0; }
 .zc-summary__cell[data-tone="danger"] { --_a: var(--zc-red-on-dark); --_note: var(--zc-red-note-on-dark); }
 .zc-summary__cell[data-tone="warning"] { --_a: var(--zc-amber-on-dark); --_note: var(--zc-amber-note-on-dark); }
-.zc-summary__label { display: flex; align-items: center; gap: 8px; min-width: 0; font: 500 13px/18px var(--zc-font-sans); color: white; opacity: 0.78; white-space: nowrap; }
+.zc-summary__cell[data-tone="good"] { --_note: var(--zc-green-note-on-dark); }
+.zc-summary__label { display: flex; align-items: center; gap: 8px; min-width: 0; font: 500 13px/18px var(--zc-font-sans); color: white; white-space: nowrap; }
 .zc-summary__info {
-  display: inline-flex; flex: none; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: -4px;
+  display: inline-flex; flex: none; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: -2px;
   border-radius: 999px; color: inherit; opacity: 0.8; cursor: help; transition: opacity var(--dur-1) var(--ease-out);
 }
-.zc-summary__info svg { width: 13px; height: 13px; }
+.zc-summary__info svg { width: 12px; height: 12px; }
 .zc-summary__info:hover, .zc-summary__info:focus-visible { opacity: 1; }
 .zc-summary__info:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8); }
 .zc-summary--lite .zc-summary__info:focus-visible { box-shadow: var(--zc-focus-ring-strong); }
-.zc-summary__dot { width: 8px; height: 8px; border-radius: 3px; background: var(--_a); flex: none; }
-/* The value sits at the bottom with its note right under it (label stays at the top). */
+/* The band has no dot before the label; the lite cards keep it. */
+.zc-summary__dot { display: none; width: 8px; height: 8px; border-radius: 3px; background: var(--_a); flex: none; }
+.zc-summary--lite .zc-summary__dot { display: block; }
+/* The value sits at the bottom with its note 9px under it (label stays at the top). Both stop short of the picture. */
 .zc-summary__value {
-  margin-top: auto; padding-top: 6px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  font-size: var(--zc-text-kpi-panel-size); line-height: var(--zc-text-kpi-panel-line);
+  max-width: 100%; margin-top: auto; padding-top: 8px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: var(--zc-text-kpi-band-size); line-height: var(--zc-text-kpi-band-line);
   font-weight: var(--zc-text-kpi-panel-weight); letter-spacing: var(--zc-text-kpi-panel-tracking); font-variant-numeric: tabular-nums;
 }
-/* One line in every cell, at the cell's bottom so it lines up across cells and with the chart's bottom edge. */
+/* One line in every cell, at the cell's bottom so it lines up across cells. */
 .zc-summary__note {
-  max-width: 58%; margin-top: 2px; font: 400 12px/16px var(--zc-font-sans); color: var(--_note);
+  max-width: calc(100% - var(--_art-n) * 1px); margin-top: 9px; font: 400 12px/16px var(--zc-font-sans); color: var(--_note);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.zc-summary__cell:not(:has(.zc-summary__chart)) .zc-summary__note { max-width: 100%; }
+.zc-summary__cell[data-art="center"] .zc-summary__value { max-width: calc(100% - var(--_art-n) * 1px); }
+.zc-summary__cell:has(.zc-summary__chart) .zc-summary__note { max-width: 58%; }
 .zc-summary__chart { position: absolute; right: 16px; bottom: 18px; width: 92px; height: 40px; display: flex; align-items: flex-end; color: var(--_a); pointer-events: none; }
+/* The picture: centred on the cell's right side, or standing on the note line; in the last cell the centred ones
+   move left of the collapse button. Per-kind offsets follow the board. */
+.zc-summary__art { position: absolute; right: 20px; display: flex; pointer-events: none; color: white; }
+.zc-summary__art svg { display: block; overflow: visible; }
+.zc-summary__art[data-placement="center"] { top: 50%; transform: translateY(-50%); }
+.zc-summary__art[data-placement="bottom"] { bottom: 16px; }
+.zc-summary__cell:last-of-type .zc-summary__art[data-placement="center"] { right: 45px; }
+.zc-summary__art[data-kind="gauge"] { bottom: 19px; }
+.zc-summary__art[data-kind="empty"] { right: 23px; bottom: 20px; }
+.zc-summary__art[data-kind="steps"] { bottom: 19px; }
+.zc-summary__art[data-kind="lollipop"] { right: 24px; bottom: 15px; }
+.zc-summary__art[data-kind="chips"] { bottom: 27px; width: 64px; }
+.zc-summary__art[data-kind="squares"][data-placement="bottom"] { bottom: 20px; }
+.zc-summary__art[data-kind="transit"] { top: 33px; transform: none; }
+.zc-summary__art[data-kind="funnel"] { top: auto; bottom: 32px; transform: none; }
+.zc-summary__track text { font: 400 11.5px/1 var(--zc-font-mono); }
 .zc-summary__toggle {
-  position: absolute; z-index: 2; right: 12px; top: 12px; width: var(--zc-summary-toggle); height: var(--zc-summary-toggle);
-  display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.14); color: white; cursor: pointer;
+  position: absolute; z-index: 2; right: 12px; top: 15px; width: var(--zc-summary-toggle); height: var(--zc-summary-toggle);
+  display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.18); color: white; cursor: pointer;
   transition: background-color var(--zc-dur-fast) var(--zc-ease);
 }
-.zc-summary__toggle svg { width: 16px; height: 16px; transition: transform var(--zc-dur-base) var(--zc-ease); }
+.zc-summary__toggle svg { width: 9px; height: 5px; transition: transform var(--zc-dur-base) var(--zc-ease); }
 .zc-summary__toggle:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8); }
-@media (hover: hover) { .zc-summary__toggle:hover { background: rgba(255, 255, 255, 0.24); } }
+@media (hover: hover) { .zc-summary__toggle:hover { background: rgba(255, 255, 255, 0.28); } }
 /* Collapsed: one slim 48px line, label and value per cell. */
 .zc-summary--collapsed .zc-summary__cell { min-height: var(--zc-summary-h-collapsed); flex-direction: row; align-items: center; gap: 10px; padding: 0 18px; }
 .zc-summary--collapsed .zc-summary__value { margin: 0; padding-top: 0; font-size: 18px; line-height: 22px; }
 .zc-summary--collapsed .zc-summary__note,
-.zc-summary--collapsed .zc-summary__chart { display: none; }
+.zc-summary--collapsed .zc-summary__chart,
+.zc-summary--collapsed .zc-summary__art { display: none; }
 .zc-summary--collapsed .zc-summary__toggle { top: 50%; margin-top: calc(var(--zc-summary-toggle) / -2); }
 .zc-summary--collapsed .zc-summary__cell:last-of-type { padding-right: 52px; }
 /* "Lite" (Analytics overview extra rows): white cards, ink accents. */
-.zc-summary--lite { background: none; gap: 12px; overflow: visible; color: var(--zc-fg); }
-.zc-summary--lite::after, .zc-summary--lite .zc-summary__toggle { display: none; }
+.zc-summary--lite { background: none; box-shadow: none; border-radius: var(--zc-radius-card); gap: 12px; overflow: visible; color: var(--zc-fg); }
+.zc-summary--lite .zc-summary__toggle { display: none; }
+.zc-summary--lite .zc-summary__cell { padding: 16px 18px 18px; }
+.zc-summary--lite .zc-summary__value { padding-top: 6px; font-size: var(--zc-text-kpi-panel-size); line-height: var(--zc-text-kpi-panel-line); }
+.zc-summary--lite .zc-summary__note { margin-top: 2px; }
 .zc-summary--lite .zc-summary__cell { --_a: var(--zc-ink); --_note: var(--zc-fg-subtle); border: 1px solid var(--zc-border); border-radius: var(--zc-radius-card-sm); background: var(--zc-surface); }
 .zc-summary--lite .zc-summary__cell[data-tone="danger"] { --_a: var(--zc-red); --_note: var(--zc-danger-text); }
 .zc-summary--lite .zc-summary__cell[data-tone="warning"] { --_a: var(--zc-amber); --_note: var(--zc-amber-text); }
-.zc-summary--lite .zc-summary__label { color: var(--zc-fg-muted); opacity: 1; }
+.zc-summary--lite .zc-summary__label { color: var(--zc-fg-muted); }
 .zc-summary--lite .zc-summary__value { color: var(--zc-fg); }
 @media (max-width: 899px) {
   .zc-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1583,12 +1598,11 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
   .zc-summary__cell:nth-of-type(n + 3) { border-top: 1px solid var(--zc-ai-divider); }
   .zc-summary--lite .zc-summary__cell { border: 1px solid var(--zc-border); }
 }
-/* The toggle's tap area is 44px (v2 §10) around the 28px circle. */
+/* The toggle's tap area is 44px (v2 §10) around the 26px circle. */
 .zc-summary__toggle::before { content: ""; position: absolute; inset: calc((var(--zc-control-h-touch) - var(--zc-summary-toggle)) / -2); }
 @media (max-width: 767px) {
-  /* Phone: a still gradient (no drifting light); collapsed by default (SummaryPanel), the slim line scrolls
-     sideways and the toggle stays pinned at its right end. */
-  .zc-summary::after { animation: none; }
+  /* Phone: collapsed by default (SummaryPanel), the slim line scrolls sideways and the toggle stays pinned at its
+     right end. */
   .zc-summary--collapsed { display: flex; overflow-x: auto; scrollbar-width: none; }
   .zc-summary--collapsed::-webkit-scrollbar { display: none; }
   .zc-summary--collapsed .zc-summary__cell { flex: none; border-top: 0; border-left: 1px solid var(--zc-ai-divider); }
@@ -1671,6 +1685,9 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 .zc-video[data-look="dark"] { background: var(--zc-ai-gradient); color: white; }
 .zc-video[data-look="dark"] .zc-video__title { max-width: 74%; }
 .zc-video[data-look="dark"] .zc-video__shot { left: 18%; right: -8%; top: 48%; border-radius: 12px; box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.14); }
+/* A finished thumbnail (title and screen baked in) fills the card; play + length stay bottom left. */
+.zc-video[data-cover] { background: var(--zc-surface-sunken); }
+.zc-video__cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
 /* ---- Laptop/tablet menu overlay (§10): the full menu over the 72px rail and the content, never pushing it.
    Transform and opacity only; hidden it stays mounted (AppShell) but invisible and inert. ---- */
