@@ -25,6 +25,7 @@ import { PlatformNotificationsPanel } from "./PlatformNotificationsPanel";
 import { Sidebar } from "./Sidebar";
 import { AiSpectrumDefs } from "../ui/Ai";
 import { RouteSkeleton } from "../ui/RouteSkeleton";
+import { ZcomLogo } from "../ui/ZcomLogo";
 import { ConfirmDialog, cx, toneTextClasses } from "../ui";
 import type { CommandGroup } from "./types";
 import { prefetchRoute } from "../../lib/route-prefetch";
@@ -230,7 +231,7 @@ export function DashboardLayout() {
         isDrawerOpen={mobileOpen}
         onDrawerOpenChange={setMobileOpen}
         mobileTitle={pageLabel}
-        topBarTitle="Zcom"
+        topBarTitle={<ZcomLogo className="block h-5 w-auto" />}
         topBarSubtitle="Super admin"
         onOpenSearch={openPalette}
         floating={
