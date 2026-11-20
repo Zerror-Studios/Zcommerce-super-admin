@@ -15,6 +15,7 @@ const ROUTES: Record<string, () => Promise<unknown>> = {
   ai: () => import("../pages/Ai"),
   settings: () => import("../pages/Settings"),
   "support/tickets": () => import("../pages/SupportTickets"),
+  "support/features": () => import("../pages/SupportFeatureRequests"),
   "support/announcements": () => import("../pages/SupportAnnouncements"),
   "support/guides": () => import("../pages/SupportGuides"),
   "support/settings": () => import("../pages/SupportSettings"),

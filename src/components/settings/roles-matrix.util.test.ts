@@ -16,5 +16,9 @@ describe("roles matrix (04 S-07b)", () => {
     expect(roleAccess("SUPPORT_AGENT", area("support"))).toBe("edit");
     expect(roleAccess("BILLING_MANAGER", area("support"))).toBe("view");
     expect(roleAccess("READ_ONLY", area("support"))).toBe("view");
+    // PRD-049 step A3: only owners and admins hold feedback:manage
+    expect(roleAccess("PLATFORM_ADMIN", area("features"))).toBe("edit");
+    expect(roleAccess("SUPPORT_AGENT", area("features"))).toBe("view");
+    expect(roleAccess("READ_ONLY", area("features"))).toBe("view");
   });
 });

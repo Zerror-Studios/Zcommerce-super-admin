@@ -25,6 +25,10 @@ const Settings = lazy(() => import("./pages/Settings").then((m) => ({ default: m
 const SupportTickets = lazy(() => import("./pages/SupportTickets").then((m) => ({ default: m.SupportTickets })));
 const SupportAnnouncements = lazy(() => import("./pages/SupportAnnouncements").then((m) => ({ default: m.SupportAnnouncements })));
 const SupportGuides = lazy(() => import("./pages/SupportGuides").then((m) => ({ default: m.SupportGuides })));
+// PRD-049 step A3: Support › Feature requests (the stores' feature board).
+const SupportFeatureRequests = lazy(() =>
+  import("./pages/SupportFeatureRequests").then((m) => ({ default: m.SupportFeatureRequests })),
+);
 // PRD-049 FR-A33: Support › Settings (hours, promises, auto-close).
 const SupportSettings = lazy(() => import("./pages/SupportSettings").then((m) => ({ default: m.SupportSettings })));
 const SystemHealth = lazy(() => import("./pages/SystemHealth").then((m) => ({ default: m.SystemHealth })));
@@ -145,6 +149,7 @@ export default function App() {
           {/* Round 2 §6.4: every store's tickets, release notes (What's new), ticket topics, system health. */}
           <Route path="support" element={<Navigate to="/support/tickets" replace />} />
           <Route path="support/tickets" element={<SupportTickets />} />
+          <Route path="support/features" element={<SupportFeatureRequests />} />
           <Route path="support/announcements" element={<SupportAnnouncements />} />
           <Route path="support/guides" element={<SupportGuides />} />
           <Route path="support/settings" element={<SupportSettings />} />

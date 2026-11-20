@@ -11,7 +11,7 @@ import { IconAnalytics, IconHome, IconPayments, IconSettings, IconStore, IconSto
  * days), Analytics a blue pill (open AI top-up requests); DashboardLayout fills them in.
  *
  * Round 2 §4 (PRD-036 R2-8/R2-9, 2026-11-06): Support ▸ (Tickets, Announcements, Guides & videos) after Billing and
- * System health after Analytics. PRD-049 FR-A33 (2026-11-19) adds Support › Settings. Billing is one page today, so it has no sub-items until §7 adds them.
+ * System health after Analytics. PRD-049 FR-A33 (2026-11-19) adds Support › Settings and step A3 (2026-11-20) Feature requests. Billing is one page today, so it has no sub-items until §7 adds them.
  */
 export const mainNavItems: NavItem[] = [
   { key: "home", label: "Home", to: "/", end: true, icon: IconHome },
@@ -23,6 +23,8 @@ export const mainNavItems: NavItem[] = [
     icon: IconSupport,
     children: [
       { to: "/support/tickets", label: "Tickets" },
+      // PRD-049 step A3: shown with platform:support:read or platform:feedback:manage.
+      { to: "/support/features", label: "Feature requests" },
       { to: "/support/announcements", label: "Announcements" },
       { to: "/support/guides", label: "Guides & videos" },
       // PRD-049 FR-A33: shown only with platform:support:read (`visibleNavItems`).
@@ -65,13 +67,18 @@ export const allNavItems: NavItem[] = [
   { ...settingsNavItem, children: [...settingsPages, { label: "Settings", to: "/settings" }] },
 ];
 
-/** Nav entries (by key) and sub-items (by path) a role may not open at all; others show a lock page instead. */
-const NAV_PERMISSIONS: Partial<Record<string, PlatformPermission>> = {
+/**
+ * Nav entries (by key) and sub-items (by path) a role may not open at all; others show a lock page instead. A list
+ * means any one of them is enough.
+ */
+const NAV_PERMISSIONS: Partial<Record<string, PlatformPermission | PlatformPermission[]>> = {
   ai: PLATFORM_PERMISSIONS.AI_READ,
   "/ai": PLATFORM_PERMISSIONS.AI_READ,
   // PRD-049 FR-A34: the ticket queue and its settings need platform:support:read.
   "/support/tickets": PLATFORM_PERMISSIONS.SUPPORT_READ,
   "/support/settings": PLATFORM_PERMISSIONS.SUPPORT_READ,
+  // PRD-049 step A3: the feature board reads with either permission.
+  "/support/features": [PLATFORM_PERMISSIONS.SUPPORT_READ, PLATFORM_PERMISSIONS.FEEDBACK_MANAGE],
 };
 
 /** `items` without the entries and sub-items the caller's role can't open (PRD-021 FR-6). */
@@ -81,7 +88,8 @@ export function visibleNavItems(
 ): NavItem[] {
   const allowed = (key: string) => {
     const permission = NAV_PERMISSIONS[key];
-    return !permission || can(permission);
+    if (!permission) return true;
+    return Array.isArray(permission) ? permission.some((one) => can(one)) : can(permission);
   };
   return items
     .filter((item) => allowed(item.key))

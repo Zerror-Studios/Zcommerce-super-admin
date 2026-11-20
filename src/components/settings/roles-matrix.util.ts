@@ -30,6 +30,8 @@ export const ROLE_AREAS: Area[] = [
   { key: "plans", label: "Plans and discounts", edit: [P.PLANS_MANAGE, P.COUPONS_MANAGE], view: [P.PLANS_READ] },
   // PRD-049 FR-A34: replying is "edit" for the queue; manage adds priority, assigning others and Support › Settings
   { key: "support", label: "Support tickets", edit: [P.SUPPORT_REPLY, P.SUPPORT_MANAGE], view: [P.SUPPORT_READ] },
+  // PRD-049 step A3: the board reads with support:read; statuses, merge, hide and replies need feedback:manage
+  { key: "features", label: "Feature requests", edit: [P.FEEDBACK_MANAGE], view: [P.SUPPORT_READ] },
   { key: "ai", label: "Zcom AI", edit: [P.AI_MANAGE], view: [P.AI_READ] },
   // Every role can open Settings; only settings:manage changes the platform rules.
   { key: "settings", label: "Settings", edit: [P.SETTINGS_MANAGE], view: "everyone" },
