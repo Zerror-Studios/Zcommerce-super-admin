@@ -14,11 +14,12 @@
 import { DropdownItem, DropdownTrigger } from "@heroui/react";
 import { useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { Button } from "./Button";
 import { cx } from "./cx";
 import { Dropdown, DropdownMenu } from "./Dropdown";
 import { FilterButton } from "./FilterDrawer";
 import { IconButton } from "./IconButton";
-import { IconCheck, IconGridView, IconNextPage, IconSearch, IconSort, IconTable } from "./icons";
+import { IconCaret, IconCheck, IconGridView, IconNextPage, IconSearch, IconSort, IconTable } from "./icons";
 import type { ViewMode } from "./Media";
 import { SearchInput } from "./SearchInput";
 import { SegmentedSwitch, type SegmentedItem } from "./Tabs";
@@ -36,16 +37,33 @@ export interface SortButtonProps {
   value?: string;
   onChange: (key: string) => void;
   label?: string;
+  /** Show the chosen order as text ("Newest ⌄", Inbox) instead of the icon circle. */
+  showValue?: boolean;
 }
 
-/** The sort icon button (§4.3): a 36px circle that opens a single-choice menu; ink while open. */
-export function SortButton({ options, value, onChange, label = "Sort" }: SortButtonProps) {
+/**
+ * The sort icon button (§4.3): a 36px circle that opens a single-choice menu; ink while open. With `showValue` it is a
+ * 36px pill with the chosen order and a caret.
+ */
+export function SortButton({ options, value, onChange, label = "Sort", showValue = false }: SortButtonProps) {
+  const current = options.find((option) => option.key === value) ?? options[0];
   return (
     <Dropdown placement="bottom-end">
       <DropdownTrigger>
-        <IconButton aria-label={label} variant="default" showTooltip={false}>
-          <IconSort aria-hidden />
-        </IconButton>
+        {showValue ? (
+          <Button
+            variant="secondary"
+            className="zc-sort-pill"
+            aria-label={`${label}: ${current?.label ?? ""}`}
+            endIcon={<IconCaret aria-hidden className="size-3.5" />}
+          >
+            {current?.label}
+          </Button>
+        ) : (
+          <IconButton aria-label={label} variant="default" showTooltip={false}>
+            <IconSort aria-hidden />
+          </IconButton>
+        )}
       </DropdownTrigger>
       <DropdownMenu aria-label={label} onAction={(key) => onChange(String(key))}>
         {options.map((option) => (
