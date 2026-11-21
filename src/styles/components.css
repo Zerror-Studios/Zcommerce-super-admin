@@ -1825,7 +1825,8 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 @keyframes zc-hero-b { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(70px, -30px) scale(0.92); } }
 @keyframes zc-hero-c { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-40px, -30px); } }
 .zc-hero {
-  position: relative; overflow: hidden; isolation: isolate; display: flex; flex-direction: column;
+  /* One height on both Homes (owner 2026-11-21): the console's card, whatever controls the bottom row holds. */
+  position: relative; overflow: hidden; isolation: isolate; display: flex; flex-direction: column; min-height: var(--zc-hero-h);
   padding: 18px 24px 18px; border-radius: var(--zc-radius-banner); background: var(--zc-hero-gradient); color: white;
 }
 .zc-hero__light { position: absolute; z-index: -1; border-radius: 50%; pointer-events: none; will-change: transform; }

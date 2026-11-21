@@ -477,6 +477,7 @@
   --zc-banner-h: 300px;
   --zc-banner-h-tablet: 264px;
   --zc-banner-h-phone: 220px;
+  --zc-hero-h: 198px;              /* Home hero: the console's card (tabs 42px) — both Homes share it (owner 2026-11-21) */
   --zc-gap-card: 16px;
   --zc-gap-section: 24px;
   --zc-card-pad: 20px;
