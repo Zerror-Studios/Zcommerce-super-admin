@@ -149,6 +149,9 @@
   --zc-ai-gradient: radial-gradient(120% 120% at 100% 0%, #60A5FA 0%, #1D4ED8 38%, #0B1A4F 78%, #070E2B 100%);
   --zc-ai-gradient-wide: radial-gradient(140% 180% at 100% 0%, #60A5FA 0%, #1D4ED8 32%, #0B1A4F 72%, #070E2B 100%); /* summary panel */
   /* KPI band ("KPI bands · all tabs · chart slots" board, 2026-11-20): navy to blue left to right, its chart colours. */
+  /* Marketing channel cards (owner design 2026-11-21): white with a soft lavender edge and glow. */
+  --zc-channel-card-border: rgba(118, 120, 237, 0.32);
+  --zc-channel-card-shadow: 0 0 0 3px rgba(118, 120, 237, 0.07), 0 10px 26px -16px rgba(31, 94, 255, 0.35);
   --zc-summary-band: linear-gradient(90deg, #071233 0%, #0C2577 45%, #1F5EFF 100%);
   --zc-summary-band-shadow: 0 14px 32px -10px rgba(7, 18, 51, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.18);
   --zc-band-navy: #071233;

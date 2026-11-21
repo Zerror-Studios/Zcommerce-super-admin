@@ -181,3 +181,5 @@ export {
 
 /* Filled glyphs where a fill carries the meaning: brand logo, status dot, rating star. */
 export { FaAmazon as IconAmazon, FaCircle as IconDot, FaStar as IconStar, FaWhatsapp as IconWhatsApp } from "react-icons/fa6";
+/** The filled microphone in the AI inputs (owner, 2026-11-21; voice input not wired yet). */
+export { IoMic as IconMic } from "react-icons/io5";
