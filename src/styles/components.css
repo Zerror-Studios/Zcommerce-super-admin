@@ -1911,19 +1911,7 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 }
 @media (prefers-reduced-motion: reduce) { .zc-hero__light { animation: none !important; } }
 
-/* ---- Home dot chart ("Sales this month"): one column of dots per bucket, on a faint dot grid ---- */
-.zc-home-dots {
-  --_d: 9px; position: relative; display: flex; align-items: flex-end; justify-content: flex-end; height: calc(var(--_d) * 9);
-  background: radial-gradient(circle, var(--zc-border) 2.2px, transparent 2.6px) 100% 100% / var(--_d) var(--_d);
-}
-.zc-home-dots__col {
-  flex: none; width: var(--_d); height: calc(var(--_d) * var(--_n, 1));
-  background: radial-gradient(circle, var(--_c, var(--zc-chart-hatch)) 2.2px, transparent 2.6px) 0 100% / var(--_d) var(--_d);
-}
-.zc-home-dots__col[data-kind="strong"] { --_c: var(--zc-primary); }
-.zc-home-dots__col[data-kind="empty"] { --_c: var(--zc-red); --_n: 1; }
-
-/* ---- Home "Sales by day": hatched bars, the best day solid blue, empty days light red ---- */
+/* ---- Home bars (the Sales card): the best day solid blue, empty days light red ---- */
 .zc-home-bars { display: flex; align-items: flex-end; gap: 4px; min-height: 170px; }
 .zc-home-bars__bar {
   flex: 1; min-width: 0; min-height: 3px; border-radius: 4px 4px 0 0; border: 1px solid var(--zc-chart-hatch-line); border-bottom: 0;
@@ -1931,6 +1919,16 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 }
 .zc-home-bars__bar[data-kind="best"] { background: var(--zc-chart-best); border-color: var(--zc-chart-best); }
 .zc-home-bars__bar[data-kind="empty"] { background: var(--zc-chart-empty); border-color: var(--zc-chart-empty); height: 4%; }
+/* Soft bars in the Sales card (owner layout 2026-11-21): light blue, the best day solid blue, faint grid lines. */
+.zc-home-bars--soft {
+  height: 152px; min-height: 0; gap: 3px; /* 32px for the best-day pill + 120px of bars */
+  --_g: linear-gradient(var(--zc-chart-grid), var(--zc-chart-grid));
+  background: var(--_g) 0 2rem / 100% 1px no-repeat, var(--_g) 0 calc(2rem + (100% - 2rem) / 3) / 100% 1px no-repeat,
+    var(--_g) 0 calc(2rem + (100% - 2rem) * 2 / 3) / 100% 1px no-repeat;
+}
+.zc-home-bars--soft .zc-home-bars__bar { border: 0; border-radius: 3px 3px 0 0; background: var(--zc-chart-hatch-line); }
+.zc-home-bars--soft .zc-home-bars__bar[data-kind="best"] { background: var(--zc-chart-1); }
+.zc-home-bars--soft .zc-home-bars__bar[data-kind="empty"] { background: var(--zc-chart-empty); }
 
 /* ---------------------------------------------------------------------
    Route loading (RouteSkeleton, RouteProgress; board 47): the frame at once, rows after 300ms, a 2px top line
