@@ -775,7 +775,8 @@
 
 /* Notifications pop-up (round 2 G2): Medium (640) up to 72vh; phone: a bottom sheet at 85% height. Tabs fit in one
    row (never scroll); rows like Inbox rows: 32px icon tile, one line, time, unread dot. */
-.zc-modal.zc-notices { max-height: 72vh; }
+/* One fixed height (owner, 2026-11-21): loading, the list, empty and every tab keep the same size. */
+.zc-modal.zc-notices { height: min(72vh, 680px); max-height: 72vh; }
 @media (max-width: 767px) { .zc-modal.zc-notices { height: 85dvh; max-height: 85dvh; } }
 .zc-notice-tabs { display: flex; flex: none; gap: 4px; padding: 0 20px 10px; border-bottom: 1px solid var(--zc-divider); }
 .zc-notice-tab {
