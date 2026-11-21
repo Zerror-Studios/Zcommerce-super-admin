@@ -3,12 +3,13 @@
  * Home hero (docs/design-v2/README.md §6.1; styles `.zc-hero` in src/styles/components.css). Used by the Merchant
  * Admin Home and the Super Admin Home.
  *
- * A deep-blue band (radius 28, about 300px tall) with four soft lights drifting slowly (transform only) and a faint
- * noise overlay. Top: the date in mono and the page's one or two actions ("View store ↗", a ⋯ menu). Then
- * "Good morning, **Aarav**", the orb with a one-line summary, and a bottom row with up to three chips (a green or
- * red dot each) and the period tabs. It never holds a button that asks AI (§3.3: the bottom bar is the one place).
- * The greeting and the name share one line on every screen. Under 768px (v2 §10) it is 220px with the AI line;
- * the date is hidden, the lights stand still, and the chips and period tabs scroll sideways in the bottom row.
+ * A deep-blue band (radius 28, as tall as its content, about 190px: owner 2026-11-21) with four soft lights drifting
+ * slowly (transform only) and a faint noise overlay. Top: the date in mono and the page's one or two actions
+ * ("View store ↗", a ⋯ menu). Then "Good morning, **Aarav**", the orb with a one-line summary, and a bottom row
+ * with up to three chips (a green or red dot each) and the period tabs. It never holds a button that asks AI
+ * (§3.3: the bottom bar is the one place). The greeting and the name share one line on every screen. Under 768px
+ * (v2 §10) it is 220px with the AI line; the date is hidden, the lights stand still, and the chips and period tabs
+ * scroll sideways in the bottom row.
  */
 import { useRef, type KeyboardEvent, type ReactNode } from "react";
 import { cx } from "./cx";
