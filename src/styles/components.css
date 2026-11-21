@@ -305,6 +305,13 @@
 .zc-seg--sm { height: var(--zc-seg-h-sm); }
 .zc-seg--sm .zc-seg__item { height: calc(var(--zc-seg-h-sm) - 2 * var(--zc-seg-pad)); padding: 0 10px; font-size: 12px; line-height: 16px; letter-spacing: 0; }
 
+/* Soft track (owner design "Inbox · UX v2", 2026-11-21: the Inbox tabs and the reply box's Send via): light grey, 34px,
+   28px items, 13px text. Phones keep the 44px touch size. */
+@media (min-width: 768px) {
+  .zc-seg.zc-seg--soft { height: 34px; background: var(--zc-surface-sunken); }
+  .zc-seg.zc-seg--soft .zc-seg__item { height: 28px; padding: 0 11px; font-size: 13px; line-height: 18px; }
+}
+
 /* HeroUI Tabs bridge (kit <Tabs>): the same look, HeroUI's own cursor is the sliding thumb. */
 .zc-seg-tabs { gap: 0; height: var(--zc-seg-h); padding: var(--zc-seg-pad); border-radius: var(--zc-radius-pill); background: var(--zc-seg-bg); }
 .zc-seg-tabs--sm { height: var(--zc-seg-h-sm); }
@@ -369,14 +376,15 @@
   mask-image: linear-gradient(90deg, black calc(100% - 28px), transparent);
 }
 .zc-chips::-webkit-scrollbar { display: none; }
+/* Owner design "Inbox · UX v2" (2026-11-21): white chips with a thin border, the selected one ink. */
 .zc-chips__item {
-  display: inline-flex; align-items: center; flex: none; gap: 6px; height: 28px; padding: 0 11px;
-  border: 0; border-radius: var(--zc-radius-pill); background: var(--zc-surface-sunken); color: var(--zc-fg-muted);
+  display: inline-flex; align-items: center; flex: none; gap: 6px; height: 32px; padding: 0 14px;
+  border: 1px solid var(--zc-border); border-radius: var(--zc-radius-pill); background: var(--zc-surface); color: var(--zc-fg);
   font: 500 12.5px/16px var(--zc-font-sans); white-space: nowrap; cursor: pointer; outline: none;
   transition: background-color var(--zc-dur-fast) var(--zc-ease), color var(--zc-dur-fast) var(--zc-ease);
 }
 @media (hover: hover) { .zc-chips__item:hover:not([aria-selected="true"]) { background: var(--zc-ghost-pressed-bg); color: var(--zc-fg); } }
-.zc-chips__item[aria-selected="true"] { background: var(--zc-ink); color: white; }
+.zc-chips__item[aria-selected="true"] { background: var(--zc-ink); border-color: var(--zc-ink); color: white; }
 .zc-chips__item .zc-seg__count { color: inherit; opacity: 0.6; }
 .zc-chips__item:focus-visible { box-shadow: var(--zc-focus-ring-strong); }
 .zc-chips__item:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -1189,6 +1197,11 @@ body:has([aria-modal="true"]) .zc-askbar-slot { opacity: 0; visibility: hidden; 
 }
 .zc-ai-composer__send svg { width: 18px; height: 18px; }
 .zc-ai-composer__send:disabled { opacity: 0.4; cursor: not-allowed; }
+/* The mic in every AI input (owner, 2026-11-21): an ink 22px filled microphone at the right end, before Send. Voice input
+   isn't wired yet, so it is decorative. */
+.zc-ai-mic { display: inline-grid; flex: none; place-items: center; width: 28px; height: 28px; color: var(--zc-fg); }
+.zc-ai-mic svg { width: 22px; height: 22px; }
+.zc-ai-composer__mic { height: 40px; }
 .zc-ai-composer__send:focus-visible { outline: none; box-shadow: var(--zc-focus-ring-strong); }
 @media (hover: hover) { .zc-ai-composer__send:hover:not(:disabled) { background: var(--zc-primary-hover); } }
 .zc-ai-composer__foot {
@@ -1700,7 +1713,9 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 .zc-video[data-look="dark"] .zc-video__title { max-width: 74%; }
 .zc-video[data-look="dark"] .zc-video__shot { left: 18%; right: -8%; top: 48%; border-radius: 12px; box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.14); }
 /* A finished thumbnail (title and screen baked in) fills the card; play + length stay bottom left. */
-.zc-video[data-cover] { background: var(--zc-surface-sunken); }
+/* The artwork has its own rounded corners (they grow with its width), so the frame is see-through and edgeless:
+   no grey shows past the artwork's corners on a big player (owner, 2026-11-21). */
+.zc-video[data-cover] { background: transparent; border-color: transparent; }
 .zc-video__cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
 /* ---- Laptop/tablet menu overlay (§10): the full menu over the 72px rail and the content, never pushing it.
@@ -1930,9 +1945,59 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 .zc-home-bars--soft .zc-home-bars__bar[data-kind="best"] { background: var(--zc-chart-1); }
 .zc-home-bars--soft .zc-home-bars__bar[data-kind="empty"] { background: var(--zc-chart-empty); }
 
+/* A plain button: white with a thin border and ink text (Marketing channel cards, "Plan with AI"). */
+.zc-btn.zc-btn--plain { background: var(--zc-surface); color: var(--zc-fg); border: 1px solid var(--zc-border); }
+@media (hover: hover) { .zc-btn.zc-btn--plain:hover { background: var(--zc-surface-inset); } }
+/* ---- Documentation guide page (owner, 2026-11-21): one white shell, the guide list | the article | On this page ---- */
+.zc-doc-shell {
+  display: grid; grid-template-columns: minmax(0, 1fr); border: 1px solid var(--zc-border); border-radius: var(--zc-radius-card);
+  background: var(--zc-surface); overflow: clip;
+}
+@media (min-width: 1024px) { .zc-doc-shell { grid-template-columns: minmax(0, 1fr) 232px; } }
+@media (min-width: 1280px) { .zc-doc-shell { grid-template-columns: 264px minmax(0, 1fr) 232px; } }
+.zc-doc-nav { display: none; border-right: 1px solid var(--zc-divider); background: var(--zc-surface-muted); }
+@media (min-width: 1280px) { .zc-doc-nav { display: block; } }
+.zc-doc-nav__inner { position: sticky; top: 0; max-height: calc(100dvh - 72px); overflow-y: auto; padding: 24px 18px 28px; scrollbar-width: thin; }
+.zc-doc-main { min-width: 0; padding: 32px 20px 40px; }
+@media (min-width: 768px) { .zc-doc-main { padding: 44px 56px 56px; } }
+.zc-doc-article { max-width: 720px; margin: 0 auto; }
+.zc-doc-title { font: 600 32px/40px var(--zc-font-sans); letter-spacing: -0.022em; color: var(--zc-fg); }
+@media (max-width: 767px) { .zc-doc-title { font-size: 26px; line-height: 34px; } }
+.zc-doc-lead { font: 400 17px/28px var(--zc-font-sans); letter-spacing: -0.01em; color: var(--zc-fg-muted); }
+.zc-doc-body { display: flex; flex-direction: column; gap: 40px; margin-top: 36px; padding-top: 36px; border-top: 1px solid var(--zc-divider); }
+.zc-doc-h2 { position: relative; display: flex; align-items: baseline; gap: 8px; scroll-margin-top: 24px; font: 600 20px/28px var(--zc-font-sans); letter-spacing: -0.016em; color: var(--zc-fg); }
+.zc-doc-h2__anchor { color: var(--zc-fg-subtle); font-weight: 500; opacity: 0; transition: opacity var(--dur-1) var(--ease-out); }
+.zc-doc-h2:hover .zc-doc-h2__anchor, .zc-doc-h2__anchor:focus-visible { opacity: 1; }
+.zc-doc-p { font: 400 15px/26px var(--zc-font-sans); color: var(--zc-fg); }
+.zc-doc-list { display: flex; flex-direction: column; gap: 8px; padding-left: 20px; list-style: disc; }
+.zc-doc-list li::marker { color: var(--zc-fg-subtle); }
+/* Steps: numbered circles joined by a line. */
+.zc-doc-steps { display: flex; flex-direction: column; }
+.zc-doc-steps li { position: relative; display: flex; gap: 14px; padding-bottom: 18px; }
+.zc-doc-steps li:last-child { padding-bottom: 0; }
+.zc-doc-steps li:not(:last-child)::before { content: ""; position: absolute; left: 13px; top: 30px; bottom: 2px; width: 2px; border-radius: 1px; background: var(--zc-border); }
+.zc-doc-steps__n {
+  display: inline-grid; flex: none; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--zc-primary-soft); color: var(--zc-primary-text); font: 600 13px/1 var(--zc-font-sans);
+}
+.zc-doc-steps li > .zc-doc-p { padding-top: 1px; }
+/* Tips (blue) and notes (amber): a coloured left edge on a soft fill. */
+.zc-doc-callout { display: flex; flex-direction: column; gap: 4px; padding: 14px 18px; border-left: 3px solid var(--zc-primary); border-radius: 0 var(--zc-radius-field) var(--zc-radius-field) 0; background: var(--zc-primary-soft); }
+.zc-doc-callout[data-tone="note"] { border-left-color: var(--zc-amber); background: var(--zc-amber-tint); }
+.zc-doc-callout__label { display: inline-flex; align-items: center; gap: 6px; font: 600 12px/16px var(--zc-font-sans); letter-spacing: 0.02em; text-transform: uppercase; color: var(--zc-primary-text); }
+.zc-doc-callout[data-tone="note"] .zc-doc-callout__label { color: var(--zc-amber-text); }
+.zc-doc-pager { display: block; min-width: 0; padding: 14px 18px; border: 1px solid var(--zc-border); border-radius: var(--zc-radius-field); outline: none; transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out); }
+.zc-doc-pager:hover { border-color: var(--zc-border-strong); background: var(--zc-surface-muted); }
+.zc-doc-pager:focus-visible { box-shadow: var(--zc-focus-ring-strong); }
+.zc-doc-toc { display: none; border-left: 1px solid var(--zc-divider); }
+@media (min-width: 1024px) { .zc-doc-toc { display: block; } }
+.zc-doc-toc__inner { position: sticky; top: 0; padding: 44px 20px 28px; }
+
 /* Sort with its value ("Newest ⌄", Inbox): a white outlined pill like the filter circle beside it. */
 .zc-btn.zc-sort-pill { background: var(--zc-surface); color: var(--zc-fg); border: 1px solid var(--zc-border); }
 @media (hover: hover) { .zc-btn.zc-sort-pill:hover { background: var(--zc-surface-inset); } }
+/* Inbox send before there is anything to send: a grey pill (owner design "Inbox · UX v2"). */
+.zc-btn.zc-send-idle, .zc-btn.zc-send-idle:disabled { background: var(--zc-surface-sunken); border-color: var(--zc-surface-sunken); color: var(--zc-fg-muted); opacity: 1; }
 
 /* ---------------------------------------------------------------------
    Route loading (RouteSkeleton, RouteProgress; board 47): the frame at once, rows after 300ms, a 2px top line

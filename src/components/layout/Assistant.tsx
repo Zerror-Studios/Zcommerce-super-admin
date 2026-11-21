@@ -13,7 +13,7 @@ import { Orb } from "../ui/Orb";
 import { Button } from "../ui/Button";
 import { cx } from "../ui/cx";
 import { Drawer } from "../ui/Drawer";
-import { IconAdd, IconArrowRight, IconClose } from "../ui/icons";
+import { IconAdd, IconArrowRight, IconClose, IconMic } from "../ui/icons";
 import { IconButton } from "../ui/IconButton";
 import { DUR_2_S, EASE_OUT, spring } from "../ui/motion";
 import { AI_SURFACE_LAYOUT_ID } from "./AiSheet";
@@ -102,6 +102,11 @@ export function AskBar({ placeholder = "Ask Zcom AI anything…", hidden = false
           <Orb size="bar" state={hovered && !hidden ? "listening" : "idle"} />
           <span className="zc-askbar__placeholder">{placeholder}</span>
           {lockedPlan ? <span className="zc-askbar__chip">{lockedPlan}</span> : null}
+          {/* Voice input (owner, 2026-11-21): the mic shows in every AI input; it does nothing yet, so it is a
+            picture, not a button. */}
+          <span aria-hidden className="zc-ai-mic">
+            <IconMic />
+          </span>
         </motion.span>
       </motion.button>
     </>
@@ -249,6 +254,9 @@ export function AssistantPanel({
               className="min-h-10 flex-1 resize-none bg-transparent px-1 text-body text-fg outline-hidden placeholder:text-fg-placeholder max-md:text-base"
               style={{ boxShadow: "none" }}
             />
+            <span aria-hidden className="zc-ai-mic mb-1.5">
+              <IconMic />
+            </span>
             <button
               type="submit"
               aria-label="Send"
