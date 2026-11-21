@@ -138,7 +138,7 @@ function sector(from: number, to: number) {
 }
 
 function Ring({ fill }: { fill: string }) {
-  return <circle cx="28" cy="28" r="23" strokeWidth="10" style={{ stroke: fill }} />;
+  return <circle cx="28" cy="28" r="23" strokeWidth="10" fill="none" style={{ stroke: fill }} />;
 }
 
 function Segment({ from, to, fill, opacity }: { from: number; to: number; fill: string; opacity?: number }) {

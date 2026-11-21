@@ -1548,6 +1548,8 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 }
 .zc-summary__cell[data-art="center"] .zc-summary__value { max-width: calc(100% - var(--_art-n) * 1px); }
 .zc-summary__cell:has(.zc-summary__chart) .zc-summary__note { max-width: 58%; }
+/* The value track sits above the note line (board), so the note keeps the full width. */
+.zc-summary__cell:has(.zc-summary__art[data-kind="track"]) .zc-summary__note { max-width: 100%; }
 .zc-summary__chart { position: absolute; right: 16px; bottom: 18px; width: 92px; height: 40px; display: flex; align-items: flex-end; color: var(--_a); pointer-events: none; }
 /* The picture: centred on the cell's right side, or standing on the note line; in the last cell the centred ones
    move left of the collapse button. Per-kind offsets follow the board. */
@@ -1565,6 +1567,17 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 .zc-summary__art[data-kind="transit"] { top: 33px; transform: none; }
 .zc-summary__art[data-kind="funnel"] { top: auto; bottom: 32px; transform: none; }
 .zc-summary__track text { font: 400 11.5px/1 var(--zc-font-mono); }
+/* Narrow cells (content under 244px: a laptop with the menu open): centred pictures drop to the note line at 80% so they clear the
+   label; very narrow cells (content under 184px, 2 × 2 on a phone) drop the picture so the number stays readable. Only while open: the
+   collapsed phone line sizes its cells by their content. */
+.zc-summary:not(.zc-summary--collapsed) .zc-summary__cell { container-type: inline-size; }
+@container (max-width: 243px) {
+  .zc-summary__art[data-placement="center"] { top: auto; bottom: 16px; transform: scale(0.8); transform-origin: right bottom; }
+  .zc-summary__cell:last-of-type .zc-summary__art[data-placement="center"] { right: 20px; }
+}
+@container (max-width: 183px) {
+  .zc-summary__art { display: none; }
+}
 .zc-summary__toggle {
   position: absolute; z-index: 2; right: 12px; top: 15px; width: var(--zc-summary-toggle); height: var(--zc-summary-toggle);
   display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.18); color: white; cursor: pointer;
