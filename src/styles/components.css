@@ -1895,7 +1895,6 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
   .zc-hero__top:not(:has(.zc-hero__actions)) { display: none; }
   .zc-hero__greeting { margin-top: 12px; font-size: 28px; line-height: 34px; }
   .zc-hero__top:not(:has(.zc-hero__actions)) + .zc-hero__greeting { margin-top: 0; }
-  .zc-hero__greeting br { display: none; }
   .zc-hero__summary { font-size: 14px; line-height: 20px; }
   .zc-hero__summary p { white-space: normal; }
   .zc-hero__tab { height: calc(var(--zc-control-h-touch) - 10px); }
