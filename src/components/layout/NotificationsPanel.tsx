@@ -1,7 +1,8 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Notifications pop-up (round 2 G2, CHANGED from the v2 right drawer): the same pop-up family as search, the
- * Medium size (640) up to 72vh, centred, the pop-up motion; a bottom sheet at 85% height on phone.
+ * Medium size (640), a fixed height (72vh, at most 680px) so loading, rows, empty and tab changes never resize it;
+ * centred, the pop-up motion; a bottom sheet at 85% height on phone.
  * - Title row: the bell icon tile, "Notifications", the unread count, "Mark all as read" (text button), close (36px).
  * - Tabs (All · Orders · Payments · System in the store) with counts, in one row that never scrolls.
  * - Rows like Inbox rows: an icon tile by type (or the store's initials), a one-line sentence, the time on the
@@ -152,7 +153,7 @@ export function NotificationsPopup({
       description="Check your connection, then try again."
       retryLabel="Try again"
       onRetry={onRetry}
-      className="py-12"
+      className="my-auto py-12"
     />
   ) : loading ? (
     // Same size as the rows, so nothing jumps when they arrive.
@@ -166,7 +167,7 @@ export function NotificationsPopup({
       ))}
     </ul>
   ) : items.length === 0 ? (
-    <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
+    <div className="my-auto flex flex-col items-center gap-3 px-6 py-14 text-center">
       <IconTile tone="ink" size="lg">
         <IconNotifications aria-hidden />
       </IconTile>
@@ -252,7 +253,7 @@ export function NotificationsPopup({
             </div>
           ) : null}
 
-          <div role="tabpanel" className="custom-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3">
+          <div role="tabpanel" className="custom-scroll flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-3">
             {body}
           </div>
         </ModalBody>
