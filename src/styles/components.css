@@ -1930,6 +1930,10 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 .zc-home-bars--soft .zc-home-bars__bar[data-kind="best"] { background: var(--zc-chart-1); }
 .zc-home-bars--soft .zc-home-bars__bar[data-kind="empty"] { background: var(--zc-chart-empty); }
 
+/* Sort with its value ("Newest ⌄", Inbox): a white outlined pill like the filter circle beside it. */
+.zc-btn.zc-sort-pill { background: var(--zc-surface); color: var(--zc-fg); border: 1px solid var(--zc-border); }
+@media (hover: hover) { .zc-btn.zc-sort-pill:hover { background: var(--zc-surface-inset); } }
+
 /* ---------------------------------------------------------------------
    Route loading (RouteSkeleton, RouteProgress; board 47): the frame at once, rows after 300ms, a 2px top line
    --------------------------------------------------------------------- */
