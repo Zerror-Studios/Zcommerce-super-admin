@@ -1,12 +1,13 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
- * Sign-in screen for both apps (docs/design-v2/README.md §5): pure black and full screen. "Zcom" as a bold 24px
- * wordmark at the top left (with "Platform" in the Super Admin), "Welcome to the new era of e-commerce." small at the
+ * Sign-in screen for both apps (docs/design-v2/README.md §5): pure black and full screen. The Zcom logo (24px tall)
+ * at the top left (with "Platform" in the Super Admin), "Welcome to the new era of e-commerce." small at the
  * bottom right, and a soft blue halo behind the centre column, where the orb character asks one question at a time.
  * No card, no marketing panel, no Google or Apple buttons.
  */
 import { forwardRef, useEffect, useId, type InputHTMLAttributes, type ReactNode } from "react";
 import { cx } from "../ui/cx";
+import { ZcomLogo } from "../ui/ZcomLogo";
 
 export interface AuthLayoutProps {
   /** The page heading ("Reset your password"). On the sign-in steps the orb asks the question, so it is hidden. */
@@ -38,9 +39,9 @@ export function AuthLayout({ title, hideTitle = false, documentTitle, subtitle, 
     <div className="zc-auth relative flex min-h-dvh flex-col overflow-hidden bg-auth text-brand-on">
       <div aria-hidden className="zc-auth__halo" />
 
-      {/* Wordmark: bold 24px, no Z tile. */}
-      <header className="relative flex items-baseline gap-2 px-6 pt-6 md:px-10 md:pt-8">
-        <span className="text-[24px] font-bold leading-none tracking-[-0.04em] text-brand-on">Zcom</span>
+      {/* The Zcom logo, 24px tall. */}
+      <header className="relative flex items-end gap-2 px-6 pt-6 md:px-10 md:pt-8">
+        <ZcomLogo className="h-6 w-auto shrink-0 text-brand-on" />
         {productLabel ? <span className="text-label font-medium text-auth-muted">{productLabel}</span> : null}
       </header>
 

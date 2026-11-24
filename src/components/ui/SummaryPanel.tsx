@@ -1,10 +1,12 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * The summary panel, "the blue bar" (docs/design-v2/README.md §4.2; styles `.zc-summary` in
- * src/styles/components.css). One per list page, directly under the title row: exactly four numbers on the AI
- * gradient, split by 1px dividers, each with a label and dot, a 26px value, a one-line note and a small white chart.
- * Colour means something: a cell that needs attention tints its dot, note and chart red or amber; nothing else
- * changes colour. Collapsible to one 48px line; the choice is remembered per user, per page (`storageKey`).
+ * src/styles/components.css), drawn to the "KPI bands · all tabs · chart slots" board (2026-11-20): one per list
+ * page, directly under the title row; four numbers (three on Analytics › Inventory) on the navy-to-blue band, split
+ * by 1px dividers, each with a label (and ⓘ), a 28px value, a one-line note and a picture on the right (`art`, see
+ * SummaryArt.tsx). Colour means something: a cell that needs attention tints its note and picture red or amber, a
+ * good one tints the note green; nothing else changes colour. Collapsible to one 48px line; the choice is
+ * remembered per user, per page (`storageKey`).
  * `variant="lite"` is the white version for Analytics overview's extra rows.
  *
  * Responsive (v2 §10): four cells in a row down to 900px, 2 × 2 below. On phone it always starts collapsed (the slim
@@ -13,13 +15,20 @@
  */
 import { useCallback, useId, useState, type ReactNode } from "react";
 import { cx } from "./cx";
-import { IconCaret, IconInfo } from "./icons";
+import {
+  SummaryArtView,
+  SummaryChevron,
+  SummaryInfoGlyph,
+  artPlacement,
+  artWidth,
+  type SummaryArt,
+} from "./SummaryArt";
 import { Skeleton } from "./Skeleton";
 import { Tooltip } from "./Tooltip";
 import { useChartEntrance } from "./use-chart-entrance";
 import { useIsPhone } from "./use-media";
 
-export type SummaryTone = "default" | "warning" | "danger";
+export type SummaryTone = "default" | "warning" | "danger" | "good";
 
 /** Small decorative chart in the cell's bottom-right corner. Use real 8–10 point series when they exist. */
 export type SummaryChart =
@@ -40,13 +49,16 @@ export interface SummaryCell {
   note?: ReactNode;
   /** What the number means: a small ⓘ after the label shows it on hover or focus (round 2 §5.11, "every number has an ⓘ"). */
   info?: ReactNode;
-  /** "warning" amber / "danger" red: only when the number needs attention. */
+  /** "warning" amber / "danger" red: only when the number needs attention; "good" tints the note green. */
   tone?: SummaryTone;
+  /** The band's picture (board 2026-11-20). */
+  art?: SummaryArt;
+  /** LEGACY small chart (the lite cards and older callers). Ignored when `art` is set. */
   chart?: SummaryChart;
 }
 
 export interface SummaryPanelProps {
-  /** Exactly four cells (§4.2). Extra cells are not shown. */
+  /** Four cells (§4.2), or three (Analytics › Inventory). Extra cells are not shown. */
   cells: SummaryCell[];
   /**
    * Remembers collapsed/open per page: "orders", "products"… The caller namespaces it per user or store when it
@@ -97,7 +109,12 @@ function MiniChart({ chart }: { chart: SummaryChart }) {
     return (
       <span ref={ref} data-play={play} className="zc-mini-segs zc-chart">
         {Array.from({ length: total }, (_, index) => (
-          <i key={index} data-on={index < chart.filled ? "" : undefined} className={index < chart.filled ? "zc-c-seg" : undefined} style={{ ["--i" as string]: index }} />
+          <i
+            key={index}
+            data-on={index < chart.filled ? "" : undefined}
+            className={index < chart.filled ? "zc-c-seg" : undefined}
+            style={{ ["--i" as string]: index }}
+          />
         ))}
       </span>
     );
@@ -106,7 +123,11 @@ function MiniChart({ chart }: { chart: SummaryChart }) {
   return (
     <span ref={ref} data-play={play} className="zc-mini-bars zc-chart">
       {chart.values.slice(-10).map((value, index) => (
-        <i key={index} className="zc-c-bar" style={{ height: `${Math.max(8, (value / max) * 100)}%`, ["--i" as string]: index }} />
+        <i
+          key={index}
+          className="zc-c-bar"
+          style={{ height: `${Math.max(8, (value / max) * 100)}%`, ["--i" as string]: index }}
+        />
       ))}
     </span>
   );
@@ -153,6 +174,7 @@ export function SummaryPanel({
       id={regionId}
       aria-label={rest["aria-label"] ?? "Summary"}
       className={cx("zc-summary", lite && "zc-summary--lite", collapsed && "zc-summary--collapsed", className)}
+      style={{ ["--_cols" as string]: shown.length }}
     >
       {!lite ? (
         <button
@@ -163,42 +185,66 @@ export function SummaryPanel({
           aria-controls={regionId}
           aria-label={collapsed ? "Show summary details" : "Hide summary details"}
         >
-          <IconCaret aria-hidden style={{ transform: collapsed ? undefined : "rotate(180deg)" }} />
+          <span aria-hidden className="inline-flex" style={{ transform: collapsed ? "rotate(180deg)" : undefined }}>
+            <SummaryChevron />
+          </span>
         </button>
       ) : null}
-      {shown.map((cell) => (
-        <div key={cell.key} className="zc-summary__cell" data-tone={cell.tone && cell.tone !== "default" ? cell.tone : undefined}>
-          <span className="zc-summary__label">
-            <span aria-hidden className="zc-summary__dot" />
-            <span className="truncate">{cell.label}</span>
-            {cell.info ? (
-              <Tooltip content={cell.info}>
-                <button type="button" className="zc-summary__info" aria-label={`What this means: ${typeof cell.label === "string" ? cell.label : "this number"}`}>
-                  <IconInfo aria-hidden />
-                </button>
-              </Tooltip>
+      {shown.map((cell, index) => {
+        const art = !lite && cell.art && !isLoading ? cell.art : undefined;
+        const placement = art ? artPlacement(art) : undefined;
+        // The value and note stop 12px short of the picture (25px more in the last cell, left of the toggle).
+        const artSpace = art ? artWidth(art) + 14 + (placement === "center" && index === shown.length - 1 ? 25 : 0) : 0;
+        return (
+          <div
+            key={cell.key}
+            className="zc-summary__cell"
+            data-tone={cell.tone && cell.tone !== "default" ? cell.tone : undefined}
+            data-art={placement}
+            style={art ? { ["--_art-n" as string]: artSpace } : undefined}
+          >
+            <span className="zc-summary__label">
+              <span aria-hidden className="zc-summary__dot" />
+              <span className="truncate">{cell.label}</span>
+              {cell.info ? (
+                <Tooltip content={cell.info}>
+                  <button
+                    type="button"
+                    className="zc-summary__info"
+                    aria-label={`What this means: ${typeof cell.label === "string" ? cell.label : "this number"}`}
+                  >
+                    <SummaryInfoGlyph />
+                  </button>
+                </Tooltip>
+              ) : null}
+            </span>
+            {isLoading ? (
+              <Skeleton className={cx("mt-2 h-6 w-24 rounded-md", !lite && "opacity-40")} />
+            ) : (
+              <span className="zc-summary__value">{cell.value}</span>
+            )}
+            {isLoading ? (
+              // The note line's place is kept while loading, so the cell doesn't grow when the data comes (2026-11-10).
+              <span aria-hidden className="zc-summary__note">
+                &nbsp;
+              </span>
+            ) : cell.note != null ? (
+              <span className="zc-summary__note" title={typeof cell.note === "string" ? cell.note : undefined}>
+                {cell.note}
+              </span>
             ) : null}
-          </span>
-          {isLoading ? (
-            <Skeleton className={cx("mt-2 h-6 w-24 rounded-md", !lite && "opacity-40")} />
-          ) : (
-            <span className="zc-summary__value">{cell.value}</span>
-          )}
-          {isLoading ? (
-            // The note line's place is kept while loading, so the cell doesn't grow when the data comes (2026-11-10).
-            <span aria-hidden className="zc-summary__note">&nbsp;</span>
-          ) : cell.note != null ? (
-            <span className="zc-summary__note" title={typeof cell.note === "string" ? cell.note : undefined}>
-              {cell.note}
-            </span>
-          ) : null}
-          {cell.chart && !isLoading ? (
-            <span aria-hidden className="zc-summary__chart">
-              <MiniChart chart={cell.chart} />
-            </span>
-          ) : null}
-        </div>
-      ))}
+            {art ? (
+              <span aria-hidden className="zc-summary__art" data-kind={art.kind} data-placement={placement}>
+                <SummaryArtView art={art} />
+              </span>
+            ) : cell.chart && !isLoading && !cell.art ? (
+              <span aria-hidden className="zc-summary__chart">
+                <MiniChart chart={cell.chart} />
+              </span>
+            ) : null}
+          </div>
+        );
+      })}
     </section>
   );
 }

@@ -1,7 +1,7 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Design v2 display pieces (docs/design-v2/README.md §4.7, §4.8; styles `.zc-seo`, `.zc-video`, `.zc-wallet` in
- * src/styles/components.css): the SEO score ring, the video thumbnail, and the Shiprocket wallet capsule.
+ * src/styles/components.css): the SEO score ring, the video thumbnail, and the shipping wallet capsule.
  */
 import { Popover, PopoverContent, PopoverTrigger } from "@heroui/react";
 import type { ReactNode } from "react";
@@ -67,21 +67,42 @@ export interface VideoThumbProps {
   duration?: string;
   /** A real screenshot of the screen the video is about. */
   screenshot?: string;
+  /**
+   * A finished 16:9 thumbnail (title and screen baked in). It fills the card in place of the title, look and
+   * screenshot; the play badge stays bottom left.
+   */
+  cover?: string;
   look?: VideoLook;
   onPlay?: () => void;
   className?: string;
 }
 
-/** Video thumbnail (§4.8): 16:9, radius 20, the title top left, a screenshot, play + length bottom left, nothing else. */
-export function VideoThumb({ title, duration, screenshot, look = "tilt", onPlay, className }: VideoThumbProps) {
+/**
+ * Video thumbnail (§4.8): 16:9, radius 20, the title top left, a screenshot, play + length bottom left, nothing else.
+ * With `cover` the finished artwork fills the card; play + length stay bottom left.
+ */
+export function VideoThumb({ title, duration, screenshot, cover, look = "tilt", onPlay, className }: VideoThumbProps) {
   return (
-    <button type="button" className={cx("zc-video zc-press", className)} data-look={look} onClick={onPlay} aria-label={`Play ${title}${duration ? `, ${duration}` : ""}`}>
-      <span className="zc-video__title">{title}</span>
-      {screenshot ? (
-        <span aria-hidden className="zc-video__shot">
-          <img src={screenshot} alt="" loading="lazy" />
-        </span>
-      ) : null}
+    <button
+      type="button"
+      className={cx("zc-video zc-press", className)}
+      data-look={cover ? undefined : look}
+      data-cover={cover ? "" : undefined}
+      onClick={onPlay}
+      aria-label={`Play ${title}${duration ? `, ${duration}` : ""}`}
+    >
+      {cover ? (
+        <img aria-hidden className="zc-video__cover" src={cover} alt="" loading="lazy" width={1280} height={720} />
+      ) : (
+        <>
+          <span className="zc-video__title">{title}</span>
+          {screenshot ? (
+            <span aria-hidden className="zc-video__shot">
+              <img src={screenshot} alt="" loading="lazy" />
+            </span>
+          ) : null}
+        </>
+      )}
       <span aria-hidden className="zc-video__play">
         <i>
           <IconPlayGlyph />
@@ -92,7 +113,7 @@ export function VideoThumb({ title, duration, screenshot, look = "tilt", onPlay,
   );
 }
 
-// ─── Shiprocket wallet ─────────────────────────────────────────────────────────
+// ─── Shipping wallet ───────────────────────────────────────────────────────────
 
 export type WalletHealth = "good" | "low" | "critical";
 
@@ -115,9 +136,11 @@ export function walletHealth(balance: number, dailySpend?: number | null): Walle
 export interface WalletCapsuleProps {
   /** Rupees. */
   balance: number;
+  /** The shipping provider whose wallet this is (backend PRD-044 §5.2 `shippingWallet`); "Shiprocket" when omitted. */
+  providerName?: string;
   /** Average daily shipping spend over the last 14 days, in rupees (needs the §9 backend work; optional). */
   dailySpend?: number | null;
-  /** The official Shiprocket logo (32px circle). Falls back to a neutral rocket glyph. */
+  /** The provider's logo (32px circle). Falls back to a neutral rocket glyph. */
   logo?: ReactNode;
   onAddMoney?: () => void;
   onShippingCosts?: () => void;
@@ -131,12 +154,13 @@ export interface WalletCapsuleProps {
 const defaultDate = (date: Date) => date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
 /**
- * Wallet capsule (§4.7): a 40px pill with the Shiprocket logo, the balance and a +, the whole capsule coloured by
+ * Wallet capsule (§4.7): a 40px pill with the provider's logo, the balance and a +, the whole capsule coloured by
  * health. Click opens a 380px card with the balance, the spend line, a progress bar to the run-out date, the
  * auto-recharge switch, Add money and Shipping costs, and a key to the three colours.
  */
 export function WalletCapsule({
   balance,
+  providerName = "Shiprocket",
   dailySpend,
   logo,
   onAddMoney,
@@ -158,7 +182,7 @@ export function WalletCapsule({
           type="button"
           className={cx("zc-wallet", className)}
           data-health={health}
-          aria-label={`Shiprocket wallet ${money(balance)}, ${healthWord}`}
+          aria-label={`${providerName} wallet ${money(balance)}, ${healthWord}`}
         >
           <span aria-hidden className="zc-wallet__logo">{logo ?? <IconRocket />}</span>
           <span className="num">{money(balance)}</span>
@@ -171,7 +195,7 @@ export function WalletCapsule({
         <div className="zc-wallet-card flex flex-col gap-4 p-5 text-fg" data-health={health}>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-label text-fg-muted">Shiprocket wallet</p>
+              <p className="text-label text-fg-muted">{providerName} wallet</p>
               <p className="text-kpi-panel text-fg num">{money(balance)}</p>
             </div>
             <span className="zc-wallet-key text-caption text-fg-muted" style={{ ["--_c" as string]: `var(--zc-${health === "good" ? "green" : health === "low" ? "amber" : "red"})` }}>

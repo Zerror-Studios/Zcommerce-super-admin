@@ -305,6 +305,13 @@
 .zc-seg--sm { height: var(--zc-seg-h-sm); }
 .zc-seg--sm .zc-seg__item { height: calc(var(--zc-seg-h-sm) - 2 * var(--zc-seg-pad)); padding: 0 10px; font-size: 12px; line-height: 16px; letter-spacing: 0; }
 
+/* Soft track (owner design "Inbox · UX v2", 2026-11-21: the Inbox tabs and the reply box's Send via): light grey, 34px,
+   28px items, 13px text. Phones keep the 44px touch size. */
+@media (min-width: 768px) {
+  .zc-seg.zc-seg--soft { height: 34px; background: var(--zc-surface-sunken); }
+  .zc-seg.zc-seg--soft .zc-seg__item { height: 28px; padding: 0 11px; font-size: 13px; line-height: 18px; }
+}
+
 /* HeroUI Tabs bridge (kit <Tabs>): the same look, HeroUI's own cursor is the sliding thumb. */
 .zc-seg-tabs { gap: 0; height: var(--zc-seg-h); padding: var(--zc-seg-pad); border-radius: var(--zc-radius-pill); background: var(--zc-seg-bg); }
 .zc-seg-tabs--sm { height: var(--zc-seg-h-sm); }
@@ -369,14 +376,15 @@
   mask-image: linear-gradient(90deg, black calc(100% - 28px), transparent);
 }
 .zc-chips::-webkit-scrollbar { display: none; }
+/* Owner design "Inbox · UX v2" (2026-11-21): white chips with a thin border, the selected one ink. */
 .zc-chips__item {
-  display: inline-flex; align-items: center; flex: none; gap: 6px; height: 28px; padding: 0 11px;
-  border: 0; border-radius: var(--zc-radius-pill); background: var(--zc-surface-sunken); color: var(--zc-fg-muted);
+  display: inline-flex; align-items: center; flex: none; gap: 6px; height: 32px; padding: 0 14px;
+  border: 1px solid var(--zc-border); border-radius: var(--zc-radius-pill); background: var(--zc-surface); color: var(--zc-fg);
   font: 500 12.5px/16px var(--zc-font-sans); white-space: nowrap; cursor: pointer; outline: none;
   transition: background-color var(--zc-dur-fast) var(--zc-ease), color var(--zc-dur-fast) var(--zc-ease);
 }
 @media (hover: hover) { .zc-chips__item:hover:not([aria-selected="true"]) { background: var(--zc-ghost-pressed-bg); color: var(--zc-fg); } }
-.zc-chips__item[aria-selected="true"] { background: var(--zc-ink); color: white; }
+.zc-chips__item[aria-selected="true"] { background: var(--zc-ink); border-color: var(--zc-ink); color: white; }
 .zc-chips__item .zc-seg__count { color: inherit; opacity: 0.6; }
 .zc-chips__item:focus-visible { box-shadow: var(--zc-focus-ring-strong); }
 .zc-chips__item:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -775,7 +783,8 @@
 
 /* Notifications pop-up (round 2 G2): Medium (640) up to 72vh; phone: a bottom sheet at 85% height. Tabs fit in one
    row (never scroll); rows like Inbox rows: 32px icon tile, one line, time, unread dot. */
-.zc-modal.zc-notices { max-height: 72vh; }
+/* One fixed height (owner, 2026-11-21): loading, the list, empty and every tab keep the same size. */
+.zc-modal.zc-notices { height: min(72vh, 680px); max-height: 72vh; }
 @media (max-width: 767px) { .zc-modal.zc-notices { height: 85dvh; max-height: 85dvh; } }
 .zc-notice-tabs { display: flex; flex: none; gap: 4px; padding: 0 20px 10px; border-bottom: 1px solid var(--zc-divider); }
 .zc-notice-tab {
@@ -992,14 +1001,6 @@
   tr:hover .zc-row-actions, tr:focus-within .zc-row-actions, .zc-row-actions:has([aria-expanded="true"]) { opacity: 1; }
 }
 
-/* Menu brand block (round 2 §6.1, console): a 32px Z tile, the wordmark, the product label in purple (12px). */
-.zc-brand-tile {
-  display: inline-grid; flex: none; place-items: center; width: 32px; height: 32px; border-radius: var(--zc-radius-thumb);
-  background: var(--zc-nav-store-badge); color: var(--zc-nav-text-strong);
-  font: 600 16px/1 var(--zc-font-sans); letter-spacing: -0.04em;
-}
-.zc-brand-word { font: 600 17px/1 var(--zc-font-sans); letter-spacing: -0.04em; color: var(--zc-nav-text-strong); }
-
 /* Phone top bar (round 2 §8.2): the only sticky part on a phone, 56px plus the top safe area. The page colour at
    rest, white 92% with a 1px line once the page scrolls under it. The menu's store switcher and the on-dark icon
    buttons it reuses read ink on light here (their nav tokens are re-pointed for this bar only). */
@@ -1196,6 +1197,11 @@ body:has([aria-modal="true"]) .zc-askbar-slot { opacity: 0; visibility: hidden; 
 }
 .zc-ai-composer__send svg { width: 18px; height: 18px; }
 .zc-ai-composer__send:disabled { opacity: 0.4; cursor: not-allowed; }
+/* The mic in every AI input (owner, 2026-11-21): an ink 22px filled microphone at the right end, before Send. Voice input
+   isn't wired yet, so it is decorative. */
+.zc-ai-mic { display: inline-grid; flex: none; place-items: center; width: 28px; height: 28px; color: var(--zc-fg); }
+.zc-ai-mic svg { width: 22px; height: 22px; }
+.zc-ai-composer__mic { height: 40px; }
 .zc-ai-composer__send:focus-visible { outline: none; box-shadow: var(--zc-focus-ring-strong); }
 @media (hover: hover) { .zc-ai-composer__send:hover:not(:disabled) { background: var(--zc-primary-hover); } }
 .zc-ai-composer__foot {
@@ -1514,68 +1520,104 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
   background: var(--zc-ai-line-bg); border: 1px solid var(--zc-ai-line-border);
 }
 
-/* ---- Summary panel (§4.2): one gradient panel, four equal cells, collapsible ---- */
+/* ---- Summary panel (§4.2), restyled to the "KPI bands · all tabs · chart slots" board (2026-11-20): navy to blue
+   left to right, 24px corners, a soft drop shadow and a 1px light top edge; three or four equal cells; a picture on
+   each cell's right (SummaryArt). Collapsible. ---- */
 .zc-summary {
-  position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; isolation: isolate;
-  border-radius: var(--zc-radius-card); background: var(--zc-ai-gradient-wide); color: white;
-}
-.zc-summary::after {
-  content: ""; position: absolute; z-index: -1; width: 420px; height: 420px; right: -120px; top: -220px; border-radius: 50%;
-  background: var(--zc-ai-light); animation: zc-drift var(--zc-dur-drift) ease-in-out infinite alternate; pointer-events: none;
+  --_cols: 4;
+  position: relative; display: grid; grid-template-columns: repeat(var(--_cols), minmax(0, 1fr)); overflow: hidden; isolation: isolate;
+  border-radius: var(--zc-radius-summary); background: var(--zc-summary-band); box-shadow: var(--zc-summary-band-shadow); color: white;
 }
 .zc-summary__cell {
-  position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; min-height: var(--zc-summary-h);
-  padding: 16px 18px 18px; border-left: 1px solid var(--zc-ai-divider);
-  --_a: white; --_note: rgba(255, 255, 255, 0.72);
+  position: relative; display: flex; flex-direction: column; min-width: 0; min-height: var(--zc-summary-h);
+  padding: 19px 18px 20px; border-left: 1px solid var(--zc-ai-divider);
+  --_a: white; --_note: white; --_art-n: 0;
 }
 .zc-summary__cell:first-of-type { border-left: 0; }
 .zc-summary__cell[data-tone="danger"] { --_a: var(--zc-red-on-dark); --_note: var(--zc-red-note-on-dark); }
 .zc-summary__cell[data-tone="warning"] { --_a: var(--zc-amber-on-dark); --_note: var(--zc-amber-note-on-dark); }
-.zc-summary__label { display: flex; align-items: center; gap: 8px; min-width: 0; font: 500 13px/18px var(--zc-font-sans); color: white; opacity: 0.78; white-space: nowrap; }
+.zc-summary__cell[data-tone="good"] { --_note: var(--zc-green-note-on-dark); }
+.zc-summary__label { display: flex; align-items: center; gap: 8px; min-width: 0; font: 500 13px/18px var(--zc-font-sans); color: white; white-space: nowrap; }
 .zc-summary__info {
-  display: inline-flex; flex: none; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: -4px;
+  display: inline-flex; flex: none; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: -2px;
   border-radius: 999px; color: inherit; opacity: 0.8; cursor: help; transition: opacity var(--dur-1) var(--ease-out);
 }
-.zc-summary__info svg { width: 13px; height: 13px; }
+.zc-summary__info svg { width: 12px; height: 12px; }
 .zc-summary__info:hover, .zc-summary__info:focus-visible { opacity: 1; }
 .zc-summary__info:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8); }
 .zc-summary--lite .zc-summary__info:focus-visible { box-shadow: var(--zc-focus-ring-strong); }
-.zc-summary__dot { width: 8px; height: 8px; border-radius: 3px; background: var(--_a); flex: none; }
-/* The value sits at the bottom with its note right under it (label stays at the top). */
+/* The band has no dot before the label; the lite cards keep it. */
+.zc-summary__dot { display: none; width: 8px; height: 8px; border-radius: 3px; background: var(--_a); flex: none; }
+.zc-summary--lite .zc-summary__dot { display: block; }
+/* The value sits at the bottom with its note 9px under it (label stays at the top). Both stop short of the picture. */
 .zc-summary__value {
-  margin-top: auto; padding-top: 6px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  font-size: var(--zc-text-kpi-panel-size); line-height: var(--zc-text-kpi-panel-line);
+  max-width: 100%; margin-top: auto; padding-top: 8px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: var(--zc-text-kpi-band-size); line-height: var(--zc-text-kpi-band-line);
   font-weight: var(--zc-text-kpi-panel-weight); letter-spacing: var(--zc-text-kpi-panel-tracking); font-variant-numeric: tabular-nums;
 }
-/* One line in every cell, at the cell's bottom so it lines up across cells and with the chart's bottom edge. */
+/* One line in every cell, at the cell's bottom so it lines up across cells. */
 .zc-summary__note {
-  max-width: 58%; margin-top: 2px; font: 400 12px/16px var(--zc-font-sans); color: var(--_note);
+  max-width: calc(100% - var(--_art-n) * 1px); margin-top: 9px; font: 400 12px/16px var(--zc-font-sans); color: var(--_note);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.zc-summary__cell:not(:has(.zc-summary__chart)) .zc-summary__note { max-width: 100%; }
+.zc-summary__cell[data-art="center"] .zc-summary__value { max-width: calc(100% - var(--_art-n) * 1px); }
+.zc-summary__cell:has(.zc-summary__chart) .zc-summary__note { max-width: 58%; }
+/* The value track sits above the note line (board), so the note keeps the full width. */
+.zc-summary__cell:has(.zc-summary__art[data-kind="track"]) .zc-summary__note { max-width: 100%; }
 .zc-summary__chart { position: absolute; right: 16px; bottom: 18px; width: 92px; height: 40px; display: flex; align-items: flex-end; color: var(--_a); pointer-events: none; }
+/* The picture: centred on the cell's right side, or standing on the note line; in the last cell the centred ones
+   move left of the collapse button. Per-kind offsets follow the board. */
+.zc-summary__art { position: absolute; right: 20px; display: flex; pointer-events: none; color: white; }
+.zc-summary__art svg { display: block; overflow: visible; }
+.zc-summary__art[data-placement="center"] { top: 50%; transform: translateY(-50%); }
+.zc-summary__art[data-placement="bottom"] { bottom: 16px; }
+.zc-summary__cell:last-of-type .zc-summary__art[data-placement="center"] { right: 45px; }
+.zc-summary__art[data-kind="gauge"] { bottom: 19px; }
+.zc-summary__art[data-kind="empty"] { right: 23px; bottom: 20px; }
+.zc-summary__art[data-kind="steps"] { bottom: 19px; }
+.zc-summary__art[data-kind="lollipop"] { right: 24px; bottom: 15px; }
+.zc-summary__art[data-kind="chips"] { bottom: 27px; width: 64px; }
+.zc-summary__art[data-kind="squares"][data-placement="bottom"] { bottom: 20px; }
+.zc-summary__art[data-kind="transit"] { top: 33px; transform: none; }
+.zc-summary__art[data-kind="funnel"] { top: auto; bottom: 32px; transform: none; }
+.zc-summary__track text { font: 400 11.5px/1 var(--zc-font-mono); }
+/* Narrow cells (content under 244px: a laptop with the menu open): centred pictures drop to the note line at 80% so they clear the
+   label; very narrow cells (content under 184px, 2 × 2 on a phone) drop the picture so the number stays readable. Only while open: the
+   collapsed phone line sizes its cells by their content. */
+.zc-summary:not(.zc-summary--collapsed) .zc-summary__cell { container-type: inline-size; }
+@container (max-width: 243px) {
+  .zc-summary__art[data-placement="center"] { top: auto; bottom: 16px; transform: scale(0.8); transform-origin: right bottom; }
+  .zc-summary__cell:last-of-type .zc-summary__art[data-placement="center"] { right: 20px; }
+}
+@container (max-width: 183px) {
+  .zc-summary__art { display: none; }
+}
 .zc-summary__toggle {
-  position: absolute; z-index: 2; right: 12px; top: 12px; width: var(--zc-summary-toggle); height: var(--zc-summary-toggle);
-  display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.14); color: white; cursor: pointer;
+  position: absolute; z-index: 2; right: 12px; top: 15px; width: var(--zc-summary-toggle); height: var(--zc-summary-toggle);
+  display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.18); color: white; cursor: pointer;
   transition: background-color var(--zc-dur-fast) var(--zc-ease);
 }
-.zc-summary__toggle svg { width: 16px; height: 16px; transition: transform var(--zc-dur-base) var(--zc-ease); }
+.zc-summary__toggle svg { width: 9px; height: 5px; transition: transform var(--zc-dur-base) var(--zc-ease); }
 .zc-summary__toggle:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8); }
-@media (hover: hover) { .zc-summary__toggle:hover { background: rgba(255, 255, 255, 0.24); } }
+@media (hover: hover) { .zc-summary__toggle:hover { background: rgba(255, 255, 255, 0.28); } }
 /* Collapsed: one slim 48px line, label and value per cell. */
 .zc-summary--collapsed .zc-summary__cell { min-height: var(--zc-summary-h-collapsed); flex-direction: row; align-items: center; gap: 10px; padding: 0 18px; }
 .zc-summary--collapsed .zc-summary__value { margin: 0; padding-top: 0; font-size: 18px; line-height: 22px; }
 .zc-summary--collapsed .zc-summary__note,
-.zc-summary--collapsed .zc-summary__chart { display: none; }
+.zc-summary--collapsed .zc-summary__chart,
+.zc-summary--collapsed .zc-summary__art { display: none; }
 .zc-summary--collapsed .zc-summary__toggle { top: 50%; margin-top: calc(var(--zc-summary-toggle) / -2); }
 .zc-summary--collapsed .zc-summary__cell:last-of-type { padding-right: 52px; }
 /* "Lite" (Analytics overview extra rows): white cards, ink accents. */
-.zc-summary--lite { background: none; gap: 12px; overflow: visible; color: var(--zc-fg); }
-.zc-summary--lite::after, .zc-summary--lite .zc-summary__toggle { display: none; }
+.zc-summary--lite { background: none; box-shadow: none; border-radius: var(--zc-radius-card); gap: 12px; overflow: visible; color: var(--zc-fg); }
+.zc-summary--lite .zc-summary__toggle { display: none; }
+.zc-summary--lite .zc-summary__cell { padding: 16px 18px 18px; }
+.zc-summary--lite .zc-summary__value { padding-top: 6px; font-size: var(--zc-text-kpi-panel-size); line-height: var(--zc-text-kpi-panel-line); }
+.zc-summary--lite .zc-summary__note { margin-top: 2px; }
 .zc-summary--lite .zc-summary__cell { --_a: var(--zc-ink); --_note: var(--zc-fg-subtle); border: 1px solid var(--zc-border); border-radius: var(--zc-radius-card-sm); background: var(--zc-surface); }
 .zc-summary--lite .zc-summary__cell[data-tone="danger"] { --_a: var(--zc-red); --_note: var(--zc-danger-text); }
 .zc-summary--lite .zc-summary__cell[data-tone="warning"] { --_a: var(--zc-amber); --_note: var(--zc-amber-text); }
-.zc-summary--lite .zc-summary__label { color: var(--zc-fg-muted); opacity: 1; }
+.zc-summary--lite .zc-summary__label { color: var(--zc-fg-muted); }
 .zc-summary--lite .zc-summary__value { color: var(--zc-fg); }
 @media (max-width: 899px) {
   .zc-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1583,12 +1625,11 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
   .zc-summary__cell:nth-of-type(n + 3) { border-top: 1px solid var(--zc-ai-divider); }
   .zc-summary--lite .zc-summary__cell { border: 1px solid var(--zc-border); }
 }
-/* The toggle's tap area is 44px (v2 §10) around the 28px circle. */
+/* The toggle's tap area is 44px (v2 §10) around the 26px circle. */
 .zc-summary__toggle::before { content: ""; position: absolute; inset: calc((var(--zc-control-h-touch) - var(--zc-summary-toggle)) / -2); }
 @media (max-width: 767px) {
-  /* Phone: a still gradient (no drifting light); collapsed by default (SummaryPanel), the slim line scrolls
-     sideways and the toggle stays pinned at its right end. */
-  .zc-summary::after { animation: none; }
+  /* Phone: collapsed by default (SummaryPanel), the slim line scrolls sideways and the toggle stays pinned at its
+     right end. */
   .zc-summary--collapsed { display: flex; overflow-x: auto; scrollbar-width: none; }
   .zc-summary--collapsed::-webkit-scrollbar { display: none; }
   .zc-summary--collapsed .zc-summary__cell { flex: none; border-top: 0; border-left: 1px solid var(--zc-ai-divider); }
@@ -1671,6 +1712,11 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 .zc-video[data-look="dark"] { background: var(--zc-ai-gradient); color: white; }
 .zc-video[data-look="dark"] .zc-video__title { max-width: 74%; }
 .zc-video[data-look="dark"] .zc-video__shot { left: 18%; right: -8%; top: 48%; border-radius: 12px; box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.14); }
+/* A finished thumbnail (title and screen baked in) fills the card; play + length stay bottom left. */
+/* The artwork has its own rounded corners (they grow with its width), so the frame is see-through and edgeless:
+   no grey shows past the artwork's corners on a big player (owner, 2026-11-21). */
+.zc-video[data-cover] { background: transparent; border-color: transparent; }
+.zc-video__cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
 /* ---- Laptop/tablet menu overlay (§10): the full menu over the 72px rail and the content, never pushing it.
    Transform and opacity only; hidden it stays mounted (AppShell) but invisible and inert. ---- */
@@ -1794,8 +1840,9 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 @keyframes zc-hero-b { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(70px, -30px) scale(0.92); } }
 @keyframes zc-hero-c { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-40px, -30px); } }
 .zc-hero {
-  position: relative; overflow: hidden; isolation: isolate; display: flex; flex-direction: column; min-height: 300px;
-  padding: 26px 30px 24px; border-radius: var(--zc-radius-banner); background: var(--zc-hero-gradient); color: white;
+  /* One height on both Homes (owner 2026-11-21): the console's card, whatever controls the bottom row holds. */
+  position: relative; overflow: hidden; isolation: isolate; display: flex; flex-direction: column; min-height: var(--zc-hero-h);
+  padding: 18px 24px 18px; border-radius: var(--zc-radius-banner); background: var(--zc-hero-gradient); color: white;
 }
 .zc-hero__light { position: absolute; z-index: -1; border-radius: 50%; pointer-events: none; will-change: transform; }
 .zc-hero__light--1 {
@@ -1826,12 +1873,13 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 .zc-hero__date { font: 400 12px/16px var(--zc-font-mono); letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75; }
 .zc-hero__actions { display: flex; align-items: center; gap: 8px; }
 /* Hero actions are ordinary G10 buttons (on-dark for the main one); no contextual size or colour override. */
-.zc-hero__greeting { margin: 26px 0 0; font-size: 46px; line-height: 52px; font-weight: 300; letter-spacing: -0.035em; color: white; }
+/* Compact card (owner, 2026-11-21): the greeting sits right under the date row, one line, no fixed height. */
+.zc-hero__greeting { margin: 2px 0 0; font-size: 38px; line-height: 44px; font-weight: 300; letter-spacing: -0.035em; color: white; }
 .zc-hero__greeting b { font-weight: 600; }
-.zc-hero__summary { display: flex; align-items: center; gap: 10px; max-width: 100%; margin-top: 12px; font-size: 15px; line-height: 22px; }
+.zc-hero__summary { display: flex; align-items: center; gap: 10px; max-width: 100%; margin-top: 6px; font-size: 15px; line-height: 22px; }
 /* One line from tablet up ("…" + the full text on hover); phones wrap (below). */
 .zc-hero__summary p { min-width: 0; opacity: 0.92; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.zc-hero__bottom { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: auto; padding-top: 22px; }
+.zc-hero__bottom { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: auto; padding-top: 12px; }
 .zc-hero__chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .zc-hero__chip {
   display: inline-flex; flex: none; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: var(--zc-radius-pill);
@@ -1864,7 +1912,6 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
   .zc-hero__top:not(:has(.zc-hero__actions)) { display: none; }
   .zc-hero__greeting { margin-top: 12px; font-size: 28px; line-height: 34px; }
   .zc-hero__top:not(:has(.zc-hero__actions)) + .zc-hero__greeting { margin-top: 0; }
-  .zc-hero__greeting br { display: none; }
   .zc-hero__summary { font-size: 14px; line-height: 20px; }
   .zc-hero__summary p { white-space: normal; }
   .zc-hero__tab { height: calc(var(--zc-control-h-touch) - 10px); }
@@ -1879,19 +1926,7 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 }
 @media (prefers-reduced-motion: reduce) { .zc-hero__light { animation: none !important; } }
 
-/* ---- Home dot chart ("Sales this month"): one column of dots per bucket, on a faint dot grid ---- */
-.zc-home-dots {
-  --_d: 9px; position: relative; display: flex; align-items: flex-end; justify-content: flex-end; height: calc(var(--_d) * 9);
-  background: radial-gradient(circle, var(--zc-border) 2.2px, transparent 2.6px) 100% 100% / var(--_d) var(--_d);
-}
-.zc-home-dots__col {
-  flex: none; width: var(--_d); height: calc(var(--_d) * var(--_n, 1));
-  background: radial-gradient(circle, var(--_c, var(--zc-chart-hatch)) 2.2px, transparent 2.6px) 0 100% / var(--_d) var(--_d);
-}
-.zc-home-dots__col[data-kind="strong"] { --_c: var(--zc-primary); }
-.zc-home-dots__col[data-kind="empty"] { --_c: var(--zc-red); --_n: 1; }
-
-/* ---- Home "Sales by day": hatched bars, the best day solid blue, empty days light red ---- */
+/* ---- Home bars (the Sales card): the best day solid blue, empty days light red ---- */
 .zc-home-bars { display: flex; align-items: flex-end; gap: 4px; min-height: 170px; }
 .zc-home-bars__bar {
   flex: 1; min-width: 0; min-height: 3px; border-radius: 4px 4px 0 0; border: 1px solid var(--zc-chart-hatch-line); border-bottom: 0;
@@ -1899,6 +1934,70 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 }
 .zc-home-bars__bar[data-kind="best"] { background: var(--zc-chart-best); border-color: var(--zc-chart-best); }
 .zc-home-bars__bar[data-kind="empty"] { background: var(--zc-chart-empty); border-color: var(--zc-chart-empty); height: 4%; }
+/* Soft bars in the Sales card (owner layout 2026-11-21): light blue, the best day solid blue, faint grid lines. */
+.zc-home-bars--soft {
+  height: 152px; min-height: 0; gap: 3px; /* 32px for the best-day pill + 120px of bars */
+  --_g: linear-gradient(var(--zc-chart-grid), var(--zc-chart-grid));
+  background: var(--_g) 0 2rem / 100% 1px no-repeat, var(--_g) 0 calc(2rem + (100% - 2rem) / 3) / 100% 1px no-repeat,
+    var(--_g) 0 calc(2rem + (100% - 2rem) * 2 / 3) / 100% 1px no-repeat;
+}
+.zc-home-bars--soft .zc-home-bars__bar { border: 0; border-radius: 3px 3px 0 0; background: var(--zc-chart-hatch-line); }
+.zc-home-bars--soft .zc-home-bars__bar[data-kind="best"] { background: var(--zc-chart-1); }
+.zc-home-bars--soft .zc-home-bars__bar[data-kind="empty"] { background: var(--zc-chart-empty); }
+
+/* A plain button: white with a thin border and ink text (Marketing channel cards, "Plan with AI"). */
+.zc-btn.zc-btn--plain { background: var(--zc-surface); color: var(--zc-fg); border: 1px solid var(--zc-border); }
+@media (hover: hover) { .zc-btn.zc-btn--plain:hover { background: var(--zc-surface-inset); } }
+/* ---- Documentation guide page (owner, 2026-11-21): one white shell, the guide list | the article | On this page ---- */
+.zc-doc-shell {
+  display: grid; grid-template-columns: minmax(0, 1fr); border: 1px solid var(--zc-border); border-radius: var(--zc-radius-card);
+  background: var(--zc-surface); overflow: clip;
+}
+@media (min-width: 1024px) { .zc-doc-shell { grid-template-columns: minmax(0, 1fr) 232px; } }
+@media (min-width: 1280px) { .zc-doc-shell { grid-template-columns: 264px minmax(0, 1fr) 232px; } }
+.zc-doc-nav { display: none; border-right: 1px solid var(--zc-divider); background: var(--zc-surface-muted); }
+@media (min-width: 1280px) { .zc-doc-nav { display: block; } }
+.zc-doc-nav__inner { position: sticky; top: 0; max-height: calc(100dvh - 72px); overflow-y: auto; padding: 24px 18px 28px; scrollbar-width: thin; }
+.zc-doc-main { min-width: 0; padding: 32px 20px 40px; }
+@media (min-width: 768px) { .zc-doc-main { padding: 44px 56px 56px; } }
+.zc-doc-article { max-width: 720px; margin: 0 auto; }
+.zc-doc-title { font: 600 32px/40px var(--zc-font-sans); letter-spacing: -0.022em; color: var(--zc-fg); }
+@media (max-width: 767px) { .zc-doc-title { font-size: 26px; line-height: 34px; } }
+.zc-doc-lead { font: 400 17px/28px var(--zc-font-sans); letter-spacing: -0.01em; color: var(--zc-fg-muted); }
+.zc-doc-body { display: flex; flex-direction: column; gap: 40px; margin-top: 36px; padding-top: 36px; border-top: 1px solid var(--zc-divider); }
+.zc-doc-h2 { position: relative; display: flex; align-items: baseline; gap: 8px; scroll-margin-top: 24px; font: 600 20px/28px var(--zc-font-sans); letter-spacing: -0.016em; color: var(--zc-fg); }
+.zc-doc-h2__anchor { color: var(--zc-fg-subtle); font-weight: 500; opacity: 0; transition: opacity var(--dur-1) var(--ease-out); }
+.zc-doc-h2:hover .zc-doc-h2__anchor, .zc-doc-h2__anchor:focus-visible { opacity: 1; }
+.zc-doc-p { font: 400 15px/26px var(--zc-font-sans); color: var(--zc-fg); }
+.zc-doc-list { display: flex; flex-direction: column; gap: 8px; padding-left: 20px; list-style: disc; }
+.zc-doc-list li::marker { color: var(--zc-fg-subtle); }
+/* Steps: numbered circles joined by a line. */
+.zc-doc-steps { display: flex; flex-direction: column; }
+.zc-doc-steps li { position: relative; display: flex; gap: 14px; padding-bottom: 18px; }
+.zc-doc-steps li:last-child { padding-bottom: 0; }
+.zc-doc-steps li:not(:last-child)::before { content: ""; position: absolute; left: 13px; top: 30px; bottom: 2px; width: 2px; border-radius: 1px; background: var(--zc-border); }
+.zc-doc-steps__n {
+  display: inline-grid; flex: none; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--zc-primary-soft); color: var(--zc-primary-text); font: 600 13px/1 var(--zc-font-sans);
+}
+.zc-doc-steps li > .zc-doc-p { padding-top: 1px; }
+/* Tips (blue) and notes (amber): a coloured left edge on a soft fill. */
+.zc-doc-callout { display: flex; flex-direction: column; gap: 4px; padding: 14px 18px; border-left: 3px solid var(--zc-primary); border-radius: 0 var(--zc-radius-field) var(--zc-radius-field) 0; background: var(--zc-primary-soft); }
+.zc-doc-callout[data-tone="note"] { border-left-color: var(--zc-amber); background: var(--zc-amber-tint); }
+.zc-doc-callout__label { display: inline-flex; align-items: center; gap: 6px; font: 600 12px/16px var(--zc-font-sans); letter-spacing: 0.02em; text-transform: uppercase; color: var(--zc-primary-text); }
+.zc-doc-callout[data-tone="note"] .zc-doc-callout__label { color: var(--zc-amber-text); }
+.zc-doc-pager { display: block; min-width: 0; padding: 14px 18px; border: 1px solid var(--zc-border); border-radius: var(--zc-radius-field); outline: none; transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out); }
+.zc-doc-pager:hover { border-color: var(--zc-border-strong); background: var(--zc-surface-muted); }
+.zc-doc-pager:focus-visible { box-shadow: var(--zc-focus-ring-strong); }
+.zc-doc-toc { display: none; border-left: 1px solid var(--zc-divider); }
+@media (min-width: 1024px) { .zc-doc-toc { display: block; } }
+.zc-doc-toc__inner { position: sticky; top: 0; padding: 44px 20px 28px; }
+
+/* Sort with its value ("Newest ⌄", Inbox): a white outlined pill like the filter circle beside it. */
+.zc-btn.zc-sort-pill { background: var(--zc-surface); color: var(--zc-fg); border: 1px solid var(--zc-border); }
+@media (hover: hover) { .zc-btn.zc-sort-pill:hover { background: var(--zc-surface-inset); } }
+/* Inbox send before there is anything to send: a grey pill (owner design "Inbox · UX v2"). */
+.zc-btn.zc-send-idle, .zc-btn.zc-send-idle:disabled { background: var(--zc-surface-sunken); border-color: var(--zc-surface-sunken); color: var(--zc-fg-muted); opacity: 1; }
 
 /* ---------------------------------------------------------------------
    Route loading (RouteSkeleton, RouteProgress; board 47): the frame at once, rows after 300ms, a 2px top line

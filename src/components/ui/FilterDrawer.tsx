@@ -65,6 +65,8 @@ export interface FilterButtonProps {
   onPress: () => void;
   /** LEGACY: ignored. v2 §4.3: the filter is always the 36px icon button. */
   size?: ButtonSize;
+  /** Another glyph (the Inbox's filled funnel, owner design 2026-11-21). */
+  icon?: ReactNode;
 }
 
 /**
@@ -72,7 +74,7 @@ export interface FilterButtonProps {
  * filters are applied it is ink with a count badge; its name says how many ("Filter, 2 applied").
  */
 export const FilterButton = forwardRef<HTMLButtonElement, FilterButtonProps>(function FilterButton(
-  { count = 0, onPress },
+  { count = 0, onPress, icon },
   ref,
 ) {
   const active = count > 0;
@@ -85,7 +87,7 @@ export const FilterButton = forwardRef<HTMLButtonElement, FilterButtonProps>(fun
         className={active ? "zc-icon-btn--active" : undefined}
         onPress={onPress}
       >
-        <IconFilters aria-hidden />
+        {icon ?? <IconFilters aria-hidden />}
       </IconButton>
       {active ? (
         <span

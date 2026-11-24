@@ -33,7 +33,7 @@ import { Button } from "../ui/Button";
 import { Orb, type OrbState } from "../ui/Orb";
 import { cx } from "../ui/cx";
 import { IconButton } from "../ui/IconButton";
-import { IconAdd, IconArrowRight, IconClose, IconMaximize, IconMinimize } from "../ui/icons";
+import { IconAdd, IconArrowRight, IconClose, IconMaximize, IconMic, IconMinimize } from "../ui/icons";
 import { DUR_1_S, DUR_2_S, DUR_3_S, EXIT_S, spring } from "../ui/motion";
 import { useIsPhone } from "../ui/use-media";
 
@@ -549,6 +549,11 @@ export function AiComposer({
             aria-label={ariaLabel}
             className="zc-ai-composer__input"
           />
+          {/* Voice input (owner, 2026-11-21): the mic shows in every AI input; it does nothing yet, so it is a
+          picture, not a button. */}
+          <span aria-hidden className="zc-ai-mic zc-ai-composer__mic">
+            <IconMic />
+          </span>
           <button type="submit" aria-label="Send" disabled={!canSend || isDisabled} className="zc-ai-composer__send">
             <IconArrowRight aria-hidden className="-rotate-90" />
           </button>

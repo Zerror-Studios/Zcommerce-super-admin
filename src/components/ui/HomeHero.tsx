@@ -3,12 +3,13 @@
  * Home hero (docs/design-v2/README.md §6.1; styles `.zc-hero` in src/styles/components.css). Used by the Merchant
  * Admin Home and the Super Admin Home.
  *
- * A deep-blue band (radius 28, about 300px tall) with four soft lights drifting slowly (transform only) and a faint
- * noise overlay. Top: the date in mono and the page's one or two actions ("View store ↗", a ⋯ menu). Then
- * "Good morning, **Aarav**", the orb with a one-line summary, and a bottom row with up to three chips (a green or
- * red dot each) and the period tabs. It never holds a button that asks AI (§3.3: the bottom bar is the one place).
- * Under 768px (v2 §10) it is 220px with the greeting on one line and the AI line; the date is hidden, the lights
- * stand still, and the chips and period tabs scroll sideways in the bottom row.
+ * A deep-blue band (radius 28, as tall as its content, about 190px: owner 2026-11-21) with four soft lights drifting
+ * slowly (transform only) and a faint noise overlay. Top: the date in mono and the page's one or two actions
+ * ("View store ↗", a ⋯ menu). Then "Good morning, **Aarav**", the orb with a one-line summary, and a bottom row
+ * with up to three chips (a green or red dot each) and the period tabs. It never holds a button that asks AI
+ * (§3.3: the bottom bar is the one place). The greeting and the name share one line on every screen. Under 768px
+ * (v2 §10) it is 220px with the AI line; the date is hidden, the lights stand still, and the chips and period tabs
+ * scroll sideways in the bottom row.
  */
 import { useRef, type KeyboardEvent, type ReactNode } from "react";
 import { cx } from "./cx";
@@ -40,7 +41,7 @@ export interface HomeHeroProps<V extends string = string> {
   date?: ReactNode;
   /** Defaults to the time of day ("Good morning"). */
   greeting?: ReactNode;
-  /** The first name, in 600 on its own line. Without it the greeting stands alone. */
+  /** The first name, in 600 after the greeting on the same line. Without it the greeting stands alone. */
   name?: ReactNode;
   /**
    * Top right: "View store ↗" and, where the page has rare actions, a ⋯ menu (glass buttons). One main action
@@ -122,9 +123,8 @@ export function HomeHero<V extends string = string>({
         {greeting ?? greetingFor()}
         {name ? (
           <>
+            {/* One line on every screen (owner, 2026-11-21): "Good morning, Aarav". */}
             ,{" "}
-            {/* The name goes on its own line from 768px up; on phone the greeting is one line (the break hides). */}
-            <br />
             <b>{name}</b>
           </>
         ) : null}

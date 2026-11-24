@@ -226,6 +226,8 @@ export { SKELETON_DELAY_MS, SKELETON_MIN_MS, nextSkeletonStep, useSkeleton, useS
 export type { AiQuotaProps } from "./AiQuota";
 export { SummaryPanel } from "./SummaryPanel";
 export type { SummaryCell, SummaryChart, SummaryPanelProps, SummaryTone } from "./SummaryPanel";
+export type { BandIcon, BandTone, SummaryArt } from "./SummaryArt";
+export { squaresFor } from "./SummaryArt";
 export { RowChevron, rowControlProps, SortButton, TableToolbar, ThumbWithCount, ViewSwitch } from "./TableToolbar";
 export type { RowChevronProps, SortButtonProps, SortOption, TableToolbarProps, ThumbWithCountProps, ViewSwitchProps } from "./TableToolbar";
 export { SeoScore, VIDEO_LOOKS, VideoThumb, WALLET_CRITICAL_BALANCE, WalletCapsule, seoBand, videoLookAt, walletHealth } from "./V2Display";

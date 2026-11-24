@@ -1,7 +1,8 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
  * Notifications pop-up (round 2 G2, CHANGED from the v2 right drawer): the same pop-up family as search, the
- * Medium size (640) up to 72vh, centred, the pop-up motion; a bottom sheet at 85% height on phone.
+ * Medium size (640), a fixed height (72vh, at most 680px) so loading, rows, empty and tab changes never resize it;
+ * centred, the pop-up motion; a bottom sheet at 85% height on phone.
  * - Title row: the bell icon tile, "Notifications", the unread count, "Mark all as read" (text button), close (36px).
  * - Tabs (All · Orders · Payments · System in the store) with counts, in one row that never scrolls.
  * - Rows like Inbox rows: an icon tile by type (or the store's initials), a one-line sentence, the time on the
@@ -72,7 +73,9 @@ export interface NotificationsPopupProps {
   emptyDescription?: ReactNode;
 }
 
-const LOADING_ROWS = 5;
+/** Enough 56px rows to fill the fixed-height pop-up (the list area is about 550px at the 680px cap). */
+const LOADING_ROWS = 12;
+const LOADING_WIDTHS = ["w-3/5", "w-2/3", "w-1/2", "w-3/4", "w-7/12", "w-2/3"];
 
 /** Today / Yesterday / Earlier, keeping the order given. */
 function groupByDay(items: NotificationPopupItem[], now = new Date()) {
@@ -152,21 +155,28 @@ export function NotificationsPopup({
       description="Check your connection, then try again."
       retryLabel="Try again"
       onRetry={onRetry}
-      className="py-12"
+      className="my-auto py-12"
     />
   ) : loading ? (
-    // Same size as the rows, so nothing jumps when they arrive.
-    <ul role="status" aria-label="Loading notifications" className="px-3 py-2">
-      {Array.from({ length: LOADING_ROWS }).map((_, index) => (
-        <li key={index} className="flex h-14 items-center gap-3 px-3">
-          <Skeleton className="size-8 shrink-0 rounded-field" />
-          <Skeleton className="h-4 flex-1 rounded-full" />
-          <Skeleton className="h-3 w-10 rounded-full" />
-        </li>
-      ))}
-    </ul>
+    // Same size as the rows, so nothing jumps when they arrive; enough of them to fill the fixed-height pop-up
+    // (owner, 2026-11-21), clipped to it so no scrollbar shows while loading.
+    <div role="status" aria-label="Loading notifications" className="min-h-0 flex-1 overflow-hidden px-3 pt-2">
+      <div className="px-3 pb-1 pt-2">
+        <Skeleton className="h-2.5 w-14 rounded-full" />
+      </div>
+      <ul>
+        {Array.from({ length: LOADING_ROWS }).map((_, index) => (
+          <li key={index} className="flex h-14 items-center gap-3 px-3">
+            <Skeleton className="size-8 shrink-0 rounded-field" />
+            <Skeleton className={cx("h-3.5 rounded-full", LOADING_WIDTHS[index % LOADING_WIDTHS.length])} />
+            <span className="flex-1" />
+            <Skeleton className="h-3 w-10 shrink-0 rounded-full" />
+          </li>
+        ))}
+      </ul>
+    </div>
   ) : items.length === 0 ? (
-    <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
+    <div className="my-auto flex flex-col items-center gap-3 px-6 py-14 text-center">
       <IconTile tone="ink" size="lg">
         <IconNotifications aria-hidden />
       </IconTile>
@@ -252,7 +262,7 @@ export function NotificationsPopup({
             </div>
           ) : null}
 
-          <div role="tabpanel" className="custom-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3">
+          <div role="tabpanel" className="custom-scroll flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pb-3">
             {body}
           </div>
         </ModalBody>
