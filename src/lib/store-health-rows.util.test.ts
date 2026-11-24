@@ -31,12 +31,12 @@ describe("store health rows (round 2 §6.3, D11)", () => {
       facts({
         setup: { done: 4, total: 11 },
         paymentFailures7d: 99,
-        paymentIssues: ["Setup 4 of 11", "Payment app Nimbbl is being retired"],
+        paymentIssues: ["Setup 4 of 11", "Payment app Nimbbl has shut down"],
         analyticsLastSync: "2026-10-27T08:00:00",
       }),
     );
     expect(rows[0]).toMatchObject({ word: "Failing", detail: "4 of 11" });
-    expect(rows[3]).toMatchObject({ word: "Failing", detail: "99 failed · 7d · Payment app Nimbbl is being retired" });
+    expect(rows[3]).toMatchObject({ word: "Failing", detail: "99 failed · 7d · Payment app Nimbbl has shut down" });
     expect(rows[4]).toMatchObject({ word: "Stale", detail: "Last sync 27 Oct" });
     expect(storeHealthLine("Healthy", rows)).toBe("Healthy, with three things slipping");
   });

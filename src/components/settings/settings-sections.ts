@@ -107,7 +107,7 @@ export const SETTINGS_FIELDS: Partial<Record<SettingsSectionKey, FieldEntry[]>> 
     { id: "custom-plans", label: "Custom plans" },
   ],
   billing: [
-    { id: "provider", label: "Payment provider", keywords: ["gateway", "razorpay", "nimbbl", "manual"] },
+    { id: "provider", label: "Payment provider", keywords: ["gateway", "razorpay", "manual"] },
     { id: "billing-support-contact", label: "Billing support contact" },
     { id: "billing-bank-instructions", label: "Bank transfer instructions", keywords: ["upi", "ifsc"] },
     { id: "grace-period", label: "Default grace period", keywords: ["days"] },

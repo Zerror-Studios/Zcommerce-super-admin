@@ -24,6 +24,7 @@ export type UserStatus = "active" | "invited" | "disabled";
 
 export type TransactionStatus = "success" | "failed" | "refunded" | "pending";
 
+/** Gateways on platform payments; NIMBBL stays for payments taken before it shut down (PRD-029 D3). */
 export const paymentGatewayEnum = {
   NIMBBL: "NIMBBL",
   RAZORPAY: "RAZORPAY",
@@ -31,7 +32,8 @@ export const paymentGatewayEnum = {
   MANUAL: "MANUAL",
 } as const;
 
-export type PlatformPaymentProvider = "MANUAL" | "NIMBBL" | "RAZORPAY" | "STRIPE";
+/** The platform billing provider setting; NIMBBL left it (backend PRD-029 D3, 2026-11-23). */
+export type PlatformPaymentProvider = "MANUAL" | "RAZORPAY" | "STRIPE";
 
 export type PaymentGateway =
   (typeof paymentGatewayEnum)[keyof typeof paymentGatewayEnum];

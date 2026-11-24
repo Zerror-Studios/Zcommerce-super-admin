@@ -167,7 +167,7 @@ describe("SA Home (design v2 §7)", () => {
         date: "2026-11-06",
         generatedAt: null,
         bullets: [],
-        items: [{ text: "Kesar & Kin still takes payments through Nimbbl.", storeIds: ["kk"], metricKeys: [] }],
+        items: [{ text: "Kesar & Kin still points checkout at Nimbbl, which has shut down.", storeIds: ["kk"], metricKeys: [] }],
       },
     });
     expect(line).toBe("3 stores need you: 1 due soon, 1 stuck in setup and 1 flagged by Zcom AI.");
@@ -182,7 +182,7 @@ describe("SA Home (design v2 §7)", () => {
         generatedAt: null,
         bullets: [],
         items: [
-          { text: "Kesar & Kin still takes payments through Nimbbl.", storeIds: ["kk"], metricKeys: [], rule: "PAYMENT_APP_RETIRING" },
+          { text: "Kesar & Kin still points checkout at Nimbbl, which has shut down.", storeIds: ["kk"], metricKeys: [], rule: "PAYMENT_APP_RETIRING" },
           { text: "Something else.", storeIds: ["zz"], metricKeys: [], rule: null },
         ],
       },

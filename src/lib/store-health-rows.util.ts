@@ -5,7 +5,7 @@
  *   Setup complete     11 of 11              (setup checks, platformStoreSetup)
  *   Selling regularly  190 orders · 30d      (usage snapshot + the server's order factor)
  *   Team signs in      6 sign-ins · 30d      (health snapshot logins30d)
- *   Payments           99 failed · Nimbbl retiring (health snapshot, healthIssues)
+ *   Payments           99 failed · Nimbbl shut down (health snapshot, healthIssues)
  *   Google Analytics   Last sync 27 Oct      (the store's analytics app; stale after 3 days)
  *
  * Health includes setup and payments (D11): a store with setup 4 of 11 or a
@@ -35,7 +35,7 @@ export interface StoreHealthFacts {
   staffCount?: number | null;
   paymentFailures7d: number | null | undefined;
   unpaidExpiries30d: number | null | undefined;
-  /** The server's payment issues (healthIssues: "Payment app Nimbbl is being retired", …). */
+  /** The server's payment issues (healthIssues: "Payment app Nimbbl has shut down", …). */
   paymentIssues: string[];
   /** undefined: no analytics app; null: never synced; else the last successful sync. */
   analyticsLastSync: string | null | undefined;

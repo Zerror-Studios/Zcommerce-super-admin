@@ -672,7 +672,8 @@ export interface PlatformSettingsApi {
   gracePeriodDays: number;
   /** `configured` and `checkoutAvailable` are always sent by the server; optional because this type is also the update input. */
   billing: {
-    provider: "MANUAL" | "NIMBBL" | "RAZORPAY" | "STRIPE";
+    /** Backend PRD-029 D3: NIMBBL left the enum; a stored NIMBBL reads as MANUAL. */
+    provider: "MANUAL" | "RAZORPAY" | "STRIPE";
     configured?: boolean;
     checkoutAvailable?: boolean;
     /** PRD-017 FR-3.2: shown on the store's Billing page; null or "" clears it. */

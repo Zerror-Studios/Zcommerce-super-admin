@@ -67,7 +67,7 @@ const FACTORS: Record<string, { area: HealthArea; tone: Tone }> = {
   "Setup complete": { area: healthAreaEnum.SETUP, tone: "success" },
 };
 
-/** Round 2 D11: the server's `healthIssues` ("Setup 4 of 11", "Payment app Nimbbl is being retired", …). */
+/** Round 2 D11: the server's `healthIssues` ("Setup 4 of 11", "Payment app Nimbbl has shut down", …). */
 function issueRow(issue: string): HealthFactorRow {
   if (/^setup\b/i.test(issue)) return { factor: issue, area: healthAreaEnum.SETUP, tone: "warning" };
   if (/payment|unpaid/i.test(issue)) return { factor: issue, area: healthAreaEnum.PAYMENTS, tone: "danger" };

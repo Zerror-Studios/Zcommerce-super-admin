@@ -30,7 +30,7 @@ describe("healthFactorRows", () => {
   it("adds the server's issues as Setup / Payments rows (round 2 D11)", () => {
     const rows = healthFactorRows(
       ["Account active", "Strong order volume", "Payments healthy"],
-      ["Setup 4 of 11", "Payment app Nimbbl is being retired", "22 unpaid orders expired in 30 days"],
+      ["Setup 4 of 11", "Payment app Nimbbl has shut down", "22 unpaid orders expired in 30 days"],
     );
     expect(rows.filter((row) => row.area === "Setup")).toEqual([{ area: "Setup", factor: "Setup 4 of 11", tone: "warning" }]);
     expect(rows.filter((row) => row.area === "Payments").map((row) => row.tone)).toEqual(["danger", "danger"]);

@@ -62,11 +62,10 @@ import {
   type ReminderRow,
 } from "./settings-form.util";
 
-/** ADR-002 amendment: the provider is a setting; Razorpay is next, Nimbbl stays available. */
+/** ADR-002 amendment: the provider is a setting. Nimbbl left the list (backend PRD-029 D3, 2026-11-23). */
 const PROVIDERS: { key: PlatformPaymentProvider; label: string; hint: string }[] = [
   { key: "MANUAL", label: "Manual (bank transfer / UPI)", hint: "Staff record payments in the console." },
   { key: "RAZORPAY", label: "Razorpay", hint: "Invoices settle automatically once the provider is connected." },
-  { key: "NIMBBL", label: "Nimbbl", hint: "Invoices settle automatically once the provider is connected." },
 ];
 
 const GRACE_RANGE = { min: 0, max: 30 };

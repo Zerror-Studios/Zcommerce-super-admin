@@ -87,8 +87,8 @@ describe("Home (PRD-026 FR-7.1)", () => {
 });
 
 describe("Round 3 E5: the AI card talks about one store", () => {
-  const deveshe = { text: "deveshe-dreams still takes payments through Nimbbl, which is being retired.", storeIds: ["t-deveshe"], metricKeys: [] };
-  const kesar = { text: "Kesar & Kin still takes payments through Nimbbl, which is being retired; 22 unpaid orders expired in 30 days.", storeIds: ["t-kesar"], metricKeys: [] };
+  const deveshe = { text: "deveshe-dreams still points checkout at Nimbbl, which has shut down.", storeIds: ["t-deveshe"], metricKeys: [] };
+  const kesar = { text: "Kesar & Kin still points checkout at Nimbbl, which has shut down; 22 unpaid orders expired in 30 days.", storeIds: ["t-kesar"], metricKeys: [] };
   const devesheMore = { text: "deveshe-dreams had 3 failed payments this week.", storeIds: ["t-deveshe"], metricKeys: [] };
 
   it("never puts another store's item under the headline (the review's card)", () => {
