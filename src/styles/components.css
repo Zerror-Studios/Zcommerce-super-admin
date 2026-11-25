@@ -1511,8 +1511,9 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
   background: var(--zc-ink); color: white; font: 600 10px/14px var(--zc-font-sans); font-variant-numeric: tabular-nums;
 }
 
-/* ---- Orb (§3.4; dot sphere since 2026-11-11): Orb.tsx draws a sphere of dots on a canvas (orb-dots.ts). The box
-   keeps the orb's size in the layout; the canvas spills 30% past it on each side for the soft glow. ---- */
+/* ---- Orb / AI glyph (§3.4; dot sphere since 2026-11-11, the "AI glyph · All states" video since 2026-11-25): Orb.tsx
+   draws a globe of dots on a canvas (orb-dots.ts). The box keeps the glyph's size in the layout; the canvas spills 20%
+   past it on each side so a ripple or a bright dot is never clipped. ---- */
 .zc-orb-dots {
   --_s: var(--zc-orb);
   position: relative; display: inline-flex; flex: none; width: var(--_s); height: var(--_s); vertical-align: middle;
@@ -1520,7 +1521,7 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 .zc-orb-dots--lg { --_s: var(--zc-orb-lg); }
 .zc-orb-dots--bar { --_s: var(--zc-orb-bar); }
 .zc-orb-dots--hero { --_s: var(--zc-orb-hero); }
-.zc-orb-dots__canvas { position: absolute; left: -30%; top: -30%; width: 160%; height: 160%; pointer-events: none; }
+.zc-orb-dots__canvas { position: absolute; left: -20%; top: -20%; width: 140%; height: 140%; pointer-events: none; }
 
 /* ---- The sign-in character's orb (AuthBuddy, §5): deep blue base, a rotating layer of soft light, a breathing
    white core under its eyes ---- */

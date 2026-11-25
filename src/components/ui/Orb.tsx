@@ -3,9 +3,10 @@
  * Design v2 AI pieces (docs/design-v2/README.md §3.4, §4.8; styles `.zc-orb-dots`, `.zc-ai-panel`, `.zc-ai-line` in
  * src/styles/components.css). The orb goes in front of every AI suggestion: suggestion lines, insight cards, draft
  * replies, the Zcom AI bar. It replaces the static sparkle. Since 2026-11-11 (owner) it is a sphere of dots drawn by
- * `orb-dots.ts`, with a state for each phase of the AI's work.
+ * `orb-dots.ts`, with a state for each phase of the AI's work; since 2026-11-25 it moves as in the owner's
+ * "AI glyph · All states in one loop" video (no glow, idle → thinking → answering → done).
  */
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cx } from "./cx";
 import { mountOrb, type OrbHandle } from "./orb-dots";
 
@@ -14,14 +15,16 @@ export type OrbSize = "sm" | "lg" | "bar" | "hero";
 
 export interface OrbProps {
   /**
-   * idle: a slow turn · listening: gentle bubbling, the glow breathes · thinking: the surface bubbles outwards ·
-   * working: a line of dots sweeps across (steps running, answer streaming) · done: a slow turn, brighter glow ·
-   * waiting: folds into a still cube (stuck, waiting for the user).
+   * The "AI glyph · All states" video (owner, 2026-11-25): idle: a slow turn, 10 s a turn · thinking: the spin eases
+   * up, a ripple travels up the globe, a gentle breath · working (answering: steps running, answer streaming): a band
+   * of bright dots sweeps up · done: one slow breath while the turn slows to a stop, then back to idle · listening (the
+   * user is typing): a quicker turn with a gentle breath · waiting: folds into a still cube (stuck, waiting for the
+   * user).
    */
   state?: OrbState;
   /** sm 18px (default), lg 28px, bar 30px (the Zcom AI bar), hero 120px (the sign-in character, AuthBuddy). */
   size?: OrbSize;
-  /** White dots and a cyan glow for dark and blue backgrounds (AI card, summary panel, Home hero). */
+  /** White dots for dark and blue backgrounds (AI card, summary panel, Home hero, the dark Zcom AI button). */
   onDark?: boolean;
   /** Screen-reader text; the orb is decorative by default. */
   label?: string;
@@ -63,6 +66,31 @@ export function Orb({ state = "idle", size = "sm", onDark = false, label, classN
       <canvas ref={canvasRef} className="zc-orb-dots__canvas" />
     </span>
   );
+}
+
+/** How long the glyph stays "done" after an answer: its breath and stop (≈ 4 s), then it eases back into idle. */
+const DONE_HOLD_MS = 4500;
+
+/**
+ * True for a few seconds after `busy` turns false, so a chat header can show the glyph's done stage (one breath
+ * while the turn slows to a stop) before it goes back to idle. Pass whether the AI is working on a turn.
+ */
+export function useOrbJustFinished(busy: boolean): boolean {
+  const [finished, setFinished] = useState(false);
+  const wasBusy = useRef(busy);
+  useEffect(() => {
+    const ended = wasBusy.current && !busy;
+    wasBusy.current = busy;
+    if (busy) {
+      setFinished(false);
+      return undefined;
+    }
+    if (!ended) return undefined;
+    setFinished(true);
+    const timer = window.setTimeout(() => setFinished(false), DONE_HOLD_MS);
+    return () => window.clearTimeout(timer);
+  }, [busy]);
+  return finished;
 }
 
 export interface AiCardProps {

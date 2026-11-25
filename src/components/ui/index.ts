@@ -215,7 +215,7 @@ export type { SortDirection, TableSort, TableUrlOptions, TableUrlState } from ".
 export { Avatar, CoverTag, ImageControl, ViewToggle, useViewMode } from "./Media";
 export type { AvatarProps, ImageControlProps, ViewMode } from "./Media";
 // Design v2 (docs/design-v2/README.md §3.4, §4).
-export { AiCard, AiLine, Orb } from "./Orb";
+export { AiCard, AiLine, Orb, useOrbJustFinished } from "./Orb";
 export type { AiCardProps, AiLineProps, OrbProps, OrbSize, OrbState } from "./Orb";
 export { AI_STEP_MIN_MS, AiSteps, nextShownSteps, useMinStepTime } from "./AiSteps";
 export type { AiStep, AiStepState, AiStepsProps } from "./AiSteps";

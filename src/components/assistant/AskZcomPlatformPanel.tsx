@@ -20,7 +20,9 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   AiSteps,
   useMinStepTime,
+  useOrbJustFinished,
   type AiGlowState,
+  type OrbState,
   Button,
   ConfirmDialog,
   EmptyState,
@@ -196,6 +198,19 @@ export function AskZcomPlatformPanel({
   // Round 3 B5: the bottom glow follows what the AI is doing.
   const busyTurn = chat.turns.find((turn) => turn.status === "RUNNING" || turn.status === "SENDING");
   const activity: AiGlowState = busyTurn ? (busyTurn.text ? "answering" : "thinking") : draft.trim() ? "typing" : "idle";
+  // The header glyph (the "AI glyph · All states" video, 2026-11-25): listening while typing, thinking until the
+  // first step, working (answering) while steps run or the answer streams, done for a few seconds after an answer.
+  const lastTurn = chat.turns[chat.turns.length - 1];
+  const justFinished = useOrbJustFinished(Boolean(busyTurn)) && lastTurn?.status === "COMPLETED";
+  const orbState: OrbState = busyTurn
+    ? busyTurn.text || busyTurn.toolActivity.length
+      ? "working"
+      : "thinking"
+    : justFinished
+      ? "done"
+      : draft.trim()
+        ? "listening"
+        : "idle";
   const conversations = history.data?.platformAssistantConversations?.items ?? [];
   const needsMfa = chat.turns.some(
     (turn) => turn.sendError?.reason === "MFA_REQUIRED" || turn.sendError?.code === "MFA_REQUIRED",
@@ -448,6 +463,7 @@ export function AskZcomPlatformPanel({
             }
             onClose={onClose}
             thinking={chat.isBusy}
+            orbState={orbState}
           />
 
           {usage && !showHistoryView ? (

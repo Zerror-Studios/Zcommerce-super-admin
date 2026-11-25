@@ -1,15 +1,18 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
- * The dot-sphere orb (Orb.tsx; owner, 2026-11-11): a sphere of dots in the orb blues that turns slowly in a soft
- * glow, drawn on a canvas.
- * - idle: a slow turn. listening: the dots bubble gently and the glow breathes.
- * - thinking: the surface bubbles up organically, dots pushed slightly outwards.
- * - working: a line of dots sweeps across the sphere, horizontally, vertically and at angles, the rest dimmed.
- * - done: a slow turn with a brighter ambient glow.
- * - waiting (stuck, waiting for the user): the dots fold into a cube and hold still.
- * One shared animation frame draws every orb; an orb draws only while it is on screen and the tab is visible. With
+ * The AI glyph (Orb.tsx): a globe of dots drawn on a canvas. Owner, 2026-11-25 ("AI glyph · All states in one loop"
+ * video): no glow, front dots larger and stronger, rim dots small and faint, and four stages that blend into each
+ * other (the spin speeds up and slows down smoothly, the ripple fades in and out, a breath starts and ends at full
+ * size, so no stage ever jumps):
+ * - idle: a slow turn, 10 s a turn.
+ * - thinking: the spin eases up to 3 s a turn; a ripple fades in and travels up the globe; a gentle breath.
+ * - working (answering): the ripple fades out; a band of bright dots sweeps up the globe, over and over, while it turns.
+ * - done: one slow breath while the turn slows to a stop; it rests, then eases back into the idle turn.
+ * - listening (the user is typing): the idle turn a little quicker, with a gentle breath.
+ * - waiting (stuck, waiting for the user): the dots fold into a cube and hold still (owner, 2026-11-11).
+ * One shared animation frame draws every glyph; a glyph draws only while it is on screen and the tab is visible. With
  * reduced motion, and on a phone while idle or done (round 2 §8.10), it draws one still frame.
- * Colours come from the orb tokens (`--zc-orb-blue`, `--zc-orb-deep`, `--zc-orb-cyan`).
+ * Colours come from the orb tokens (`--zc-orb-blue`, `--zc-orb-deep`); white dots on dark backgrounds.
  */
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -19,16 +22,14 @@ export type OrbMotion = "idle" | "listening" | "thinking" | "working" | "done" |
 interface OrbMix {
   /** Turn speed, radians per second. */
   spin: number;
-  /** 0–1: how much the surface bubbles. */
-  bubble: number;
-  /** 0–1: the sweeping line of dots. */
-  sweep: number;
+  /** 0–1: the travelling ripple (thinking). */
+  ripple: number;
+  /** 0–1: the band of bright dots sweeping up (answering). */
+  band: number;
+  /** 0–1: the gentle, continuous breath (thinking, listening). */
+  breath: number;
   /** 0–1: sphere → cube. */
   cube: number;
-  /** Glow opacity at the centre. */
-  glow: number;
-  /** 0–1: how much the glow breathes. */
-  pulse: number;
 }
 
 export interface OrbHandle {
@@ -39,7 +40,7 @@ export interface OrbHandle {
 interface OrbEntry {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
-  /** The orb's own box, CSS px (the canvas spills past it for the glow). */
+  /** The glyph's own box, CSS px (the canvas spills past it so a ripple or a bright dot is never clipped). */
   size: number;
   /** Canvas side, CSS px. */
   side: number;
@@ -55,44 +56,55 @@ interface OrbEntry {
   yaw: number;
   /** The cube's resting turn, fixed when waiting starts so it never jumps. */
   snapYaw: number;
+  /** Clock time the done stage started (its breath and stop run from here). */
+  doneAt: number;
+  /** Clock time the answering stage started (the band sweeps from the bottom from here). */
+  bandAt: number;
   onDark: boolean;
   visible: boolean;
   still: boolean;
   dirty: boolean;
-  /** Seconds since the orb was mounted (its own clock, so orbs aren't in lock step). */
+  /** Seconds since the glyph was mounted (its own clock, so glyphs aren't in lock step). */
   clock: number;
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────────
 
-const TARGETS: Record<OrbMotion, OrbMix> = {
-  idle: { spin: 0.35, bubble: 0, sweep: 0, cube: 0, glow: 0.22, pulse: 0 },
-  listening: { spin: 0.6, bubble: 0.45, sweep: 0, cube: 0, glow: 0.28, pulse: 1 },
-  thinking: { spin: 0.75, bubble: 1, sweep: 0, cube: 0, glow: 0.3, pulse: 0.4 },
-  working: { spin: 0.45, bubble: 0, sweep: 1, cube: 0, glow: 0.26, pulse: 0 },
-  done: { spin: 0.22, bubble: 0, sweep: 0, cube: 0, glow: 0.42, pulse: 0.35 },
-  waiting: { spin: 0, bubble: 0, sweep: 0, cube: 1, glow: 0.3, pulse: 0 },
+const TURN = Math.PI * 2;
+/** Spin per stage: idle 10 s a turn, thinking 3 s, answering 4 s, listening 7 s. */
+const IDLE_SPIN = TURN / 10;
+const TARGETS: Record<Exclude<OrbMotion, "done">, OrbMix> = {
+  idle: { spin: IDLE_SPIN, ripple: 0, band: 0, breath: 0, cube: 0 },
+  listening: { spin: TURN / 7, ripple: 0, band: 0, breath: 0.6, cube: 0 },
+  thinking: { spin: TURN / 3, ripple: 1, band: 0, breath: 1, cube: 0 },
+  working: { spin: TURN / 4, ripple: 0, band: 1, breath: 0, cube: 0 },
+  waiting: { spin: 0, ripple: 0, band: 0, breath: 0, cube: 1 },
 };
 
-/** How fast a state change blends in, per second (≈ 400ms; the cube folds a little slower). */
-const BLEND_RATE = 6;
+/** Done: the breath and the slow stop take this long, then the glyph rests, then eases back into the idle turn. */
+const DONE_BREATH_S = 2.6;
+const DONE_REST_S = 1.4;
+/** The done breath shrinks the globe to 86% at its deepest; the thinking breath to 97%. */
+const DONE_BREATH_DEPTH = 0.14;
+const BREATH_DEPTH = 0.03;
+const BREATH_S = 2.6;
+
+/** How fast a stage blends in, per second: the spin eases over about a second, the ripple and band a little faster. */
+const SPIN_RATE = 1.6;
+const BLEND_RATE = 3;
 const CUBE_RATE = 4;
-/** The sphere's resting tilt and the cube's isometric tilt (radians). */
+/** The globe's resting tilt (top towards the viewer) and the cube's isometric tilt (radians). */
 const TILT = 0.38;
 const ISO_TILT = 0.6155;
-/** One sweep of the working line, seconds; the line's half width on the unit sphere. */
-const SWEEP_S = 1.7;
-const SWEEP_WIDTH = 0.14;
-/** Sweep directions in view space: across, down, and the two diagonals. */
-const SWEEP_AXES: ReadonlyArray<readonly [number, number]> = [
-  [0, 1],
-  [1, 0],
-  [0.7071, 0.7071],
-  [-0.7071, 0.7071],
-];
-/** Sphere radius as a share of half the orb box; the canvas is 160% of the box. */
-const RADIUS_SHARE = 0.9;
-const CANVAS_SHARE = 1.6;
+/** Ripple height on the unit sphere (a hero glyph, the sign-in character, ripples more). */
+const RIPPLE = 0.075;
+const HERO_RIPPLE = 0.12;
+/** One sweep of the answering band, bottom to top, seconds; the band's half width on the unit sphere. */
+const SWEEP_S = 2.4;
+const BAND_WIDTH = 0.13;
+/** Globe radius as a share of half the glyph box; the canvas is 140% of the box. */
+const RADIUS_SHARE = 0.92;
+const CANVAS_SHARE = 1.4;
 /** Half side of the cube on the unit sphere's scale (its outline matches the sphere's). */
 const CUBE_HALF = 0.6;
 const MAX_DPR = 2;
@@ -105,7 +117,6 @@ type Rgb = readonly [number, number, number];
 interface OrbPalette {
   dot: Rgb;
   strong: Rgb;
-  glow: Rgb;
 }
 
 let palettes: { light: OrbPalette; dark: OrbPalette } | null = null;
@@ -127,23 +138,23 @@ function getPalettes() {
   const white: Rgb = [255, 255, 255];
   const blue = readToken("--zc-orb-blue", [59, 130, 246]);
   const deep = readToken("--zc-orb-deep", [29, 78, 216]);
-  const cyan = readToken("--zc-orb-cyan", [125, 211, 252]);
   palettes = {
-    light: { dot: blue, strong: deep, glow: blue },
-    dark: { dot: white, strong: cyan, glow: cyan },
+    light: { dot: blue, strong: deep },
+    dark: { dot: white, strong: white },
   };
   return palettes;
 }
 
-const rgba = ([r, g, b]: Rgb, a: number) => `rgba(${r}, ${g}, ${b}, ${a.toFixed(3)})`;
+const rgb = ([r, g, b]: Rgb) => `rgb(${r}, ${g}, ${b})`;
 
 // ─── Points ──────────────────────────────────────────────────────────────────
 
-/** Fewer, larger dots on small orbs so they still read as a dotted sphere; a hero orb (sign-in) is a fine, dense mesh. */
+/** Fewer, larger dots on small glyphs so they still read as a dotted globe; a hero glyph is a fine, dense mesh. */
 const HERO_SIZE = 64;
 const dotCount = (size: number) =>
   size > HERO_SIZE ? Math.min(1100, Math.round(size * 8)) : Math.max(48, Math.min(420, Math.round(size * 4.2)));
-const dotRadius = (size: number) => Math.max(0.65, Math.min(1.3, size * 0.022));
+const dotRadius = (size: number) =>
+  size > HERO_SIZE ? Math.min(3, Math.max(1.3, size * 0.0088)) : Math.max(0.8, Math.min(1.3, size * 0.03));
 
 /**
  * Evenly spread points on the unit sphere (Fibonacci), and for each one its place on the cube: the point pushed
@@ -181,36 +192,59 @@ function buildPoints(count: number) {
   return { sphere, cubeAt, face, faceSign };
 }
 
-// ─── Drawing ─────────────────────────────────────────────────────────────────
+// ─── Motion ──────────────────────────────────────────────────────────────────
 
-/** A smooth, moving bump field on the sphere (the thinking surface): 0 most places, up to 1 on a bubble. */
-function bubbleAt(x: number, y: number, z: number, t: number) {
-  const a = Math.sin(3.1 * x + 1.9 * t) * Math.sin(2.7 * y - 1.4 * t + 1) * Math.sin(2.3 * z + 1.1 * t + 2);
-  const b = Math.sin(4.3 * y + 2.3 * t + 0.5) * Math.sin(3.7 * z - 1.7 * t) * Math.sin(3.3 * x + 0.9 * t + 1.3);
-  const n = Math.max(0, Math.min(1, (a * 0.65 + b * 0.35) * 2.2));
-  return n * n;
+const easeInOut = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+
+/**
+ * The thinking ripple at a point (−1 to 1): rings that travel up the globe, crossed by a slow three-lobed wave round
+ * it, so the outline goes softly lumpy as in the video, never spiky.
+ */
+function rippleAt(x: number, y: number, z: number, t: number) {
+  const around = Math.atan2(z, x);
+  return 0.62 * Math.sin(5.5 * y - 4.2 * t) + 0.38 * Math.sin(3 * around + 2.2 * y - 1.6 * t);
 }
+
+/** Where the answering band is: from below the globe to above it, once per sweep (−1.2 to 1.2 on the globe's axis). */
+const bandAt = (seconds: number) => -1.2 + 2.4 * ((seconds / SWEEP_S) % 1);
+
+/** The target mix for a stage; done follows its own timeline (breath and stop, rest, back to idle). */
+function targetFor(entry: OrbEntry): OrbMix {
+  if (entry.motion !== "done") return TARGETS[entry.motion];
+  const since = entry.clock - entry.doneAt;
+  const resting = since < DONE_BREATH_S + DONE_REST_S;
+  return { ...TARGETS.idle, spin: resting ? 0 : IDLE_SPIN };
+}
+
+/** Overall scale of the globe now: the gentle breath, and the one deep breath of done. */
+function scaleFor(entry: OrbEntry) {
+  const { mix, clock } = entry;
+  let scale = 1 - mix.breath * BREATH_DEPTH * (1 - Math.cos((TURN * clock) / BREATH_S)) * 0.5;
+  if (entry.motion === "done") {
+    const p = (clock - entry.doneAt) / DONE_BREATH_S;
+    if (p > 0 && p < 1) scale *= 1 - DONE_BREATH_DEPTH * Math.sin(Math.PI * easeInOut(p));
+  }
+  return scale;
+}
+
+// ─── Drawing ─────────────────────────────────────────────────────────────────
 
 function draw(entry: OrbEntry) {
   const { ctx, side, dpr, count, sphere, cubeAt, face, faceSign, mix, clock } = entry;
   const palette = entry.onDark ? getPalettes().dark : getPalettes().light;
   const centre = side / 2;
-  const radius = (entry.size / 2) * RADIUS_SHARE;
+  const radius = (entry.size / 2) * RADIUS_SHARE * scaleFor(entry);
   const dotR = dotRadius(entry.size);
+  const rippleHeight = (entry.size > HERO_SIZE ? HERO_RIPPLE : RIPPLE) * mix.ripple;
+  const band = bandAt(clock - entry.bandAt);
+  const small = entry.size <= 48;
+  const backAlpha = small ? 0.22 : 0.06;
+  const depthCurve = small ? 1.3 : 1.6;
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, side, side);
 
-  // Ambient glow behind the dots.
-  const glow = mix.glow * (1 + mix.pulse * 0.25 * Math.sin(clock * 2.4));
-  const gradient = ctx.createRadialGradient(centre, centre, 0, centre, centre, radius * 1.6);
-  gradient.addColorStop(0, rgba(palette.glow, glow));
-  gradient.addColorStop(0.55, rgba(palette.glow, glow * 0.45));
-  gradient.addColorStop(1, rgba(palette.glow, 0));
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, side, side);
-
-  // Turn: yaw about the vertical axis, then tilt towards the viewer.
+  // Turn: yaw about the vertical axis, then tilt the top towards the viewer.
   const yaw = entry.yaw + (entry.snapYaw - entry.yaw) * mix.cube;
   const tilt = TILT + (ISO_TILT - TILT) * mix.cube;
   const cy = Math.cos(yaw);
@@ -218,20 +252,16 @@ function draw(entry: OrbEntry) {
   const ct = Math.cos(tilt);
   const st = Math.sin(tilt);
 
-  // The working line: a plane moving across the sphere along one view-space direction per sweep.
-  const sweepIndex = Math.floor(clock / SWEEP_S);
-  const [ax, ay] = SWEEP_AXES[sweepIndex % SWEEP_AXES.length];
-  const sweepAt = Math.cos(Math.PI * ((clock / SWEEP_S) % 1));
-
   for (let i = 0; i < count; i += 1) {
     const o = i * 3;
     let x = sphere[o];
     let y = sphere[o + 1];
     let z = sphere[o + 2];
+    // The band follows the globe's own axis, so it reads as a ring of latitude moving up.
+    const latitude = y;
 
-    if (mix.bubble > 0.001) {
-      // A hero orb squishes more, like a soft body thinking (the sign-in "Checking…" board).
-      const lift = 1 + mix.bubble * (entry.size > HERO_SIZE ? 0.24 : 0.14) * bubbleAt(x, y, z, clock);
+    if (rippleHeight > 0.0005) {
+      const lift = 1 + rippleHeight * rippleAt(x, y, z, clock);
       x *= lift;
       y *= lift;
       z *= lift;
@@ -247,18 +277,18 @@ function draw(entry: OrbEntry) {
     const y2 = y * ct - z1 * st;
     const z2 = y * st + z1 * ct;
 
-    // Front dots are larger and stronger, back dots small and faint.
+    // Front dots are larger and stronger, rim dots small and grey, the back barely there (a small glyph keeps its
+    // back dots a little stronger so it still reads as a full globe).
     const depth = Math.max(0, Math.min(1, (z2 + 1) / 2));
-    let alpha = 0.16 + 0.84 * Math.pow(depth, 1.3);
-    let r = dotR * (0.6 + 0.55 * depth);
+    let alpha = backAlpha + (1 - backAlpha) * Math.pow(depth, depthCurve);
+    let r = dotR * (0.55 + 0.6 * depth);
     let strong = false;
 
-    if (mix.sweep > 0.001) {
-      const along = (x1 * ax + y2 * ay) / Math.max(0.0001, Math.hypot(x, y, z));
-      const hit = Math.exp(-(((along - sweepAt) / SWEEP_WIDTH) ** 2)) * mix.sweep;
-      alpha = alpha * (1 - 0.45 * mix.sweep) + hit * 0.9;
-      r *= 1 + 0.7 * hit;
-      strong = hit > 0.35;
+    if (mix.band > 0.001) {
+      const hit = Math.exp(-(((latitude - band) / BAND_WIDTH) ** 2)) * mix.band;
+      alpha = alpha * (1 - 0.18 * mix.band) + hit;
+      r *= 1 + 0.45 * hit;
+      strong = hit > 0.3;
     }
     if (mix.cube > 0.5) {
       // Shade the cube by face: the top face lighter, the right-hand side face darker, the left one as is.
@@ -272,9 +302,9 @@ function draw(entry: OrbEntry) {
     }
 
     ctx.globalAlpha = Math.min(1, alpha);
-    ctx.fillStyle = rgba(strong ? palette.strong : palette.dot, 1);
+    ctx.fillStyle = rgb(strong ? palette.strong : palette.dot);
     ctx.beginPath();
-    ctx.arc(centre + x1 * radius, centre - y2 * radius, r, 0, Math.PI * 2);
+    ctx.arc(centre + x1 * radius, centre - y2 * radius, r, 0, TURN);
     ctx.fill();
   }
   ctx.globalAlpha = 1;
@@ -296,18 +326,18 @@ function isStill(motion: OrbMotion) {
 }
 
 function blend(entry: OrbEntry, dt: number) {
-  const target = TARGETS[entry.motion];
+  entry.clock += dt;
+  const target = targetFor(entry);
   const k = 1 - Math.exp(-dt * BLEND_RATE);
+  const kSpin = 1 - Math.exp(-dt * SPIN_RATE);
   const kCube = 1 - Math.exp(-dt * CUBE_RATE);
   const mix = entry.mix;
-  mix.spin += (target.spin - mix.spin) * k;
-  mix.bubble += (target.bubble - mix.bubble) * k;
-  mix.sweep += (target.sweep - mix.sweep) * k;
+  mix.spin += (target.spin - mix.spin) * kSpin;
+  mix.ripple += (target.ripple - mix.ripple) * k;
+  mix.band += (target.band - mix.band) * k;
+  mix.breath += (target.breath - mix.breath) * k;
   mix.cube += (target.cube - mix.cube) * kCube;
-  mix.glow += (target.glow - mix.glow) * k;
-  mix.pulse += (target.pulse - mix.pulse) * k;
   entry.yaw += mix.spin * dt;
-  entry.clock += dt;
 }
 
 function tick(now: number) {
@@ -318,7 +348,7 @@ function tick(now: number) {
     if (!entry.visible) continue;
     if (entry.still) {
       if (entry.dirty) {
-        entry.mix = { ...TARGETS[entry.motion] };
+        entry.mix = { ...targetFor(entry), spin: 0 };
         draw(entry);
         entry.dirty = false;
       }
@@ -357,7 +387,7 @@ function ensureListeners() {
 
 // ─── Public ──────────────────────────────────────────────────────────────────
 
-/** Starts drawing an orb on `canvas`, sized from its box `box` (the orb's own size, CSS px). */
+/** Starts drawing a glyph on `canvas`, sized from its box `box` (the glyph's own size, CSS px). */
 export function mountOrb(canvas: HTMLCanvasElement, box: HTMLElement, motion: OrbMotion, onDark: boolean): OrbHandle {
   const ctx = canvas.getContext("2d");
   if (!ctx) return { setMotion: () => undefined, destroy: () => undefined };
@@ -370,6 +400,7 @@ export function mountOrb(canvas: HTMLCanvasElement, box: HTMLElement, motion: Or
   canvas.height = Math.round(side * dpr);
 
   const count = dotCount(size);
+  const clock = Math.random() * 10;
   const entry: OrbEntry = {
     canvas,
     ctx,
@@ -379,14 +410,17 @@ export function mountOrb(canvas: HTMLCanvasElement, box: HTMLElement, motion: Or
     ...buildPoints(count),
     count,
     motion,
-    mix: { ...TARGETS[motion] },
-    yaw: Math.random() * Math.PI * 2,
+    // A glyph mounted already done starts at rest, not mid-breath.
+    mix: motion === "done" ? { ...TARGETS.idle } : { ...TARGETS[motion] },
+    yaw: Math.random() * TURN,
     snapYaw: 0,
+    doneAt: motion === "done" ? clock - DONE_BREATH_S - DONE_REST_S : clock,
+    bandAt: clock,
     onDark,
     visible: true,
     still: isStill(motion),
     dirty: true,
-    clock: Math.random() * 10,
+    clock,
   };
   entry.snapYaw = snapYawFor(entry.yaw);
   entries.add(entry);
@@ -397,6 +431,9 @@ export function mountOrb(canvas: HTMLCanvasElement, box: HTMLElement, motion: Or
     setMotion(next) {
       if (next === entry.motion) return;
       if (next === "waiting") entry.snapYaw = snapYawFor(entry.yaw + entry.mix.spin * 0.4);
+      if (next === "done") entry.doneAt = entry.clock;
+      // The band always starts its first sweep from the bottom.
+      if (next === "working") entry.bandAt = entry.clock;
       entry.motion = next;
       entry.still = isStill(next);
       entry.dirty = true;
