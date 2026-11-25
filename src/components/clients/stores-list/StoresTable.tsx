@@ -157,7 +157,7 @@ import {
 
 const OPEN_KEY = "open";
 
-/** Fixed widths 916px → Store keeps 200px at 1,116px (a 1440px screen); "narrow" columns go below that. */
+/** Fixed widths 924px → Store keeps 200px at 1,124px (a 1440px screen); "narrow" columns go below that. */
 const columns: DataTableColumn[] = [
   { key: "store", label: "Store", sortable: true, skeleton: "avatar", mobile: "primary" },
   { key: "owner", label: "Owner", width: 180, hideWhen: "narrow", sortable: true },
@@ -173,7 +173,8 @@ const columns: DataTableColumn[] = [
   { key: "fee", label: "Monthly fee", width: 110, hideWhen: "narrow", sortable: true },
   { key: "renewalDate", label: "Renewal", width: 120, hideWhen: "narrow", sortable: true },
   // The row end (G18): ⋯ on hover, then › into the store.
-  { key: OPEN_KEY, label: "Open the store", hideLabel: true, width: 96, mobile: "hide" },
+  // 104 = ⋯ 32 + gap 4 + › 30 + the cell's 18px padding each side (96 cut 6px off the ⋯).
+  { key: OPEN_KEY, label: "Open the store", hideLabel: true, width: 104, mobile: "hide" },
 ];
 
 const OPTIONAL_COLUMNS = columns.filter((column) => column.key !== "store" && column.key !== OPEN_KEY);

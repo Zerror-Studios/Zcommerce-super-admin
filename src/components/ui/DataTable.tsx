@@ -908,7 +908,10 @@ export function DataTable<T>({
                   ) : key === CHEVRON_KEY && !showChevron ? null : (
                     cellContent(row, key)
                   );
-                const capped = !isActionsColumn(key) && key !== CHEVRON_KEY && key !== EXPAND_KEY && key !== GUTTER_KEY;
+                // Control columns (a hidden header: ⋯ and ›, "Grant", "Re-run") are never clipped, or a button that is
+                // a few px wider than the cell loses its edge (the Stores ⋯, 2026-11-25).
+                const capped =
+                  !isActionsColumn(key) && key !== CHEVRON_KEY && key !== EXPAND_KEY && key !== GUTTER_KEY && !column?.hideLabel;
                 return (
                   <TableCell className={column?.align === "end" ? "zc-dt-num" : undefined}>
                     {capped ? (
