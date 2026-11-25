@@ -1,16 +1,19 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 /**
- * The orb character on the sign-in screen (docs/design-v2/README.md §5): the Zcom AI orb, large, with two eyes on
- * its bright core, in a soft blue halo. It asks one question at a time and its line types out under it.
+ * The orb character on the sign-in screen (docs/design-v2/README.md §5; owner's "Sign in · Email / Checking" videos,
+ * 2026-11-25): the Zcom AI dotted sphere, large and white on the dark page, with two glowing capsule eyes, in a soft
+ * blue halo. It asks one question at a time and its line types out under it.
  * - idle: the eyes follow the pointer, and with `follow` (0–1, how far along the field the caret is) they follow
  *   the typing; a blink now and then.
  * - shy (password): the eyes close and turn away ("I'm not looking.").
- * - thinking (signing in): the orb spins fast and three dots follow the line.
+ * - thinking (signing in, "Checking…"): the sphere squishes and bubbles, the eyes look up to the side, and three
+ *   dots follow the line.
  * - sad (failed): drooping eyes. happy: a smile of the eyes.
  * Screen readers get each line once, politely; with reduced motion the eyes stay still and the line shows at once.
  */
 import { forwardRef, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { cx } from "../ui/cx";
+import { Orb } from "../ui/Orb";
 
 export type AuthBuddyMood = "idle" | "happy" | "shy" | "thinking" | "sad";
 
@@ -24,7 +27,7 @@ export interface AuthBuddyProps {
 }
 
 /** How far the eyes move, in px. */
-const EYE_TRAVEL = 5;
+const EYE_TRAVEL = 8;
 const TYPE_MS = 24;
 
 const prefersReducedMotion = () =>
@@ -94,7 +97,7 @@ export function AuthBuddy({ message, mood = "idle", follow, className }: AuthBud
   const typing = follow != null && mood === "idle";
   const offset =
     mood === "thinking"
-      ? { x: 0, y: -EYE_TRAVEL }
+      ? { x: EYE_TRAVEL * 0.7, y: -EYE_TRAVEL }
       : mood === "shy"
         ? { x: -EYE_TRAVEL, y: 1 }
         : typing
@@ -103,8 +106,8 @@ export function AuthBuddy({ message, mood = "idle", follow, className }: AuthBud
 
   return (
     <div className={cx("flex flex-col items-center gap-5 text-center", className)}>
-      <span ref={orbRef} aria-hidden className="zc-orb-wrap zc-auth-orb" data-state={mood === "thinking" ? "thinking" : "idle"}>
-        <span className="zc-orb zc-orb--auth" />
+      <span ref={orbRef} aria-hidden className="zc-auth-orb" data-state={mood === "thinking" ? "thinking" : "idle"}>
+        <Orb size="hero" onDark state={mood === "thinking" ? "thinking" : "idle"} />
         <span
           className="zc-auth-orb__eyes"
           style={{ transform: `translate(${offset.x}px, ${offset.y}px)${mood === "shy" ? " rotate(-8deg)" : ""}` }}

@@ -463,7 +463,7 @@
   --zc-ask-stack: calc(var(--zc-ask-bottom-phone) + var(--zc-ask-h) + env(safe-area-inset-bottom));
   --zc-wallet-h: 40px;
   --zc-wallet-card-w: 380px;
-  --zc-orb: 18px;  --zc-orb-lg: 28px;  --zc-orb-bar: 30px;
+  --zc-orb: 18px;  --zc-orb-lg: 28px;  --zc-orb-bar: 30px;  --zc-orb-hero: 120px; /* hero: the sign-in character */
   --zc-seo-ring: 26px;
 
   /* ---------- Layout ---------- */

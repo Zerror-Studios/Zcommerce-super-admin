@@ -139,9 +139,11 @@ const rgba = ([r, g, b]: Rgb, a: number) => `rgba(${r}, ${g}, ${b}, ${a.toFixed(
 
 // ─── Points ──────────────────────────────────────────────────────────────────
 
-/** Fewer, larger dots on small orbs so they still read as a dotted sphere. */
-const dotCount = (size: number) => Math.max(48, Math.min(420, Math.round(size * 4.2)));
-const dotRadius = (size: number) => Math.max(0.65, size * 0.022);
+/** Fewer, larger dots on small orbs so they still read as a dotted sphere; a hero orb (sign-in) is a fine, dense mesh. */
+const HERO_SIZE = 64;
+const dotCount = (size: number) =>
+  size > HERO_SIZE ? Math.min(1100, Math.round(size * 8)) : Math.max(48, Math.min(420, Math.round(size * 4.2)));
+const dotRadius = (size: number) => Math.max(0.65, Math.min(1.3, size * 0.022));
 
 /**
  * Evenly spread points on the unit sphere (Fibonacci), and for each one its place on the cube: the point pushed
@@ -228,7 +230,8 @@ function draw(entry: OrbEntry) {
     let z = sphere[o + 2];
 
     if (mix.bubble > 0.001) {
-      const lift = 1 + mix.bubble * 0.14 * bubbleAt(x, y, z, clock);
+      // A hero orb squishes more, like a soft body thinking (the sign-in "Checking…" board).
+      const lift = 1 + mix.bubble * (entry.size > HERO_SIZE ? 0.24 : 0.14) * bubbleAt(x, y, z, clock);
       x *= lift;
       y *= lift;
       z *= lift;

@@ -10,7 +10,7 @@ import { cx } from "./cx";
 import { mountOrb, type OrbHandle } from "./orb-dots";
 
 export type OrbState = "idle" | "listening" | "thinking" | "working" | "done" | "waiting";
-export type OrbSize = "sm" | "lg" | "bar";
+export type OrbSize = "sm" | "lg" | "bar" | "hero";
 
 export interface OrbProps {
   /**
@@ -19,7 +19,7 @@ export interface OrbProps {
    * waiting: folds into a still cube (stuck, waiting for the user).
    */
   state?: OrbState;
-  /** sm 18px (default), lg 28px, bar 30px (the Zcom AI bar). */
+  /** sm 18px (default), lg 28px, bar 30px (the Zcom AI bar), hero 120px (the sign-in character, AuthBuddy). */
   size?: OrbSize;
   /** White dots and a cyan glow for dark and blue backgrounds (AI card, summary panel, Home hero). */
   onDark?: boolean;

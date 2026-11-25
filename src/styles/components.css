@@ -1519,6 +1519,7 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 }
 .zc-orb-dots--lg { --_s: var(--zc-orb-lg); }
 .zc-orb-dots--bar { --_s: var(--zc-orb-bar); }
+.zc-orb-dots--hero { --_s: var(--zc-orb-hero); }
 .zc-orb-dots__canvas { position: absolute; left: -30%; top: -30%; width: 160%; height: 160%; pointer-events: none; }
 
 /* ---- The sign-in character's orb (AuthBuddy, §5): deep blue base, a rotating layer of soft light, a breathing
@@ -1858,14 +1859,16 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
   position: absolute; left: 50%; top: 46%; width: 760px; height: 760px; margin: -380px 0 0 -380px; border-radius: 50%;
   background: var(--zc-auth-halo); pointer-events: none;
 }
-.zc-auth-orb { position: relative; }
-.zc-orb--auth { --_s: 76px; box-shadow: inset 0 0 0 1px rgba(191, 219, 254, 0.5), 0 0 60px rgba(59, 130, 246, 0.45); }
+/* Owner, 2026-11-25 ("Sign in · Email / Checking" videos): the character is the dotted sphere (Orb size hero, white
+   dots) with two glowing white capsule eyes a little below its centre. */
+.zc-auth-orb { position: relative; display: inline-flex; }
 .zc-auth-orb__eyes {
-  position: absolute; left: 50%; top: 50%; display: flex; gap: 10px; margin: -7px 0 0 -11px;
-  transition: transform var(--dur-2) var(--ease-out); will-change: transform;
+  position: absolute; left: 50%; top: 50%; display: flex; gap: 14px; margin: -3px 0 0 -19px;
+  transition: transform var(--dur-2) var(--ease-out); will-change: transform; pointer-events: none;
 }
 .zc-auth-orb__eye {
-  display: block; width: 6px; height: 14px; border-radius: 3px; background: var(--zc-orb-night);
+  display: block; width: 12px; height: 26px; border-radius: 6px; background: var(--zc-on-primary);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.9), 0 0 16px rgba(125, 211, 252, 0.7), 0 0 28px rgba(59, 130, 246, 0.5);
   transform-origin: center; transition: transform var(--dur-1) var(--ease-out);
 }
 .zc-auth-orb__eye--shut { transform: scaleY(0.15); }
