@@ -115,7 +115,8 @@ export const getDropdownClasses = (className = "") => ({
 
     group-data-[invalid=true]:!border-tone-danger-dot
   `,
-  value: "text-sm !text-fg",
+  // A placeholder ("Pick an area") is grey like a text field's; a chosen value is ink.
+  value: "text-sm !text-fg-placeholder group-data-[has-value=true]:!text-fg",
   selectorIcon: "!text-fg-muted",
   label: fieldLabel,
   errorMessage: "text-xs !text-tone-danger-text",
