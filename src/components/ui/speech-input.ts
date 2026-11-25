@@ -31,6 +31,8 @@ export interface SpeechRecognitionLike {
   onresult: ((event: { results: SpeechResultListLike }) => void) | null;
   onerror: ((event: { error: string }) => void) | null;
   onend: (() => void) | null;
+  /** The browser started capturing audio (the mic is open). */
+  onaudiostart: (() => void) | null;
   start(): void;
   abort(): void;
 }
@@ -66,21 +68,40 @@ export function joinSpoken(typed: string, spoken: string, maxLength?: number): s
   return maxLength != null && maxLength > 0 ? next.slice(0, maxLength) : next;
 }
 
-export type SpeechError = "blocked" | "no-mic" | "failed";
+export type SpeechError = "blocked" | "no-mic" | "no-speech" | "network" | "failed";
 
-/** What a recognition error means to the user; null for the ones that need no message (silence, our own stop). */
+/** What a recognition error means to the user; null for our own stop. */
 export function speechErrorOf(code: string): SpeechError | null {
   switch (code) {
-    case "no-speech":
     case "aborted":
       return null;
+    case "no-speech":
+      return "no-speech";
     case "not-allowed":
     case "service-not-allowed":
       return "blocked";
     case "audio-capture":
       return "no-mic";
+    case "network":
+      return "network";
     default:
       return "failed";
+  }
+}
+
+/** The message shown (as a toast) when voice input stops on an error. */
+export function speechErrorMessage(error: SpeechError): string {
+  switch (error) {
+    case "blocked":
+      return "Microphone blocked. Allow it for this site in the browser's address bar, then try again.";
+    case "no-mic":
+      return "No microphone found. Plug one in or pick it in your system sound settings.";
+    case "no-speech":
+      return "Didn't hear anything. Check that the right microphone is selected and try again.";
+    case "network":
+      return "Voice input couldn't reach the browser's speech service. Check your connection, or use Chrome or Edge.";
+    default:
+      return "Voice input stopped. Try again.";
   }
 }
 
@@ -88,9 +109,7 @@ export function speechErrorOf(code: string): SpeechError | null {
 export function micLabel(state: { supported: boolean; listening: boolean; error: SpeechError | null }): string {
   if (!state.supported) return "Voice input isn't available in this browser. Try Chrome, Edge or Safari.";
   if (state.listening) return "Stop voice input";
-  if (state.error === "blocked") return "Microphone blocked. Allow it in the browser's site settings, then try again.";
-  if (state.error === "no-mic") return "No microphone found";
-  if (state.error === "failed") return "Voice input stopped. Try again.";
+  if (state.error) return speechErrorMessage(state.error);
   return "Speak instead of typing";
 }
 

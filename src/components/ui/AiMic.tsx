@@ -11,11 +11,13 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { cx } from "./cx";
 import { IconMic } from "./icons";
+import { toast } from "./toast";
 import {
   getSpeechRecognition,
   joinSpoken,
   micLabel,
   speechErrorOf,
+  speechErrorMessage,
   speechLang,
   spokenText,
   takeVoiceRequest,
@@ -27,6 +29,8 @@ export interface SpeechInput {
   /** False in browsers without speech recognition (Firefox). */
   supported: boolean;
   listening: boolean;
+  /** The browser has opened the mic for this session (the waveform starts reading levels then). */
+  capturing: boolean;
   error: SpeechError | null;
   start: () => void;
   stop: () => void;
@@ -45,6 +49,7 @@ export interface UseSpeechInputOptions {
 export function useSpeechInput({ value, onValueChange, maxLength, isDisabled = false, takeAskBarRequest = false }: UseSpeechInputOptions): SpeechInput {
   const [supported] = useState(() => getSpeechRecognition() !== null);
   const [listening, setListening] = useState(false);
+  const [capturing, setCapturing] = useState(false);
   const [error, setError] = useState<SpeechError | null>(null);
   const recognition = useRef<SpeechRecognitionLike | null>(null);
   /** The text this hook last wrote; any other value means the user (or a send) changed the field. */
@@ -69,6 +74,7 @@ export function useSpeechInput({ value, onValueChange, maxLength, isDisabled = f
       }
     }
     setListening(false);
+    setCapturing(false);
   }, []);
 
   const start = useCallback(() => {
@@ -86,16 +92,23 @@ export function useSpeechInput({ value, onValueChange, maxLength, isDisabled = f
       written.current = next;
       latest.current.onValueChange(next);
     };
+    active.onaudiostart = () => {
+      if (recognition.current === active) setCapturing(true);
+    };
     active.onerror = (event) => {
+      if (import.meta.env.DEV) console.warn("[voice input] recognition error:", event.error);
       if (recognition.current !== active) return;
       const problem = speechErrorOf(event.error);
-      if (problem) setError(problem);
+      if (!problem) return;
+      setError(problem);
+      toast.error(speechErrorMessage(problem));
     };
     active.onend = () => {
       if (recognition.current !== active) return;
       recognition.current = null;
       written.current = null;
       setListening(false);
+      setCapturing(false);
     };
     recognition.current = active;
     written.current = typed;
@@ -103,11 +116,13 @@ export function useSpeechInput({ value, onValueChange, maxLength, isDisabled = f
     setListening(true);
     try {
       active.start();
-    } catch {
+    } catch (cause) {
+      if (import.meta.env.DEV) console.warn("[voice input] could not start:", cause);
       recognition.current = null;
       written.current = null;
       setListening(false);
       setError("failed");
+      toast.error(speechErrorMessage("failed"));
     }
   }, []);
 
@@ -137,7 +152,7 @@ export function useSpeechInput({ value, onValueChange, maxLength, isDisabled = f
 
   useEffect(() => stop, [stop]);
 
-  return { supported, listening, error, start, stop, toggle };
+  return { supported, listening, capturing, error, start, stop, toggle };
 }
 
 export interface AiMicButtonProps {
@@ -147,8 +162,10 @@ export interface AiMicButtonProps {
 }
 
 /**
- * The mic at the right end of an AI input, before Send (`.zc-ai-mic`): ink when idle, a pulsing red disc while
- * listening. Pressing it keeps the focus in the field. Unsupported browsers show it dimmed with the reason on hover.
+ * The mic at the right end of an AI input, before Send (`.zc-ai-mic`). Idle: an ink mic. Listening: the same button
+ * widens into a soft pill with a live waveform of the user's voice and a round stop button (press anywhere on it to
+ * stop). One element in both states, so keyboard focus stays put; pressing it keeps the focus in the field.
+ * Unsupported browsers show it dimmed with the reason on hover.
  */
 export function AiMicButton({ speech, isDisabled = false, className }: AiMicButtonProps) {
   const unavailable = !speech.supported || isDisabled;
@@ -168,7 +185,107 @@ export function AiMicButton({ speech, isDisabled = false, className }: AiMicButt
         if (!unavailable) speech.toggle();
       }}
     >
-      <IconMic aria-hidden />
+      {speech.listening ? (
+        <>
+          <VoiceWave live={speech.capturing} />
+          <span aria-hidden className="zc-ai-mic__stop" />
+        </>
+      ) : (
+        <IconMic aria-hidden />
+      )}
     </button>
+  );
+}
+
+// ─── Live waveform ───────────────────────────────────────────────────────────
+
+const WAVE_BARS = 12;
+/** A new column every this many ms: the wave scrolls right to left like a recorder. */
+const WAVE_STEP_MS = 70;
+/** Quietest bar (a dot) and how much voice lifts it. */
+const WAVE_FLOOR = 0.14;
+const WAVE_GAIN = 5;
+
+/**
+ * Bars that follow the microphone's loudness, newest on the right. Speech recognition does not share its levels, so
+ * this opens its own audio stream, but only once recognition has the mic (`live`), so the two never race for it.
+ * Until then, without audio access, or with reduced motion, the bars show a calm CSS ripple / still dots.
+ */
+function VoiceWave({ live }: { live: boolean }) {
+  const barsRef = useRef<HTMLSpanElement>(null);
+  const [levels, setLevels] = useState(false);
+
+  useEffect(() => {
+    if (!live) return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || !navigator.mediaDevices?.getUserMedia) return;
+    let cancelled = false;
+    let frame = 0;
+    let stream: MediaStream | null = null;
+    let context: AudioContext | null = null;
+
+    void navigator.mediaDevices
+      .getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+      .then((media) => {
+        if (cancelled) {
+          media.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        stream = media;
+        context = new AudioContext();
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 512;
+        context.createMediaStreamSource(media).connect(analyser);
+        const samples = new Uint8Array(analyser.fftSize);
+        const history = Array.from({ length: WAVE_BARS }, () => 0);
+        let peak = 0;
+        let last = 0;
+        setLevels(true);
+
+        const tick = (now: number) => {
+          analyser.getByteTimeDomainData(samples);
+          let sum = 0;
+          for (const sample of samples) {
+            const centred = (sample - 128) / 128;
+            sum += centred * centred;
+          }
+          // Loudest moment since the last column, so short syllables still show.
+          peak = Math.max(peak, Math.min(1, Math.sqrt(sum / samples.length) * WAVE_GAIN));
+          if (now - last >= WAVE_STEP_MS) {
+            last = now;
+            history.shift();
+            history.push(peak);
+            peak = 0;
+            const bars = barsRef.current?.children;
+            if (bars) {
+              for (let index = 0; index < bars.length; index += 1) {
+                const level = WAVE_FLOOR + (1 - WAVE_FLOOR) * (history[index] ?? 0);
+                (bars[index] as HTMLElement).style.transform = `scaleY(${level.toFixed(3)})`;
+              }
+            }
+          }
+          frame = requestAnimationFrame(tick);
+        };
+        frame = requestAnimationFrame(tick);
+      })
+      .catch(() => {
+        // No level access: the CSS ripple stands in.
+      });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+      stream?.getTracks().forEach((track) => track.stop());
+      void context?.close().catch(() => undefined);
+      setLevels(false);
+    };
+  }, [live]);
+
+  return (
+    <span ref={barsRef} aria-hidden className="zc-ai-mic__wave" data-live={levels || undefined}>
+      {Array.from({ length: WAVE_BARS }, (_, index) => (
+        <span key={index} className="zc-ai-mic__bar" />
+      ))}
+    </span>
   );
 }
