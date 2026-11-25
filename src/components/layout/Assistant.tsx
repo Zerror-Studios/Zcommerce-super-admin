@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { AiFeedback, AiThinking } from "../ui/Ai";
+import { AiMicButton, useSpeechInput } from "../ui/AiMic";
 import { Orb } from "../ui/Orb";
 import { Button } from "../ui/Button";
 import { cx } from "../ui/cx";
@@ -16,6 +17,7 @@ import { Drawer } from "../ui/Drawer";
 import { IconAdd, IconArrowRight, IconClose, IconMic } from "../ui/icons";
 import { IconButton } from "../ui/IconButton";
 import { DUR_2_S, EASE_OUT, spring } from "../ui/motion";
+import { requestVoiceOnOpen } from "../ui/speech-input";
 import { AI_SURFACE_LAYOUT_ID } from "./AiSheet";
 
 export interface AiAnswer {
@@ -77,7 +79,11 @@ export function AskBar({ placeholder = "Ask Zcom AI anything…", hidden = false
       <motion.button
         type="button"
         layoutId={AI_SURFACE_LAYOUT_ID}
-        onClick={() => onOpen()}
+        onClick={(event) => {
+          // The mic opens the chat box already listening (it can't be a button inside this button).
+          if ((event.target as Element).closest(".zc-ai-mic")) requestVoiceOnOpen();
+          onOpen();
+        }}
         onPointerEnter={() => {
           setHovered(true);
           onIntent?.();
@@ -102,9 +108,8 @@ export function AskBar({ placeholder = "Ask Zcom AI anything…", hidden = false
           <Orb size="bar" state={hovered && !hidden ? "listening" : "idle"} />
           <span className="zc-askbar__placeholder">{placeholder}</span>
           {lockedPlan ? <span className="zc-askbar__chip">{lockedPlan}</span> : null}
-          {/* Voice input (owner, 2026-11-21): the mic shows in every AI input; it does nothing yet, so it is a
-            picture, not a button. */}
-          <span aria-hidden className="zc-ai-mic">
+          {/* Voice input (owner, 2026-11-25): a click here opens the chat box listening (AiComposer). */}
+          <span aria-hidden className="zc-ai-mic" title="Speak your question">
             <IconMic />
           </span>
         </motion.span>
@@ -140,6 +145,7 @@ export function AssistantPanel({
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const speech = useSpeechInput({ value: draft, onValueChange: setDraft, isDisabled: busy });
   const endRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -254,9 +260,7 @@ export function AssistantPanel({
               className="min-h-10 flex-1 resize-none bg-transparent px-1 text-body text-fg outline-hidden placeholder:text-fg-placeholder max-md:text-base"
               style={{ boxShadow: "none" }}
             />
-            <span aria-hidden className="zc-ai-mic mb-1.5">
-              <IconMic />
-            </span>
+            <AiMicButton speech={speech} isDisabled={busy} className="mb-1.5" />
             <button
               type="submit"
               aria-label="Send"

@@ -33,7 +33,8 @@ import { Button } from "../ui/Button";
 import { Orb, type OrbState } from "../ui/Orb";
 import { cx } from "../ui/cx";
 import { IconButton } from "../ui/IconButton";
-import { IconAdd, IconArrowRight, IconClose, IconMaximize, IconMic, IconMinimize } from "../ui/icons";
+import { AiMicButton, useSpeechInput } from "../ui/AiMic";
+import { IconAdd, IconArrowRight, IconClose, IconMaximize, IconMinimize } from "../ui/icons";
 import { DUR_1_S, DUR_2_S, DUR_3_S, EXIT_S, spring } from "../ui/motion";
 import { useIsPhone } from "../ui/use-media";
 
@@ -510,6 +511,7 @@ export interface AiComposerProps {
 /**
  * The Zcom AI reply box (board 46): a pill field (16px text) with a round blue send button, and one small centred
  * line under it ("Zcom can make mistakes. It asks before changing anything."). Enter sends, Shift+Enter adds a line.
+ * The mic before Send dictates into the field (AiMic.tsx); the Ask bar's mic opens the box already listening.
  */
 export function AiComposer({
   value,
@@ -526,9 +528,18 @@ export function AiComposer({
   note,
   meta,
 }: AiComposerProps) {
+  const speech = useSpeechInput({
+    value,
+    onValueChange,
+    maxLength,
+    isDisabled: isDisabled || hideField,
+    takeAskBarRequest: true,
+  });
   const send = (event?: { preventDefault: () => void }) => {
     event?.preventDefault();
-    if (canSend && !isDisabled) onSubmit();
+    if (!canSend || isDisabled) return;
+    speech.stop();
+    onSubmit();
   };
   return (
     <div className="zc-ai-composer">
@@ -549,11 +560,7 @@ export function AiComposer({
             aria-label={ariaLabel}
             className="zc-ai-composer__input"
           />
-          {/* Voice input (owner, 2026-11-21): the mic shows in every AI input; it does nothing yet, so it is a
-          picture, not a button. */}
-          <span aria-hidden className="zc-ai-mic zc-ai-composer__mic">
-            <IconMic />
-          </span>
+          <AiMicButton speech={speech} isDisabled={isDisabled} className="zc-ai-composer__mic" />
           <button type="submit" aria-label="Send" disabled={!canSend || isDisabled} className="zc-ai-composer__send">
             <IconArrowRight aria-hidden className="-rotate-90" />
           </button>

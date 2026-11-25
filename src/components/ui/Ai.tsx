@@ -6,6 +6,7 @@
  * While a request runs the card edge rotates (.ai-live).
  */
 import { useState, type ReactNode } from "react";
+import { AiMicButton, useSpeechInput } from "./AiMic";
 import { Button } from "./Button";
 import { cx } from "./cx";
 import { IconSend, IconCheck, IconClose, IconEdit, IconUndo } from "./icons";
@@ -339,7 +340,7 @@ export interface AiAskInputProps {
   className?: string;
 }
 
-/** 40px ask field: pencil icon, placeholder, dark 28px send button (09 §2A row 4). Enter sends. */
+/** 40px ask field: pencil icon, placeholder, mic (AiMic.tsx), dark 28px send button (09 §2A row 4). Enter sends. */
 export function AiAskInput({
   onSend,
   placeholder = "Ask for changes — shorter, add care notes, add sizing…",
@@ -347,9 +348,11 @@ export function AiAskInput({
   className,
 }: AiAskInputProps) {
   const [value, setValue] = useState("");
+  const speech = useSpeechInput({ value, onValueChange: setValue, isDisabled });
   const send = () => {
     const prompt = value.trim();
     if (!prompt || isDisabled) return;
+    speech.stop();
     onSend(prompt);
     setValue("");
   };
@@ -375,6 +378,7 @@ export function AiAskInput({
         aria-label={placeholder}
         className="min-w-0 flex-1 bg-transparent text-body text-fg outline-none focus-visible:shadow-none max-md:text-base"
       />
+      <AiMicButton speech={speech} isDisabled={isDisabled} className="zc-ai-mic--sm" />
       <button
         type="button"
         aria-label="Send"

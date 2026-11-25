@@ -1197,11 +1197,33 @@ body:has([aria-modal="true"]) .zc-askbar-slot { opacity: 0; visibility: hidden; 
 }
 .zc-ai-composer__send svg { width: 18px; height: 18px; }
 .zc-ai-composer__send:disabled { opacity: 0.4; cursor: not-allowed; }
-/* The mic in every AI input (owner, 2026-11-21): an ink 22px filled microphone at the right end, before Send. Voice input
-   isn't wired yet, so it is decorative. */
-.zc-ai-mic { display: inline-grid; flex: none; place-items: center; width: 28px; height: 28px; color: var(--zc-fg); }
+/* The mic in every AI input (owner, 2026-11-21; voice input wired 2026-11-25, AiMic.tsx): an ink 22px filled
+   microphone at the right end, before Send. While listening it is a red disc with a soft pulse; dimmed when the browser
+   has no speech recognition. */
+.zc-ai-mic {
+  display: inline-grid; flex: none; place-items: center; width: 28px; height: 28px; padding: 0; border: 0;
+  border-radius: var(--zc-radius-circle); background: transparent; color: var(--zc-fg);
+  transition: background-color var(--zc-dur-fast) var(--zc-ease), color var(--zc-dur-fast) var(--zc-ease);
+}
 .zc-ai-mic svg { width: 22px; height: 22px; }
+button.zc-ai-mic { cursor: pointer; }
+button.zc-ai-mic:focus-visible { outline: none; box-shadow: var(--zc-focus-ring-strong); }
+@media (hover: hover) { button.zc-ai-mic:hover:not([aria-disabled="true"]):not([data-listening]) { background: var(--zc-ghost-hover-bg); } }
+.zc-ai-mic[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+.zc-ai-mic[data-error] { color: var(--zc-danger-text); }
+.zc-ai-mic[data-listening] { background: var(--zc-danger); color: var(--zc-on-primary); animation: zc-ai-mic-pulse 1.4s ease-out infinite; }
+.zc-ai-mic[data-listening] svg { width: 16px; height: 16px; }
+@keyframes zc-ai-mic-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--zc-danger) 45%, transparent); }
+  100% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--zc-danger) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .zc-ai-mic[data-listening] { animation: none; } }
 .zc-ai-composer__mic { height: 40px; }
+.zc-ai-composer__mic[data-listening] { height: 32px; width: 32px; }
+.zc-ai-mic--sm svg { width: 18px; height: 18px; }
+.zc-ai-mic--sm[data-listening] svg { width: 14px; height: 14px; }
+/* On the Ask bar the mic is part of the bar's button (a click there opens the box listening). */
+.zc-askbar .zc-ai-mic { cursor: pointer; }
 .zc-ai-composer__send:focus-visible { outline: none; box-shadow: var(--zc-focus-ring-strong); }
 @media (hover: hover) { .zc-ai-composer__send:hover:not(:disabled) { background: var(--zc-primary-hover); } }
 .zc-ai-composer__foot {
