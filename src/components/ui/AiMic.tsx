@@ -6,7 +6,8 @@
  *
  * - Speech is added after what is already typed; the field shows the live guess and settles as phrases finish.
  * - Typing, sending, or the field turning disabled ends listening, so speech never lands on top of an edit.
- * - It keeps listening through pauses until the mic is pressed again (or the browser ends the session).
+ * - It keeps listening through pauses (restarting the browser's run when it ends on its own) until the mic is pressed
+ *   again, the user types or sends, or a minute passes without a word.
  */
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { cx } from "./cx";
@@ -46,6 +47,12 @@ export interface UseSpeechInputOptions {
   takeAskBarRequest?: boolean;
 }
 
+/** Listening stops by itself after this long without hearing a word (a forgotten open mic). */
+const SILENCE_LIMIT_MS = 60_000;
+/** A run that ends this fast counts as a failed start; this many in a row ends the session with an error. */
+const QUICK_END_MS = 1_000;
+const QUICK_END_LIMIT = 3;
+
 export function useSpeechInput({ value, onValueChange, maxLength, isDisabled = false, takeAskBarRequest = false }: UseSpeechInputOptions): SpeechInput {
   const [supported] = useState(() => getSpeechRecognition() !== null);
   const [listening, setListening] = useState(false);
@@ -59,7 +66,11 @@ export function useSpeechInput({ value, onValueChange, maxLength, isDisabled = f
     latest.current = { value, onValueChange, maxLength, isDisabled };
   });
 
+  /** The listening session the user started; null once they stop it (or it ends on an error). */
+  const session = useRef<{ heardAt: number; quickEnds: number } | null>(null);
+
   const stop = useCallback(() => {
+    session.current = null;
     const active = recognition.current;
     recognition.current = null;
     written.current = null;
@@ -67,6 +78,7 @@ export function useSpeechInput({ value, onValueChange, maxLength, isDisabled = f
       active.onresult = null;
       active.onerror = null;
       active.onend = null;
+      active.onaudiostart = null;
       try {
         active.abort();
       } catch {
@@ -79,65 +91,86 @@ export function useSpeechInput({ value, onValueChange, maxLength, isDisabled = f
 
   const start = useCallback(() => {
     const Recognition = getSpeechRecognition();
-    if (!Recognition || recognition.current || latest.current.isDisabled) return;
-    const typed = latest.current.value;
-    const active = new Recognition();
-    active.lang = speechLang();
-    active.continuous = true;
-    active.interimResults = true;
-    active.maxAlternatives = 1;
-    active.onresult = (event) => {
-      if (recognition.current !== active) return;
-      const next = joinSpoken(typed, spokenText(event.results), latest.current.maxLength);
-      written.current = next;
-      latest.current.onValueChange(next);
-    };
-    active.onaudiostart = () => {
-      if (recognition.current === active) setCapturing(true);
-    };
-    active.onerror = (event) => {
-      if (import.meta.env.DEV) console.warn("[voice input] recognition error:", event.error);
-      if (recognition.current !== active) return;
-      const problem = speechErrorOf(event.error);
-      if (!problem) return;
+    if (!Recognition || session.current || latest.current.isDisabled) return;
+    session.current = { heardAt: Date.now(), quickEnds: 0 };
+    setError(null);
+    setListening(true);
+
+    const fail = (problem: SpeechError) => {
+      stop();
       setError(problem);
       toast.error(speechErrorMessage(problem));
     };
-    active.onend = () => {
-      if (recognition.current !== active) return;
-      recognition.current = null;
-      written.current = null;
-      setListening(false);
-      setCapturing(false);
+
+    // Browsers end a recognition run on their own after a pause (Chrome after a few seconds of silence, and every
+    // minute or so anyway). While the user hasn't pressed stop, a new run picks up from the text in the field.
+    const listen = (typed: string) => {
+      const active = new Recognition();
+      const startedAt = Date.now();
+      active.lang = speechLang();
+      active.continuous = true;
+      active.interimResults = true;
+      active.maxAlternatives = 1;
+      active.onresult = (event) => {
+        if (recognition.current !== active) return;
+        if (session.current) session.current.heardAt = Date.now();
+        const next = joinSpoken(typed, spokenText(event.results), latest.current.maxLength);
+        written.current = next;
+        latest.current.onValueChange(next);
+      };
+      active.onaudiostart = () => {
+        if (recognition.current === active) setCapturing(true);
+      };
+      active.onerror = (event) => {
+        if (import.meta.env.DEV) console.warn("[voice input] recognition error:", event.error);
+        if (recognition.current !== active) return;
+        const problem = speechErrorOf(event.error);
+        // Silence is normal mid-dictation: the run ends and the next one keeps listening.
+        if (problem && problem !== "no-speech") fail(problem);
+      };
+      active.onend = () => {
+        if (recognition.current !== active) return;
+        recognition.current = null;
+        const current = session.current;
+        if (!current) return;
+        const now = Date.now();
+        current.quickEnds = now - startedAt < QUICK_END_MS ? current.quickEnds + 1 : 0;
+        if (current.quickEnds >= QUICK_END_LIMIT) {
+          fail("failed");
+          return;
+        }
+        if (now - current.heardAt > SILENCE_LIMIT_MS || latest.current.isDisabled) {
+          stop();
+          return;
+        }
+        listen(written.current ?? latest.current.value);
+      };
+      recognition.current = active;
+      written.current = typed;
+      try {
+        active.start();
+      } catch (cause) {
+        if (import.meta.env.DEV) console.warn("[voice input] could not start:", cause);
+        recognition.current = null;
+        fail("failed");
+      }
     };
-    recognition.current = active;
-    written.current = typed;
-    setError(null);
-    setListening(true);
-    try {
-      active.start();
-    } catch (cause) {
-      if (import.meta.env.DEV) console.warn("[voice input] could not start:", cause);
-      recognition.current = null;
-      written.current = null;
-      setListening(false);
-      setError("failed");
-      toast.error(speechErrorMessage("failed"));
-    }
-  }, []);
+
+    listen(latest.current.value);
+  }, [stop]);
 
   const toggle = useCallback(() => {
-    if (recognition.current) stop();
+    if (session.current) stop();
     else start();
   }, [start, stop]);
 
   // Typing, sending (the field clears) or any other outside change ends listening.
   useEffect(() => {
-    if (recognition.current && written.current !== null && value !== written.current) stop();
+    if (session.current && written.current !== null && value !== written.current) stop();
   }, [value, stop]);
 
   useEffect(() => {
-    if (isDisabled && recognition.current) stop();
+    if (isDisabled && session.current) stop();
   }, [isDisabled, stop]);
 
   // The Ask bar's mic opened this field: listen straight away. Taken in a timeout so React's dev double mount

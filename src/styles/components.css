@@ -1217,7 +1217,8 @@ button.zc-ai-mic:focus-visible { outline: none; box-shadow: var(--zc-focus-ring-
   height: 32px; padding: 0 4px 0 12px; background: var(--zc-surface-sunken);
   animation: zc-ai-mic-in var(--zc-dur-fast) var(--zc-ease);
 }
-@media (hover: hover) { button.zc-ai-mic[data-listening]:hover { background: var(--zc-ghost-hover-bg); } }
+@media (hover: hover) { button.zc-ai-mic[data-listening]:hover { background: var(--zc-ghost-pressed-bg); } }
+button.zc-ai-mic:active:not([aria-disabled="true"]) { background: var(--zc-ghost-pressed-bg); }
 .zc-ai-mic__wave { display: inline-flex; align-items: center; gap: 2px; height: 18px; }
 .zc-ai-mic__bar {
   width: 2px; height: 100%; border-radius: 1px; background: currentColor;
@@ -1239,7 +1240,11 @@ button.zc-ai-mic:focus-visible { outline: none; box-shadow: var(--zc-focus-ring-
   .zc-ai-mic[data-listening], .zc-ai-mic__wave .zc-ai-mic__bar { animation: none; transition: none; }
   .zc-ai-mic__wave .zc-ai-mic__bar:nth-child(odd) { transform: scaleY(0.4); }
 }
-.zc-ai-composer__mic:not([data-listening]) { height: 40px; }
+/* In the Zcom AI reply box the mic matches Send (40px): a round hover when idle, a 40px pill while listening, so
+   both sit on the same centre line. */
+.zc-ai-composer__mic { min-width: 40px; height: 40px; }
+.zc-ai-composer__mic[data-listening] { height: 40px; padding: 0 6px 0 14px; gap: 10px; }
+.zc-ai-composer__mic .zc-ai-mic__stop { width: 28px; height: 28px; }
 .zc-ai-mic--sm > svg { width: 18px; height: 18px; }
 .zc-ai-mic--sm[data-listening] { height: 28px; padding-left: 10px; }
 .zc-ai-mic--sm .zc-ai-mic__wave { height: 14px; }
