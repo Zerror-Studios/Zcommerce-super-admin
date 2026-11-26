@@ -1940,14 +1940,14 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 .zc-hero__date { font: 400 12px/16px var(--zc-font-mono); letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75; }
 .zc-hero__actions { display: flex; align-items: center; gap: 8px; }
 /* Hero actions are ordinary G10 buttons (on-dark for the main one); no contextual size or colour override. */
-/* Compact card (owner, 2026-11-21): the greeting sits right under the date row, one line, no fixed height. Back to the
-   46px greeting with a little more air around it (owner, 2026-11-26: 38px looked cluttered). */
-.zc-hero__greeting { margin: 8px 0 0; font-size: 46px; line-height: 52px; font-weight: 300; letter-spacing: -0.035em; color: white; }
+/* Greeting as on the v2 board (owner, 2026-11-26; the 2026-11-21 compact one-line 38px version looked cluttered):
+   46px, "Good morning," then the name on its own line, with room above and below. No fixed height. */
+.zc-hero__greeting { margin: 26px 0 0; font-size: 46px; line-height: 52px; font-weight: 300; letter-spacing: -0.035em; color: white; }
 .zc-hero__greeting b { font-weight: 600; }
-.zc-hero__summary { display: flex; align-items: center; gap: 10px; max-width: 100%; margin-top: 10px; font-size: 15px; line-height: 22px; }
+.zc-hero__summary { display: flex; align-items: center; gap: 10px; max-width: 100%; margin-top: 12px; font-size: 15px; line-height: 22px; }
 /* One line from tablet up ("…" + the full text on hover); phones wrap (below). */
 .zc-hero__summary p { min-width: 0; opacity: 0.92; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.zc-hero__bottom { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: auto; padding-top: 20px; }
+.zc-hero__bottom { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: auto; padding-top: 22px; }
 .zc-hero__chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .zc-hero__chip {
   display: inline-flex; flex: none; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: var(--zc-radius-pill);
@@ -1978,8 +1978,9 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
   .zc-hero__date { display: none; }
   .zc-hero__top { min-height: 0; justify-content: flex-end; }
   .zc-hero__top:not(:has(.zc-hero__actions)) { display: none; }
-  .zc-hero__greeting { margin-top: 12px; font-size: 32px; line-height: 38px; }
+  .zc-hero__greeting { margin-top: 12px; font-size: 28px; line-height: 34px; }
   .zc-hero__top:not(:has(.zc-hero__actions)) + .zc-hero__greeting { margin-top: 0; }
+  .zc-hero__greeting br { display: none; }
   .zc-hero__summary { font-size: 14px; line-height: 20px; }
   .zc-hero__summary p { white-space: normal; }
   .zc-hero__tab { height: calc(var(--zc-control-h-touch) - 10px); }
