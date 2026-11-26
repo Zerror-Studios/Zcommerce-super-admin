@@ -1,8 +1,8 @@
 /**
  * Store detail › Billing (design v2 board 61-SA-Store-Billing; 04 S-03d), merged with the old Subscription
  * section; also the page a Subscriptions row opens. Two columns:
- * - main: Current plan (Create custom plan and Change plan at its top right), why the store is in its billing state,
- *   payments, invoices and reminders, and credits;
+ * - main: Current plan (Create custom plan and Change plan at its top right), payments, invoices and reminders, why
+ *   the store is in its billing state, and credits;
  * - side: Plan limits (usage against the plan), Adjust (round 2 §6.3: a list of rows, Cancel subscription set
  *   apart in red; Grace period opens its pop-up from there, owner 2026-11-26) and Payment status.
  */
@@ -115,9 +115,10 @@ export function StoreBillingSection({
             onCreateCustomPlan={onCreateCustomPlan}
             onChangePlan={onChangePlan}
           />
-          {/* PRD-025 FR-6.3: why the store is in its billing state, since when, and its payment app. */}
-          <StoreBillingStateCard tenantId={client.id} subscription={subscription} />
           <StorePaymentsCard client={client} subscription={subscription} lifecycleHref={lifecycleHref} />
+          {/* PRD-025 FR-6.3: why the store is in its billing state, since when, and its payment app (below the
+              payments, owner 2026-11-26). */}
+          <StoreBillingStateCard tenantId={client.id} subscription={subscription} />
           <StoreCreditsCard client={client} />
         </div>
 
