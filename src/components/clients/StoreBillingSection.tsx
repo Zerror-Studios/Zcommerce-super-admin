@@ -2,9 +2,9 @@
  * Store detail › Billing (design v2 board 61-SA-Store-Billing; 04 S-03d), merged with the old Subscription
  * section; also the page a Subscriptions row opens. Two columns:
  * - main: Current plan (Create custom plan and Change plan at its top right), payments, invoices and reminders, why
- *   the store is in its billing state, and credits;
- * - side: Plan limits (usage against the plan), Adjust (round 2 §6.3: a list of rows, Cancel subscription set
- *   apart in red; Grace period opens its pop-up from there, owner 2026-11-26) and Payment status.
+ *   the store is in its billing state, credits, and Plan limits (usage against the plan) last;
+ * - side: Payment status, then Adjust (round 2 §6.3: a list of rows, Cancel subscription set apart in red; Grace
+ *   period opens its pop-up from there). Order set by the owner, 2026-11-26.
  */
 import type { Client, Subscription } from "../../types";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
@@ -120,12 +120,13 @@ export function StoreBillingSection({
               payments, owner 2026-11-26). */}
           <StoreBillingStateCard tenantId={client.id} subscription={subscription} />
           <StoreCreditsCard client={client} />
+          {/* Plan limits last in the main column (owner, 2026-11-26). */}
+          <ClientUsageTab client={client} />
         </div>
 
         <div className="flex min-w-0 flex-col gap-4">
-          <ClientUsageTab client={client} />
-          <AdjustCard actions={adjustActions} values={{ grace: gracePeriodSummary(client, defaultGracePeriodDays) }} />
           <PaymentStatusCard client={client} subscription={subscription} defaultGracePeriodDays={defaultGracePeriodDays} />
+          <AdjustCard actions={adjustActions} values={{ grace: gracePeriodSummary(client, defaultGracePeriodDays) }} />
         </div>
       </div>
 
