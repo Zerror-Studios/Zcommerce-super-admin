@@ -4,7 +4,7 @@
  * The store's staff from `platformTenantStaff(tenantId)` (owner first, then by name; the same people the store's
  * Settings › Team lists): a grey avatar with name and email, the role (owner first), the status, an "Invite
  * pending" chip for people who haven't set a password yet, and when they were last active (amber after 30 days).
- * Above the table: the seat line (people on the team against the plan's staff limit) and a search box.
+ * Above the table, one row: the seat line (people on the team against the plan's staff limit) and the search box.
  *
  * Not shown on purpose: the board's Two-step column and its warning banner. Store staff have no two-step login yet
  * (`twoFactorEnabled` is always false), so a column would only ever say "Off".
@@ -195,7 +195,6 @@ export function StoreTeamTab({ client }: { client: Client }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {seatLine ? <p className="num text-body text-fg-muted">{seatLine}</p> : null}
       <DataTable<PlatformTenantStaffMember>
         aria-label={`${client.storeName} team`}
         columns={COLUMNS}
@@ -206,7 +205,11 @@ export function StoreTeamTab({ client }: { client: Client }) {
         isLoading={query.loading && !query.data}
         isReloading={query.loading && !!query.data}
         toolbar={
-          <TableToolbar<string> search={search} onSearchChange={setSearch} searchPlaceholder="Search people" />
+          // The seat line on the left of the search row (owner, 2026-11-26), not a line of its own above it.
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {seatLine ? <p className="num min-w-0 flex-1 text-body text-fg-muted">{seatLine}</p> : null}
+            <TableToolbar<string> search={search} onSearchChange={setSearch} searchPlaceholder="Search people" className="ml-auto" />
+          </div>
         }
         emptyContent={
           term ? (
