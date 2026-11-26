@@ -3,7 +3,7 @@ import { addToast } from "@heroui/react";
 import { useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ClientActivityCard } from "../components/clients/ClientActivityCard";
-import { ClientAiCard } from "../components/clients/ClientAiCard";
+import { ClientAiCard, ClientAiQuestionsCard } from "../components/clients/ClientAiCard";
 import { ClientOverviewTab } from "../components/clients/ClientOverviewTab";
 import { ClientPerformanceCard } from "../components/clients/ClientPerformanceCard";
 import { IssueCreditDialog, RecordRefundDialog } from "../components/clients/ClientPlatformBilling";
@@ -616,6 +616,8 @@ export function ClientDetail() {
             <Section id="usage-history" title="Usage history" description="The monthly usage snapshots: the last daily snapshot of each month.">
               <ClientUsageHistory tenantId={client.id} />
             </Section>
+            {/* The store's most-asked questions last: the key facts come first (owner, 2026-11-26). */}
+            {canReadAi ? <ClientAiQuestionsCard tenantId={client.id} /> : null}
           </>
         ) : null}
 

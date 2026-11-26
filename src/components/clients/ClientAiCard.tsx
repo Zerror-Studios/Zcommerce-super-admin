@@ -58,9 +58,10 @@ export interface ClientAiCardProps {
 
 /**
  * Store detail › AI usage (PRD-021 FR-6.4, 04 S-03g; design v2 board 64-SA-Store-AI): the summary panel (this
- * month's questions, this week against the weekly limit, the cost to Zcom, tokens), then "What they asked" (the
- * store's most-asked questions) beside the AI pause and its limit overrides (empty = the plan's value) with Grant
- * questions. Reading the questions is audit-logged by the server, so they load only when the operator asks.
+ * month's questions, this week against the weekly limit, the cost to Zcom, tokens), then the AI pause and its limit
+ * overrides (empty = the plan's value) with Grant questions. "What they asked" (ClientAiQuestionsCard, the store's
+ * most-asked questions) is the tab's last card (owner, 2026-11-26: the key facts first). Reading the questions is
+ * audit-logged by the server, so they load only when the operator asks.
  * Changes need `platform:ai:manage`. Not shown (no data): actions done by AI, answers marked helpful, and where
  * in the store admin they ask.
  */
@@ -72,81 +73,64 @@ export function ClientAiCard({ client }: ClientAiCardProps) {
   const [pausing, setPausing] = useState(false);
   const [editing, setEditing] = useState(false);
   const [granting, setGranting] = useState(false);
-  const [showQuestions, setShowQuestions] = useState(false);
 
   return (
     <div className="@container flex flex-col gap-4">
       <MonthUsage tenantId={client.id} weeklyLimit={setting?.questionsPerWeek ?? null} />
 
-      <div className="grid grid-cols-1 items-start gap-4 @min-[64rem]:grid-cols-[minmax(0,1fr)_24rem]">
-        <Card
-          title="What they asked"
-          description="Masked excerpts from the last 30 days. Viewing them is recorded in the audit log."
-          actions={
-            !showQuestions ? (
-              <UiButton size="sm" variant="secondary" onPress={() => setShowQuestions(true)}>
-                Show questions
+      <Card
+        title={
+          <span className="flex flex-wrap items-center gap-2">
+            Status and limits
+            {setting ? (
+              setting.paused ? <Chip tone="warning">Paused</Chip> : <Chip tone="success">AI on</Chip>
+            ) : api.loading ? (
+              <SkelChip />
+            ) : null}
+          </span>
+        }
+        description={
+          setting?.paused && setting.pausedReason
+            ? setting.pausedReason
+            : "Ask Zcom limits for this store. Empty limits use the plan's values."
+        }
+        actions={
+          canManage && setting ? (
+            <div className="flex flex-wrap gap-2">
+              <UiButton size="sm" variant="secondary" onPress={() => setGranting(true)}>
+                Grant questions
               </UiButton>
-            ) : undefined
-          }
-        >
-          {showQuestions ? <TopQuestions tenantId={client.id} /> : null}
-        </Card>
-
-        <Card
-          title={
-            <span className="flex flex-wrap items-center gap-2">
-              Status and limits
-              {setting ? (
-                setting.paused ? <Chip tone="warning">Paused</Chip> : <Chip tone="success">AI on</Chip>
-              ) : api.loading ? (
-                <SkelChip />
-              ) : null}
-            </span>
-          }
-          description={
-            setting?.paused && setting.pausedReason
-              ? setting.pausedReason
-              : "Ask Zcom limits for this store. Empty limits use the plan's values."
-          }
-          actions={
-            canManage && setting ? (
-              <div className="flex flex-wrap gap-2">
-                <UiButton size="sm" variant="secondary" onPress={() => setGranting(true)}>
-                  Grant questions
-                </UiButton>
-                <UiButton size="sm" variant="secondary" onPress={() => setEditing(true)}>
-                  Edit limits
-                </UiButton>
-                <UiButton size="sm" variant="secondary" onPress={() => setPausing(true)}>
-                  {setting.paused ? "Resume AI" : "Pause AI"}
-                </UiButton>
-              </div>
-            ) : null
-          }
-        >
-          {api.error ? (
-            <ErrorState inline title="Couldn't load this store's AI setting." onRetry={() => void api.refetch()} />
-          ) : api.loading || !setting ? (
-            // Loading pass: the three limits with their labels, the values as placeholders.
-            <KeyValueGrid columns={1}>
-              {["Questions per week", "Claude connector calls per week", "Monthly token budget"].map((label) => (
-                <KeyValue key={label} label={label}>
-                  <SkelLine className="w-32" />
-                </KeyValue>
-              ))}
-            </KeyValueGrid>
-          ) : (
-            <KeyValueGrid columns={1}>
-              <KeyValue label="Questions per week">{aiOverrideLabel(setting.questionsPerWeek, "questions")}</KeyValue>
-              <KeyValue label="Claude connector calls per week">
-                {aiOverrideLabel(setting.connectorCallsPerWeek, "calls")}
+              <UiButton size="sm" variant="secondary" onPress={() => setEditing(true)}>
+                Edit limits
+              </UiButton>
+              <UiButton size="sm" variant="secondary" onPress={() => setPausing(true)}>
+                {setting.paused ? "Resume AI" : "Pause AI"}
+              </UiButton>
+            </div>
+          ) : null
+        }
+      >
+        {api.error ? (
+          <ErrorState inline title="Couldn't load this store's AI setting." onRetry={() => void api.refetch()} />
+        ) : api.loading || !setting ? (
+          // Loading pass: the three limits with their labels, the values as placeholders.
+          <KeyValueGrid columns={3}>
+            {["Questions per week", "Claude connector calls per week", "Monthly token budget"].map((label) => (
+              <KeyValue key={label} label={label}>
+                <SkelLine className="w-32" />
               </KeyValue>
-              <KeyValue label="Monthly token budget">{aiOverrideLabel(setting.monthlyTokenBudget, "tokens")}</KeyValue>
-            </KeyValueGrid>
-          )}
-        </Card>
-      </div>
+            ))}
+          </KeyValueGrid>
+        ) : (
+          <KeyValueGrid columns={3}>
+            <KeyValue label="Questions per week">{aiOverrideLabel(setting.questionsPerWeek, "questions")}</KeyValue>
+            <KeyValue label="Claude connector calls per week">
+              {aiOverrideLabel(setting.connectorCallsPerWeek, "calls")}
+            </KeyValue>
+            <KeyValue label="Monthly token budget">{aiOverrideLabel(setting.monthlyTokenBudget, "tokens")}</KeyValue>
+          </KeyValueGrid>
+        )}
+      </Card>
 
       {/* Mounted only while open, so each opening starts from the saved values. */}
       {setting && pausing ? (
@@ -160,6 +144,29 @@ export function ClientAiCard({ client }: ClientAiCardProps) {
         onClose={() => setGranting(false)}
       />
     </div>
+  );
+}
+
+/**
+ * Store detail › AI usage › What they asked: the store's most-asked questions, masked, from the last 30 days. Last on
+ * the tab; loaded only on "Show questions" because the server audit-logs the read.
+ */
+export function ClientAiQuestionsCard({ tenantId }: { tenantId: string }) {
+  const [showQuestions, setShowQuestions] = useState(false);
+  return (
+    <Card
+      title="What they asked"
+      description="Masked excerpts from the last 30 days. Viewing them is recorded in the audit log."
+      actions={
+        !showQuestions ? (
+          <UiButton size="sm" variant="secondary" onPress={() => setShowQuestions(true)}>
+            Show questions
+          </UiButton>
+        ) : undefined
+      }
+    >
+      {showQuestions ? <TopQuestions tenantId={tenantId} /> : null}
+    </Card>
   );
 }
 
