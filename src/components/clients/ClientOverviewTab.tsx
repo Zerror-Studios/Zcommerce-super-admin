@@ -1,5 +1,5 @@
 import { useQuery } from "@apollo/client";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { Client, Subscription } from "../../types";
 import { PLATFORM_TENANT_HEALTH } from "../../graphql/store-profile";
 import { PLATFORM_STORE_SETUP } from "../../graphql/tenants";
@@ -35,6 +35,7 @@ import {
 import { IconTip } from "../ui/icons";
 import { SkelChip, SkelLine } from "../common/SkeletonBits";
 import { NotesCard } from "./NotesCard";
+import { StoreEditDialog } from "./StoreEditDialog";
 import { lastSyncOf, useStoreApps } from "./use-store-apps";
 
 export interface ClientOverviewTabProps {
@@ -109,12 +110,15 @@ function oneThingToDo(client: Client, subscription: Subscription | undefined): {
  *
  * Kept to what matters at a glance (owner, 2026-11-26): no activity list (Activity log tab), connected apps (Apps
  * tab), performance chart (AI usage tab, with Usage history) or the nightly health-signals card (Store health already
- * reads the same snapshot). The store's details and profile are edited in Settings. Plan usage against the limits is on the Billing tab (board 61 "Plan limits").
+ * reads the same snapshot). The store's details and profile are edited from the Store details card's Edit pop-up
+ * (StoreEditDialog) or in Settings. Plan usage against the limits is on the Billing tab (board 61 "Plan limits").
  *
  * Customers: the nightly usage snapshot's count (PRD-036 round 2 gaps); "—" until a snapshot has counted them.
  */
 export function ClientOverviewTab({ client, subscription, setup, goLive }: ClientOverviewTabProps) {
   const { can } = useAuth();
+  const canManage = can(PLATFORM_PERMISSIONS.TENANTS_MANAGE);
+  const [editing, setEditing] = useState(false);
   const health = getStoreHealth(client);
   // PRD-024 FR-2.1: null growth = nothing sold in the previous 30 days; no change to show.
   const growth = client.growthPercent;
@@ -281,9 +285,12 @@ export function ClientOverviewTab({ client, subscription, setup, goLive }: Clien
           <Card
             title="Store details"
             actions={
-              <ButtonLink variant="ghost" size="sm" to={`${base}/settings`}>
-                Edit
-              </ButtonLink>
+              // Edit opens the pop-up right here (owner, 2026-11-26), not the Settings tab.
+              canManage ? (
+                <Button variant="ghost" size="sm" onPress={() => setEditing(true)}>
+                  Edit
+                </Button>
+              ) : null
             }
           >
             <dl className="flex flex-col" aria-busy={profileLoading || undefined}>
@@ -394,6 +401,8 @@ export function ClientOverviewTab({ client, subscription, setup, goLive }: Clien
           <NotesCard client={client} />
         </div>
       </div>
+
+      {editing ? <StoreEditDialog client={client} onClose={() => setEditing(false)} /> : null}
     </div>
   );
 }

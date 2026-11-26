@@ -12,17 +12,9 @@
 import { addToast } from "@heroui/react";
 import { useState, type ReactNode } from "react";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
-import {
-  lifecycleFailureCopy,
-  storeDetailsDraftOf,
-  storeDetailsErrorsFromServer,
-  storeDetailsPatch,
-  validateStoreDetails,
-  type StoreDetailsDraft,
-  type StoreDetailsErrors,
-} from "../../lib/tenant-lifecycle.util";
+import { storeDetailsDraftOf, type StoreDetailsDraft } from "../../lib/tenant-lifecycle.util";
+import { useStoreDetailsForm, type StoreDetailsForm } from "../../hooks/use-store-edit-forms";
 import { useAuth } from "../../providers/AuthProvider";
-import { useClients } from "../../providers/ClientsProvider";
 import type { Client } from "../../types";
 import {
   Button as UiButton,
@@ -35,7 +27,6 @@ import {
   ModalFooter,
   ModalHeader,
   PopupTitle,
-  toastError,
 } from "../ui";
 import { IconEdit } from "../ui/icons";
 
@@ -125,42 +116,46 @@ const FIELDS: ReadonlyArray<{
   { key: "currency", label: "Currency", placeholder: "INR" },
 ];
 
+/** The store-details fields (two columns from sm), shared by the pop-up below and the Overview's Edit pop-up. */
+export function StoreDetailsFields({ form }: { form: StoreDetailsForm }) {
+  return (
+    <div className="flex flex-col gap-4">
+      {form.errors.form ? (
+        <p role="alert" className="text-label text-tone-danger-text">
+          {form.errors.form}
+        </p>
+      ) : null}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {FIELDS.map((field) => (
+          <Input
+            key={field.key}
+            label={field.label}
+            type={field.type}
+            placeholder={field.placeholder}
+            description={field.description}
+            value={form.draft[field.key]}
+            onValueChange={(value) => form.set(field.key, value)}
+            isInvalid={!!form.errors[field.key]}
+            errorMessage={form.errors[field.key]}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** The live Edit pop-up (md 640); also opened from the store header's "Edit store details". */
 export function StoreDetailsDialog({ client, onClose }: { client: Client; onClose: () => void }) {
-  const [initial] = useState<StoreDetailsDraft>(() => storeDetailsDraftOf(client));
-  const { updateStoreDetails } = useClients();
-  const [draft, setDraft] = useState<StoreDetailsDraft>(initial);
-  const [errors, setErrors] = useState<StoreDetailsErrors>({});
+  const form = useStoreDetailsForm(client);
   const [saving, setSaving] = useState(false);
-  const patch = storeDetailsPatch(initial, draft);
-  const changed = Object.keys(patch).length > 0;
-
-  const set = (key: keyof StoreDetailsDraft, value: string) => {
-    setDraft((current) => ({ ...current, [key]: value }));
-    setErrors((current) => ({ ...current, [key]: undefined, form: undefined }));
-  };
 
   const save = async () => {
-    const local = validateStoreDetails(draft, initial);
-    if (Object.keys(local).length > 0) {
-      setErrors(local);
-      return;
-    }
     setSaving(true);
-    try {
-      await updateStoreDetails(client.id, patch);
-      addToast({ title: `${draft.name.trim() || client.storeName} saved.` });
-      onClose();
-    } catch (error) {
-      const fieldErrors = storeDetailsErrorsFromServer(error);
-      if (fieldErrors) setErrors(fieldErrors);
-      else {
-        const message = lifecycleFailureCopy(error);
-        if (message) toastError(message);
-      }
-    } finally {
-      setSaving(false);
-    }
+    const saved = await form.save();
+    setSaving(false);
+    if (!saved) return;
+    addToast({ title: `${form.draft.name.trim() || client.storeName} saved.` });
+    onClose();
   };
 
   return (
@@ -171,26 +166,7 @@ export function StoreDetailsDialog({ client, onClose }: { client: Client; onClos
         </ModalHeader>
         <ModalBody>
           <div className="flex flex-col gap-4">
-            {errors.form ? (
-              <p role="alert" className="text-label text-tone-danger-text">
-                {errors.form}
-              </p>
-            ) : null}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {FIELDS.map((field) => (
-                <Input
-                  key={field.key}
-                  label={field.label}
-                  type={field.type}
-                  placeholder={field.placeholder}
-                  description={field.description}
-                  value={draft[field.key]}
-                  onValueChange={(value) => set(field.key, value)}
-                  isInvalid={!!errors[field.key]}
-                  errorMessage={errors[field.key]}
-                />
-              ))}
-            </div>
+            <StoreDetailsFields form={form} />
             <p className="text-caption text-fg-muted">
               The domain changes only through domain verification, in Go live.
             </p>
@@ -200,7 +176,7 @@ export function StoreDetailsDialog({ client, onClose }: { client: Client; onClos
           <UiButton variant="secondary" onPress={onClose} isDisabled={saving}>
             Cancel
           </UiButton>
-          <UiButton variant="primary" isLoading={saving} isDisabled={!changed} onPress={() => void save()}>
+          <UiButton variant="primary" isLoading={saving} isDisabled={!form.changed} onPress={() => void save()}>
             Save changes
           </UiButton>
         </ModalFooter>
