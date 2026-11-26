@@ -46,6 +46,9 @@ export interface ClientOverviewTabProps {
   goLive?: ReactNode;
 }
 
+/** Store details: the facts (two columns once there is room) and the owner on the right from 64rem. */
+const detailsClass = "grid grid-cols-1 items-start gap-x-6 gap-y-4 @min-[64rem]:grid-cols-[minmax(0,1fr)_20rem]";
+
 /** Main column + 26rem side column once the content is 64rem wide; one column below (§10 detail pages). */
 const columnsClass = "grid grid-cols-1 items-start gap-4 @min-[64rem]:grid-cols-[minmax(0,1fr)_26rem]";
 
@@ -102,10 +105,11 @@ function oneThingToDo(client: Client, subscription: Subscription | undefined): {
 
 /**
  * Store detail › Overview (design v2 §7, board 60-SA-Store; round 2 §6.3): the one thing to do and "Schedule a call",
- * the summary panel (Sales · 30d, Orders, Products live, Customers), then the main column (Store health: ring + Setup
+ * Store details, the summary panel (Sales · 30d, Orders, Products live, Customers), then the main column (Store health: ring + Setup
  * complete, Selling regularly, Team signs in, Payments, Google Analytics with Good / Failing / Stale chips; Setup as a
- * collapsible card; Go live until the store is live) and the side column (Store details, Plan & billing, Owner with
- * Email / WhatsApp, Notes for the team).
+ * collapsible card; Go live until the store is live) and the side column (Plan & billing, Notes for the team). Store
+ * details come first, one wide card: web address, category, location, region and currency, GSTIN, account manager,
+ * live since, and the owner with Email / WhatsApp (owner, 2026-11-26: no separate Owner card).
  *
  * Kept to what matters at a glance (owner, 2026-11-26): no activity list (Activity log tab), connected apps (Apps
  * tab), performance chart (AI usage tab, with Usage history) or the nightly health-signals card (Store health already
@@ -236,6 +240,91 @@ export function ClientOverviewTab({ client, subscription, setup, goLive }: Clien
         </NextStepLine>
       ) : null}
 
+      {/* Store details first (owner, 2026-11-26): the store's facts and its owner in one wide card. */}
+      <Card
+        title="Store details"
+        actions={
+          <ButtonLink variant="ghost" size="sm" to={`${base}/settings`}>
+            Edit
+          </ButtonLink>
+        }
+      >
+        <div className={detailsClass}>
+          <dl className="grid grid-cols-1 gap-x-8 @min-[40rem]:grid-cols-2" aria-busy={profileLoading || undefined}>
+            <Row label="Web address">
+              {client.domain ? (
+                <a href={`https://${client.domain}`} target="_blank" rel="noreferrer" className="text-brand hover:underline">
+                  {client.domain}
+                </a>
+              ) : null}
+            </Row>
+            <Row label="Category">
+              {profileLoading ? <SkelLine text="text-body" className="ml-auto w-20" /> : profile?.category ? storeProfileOptionLabel(profile.category) : null}
+            </Row>
+            <Row label="Location">
+              {profileLoading ? <SkelLine text="text-body" className="ml-auto w-24" /> : joinSet(", ", profile?.city, profile?.state)}
+            </Row>
+            <Row label="Region and currency">{joinSet(" · ", client.timezone, client.currency)}</Row>
+            {client.gstin ? (
+              <Row label="GSTIN">
+                <span className="num">{client.gstin}</span>
+              </Row>
+            ) : null}
+            <Row label="Account manager">
+              {profileLoading ? <SkelLine text="text-body" className="ml-auto w-24" /> : (profile?.accountManager?.name ?? null)}
+            </Row>
+            <Row label={client.liveAt ? "Live since" : "Planned go-live"}>
+              {client.liveAt
+                ? formatDate(client.liveAt)
+                : profileLoading
+                  ? <SkelLine text="text-body" className="ml-auto w-20" />
+                  : profile?.plannedLiveAt
+                    ? formatDate(profile.plannedLiveAt)
+                    : null}
+            </Row>
+          </dl>
+          <section aria-label="Owner" className="flex min-w-0 flex-col gap-3 border-t border-line-subtle pt-4 @min-[64rem]:border-t-0 @min-[64rem]:border-l @min-[64rem]:pt-0 @min-[64rem]:pl-6">
+            <h3 className="text-label text-fg-muted">Owner</h3>
+            <div className="flex flex-col gap-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar name={client.ownerName || client.storeName} size="lg" className="shrink-0" />
+                <div className="min-w-0">
+                  <p className="truncate text-body font-medium text-fg">{client.ownerName && client.ownerName !== "—" ? client.ownerName : "Not set"}</p>
+                  <p className="truncate text-label text-fg-muted">{ownerEmail ?? "No email"}</p>
+                  {client.ownerPhone ? <p className="truncate text-label text-fg-muted num">{client.ownerPhone}</p> : null}
+                </div>
+              </div>
+              {ownerEmail || client.ownerPhone ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {ownerEmail ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onPress={() => {
+                        window.location.href = `mailto:${ownerEmail}`;
+                      }}
+                    >
+                      Email
+                    </Button>
+                  ) : null}
+                  {client.ownerPhone ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onPress={() => {
+                        window.open(whatsappHref(client.ownerPhone ?? ""), "_blank", "noopener,noreferrer");
+                      }}
+                    >
+                      WhatsApp
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </section>
+        </div>
+      </Card>
+
       <SummaryPanel cells={cells} storageKey="store:overview" aria-label={`${client.storeName} summary`} />
 
       <div className={columnsClass}>
@@ -279,49 +368,6 @@ export function ClientOverviewTab({ client, subscription, setup, goLive }: Clien
 
         <div className="flex min-w-0 flex-col gap-4">
           <Card
-            title="Store details"
-            actions={
-              <ButtonLink variant="ghost" size="sm" to={`${base}/settings`}>
-                Edit
-              </ButtonLink>
-            }
-          >
-            <dl className="flex flex-col" aria-busy={profileLoading || undefined}>
-              <Row label="Web address">
-                {client.domain ? (
-                  <a href={`https://${client.domain}`} target="_blank" rel="noreferrer" className="text-brand hover:underline">
-                    {client.domain}
-                  </a>
-                ) : null}
-              </Row>
-              <Row label="Category">
-                {profileLoading ? <SkelLine text="text-body" className="ml-auto w-20" /> : profile?.category ? storeProfileOptionLabel(profile.category) : null}
-              </Row>
-              <Row label="Location">
-                {profileLoading ? <SkelLine text="text-body" className="ml-auto w-24" /> : joinSet(", ", profile?.city, profile?.state)}
-              </Row>
-              <Row label="Region and currency">{joinSet(" · ", client.timezone, client.currency)}</Row>
-              {client.gstin ? (
-                <Row label="GSTIN">
-                  <span className="num">{client.gstin}</span>
-                </Row>
-              ) : null}
-              <Row label="Account manager">
-                {profileLoading ? <SkelLine text="text-body" className="ml-auto w-24" /> : (profile?.accountManager?.name ?? null)}
-              </Row>
-              <Row label={client.liveAt ? "Live since" : "Planned go-live"}>
-                {client.liveAt
-                  ? formatDate(client.liveAt)
-                  : profileLoading
-                    ? <SkelLine text="text-body" className="ml-auto w-20" />
-                    : profile?.plannedLiveAt
-                      ? formatDate(profile.plannedLiveAt)
-                      : null}
-              </Row>
-            </dl>
-          </Card>
-
-          <Card
             title="Plan & billing"
             actions={
               <ButtonLink variant="ghost" size="sm" to={`${base}/billing`}>
@@ -350,45 +396,6 @@ export function ClientOverviewTab({ client, subscription, setup, goLive }: Clien
                 ) : null}
               </Row>
             </dl>
-          </Card>
-
-          <Card title="Owner">
-            <div className="flex flex-col gap-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <Avatar name={client.ownerName || client.storeName} size="lg" className="shrink-0" />
-                <div className="min-w-0">
-                  <p className="truncate text-body font-medium text-fg">{client.ownerName && client.ownerName !== "—" ? client.ownerName : "Not set"}</p>
-                  <p className="truncate text-label text-fg-muted">{ownerEmail ?? "No email"}</p>
-                  {client.ownerPhone ? <p className="truncate text-label text-fg-muted num">{client.ownerPhone}</p> : null}
-                </div>
-              </div>
-              {ownerEmail || client.ownerPhone ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {ownerEmail ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onPress={() => {
-                        window.location.href = `mailto:${ownerEmail}`;
-                      }}
-                    >
-                      Email
-                    </Button>
-                  ) : null}
-                  {client.ownerPhone ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onPress={() => {
-                        window.open(whatsappHref(client.ownerPhone ?? ""), "_blank", "noopener,noreferrer");
-                      }}
-                    >
-                      WhatsApp
-                    </Button>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
           </Card>
 
           <NotesCard client={client} />
