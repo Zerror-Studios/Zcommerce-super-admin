@@ -5,7 +5,8 @@
  * - Tabs (Active · Due & overdue · Trial · Cancelled), Last payment and Next due always show today.
  * - The period ("This month", `?from=&to=`) sets the header line's "paid" count and the Invoices and Payments
  *   exports. The Payment badge is the server's judgement for today (the live behaviour; 06 Q30 is open).
- * - A row opens the store's Billing & plan (`/stores/:id/billing?from=subscriptions`); Send reminder opens S-04c.
+ * - A row opens its subscription in a side drawer (SubscriptionDrawer, owner 2026-11-26), with "Open store" for the
+ *   store's Billing page (`/stores/:id/billing?from=subscriptions`); Send reminder opens S-04c.
  * - Search runs on the server (store, owner name and email); the other filters run on the loaded rows.
  *
  * Design v2 (§4.1–§4.4, §10A list recipe; no SA Billing board): the menu's "Billing" page. Title row with the
@@ -17,7 +18,7 @@
 import { useApolloClient, useQuery } from "@apollo/client";
 import { endOfDay, format, isValid, parseISO, startOfDay, startOfMonth } from "date-fns";
 import { useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { AppliedFilters, type AppliedFilterItem } from "../components/common/AppliedFilters";
 import { DateRangeComparison, type DateRangeValue } from "../components/common/DateRangeComparison";
 import { PageHeader } from "../components/common/PageHeader";
@@ -43,6 +44,7 @@ import {
 } from "../components/billing/subscription-rows";
 import { SubscriptionDialogs, type SubscriptionDialog } from "../components/clients/SubscriptionActions";
 import { SendReminderDialog } from "../components/clients/stores-list/SendReminderDialog";
+import { SubscriptionDrawer } from "../components/billing/SubscriptionDrawer";
 import { logInToStore } from "../components/clients/storeLogin";
 import { PLATFORM_PAYMENTS, PLATFORM_STALE_PENDING_PAYMENTS } from "../graphql/billing";
 import { useCollections } from "../hooks/use-platform-reports";
@@ -147,7 +149,6 @@ const PAYMENT_EXPORT_LIMIT = 200;
 const PAYMENT_EXPORT_PAGES = 25;
 
 export function Subscriptions() {
-  const navigate = useNavigate();
   const apollo = useApolloClient();
   const { can } = useAuth();
   const canManageBilling = can(PLATFORM_PERMISSIONS.BILLING_MANAGE);
@@ -265,6 +266,8 @@ export function Subscriptions() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [reminding, setReminding] = useState<Client[]>([]);
   const [dialog, setDialog] = useState<{ row: SubscriptionRow; kind: SubscriptionDialog } | null>(null);
+  // The row open in the side drawer; looked up again on each render so it follows refetches.
+  const [openId, setOpenId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [savedColumns, setSavedColumns] = usePersistentColumns("subscriptions", []);
@@ -273,15 +276,16 @@ export function Subscriptions() {
     [savedColumns],
   );
 
+  const openRow = openId ? (rows.find((row) => row.id === openId) ?? null) : null;
+  const openIndex = openRow ? pageRows.findIndex((row) => row.id === openRow.id) : -1;
+
   const remind = (targets: SubscriptionRow[]) => {
     const stores = targets.map((row) => row.client).filter((client): client is Client => !!client);
     if (stores.length) setReminding(stores);
   };
-  const billingHref = (row: SubscriptionRow) => `/stores/${row.id}/billing?from=subscriptions`;
-
   const rowActions = (row: SubscriptionRow): RowMenuItem[] => {
     const items: RowMenuItem[] = [
-      { key: "view", label: "View subscription", icon: IconPayments, onSelect: () => navigate(billingHref(row)) },
+      { key: "view", label: "View subscription", icon: IconPayments, onSelect: () => setOpenId(row.id) },
     ];
     const status = row.report.subscriptionStatus;
     if (canManageBilling && row.client && isOwed(row.payment.kind)) {
@@ -721,13 +725,24 @@ export function Subscriptions() {
               />
             ) : null
           }
-          onRowAction={(row) => navigate(billingHref(row))}
+          onRowAction={(row) => setOpenId(row.id)}
           rowActions={rowActions}
           rowActionsLabel={(row) => `Actions for ${row.report.storeName}`}
           mobileRow={mobileRow}
           emptyContent={emptyContent}
         />
       )}
+
+      <SubscriptionDrawer
+        row={openRow}
+        onClose={() => setOpenId(null)}
+        actions={openRow ? rowActions(openRow).filter((item) => item.key !== "view") : []}
+        defaultGracePeriodDays={settings.gracePeriodDays}
+        onPrev={openIndex > 0 ? () => setOpenId(pageRows[openIndex - 1].id) : undefined}
+        onNext={openIndex >= 0 && openIndex < pageRows.length - 1 ? () => setOpenId(pageRows[openIndex + 1].id) : undefined}
+        prevDisabled={openIndex <= 0}
+        nextDisabled={openIndex < 0 || openIndex >= pageRows.length - 1}
+      />
 
       <FilterDrawer
         isOpen={filtersOpen}
