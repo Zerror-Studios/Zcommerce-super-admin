@@ -39,8 +39,8 @@ export function StoreStuckPayments({ tenantId }: { tenantId: string }) {
   const list = query.data?.platformStalePendingPayments;
   const header = (
     <TableCardHeader
-      title="Payments pending over 48 hours"
-      description="Shopper payments no webhook or enquiry has settled yet. They settle on their own once the provider answers."
+      // The heading says it all (owner, 2026-11-26): no description line.
+      title="Shopper payments pending over 48 hours"
     />
   );
 
