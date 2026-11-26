@@ -13,6 +13,8 @@ import { latestHealthSnapshot, type HealthSnapshotLike } from "../../lib/tenant-
 import { setupFromIssues, storeHealthLine, storeHealthRows } from "../../lib/store-health-rows.util";
 import { formatDate } from "../../lib/utils";
 import { storeInsight } from "../../lib/aiSamples";
+import { storeProfileOptionLabel } from "../../lib/store-profile.util";
+import { useTenantProfile } from "../../hooks/use-tenant-profile";
 import { PLATFORM_PERMISSIONS } from "../../lib/permissions";
 import { useAuth } from "../../providers/AuthProvider";
 import type { PlatformStoreSetupCheck } from "../../types/platform-api";
@@ -32,18 +34,16 @@ import {
 } from "../ui";
 import { IconTip } from "../ui/icons";
 import { SkelChip, SkelLine } from "../common/SkeletonBits";
-import { ClientActivityCard } from "./ClientActivityCard";
-import { ClientPerformanceCard } from "./ClientPerformanceCard";
 import { NotesCard } from "./NotesCard";
-import { ConnectedAppsCard } from "./StoreAppsTab";
-import { StoreHealthCard } from "./StoreHealthCard";
 import { lastSyncOf, useStoreApps } from "./use-store-apps";
 
 export interface ClientOverviewTabProps {
   client: Client;
   subscription?: Subscription;
-  /** The collapsible Setup card (and provisioning), placed after Activity (board 60). */
+  /** The collapsible Setup card (and provisioning), placed after Store health (board 60). */
   setup?: ReactNode;
+  /** Go live (domain and checklist), shown under Setup until the store is live. */
+  goLive?: ReactNode;
 }
 
 /** Main column + 26rem side column once the content is 64rem wide; one column below (§10 detail pages). */
@@ -58,6 +58,12 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
     </div>
   );
 }
+
+/** "Mumbai, Maharashtra" / "Asia/Kolkata · INR": the parts that are set, or null for "Not set". */
+const joinSet = (separator: string, ...parts: (string | null | undefined)[]) => {
+  const set = parts.map((part) => part?.trim()).filter(Boolean);
+  return set.length ? set.join(separator) : null;
+};
 
 /** wa.me wants the number in digits only, with the country code. */
 const whatsappHref = (phone: string) => `https://wa.me/${phone.replace(/\D/g, "")}`;
@@ -95,16 +101,19 @@ function oneThingToDo(client: Client, subscription: Subscription | undefined): {
 }
 
 /**
- * Store detail › Overview (design v2 §7, board 60-SA-Store; round 2 §6.3): the AI banner with the one thing to do
- * and "Schedule a call", the summary panel (Sales · 30d, Orders, Products live, Customers), then the main column
- * (Store health: ring + Setup complete, Selling regularly, Team signs in, Payments, Google Analytics with Good /
- * Failing / Stale chips; Connected apps; Activity; Setup as a collapsible card) and the side column (Plan & billing,
- * Owner with Email / WhatsApp, Notes for the team). Below the board's blocks: the nightly health signals and the
- * Performance chart (kept from v2). Plan usage against the limits is on the Billing tab (board 61 "Plan limits").
+ * Store detail › Overview (design v2 §7, board 60-SA-Store; round 2 §6.3): the one thing to do and "Schedule a call",
+ * the summary panel (Sales · 30d, Orders, Products live, Customers), then the main column (Store health: ring + Setup
+ * complete, Selling regularly, Team signs in, Payments, Google Analytics with Good / Failing / Stale chips; Setup as a
+ * collapsible card; Go live until the store is live) and the side column (Store details, Plan & billing, Owner with
+ * Email / WhatsApp, Notes for the team).
+ *
+ * Kept to what matters at a glance (owner, 2026-11-26): no activity list (Activity log tab), connected apps (Apps
+ * tab), performance chart (AI usage tab, with Usage history) or the nightly health-signals card (Store health already
+ * reads the same snapshot). The store's details and profile are edited in Settings. Plan usage against the limits is on the Billing tab (board 61 "Plan limits").
  *
  * Customers: the nightly usage snapshot's count (PRD-036 round 2 gaps); "—" until a snapshot has counted them.
  */
-export function ClientOverviewTab({ client, subscription, setup }: ClientOverviewTabProps) {
+export function ClientOverviewTab({ client, subscription, setup, goLive }: ClientOverviewTabProps) {
   const { can } = useAuth();
   const health = getStoreHealth(client);
   // PRD-024 FR-2.1: null growth = nothing sold in the previous 30 days; no change to show.
@@ -119,6 +128,10 @@ export function ClientOverviewTab({ client, subscription, setup }: ClientOvervie
   const billing = billingStateView(subscription, formatDate);
   const base = `/stores/${client.id}`;
   const ownerEmail = knownEmail(client.ownerEmail);
+  // Category, location and account manager (PRD-025 profile; the same cached read as the header's city).
+  const profileRead = useTenantProfile(client.id);
+  const profile = profileRead.tenant?.profile ?? null;
+  const profileLoading = profileRead.loading;
 
   // Store health facts: setup checks, the nightly health snapshot and the analytics app (the same reads the Setup
   // card, the health signals card and Connected apps make, so they come from the Apollo cache).
@@ -259,19 +272,55 @@ export function ClientOverviewTab({ client, subscription, setup }: ClientOvervie
             </dl>
           </Card>
 
-          <ConnectedAppsCard client={client} />
-
-          {/* PRD-024 FR-1.12: the latest console changes to this store; the full list is on Activity log. */}
-          <ClientActivityCard tenantId={client.id} variant="compact" logHref={`${base}/activity`} />
-
           {setup}
 
-          {/* Kept from v2 (not on board 60): the nightly health signals and the monthly usage chart. */}
-          <StoreHealthCard tenantId={client.id} />
-          <ClientPerformanceCard tenantId={client.id} />
+          {goLive}
         </div>
 
         <div className="flex min-w-0 flex-col gap-4">
+          <Card
+            title="Store details"
+            actions={
+              <ButtonLink variant="ghost" size="sm" to={`${base}/settings`}>
+                Edit
+              </ButtonLink>
+            }
+          >
+            <dl className="flex flex-col" aria-busy={profileLoading || undefined}>
+              <Row label="Web address">
+                {client.domain ? (
+                  <a href={`https://${client.domain}`} target="_blank" rel="noreferrer" className="text-brand hover:underline">
+                    {client.domain}
+                  </a>
+                ) : null}
+              </Row>
+              <Row label="Category">
+                {profileLoading ? <SkelLine text="text-body" className="ml-auto w-20" /> : profile?.category ? storeProfileOptionLabel(profile.category) : null}
+              </Row>
+              <Row label="Location">
+                {profileLoading ? <SkelLine text="text-body" className="ml-auto w-24" /> : joinSet(", ", profile?.city, profile?.state)}
+              </Row>
+              <Row label="Region and currency">{joinSet(" · ", client.timezone, client.currency)}</Row>
+              {client.gstin ? (
+                <Row label="GSTIN">
+                  <span className="num">{client.gstin}</span>
+                </Row>
+              ) : null}
+              <Row label="Account manager">
+                {profileLoading ? <SkelLine text="text-body" className="ml-auto w-24" /> : (profile?.accountManager?.name ?? null)}
+              </Row>
+              <Row label={client.liveAt ? "Live since" : "Planned go-live"}>
+                {client.liveAt
+                  ? formatDate(client.liveAt)
+                  : profileLoading
+                    ? <SkelLine text="text-body" className="ml-auto w-20" />
+                    : profile?.plannedLiveAt
+                      ? formatDate(profile.plannedLiveAt)
+                      : null}
+              </Row>
+            </dl>
+          </Card>
+
           <Card
             title="Plan & billing"
             actions={
@@ -300,7 +349,6 @@ export function ClientOverviewTab({ client, subscription, setup }: ClientOvervie
                   </span>
                 ) : null}
               </Row>
-              <Row label="Joined">{formatDate(client.joinedDate)}</Row>
             </dl>
           </Card>
 

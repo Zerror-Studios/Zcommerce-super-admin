@@ -176,7 +176,7 @@ export function StoreRowDetail({ client, subscription, riskText }: StoreRowDetai
             <Link to={`${base}/overview#setup`} className="text-brand hover:underline">
               Setup checklist
             </Link>
-            <Link to={`${base}/overview#go-live`} className="text-brand hover:underline">
+            <Link to={`${base}/settings#go-live`} className="text-brand hover:underline">
               Go live
             </Link>
           </div>

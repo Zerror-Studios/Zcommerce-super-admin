@@ -5,6 +5,7 @@ import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } 
 import { ClientActivityCard } from "../components/clients/ClientActivityCard";
 import { ClientAiCard } from "../components/clients/ClientAiCard";
 import { ClientOverviewTab } from "../components/clients/ClientOverviewTab";
+import { ClientPerformanceCard } from "../components/clients/ClientPerformanceCard";
 import { IssueCreditDialog, RecordRefundDialog } from "../components/clients/ClientPlatformBilling";
 import { ClientUsageHistory } from "../components/clients/ClientUsageHistory";
 import { OnboardingCard } from "../components/clients/OnboardingCard";
@@ -96,8 +97,8 @@ const STORE_TABS: { key: StoreTab; label: string }[] = [
 /** Old section URLs → the tab, and the spot on it (#hash), that hold them now. Old links keep working. */
 const LEGACY_SECTIONS: Record<string, { tab: StoreTab; hash?: string }> = {
   details: { tab: "settings", hash: "details" },
-  profile: { tab: "overview", hash: "profile" },
-  "go-live": { tab: "overview", hash: "go-live" },
+  profile: { tab: "settings", hash: "profile" },
+  "go-live": { tab: "settings", hash: "go-live" },
   usage: { tab: "ai", hash: "usage-history" },
   analytics: { tab: "apps", hash: "analytics" },
   history: { tab: "activity", hash: "history" },
@@ -495,6 +496,14 @@ export function ClientDetail() {
     </Section>
   );
 
+  // PRD-018 FR-4: domain verification, the go-live checklist and Mark live. On Overview until the store is live;
+  // always in Settings, where the domain is changed.
+  const goLiveSection = (
+    <Section id="go-live" title="Go live" description="Verify the store's domain and check everything it needs before going live.">
+      <StoreGoLiveCard client={client} />
+    </Section>
+  );
+
   return (
     <div className="w-full" style={isPhone ? phoneStickyTopStyle : stickyTopStyle}>
       {/* Round 2 G12 / §6.3: the text breadcrumb "Stores / Kesar & Kin" above the title, no round back button. */}
@@ -564,17 +573,13 @@ export function ClientDetail() {
       <div key={active} className="flex min-w-0 animate-rise-in flex-col gap-6">
         {active === "overview" ? (
           <>
-            <ClientOverviewTab client={client} subscription={subscription} setup={setupSection} />
-            {/* PRD-018 FR-4: domain verification, the go-live checklist and Mark live (the old Go live section). */}
-            {isDeleted ? null : (
-              <Section id="go-live" title="Go live" description="Verify the store's domain and check everything it needs before going live.">
-                <StoreGoLiveCard client={client} />
-              </Section>
-            )}
-            {/* PRD-025 FR-6.1: category, source, location, account manager, tags, planned go-live. */}
-            <Section id="profile">
-              <StoreProfileCard client={client} />
-            </Section>
+            {/* Owner, 2026-11-26: Overview keeps the essentials; Go live shows here only until the store is live. */}
+            <ClientOverviewTab
+              client={client}
+              subscription={subscription}
+              setup={setupSection}
+              goLive={isDeleted || client.liveAt ? null : goLiveSection}
+            />
           </>
         ) : null}
 
@@ -605,6 +610,8 @@ export function ClientDetail() {
                 <EmptyState icon={IconStore} title="Your role can't see AI usage" description="Ask a platform owner for AI access." />
               </Card>
             )}
+            {/* PRD-024 FR-1.12: monthly sales and orders (moved from Overview, owner 2026-11-26), then the table. */}
+            <ClientPerformanceCard tenantId={client.id} />
             {/* PRD-014 PLT-13: the monthly usage snapshots (the old Usage history section). */}
             <Section id="usage-history" title="Usage history" description="The monthly usage snapshots: the last daily snapshot of each month.">
               <ClientUsageHistory tenantId={client.id} />
@@ -630,8 +637,14 @@ export function ClientDetail() {
               <div className="flex min-w-0 flex-col gap-4">
                 {/* PRD-017 FR-4.5: name, owner, contacts, GSTIN, time zone and currency; the domain changes in Go live. */}
                 <Section id="details">
-                  <StoreDetailsCard client={client} goLiveHref={hrefOf("overview", "go-live")} />
+                  <StoreDetailsCard client={client} goLiveHref={hrefOf("settings", "go-live")} />
                 </Section>
+                {/* PRD-025 FR-6.1: category, source, location, account manager, tags, planned go-live (moved from
+                    Overview, owner 2026-11-26; Overview shows the short Store details card). */}
+                <Section id="profile">
+                  <StoreProfileCard client={client} />
+                </Section>
+                {isDeleted ? null : goLiveSection}
                 {/* PRD-045 D7: the upload sizes the store's dashboard recommends; Zerror sets them per storefront. */}
                 <Section id="image-guidelines">
                   <StoreImageGuidelinesCard client={client} />
