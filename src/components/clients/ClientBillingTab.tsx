@@ -7,7 +7,21 @@ import { useEffect, useMemo, useState } from "react";
 import type { Client, Subscription } from "../../types";
 import { graceDaysFor, paymentState } from "../../lib/storeStatus";
 import { formatDate } from "../../lib/utils";
-import { Card, Chip, Input, Switch, formatMoney } from "../ui";
+import {
+  Button as UiButton,
+  Card,
+  Chip,
+  IconTime,
+  Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  PopupTitle,
+  Switch,
+  formatMoney,
+} from "../ui";
 import { toasts } from "../../copy";
 import { KeyValue, KeyValueGrid } from "./StoreDetailParts";
 
@@ -55,7 +69,8 @@ export interface GracePeriodDraft {
   error: string | null;
   isDirty: boolean;
   isSaving: boolean;
-  save: () => Promise<void>;
+  /** True once the server has saved it. */
+  save: () => Promise<boolean>;
   discard: () => void;
 }
 
@@ -108,19 +123,20 @@ export function useGracePeriodDraft({
     const n = useOverride ? Number(daysInput) : undefined;
     if (n !== undefined && (!Number.isFinite(n) || n < 0 || n > 30 || !Number.isInteger(n))) {
       setError("Use a whole number from 0 to 30.");
-      return;
+      return false;
     }
     setError(null);
     setSaving(true);
     const saved = await onSaveGracePeriod(n);
     setSaving(false);
-    if (!saved) return;
+    if (!saved) return false;
     addToast({
       title:
         n === undefined
           ? toasts.gracePeriodDefault(days(defaultGracePeriodDays))
           : toasts.gracePeriodSet(days(n), client.storeName),
     });
+    return true;
   };
 
   const discard = () => {
@@ -132,42 +148,73 @@ export function useGracePeriodDraft({
   return { useOverride, setUseOverride, daysInput, setDaysInput, error, isDirty, isSaving, save, discard };
 }
 
-export function GracePeriodCard({
+/**
+ * Billing › Adjust › Grace period (owner, 2026-11-26: a pop-up from the Adjust card instead of its own card and the
+ * page save bar). Opens on the saved value; Save sends it and closes once the server has it.
+ */
+export function GracePeriodDialog({
+  isOpen,
+  onClose,
   draft,
   defaultGracePeriodDays,
-  canEdit,
+  storeName,
 }: {
+  isOpen: boolean;
+  onClose: () => void;
   draft: GracePeriodDraft;
   defaultGracePeriodDays: number;
-  /** False for roles without tenants:manage: the override is shown but not editable. */
-  canEdit: boolean;
+  storeName: string;
 }) {
+  const close = () => {
+    draft.discard();
+    onClose();
+  };
+  const save = async () => {
+    if (!draft.isDirty) {
+      onClose();
+      return;
+    }
+    if (await draft.save()) onClose();
+  };
   return (
-    <Card
-      title="Grace period"
-      description={`Extra days before this store is suspended for non-payment. Default: ${days(defaultGracePeriodDays)}.`}
-      className="h-full"
-    >
-      <div className="flex flex-col gap-4">
-        <Switch isSelected={draft.useOverride} isDisabled={!canEdit} onValueChange={draft.setUseOverride}>
-          Custom grace period for this store
-        </Switch>
-        {draft.useOverride ? (
-          <Input
-            type="number"
-            label="Days"
-            min={0}
-            max={30}
-            value={draft.daysInput}
-            onValueChange={draft.setDaysInput}
-            isDisabled={!canEdit}
-            isInvalid={!!draft.error}
-            errorMessage={draft.error}
-            description="0–30 days after the due date"
-            className="max-w-40"
-          />
-        ) : null}
-      </div>
-    </Card>
+    <Modal isOpen={isOpen} onClose={close} size="md">
+      <ModalContent>
+        <ModalHeader>
+          <PopupTitle icon={<IconTime aria-hidden />}>Grace period for {storeName}</PopupTitle>
+        </ModalHeader>
+        <ModalBody>
+          <p className="text-body text-fg-muted">
+            Extra days before this store is suspended for non-payment. Default: {days(defaultGracePeriodDays)}.
+          </p>
+          <div className="mt-3 flex flex-col gap-4">
+            <Switch isSelected={draft.useOverride} onValueChange={draft.setUseOverride}>
+              Custom grace period for this store
+            </Switch>
+            {draft.useOverride ? (
+              <Input
+                type="number"
+                label="Days"
+                min={0}
+                max={30}
+                value={draft.daysInput}
+                onValueChange={draft.setDaysInput}
+                isInvalid={!!draft.error}
+                errorMessage={draft.error}
+                description="0–30 days after the due date"
+                className="max-w-40"
+              />
+            ) : null}
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <UiButton variant="secondary" onPress={close} isDisabled={draft.isSaving}>
+            Cancel
+          </UiButton>
+          <UiButton variant="primary" isLoading={draft.isSaving} isDisabled={draft.isSaving} onPress={() => void save()}>
+            Save
+          </UiButton>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   );
 }

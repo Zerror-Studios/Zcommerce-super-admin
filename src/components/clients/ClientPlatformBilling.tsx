@@ -67,8 +67,8 @@ export interface PlanSubscriptionCardProps {
 }
 
 /**
- * Billing › Current plan (board 61): "Current plan", the plan name with its billing state, the price line, Change
- * plan (and Create custom plan), then the details row: renews, paid to date, customer since, scheduled change,
+ * Billing › Current plan (board 61): "Current plan", the plan name with its billing state and the price line, with
+ * Create custom plan and Change plan at the top right; then the details row: renews, paid to date, customer since, scheduled change,
  * credit balance and what happens to orders.
  */
 export function PlanSubscriptionCard({ client, subscription, onCreateCustomPlan, onChangePlan }: PlanSubscriptionCardProps) {
@@ -90,34 +90,37 @@ export function PlanSubscriptionCard({ client, subscription, onCreateCustomPlan,
   return (
     <Card aria-label="Current plan">
       <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-1">
-          <p className="text-label text-fg-muted">Current plan</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-title-2 text-fg">
-              {planName ?? "No plan"}
-              {subscription?.planVersion ? <span className="text-body font-normal text-fg-muted"> v{subscription.planVersion}</span> : null}
-            </h3>
-            <Chip tone={state.tone}>{state.label}</Chip>
+        {/* Owner, 2026-11-26: Create custom plan and Change plan at the card's top right, beside the plan. */}
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="text-label text-fg-muted">Current plan</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-title-2 text-fg">
+                {planName ?? "No plan"}
+                {subscription?.planVersion ? <span className="text-body font-normal text-fg-muted"> v{subscription.planVersion}</span> : null}
+              </h3>
+              <Chip tone={state.tone}>{state.label}</Chip>
+            </div>
+            <p className="text-body text-fg-muted num">
+              {formatMoney(subscription?.mrr ?? client.mrr, { whole: true })} a month{cycle ? ` · ${cycle}` : ""}
+            </p>
           </div>
-          <p className="text-body text-fg-muted num">
-            {formatMoney(subscription?.mrr ?? client.mrr, { whole: true })} a month{cycle ? ` · ${cycle}` : ""}
-          </p>
-        </div>
 
-        {onChangePlan || showCustomPlan ? (
-          <div className="flex flex-wrap gap-2">
-            {showCustomPlan ? (
-              <UiButton variant="secondary" size="sm" onPress={onCreateCustomPlan}>
-                Create custom plan
-              </UiButton>
-            ) : null}
-            {onChangePlan ? (
-              <UiButton variant="primary" size="sm" onPress={onChangePlan}>
-                Change plan
-              </UiButton>
-            ) : null}
-          </div>
-        ) : null}
+          {onChangePlan || showCustomPlan ? (
+            <div className="flex shrink-0 flex-wrap gap-2">
+              {showCustomPlan ? (
+                <UiButton variant="secondary" size="sm" onPress={onCreateCustomPlan}>
+                  Create custom plan
+                </UiButton>
+              ) : null}
+              {onChangePlan ? (
+                <UiButton variant="primary" size="sm" onPress={onChangePlan}>
+                  Change plan
+                </UiButton>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
 
         <KeyValueGrid columns={3} className="border-t border-line-subtle pt-4">
           <KeyValue label="Renews">{subscription?.renewalDate ? formatDate(subscription.renewalDate) : null}</KeyValue>
