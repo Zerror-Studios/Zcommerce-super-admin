@@ -43,6 +43,9 @@ import { useAuth } from "../providers/AuthProvider";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
+/** The tabs always shown; the other views stay reachable by URL. */
+const SHOWN_TABS: SupportTab[] = ["OPEN", "MINE", "WAITING_ON_STORE", "RESOLVED", "CLOSED"];
+
 const COLUMNS: DataTableColumn<SupportTicket>[] = [
   { key: "ticket", label: "Ticket", mobile: "primary" },
   { key: "store", label: "Store", width: 200, mobile: "title" },
@@ -142,7 +145,9 @@ export function SupportTickets() {
     ];
   }, [summary]);
 
-  const tabs = SUPPORT_TABS.map((item) => ({
+  // Five tabs (owner, 2026-11-26: fewer). Unassigned, Urgent, Due soon and All still open from a link (?view=…) and
+  // then show as a sixth tab while selected; the table's Priority, Assigned and Reply due columns cover them.
+  const tabs = SUPPORT_TABS.filter((item) => SHOWN_TABS.includes(item.value) || item.value === tab).map((item) => ({
     value: item.value,
     label: item.label,
     count: item.count ? counts?.[item.count] : undefined,

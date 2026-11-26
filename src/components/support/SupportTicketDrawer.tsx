@@ -35,7 +35,6 @@ import {
   SETTABLE_STATUSES,
   STATUS_LABEL,
   STATUS_TONE,
-  TRACKER_STEPS,
   canAssignTo,
   canBeResolved,
   closedByLabel,
@@ -64,24 +63,6 @@ const QUICK_REPLIES_MAX = 3;
 const THREAD_POLL_MS = 30_000;
 const REFETCH = ["PlatformSupportTickets", "PlatformSupportSummary"];
 const LINK_CLASS = "inline-flex items-center gap-1.5 text-label text-brand-text hover:underline";
-
-function Tracker({ step }: { step: number }) {
-  return (
-    <ol className="grid grid-cols-4" aria-label="Ticket progress">
-      {TRACKER_STEPS.map((label, index) => (
-        <li key={label} aria-current={index === step ? "step" : undefined}>
-          <div className="flex items-center">
-            <span className={cx("size-3 shrink-0 rounded-full", index <= step ? "bg-brand" : "bg-surface-muted ring-1 ring-line")} />
-            {index < TRACKER_STEPS.length - 1 ? (
-              <span className={cx("mx-1 h-0.5 flex-1 rounded-full", index < step ? "bg-brand" : "bg-line")} />
-            ) : null}
-          </div>
-          <p className={cx("mt-2 text-label", index <= step ? "text-fg" : "text-fg-muted")}>{label}</p>
-        </li>
-      ))}
-    </ol>
-  );
-}
 
 function Attachments({ items }: { items: SupportAttachment[] }) {
   if (!items.length) return null;
@@ -141,16 +122,16 @@ function CapturedContext({ ticket }: { ticket: SupportTicket }) {
   const errors = context.recentErrors ?? [];
   if (!shown.length && !errors.length) return null;
   return (
-    <details className="rounded-xl border border-line bg-surface">
-      <summary className="cursor-pointer select-none px-3 py-2 text-label font-medium text-fg">
+    <div>
+      <p className="text-caption text-fg-muted">
         Captured with the ticket
         {errors.length ? (
-          <span className="ml-2 font-normal text-tone-danger-text">
+          <span className="ml-2 text-tone-danger-text">
             {errors.length} recent {errors.length === 1 ? "error" : "errors"}
           </span>
         ) : null}
-      </summary>
-      <div className="space-y-3 border-t border-line-subtle px-3 py-3">
+      </p>
+      <div className="mt-1 space-y-3">
         {shown.length ? (
           <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {shown.map(([label, value]) => (
@@ -173,7 +154,7 @@ function CapturedContext({ ticket }: { ticket: SupportTicket }) {
           </div>
         ) : null}
       </div>
-    </details>
+    </div>
   );
 }
 
@@ -184,7 +165,7 @@ function ContactCard({ ticket }: { ticket: SupportTicket }) {
   const tel = telLink(contact.phone);
   const whatsapp = whatsappLink(contact);
   return (
-    <div className="rounded-xl border border-line bg-surface px-3 py-3">
+    <div>
       <p className="text-caption text-fg-muted">Contact</p>
       <p className="mt-0.5 text-body font-medium text-fg">
         {contact.name}
@@ -255,12 +236,14 @@ interface SupportTicketDrawerProps {
 }
 
 /**
- * Super Admin › Support drawer (board 45, round 2 §6.4; PRD-049 step A1): the store's tracker, the ticket's type,
- * the store's impact, contact and captured context, the outcome and rating once resolved, and the thread with
- * internal notes tinted amber ("Only Zcom sees this"). Status (Open, In progress, Waiting on store only), Resolve
- * (outcome + note, FR-A13), priority (a note the store sees when lowered below its impact, FR-A10) and assignee.
- * The composer sends a reply (up to three quick-reply buttons, then the status to move to) or an internal note; a
- * ticket the store closed takes notes only (only the store reopens it). Reads need platform:support:read; reply,
+ * Super Admin › Support drawer (board 45, round 2 §6.4; PRD-049 step A1). Kept lean (owner, 2026-11-26): the header
+ * has the title, "ref · store" and Resolve; the body starts with Status (Open, In progress, Waiting on store only),
+ * Priority (a note the store sees when lowered below its impact, FR-A10) and Assigned to, then one line of facts
+ * (type, area, the store's impact, the reply target). Everything else (who raised it, contact, steps, linked order /
+ * product / customer, follow-up, captured context) sits in a collapsed "Ticket details". The outcome and rating
+ * show once resolved, then the thread with internal notes tinted amber ("Only Zcom sees this"). The composer sends
+ * a reply ("Then:" the status to move to; quick-reply buttons behind a link) or an internal note; a ticket the store
+ * closed takes notes only (only the store reopens it). Reads need platform:support:read; reply,
  * note, status, resolve and assigning yourself platform:support:reply; priority and assigning others
  * platform:support:manage.
  */
@@ -285,6 +268,7 @@ export function SupportTicketDrawer({ ticketId, onClose, onPrev, onNext, prevDis
   const [body, setBody] = useState("");
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
   const [quickDraft, setQuickDraft] = useState("");
+  const [showQuick, setShowQuick] = useState(false);
   const [nextStatus, setNextStatus] = useState<NextStatus | null>(null);
   const [resolveOpen, setResolveOpen] = useState(false);
   const [priorityDraft, setPriorityDraft] = useState<SupportPriority | null>(null);
@@ -387,13 +371,14 @@ export function SupportTicketDrawer({ ticketId, onClose, onPrev, onNext, prevDis
       isOpen={Boolean(ticketId)}
       onOpenChange={(open) => !open && onClose()}
       size="md"
-      title={
-        <span className="block min-w-0">
-          <span className="block font-mono text-label uppercase tracking-wide text-fg-muted">
-            {ticket ? `${ticket.ref} · ${ticket.typeLabel} · ${ticket.topicLabel}` : " "}
-          </span>
-          <span className="block truncate">{ticket?.title ?? "Ticket"}</span>
-        </span>
+      title={<span className="block truncate">{ticket?.title ?? "Ticket"}</span>}
+      subtitle={ticket ? `${ticket.ref} · ${ticket.storeName || ticket.storeSlug}` : undefined}
+      headerActions={
+        ticket && abilities.reply && canBeResolved(ticket.status) ? (
+          <Button variant="secondary" size="sm" startIcon={<IconCheck aria-hidden className="size-4" />} onPress={() => setResolveOpen(true)}>
+            Resolve
+          </Button>
+        ) : null
       }
       onPrev={onPrev}
       onNext={onNext}
@@ -405,18 +390,35 @@ export function SupportTicketDrawer({ ticketId, onClose, onPrev, onNext, prevDis
             {closed ? (
               <p className="text-label text-fg-muted">The store closed this ticket. They can reopen it. You can still add an internal note.</p>
             ) : (
-              <SegmentedSwitch<ComposerMode>
-                ariaLabel="Message type"
-                size="sm"
-                items={[
-                  { value: "reply", label: "Reply to store" },
-                  { value: "note", label: "Internal note" },
-                ]}
-                value={composerMode}
-                onChange={setMode}
-              />
+              // Reply / note and, for a reply, the status after it, on one row.
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <SegmentedSwitch<ComposerMode>
+                  ariaLabel="Message type"
+                  size="sm"
+                  items={[
+                    { value: "reply", label: "Reply" },
+                    { value: "note", label: "Internal note" },
+                  ]}
+                  value={composerMode}
+                  onChange={setMode}
+                />
+                {composerMode === "reply" ? (
+                  <Select
+                    aria-label="Status after the reply"
+                    size="sm"
+                    className="w-52"
+                    selectedKeys={new Set([thenStatus])}
+                    disallowEmptySelection
+                    onSelectionChange={(keys) => setNextStatus(String(Array.from(keys)[0]) as NextStatus)}
+                  >
+                    {thenItems.map((status) => (
+                      <SelectItem key={status}>{status === "KEEP" ? "Then: keep Resolved" : `Then: ${STATUS_LABEL[status]}`}</SelectItem>
+                    ))}
+                  </Select>
+                ) : null}
+              </div>
             )}
-            {composerMode === "reply" ? (
+            {composerMode === "reply" && (showQuick || quickReplies.length) ? (
               <div className="space-y-2">
                 {quickReplies.length ? (
                   <div className="flex flex-wrap gap-2">
@@ -429,35 +431,21 @@ export function SupportTicketDrawer({ ticketId, onClose, onPrev, onNext, prevDis
                     ))}
                   </div>
                 ) : null}
-                <div className="flex gap-2">
-                  <Input
-                    aria-label="Quick reply button for the store"
-                    placeholder="Add a quick-reply button (optional)"
-                    size="sm"
-                    maxLength={60}
-                    value={quickDraft}
-                    onValueChange={setQuickDraft}
-                    isDisabled={quickReplies.length >= QUICK_REPLIES_MAX}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        addQuickReply();
-                      }
-                    }}
-                  />
-                  <Select
-                    aria-label="Status after the reply"
-                    size="sm"
-                    className="max-w-52"
-                    selectedKeys={new Set([thenStatus])}
-                    disallowEmptySelection
-                    onSelectionChange={(keys) => setNextStatus(String(Array.from(keys)[0]) as NextStatus)}
-                  >
-                    {thenItems.map((status) => (
-                      <SelectItem key={status}>{status === "KEEP" ? "Then: keep Resolved" : `Then: ${STATUS_LABEL[status]}`}</SelectItem>
-                    ))}
-                  </Select>
-                </div>
+                <Input
+                  aria-label="Quick reply button for the store"
+                  placeholder="Button text, Enter adds it (up to 3)"
+                  size="sm"
+                  maxLength={60}
+                  value={quickDraft}
+                  onValueChange={setQuickDraft}
+                  isDisabled={quickReplies.length >= QUICK_REPLIES_MAX}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addQuickReply();
+                    }
+                  }}
+                />
               </div>
             ) : null}
             <div
@@ -487,6 +475,11 @@ export function SupportTicketDrawer({ ticketId, onClose, onPrev, onNext, prevDis
                 {composerMode === "note" ? "Add note" : "Send"}
               </Button>
             </div>
+            {composerMode === "reply" && !showQuick && !quickReplies.length ? (
+              <button type="button" className="text-label text-fg-muted hover:text-fg hover:underline" onClick={() => setShowQuick(true)}>
+                Add quick-reply buttons
+              </button>
+            ) : null}
           </div>
         ) : null
       }
@@ -496,9 +489,6 @@ export function SupportTicketDrawer({ ticketId, onClose, onPrev, onNext, prevDis
         // the lines, controls and messages are placeholders.
         <div className="space-y-5" aria-busy>
           <section className="space-y-3 border-b border-line pb-5">
-            <Tracker step={-1} />
-            <SkelLine text="text-label" className="w-3/4" />
-            <SkelLine text="text-label" className="w-1/2" />
             {abilities.reply ? (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {[0, 1, 2].map((index) => (
@@ -511,6 +501,7 @@ export function SupportTicketDrawer({ ticketId, onClose, onPrev, onNext, prevDis
                 <SkelChip className="w-24" />
               </div>
             )}
+            <SkelLine text="text-label" className="w-3/4" />
           </section>
           <ol className="space-y-5">
             {[0, 1].map((index) => (
@@ -528,53 +519,6 @@ export function SupportTicketDrawer({ ticketId, onClose, onPrev, onNext, prevDis
       ) : ticket ? (
         <div className="space-y-5">
           <section className="space-y-3 border-b border-line pb-5">
-            <Tracker step={ticket.trackerStep} />
-            <p className="text-label text-fg-muted">
-              {ticket.expectedResolution} · priority {PRIORITY_LABEL[ticket.priority]} · first reply target {ticket.replyTargetHours} h
-            </p>
-            <p className="text-label text-fg-muted">
-              <Link to={`/stores/${ticket.tenantId}/overview`} className="font-medium text-brand-text hover:underline">
-                {ticket.storeName || ticket.storeSlug}
-              </Link>
-              {" · "}
-              {ticket.raisedByEmail ?? ticket.raisedByName}
-              {ticket.raisedViaImpersonation ? " · raised while logged in as the store" : ""}
-            </p>
-
-            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Fact label="Type">{ticket.typeLabel}</Fact>
-              <Fact label="Area">{ticket.topicLabel}</Fact>
-              <Fact label="Store's impact">
-                {ticket.impact ? PRIORITY_LABEL[ticket.impact] : "Not given"}
-                {ticket.impact && ticket.impact !== ticket.priority ? (
-                  <span className="text-fg-muted"> (now {PRIORITY_LABEL[ticket.priority].toLowerCase()})</span>
-                ) : null}
-              </Fact>
-              {ticket.neededBy ? <Fact label="Needed by">{formatDate(ticket.neededBy)}</Fact> : null}
-              {about.length ? <Fact label="About">{about.join(" · ")}</Fact> : null}
-              {ticket.followUpOf ? (
-                <Fact label="Follows up">
-                  <Link to={`/support/tickets?ticket=${ticket.followUpOf.id}`} className="font-mono text-brand-text hover:underline">
-                    {ticket.followUpOf.label}
-                  </Link>
-                </Fact>
-              ) : null}
-              {ticket.reopenedCount ? (
-                <Fact label="Reopened">{ticket.reopenedCount === 1 ? "Once" : `${ticket.reopenedCount} times`}</Fact>
-              ) : null}
-            </dl>
-
-            {ticket.steps ? (
-              <div>
-                <p className="text-caption text-fg-muted">Steps to see it</p>
-                <p className="mt-0.5 whitespace-pre-wrap rounded-xl bg-surface-muted px-3 py-2 text-body text-fg">{ticket.steps}</p>
-              </div>
-            ) : null}
-
-            <ContactCard ticket={ticket} />
-            <CapturedContext ticket={ticket} />
-            <ResolutionCard ticket={ticket} />
-
             {abilities.reply ? (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <Select
@@ -630,15 +574,57 @@ export function SupportTicketDrawer({ ticketId, onClose, onPrev, onNext, prevDis
             ) : (
               <div className="flex flex-wrap gap-2">
                 <Chip tone={STATUS_TONE[ticket.status]}>{STATUS_LABEL[ticket.status]}</Chip>
+                <Chip tone="neutral">{PRIORITY_LABEL[ticket.priority]}</Chip>
                 <Chip tone="neutral">{ticket.assignee?.name ?? "Not assigned"}</Chip>
               </div>
             )}
-            {abilities.reply && canBeResolved(ticket.status) ? (
-              <Button variant="secondary" size="sm" startIcon={<IconCheck aria-hidden className="size-4" />} onPress={() => setResolveOpen(true)}>
-                Resolve
-              </Button>
-            ) : null}
+
+            {/* One line of facts; the rest is in Ticket details. */}
+            <p className="text-label text-fg-muted">
+              {ticket.typeLabel} · {ticket.topicLabel} · store's impact {ticket.impact ? PRIORITY_LABEL[ticket.impact].toLowerCase() : "not given"} · reply
+              within {ticket.replyTargetHours} h
+            </p>
             {resolved ? <p className="text-label text-fg-muted">Waiting for the store to confirm. It closes by itself if they don't.</p> : null}
+
+            <ResolutionCard ticket={ticket} />
+
+            <details className="group rounded-xl border border-line bg-surface">
+              <summary className="cursor-pointer select-none px-3 py-2 text-label font-medium text-fg">Ticket details</summary>
+              <div className="space-y-4 border-t border-line-subtle px-3 py-3">
+                <dl className="grid grid-cols-2 gap-3">
+                  <Fact label="Store">
+                    <Link to={`/stores/${ticket.tenantId}/overview`} className="text-brand-text hover:underline">
+                      {ticket.storeName || ticket.storeSlug}
+                    </Link>
+                  </Fact>
+                  <Fact label="Raised by">
+                    {ticket.raisedByEmail ?? ticket.raisedByName}
+                    {ticket.raisedViaImpersonation ? <span className="text-fg-muted"> (logged in as the store)</span> : null}
+                  </Fact>
+                  <Fact label="Expected">{ticket.expectedResolution}</Fact>
+                  {ticket.neededBy ? <Fact label="Needed by">{formatDate(ticket.neededBy)}</Fact> : null}
+                  {about.length ? <Fact label="About">{about.join(" · ")}</Fact> : null}
+                  {ticket.followUpOf ? (
+                    <Fact label="Follows up">
+                      <Link to={`/support/tickets?ticket=${ticket.followUpOf.id}`} className="font-mono text-brand-text hover:underline">
+                        {ticket.followUpOf.label}
+                      </Link>
+                    </Fact>
+                  ) : null}
+                  {ticket.reopenedCount ? (
+                    <Fact label="Reopened">{ticket.reopenedCount === 1 ? "Once" : `${ticket.reopenedCount} times`}</Fact>
+                  ) : null}
+                </dl>
+                {ticket.steps ? (
+                  <div>
+                    <p className="text-caption text-fg-muted">Steps to see it</p>
+                    <p className="mt-0.5 whitespace-pre-wrap text-body text-fg">{ticket.steps}</p>
+                  </div>
+                ) : null}
+                <ContactCard ticket={ticket} />
+                <CapturedContext ticket={ticket} />
+              </div>
+            </details>
           </section>
 
           <ol className="space-y-5" aria-label="Messages">
