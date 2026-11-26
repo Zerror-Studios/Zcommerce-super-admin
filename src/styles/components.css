@@ -1198,9 +1198,9 @@ body:has([aria-modal="true"]) .zc-askbar-slot { opacity: 0; visibility: hidden; 
 .zc-ai-composer__send svg { width: 18px; height: 18px; }
 .zc-ai-composer__send:disabled { opacity: 0.4; cursor: not-allowed; }
 /* The mic in every AI input (owner, 2026-11-21; voice input wired 2026-11-25, AiMic.tsx). Idle: an ink 22px filled
-   microphone at the right end, before Send. Listening: the button widens into a soft grey pill holding a live waveform
-   of the user's voice (ink bars, newest on the right) and a round ink stop button. Dimmed when the browser has no
-   speech recognition. */
+   microphone at the right end, before Send. Listening: it widens into a soft grey pill holding a ghost ✕ (drop what
+   was said), a live waveform of the user's voice (ink bars, newest on the right) and a round ink ✓ (keep the text;
+   owner, 2026-11-26). Dimmed when the browser has no speech recognition. */
 .zc-ai-mic {
   display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 8px;
   min-width: 28px; height: 28px; padding: 0; border: 0;
@@ -1214,10 +1214,9 @@ button.zc-ai-mic:focus-visible { outline: none; box-shadow: var(--zc-focus-ring-
 .zc-ai-mic[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
 .zc-ai-mic[data-error] { color: var(--zc-danger-text); }
 .zc-ai-mic[data-listening] {
-  height: 32px; padding: 0 4px 0 12px; background: var(--zc-surface-sunken);
+  height: 32px; padding: 0 4px; background: var(--zc-surface-sunken);
   animation: zc-ai-mic-in var(--zc-dur-fast) var(--zc-ease);
 }
-@media (hover: hover) { button.zc-ai-mic[data-listening]:hover { background: var(--zc-ghost-pressed-bg); } }
 button.zc-ai-mic:active:not([aria-disabled="true"]) { background: var(--zc-ghost-pressed-bg); }
 .zc-ai-mic__wave { display: inline-flex; align-items: center; gap: 2px; height: 18px; }
 .zc-ai-mic__bar {
@@ -1229,11 +1228,21 @@ button.zc-ai-mic:active:not([aria-disabled="true"]) { background: var(--zc-ghost
 .zc-ai-mic__wave:not([data-live]) .zc-ai-mic__bar:nth-child(3n + 2) { animation-delay: -0.4s; }
 .zc-ai-mic__wave:not([data-live]) .zc-ai-mic__bar:nth-child(3n + 3) { animation-delay: -0.8s; }
 .zc-ai-mic__wave:not([data-live]) .zc-ai-mic__bar:nth-child(4n + 1) { animation-duration: 1.5s; }
-.zc-ai-mic__stop {
-  display: inline-grid; flex: none; place-items: center; width: 24px; height: 24px;
-  border-radius: var(--zc-radius-circle); background: var(--zc-fg);
+.zc-ai-mic__cancel, .zc-ai-mic__done {
+  display: inline-grid; flex: none; place-items: center; width: 24px; height: 24px; padding: 0; border: 0;
+  border-radius: var(--zc-radius-circle); cursor: pointer;
+  transition: background-color var(--zc-dur-fast) var(--zc-ease), color var(--zc-dur-fast) var(--zc-ease),
+    opacity var(--zc-dur-fast) var(--zc-ease);
 }
-.zc-ai-mic__stop::after { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--zc-on-primary); }
+.zc-ai-mic__cancel { background: transparent; color: var(--zc-fg-muted); }
+.zc-ai-mic__done { background: var(--zc-fg); color: var(--zc-on-primary); }
+.zc-ai-mic__cancel svg, .zc-ai-mic__done svg { width: 14px; height: 14px; }
+.zc-ai-mic__cancel:focus-visible, .zc-ai-mic__done:focus-visible { outline: none; box-shadow: var(--zc-focus-ring-strong); }
+@media (hover: hover) {
+  .zc-ai-mic__cancel:hover { background: var(--zc-ghost-pressed-bg); color: var(--zc-fg); }
+  .zc-ai-mic__done:hover { opacity: 0.85; }
+}
+.zc-ai-mic__cancel:active { background: var(--zc-ghost-pressed-bg); }
 @keyframes zc-ai-mic-in { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: none; } }
 @keyframes zc-ai-mic-ripple { 0%, 100% { transform: scaleY(0.14); } 50% { transform: scaleY(0.55); } }
 @media (prefers-reduced-motion: reduce) {
@@ -1243,15 +1252,19 @@ button.zc-ai-mic:active:not([aria-disabled="true"]) { background: var(--zc-ghost
 /* In the Zcom AI reply box the mic matches Send (40px): a round hover when idle, a 40px pill while listening, so
    both sit on the same centre line. */
 .zc-ai-composer__mic { min-width: 40px; height: 40px; }
-.zc-ai-composer__mic[data-listening] { height: 40px; padding: 0 6px 0 14px; gap: 10px; }
-.zc-ai-composer__mic .zc-ai-mic__stop { width: 28px; height: 28px; }
+.zc-ai-composer__mic[data-listening] { height: 40px; padding: 0 6px; gap: 10px; }
+.zc-ai-composer__mic .zc-ai-mic__cancel, .zc-ai-composer__mic .zc-ai-mic__done { width: 28px; height: 28px; }
+.zc-ai-composer__mic .zc-ai-mic__cancel svg, .zc-ai-composer__mic .zc-ai-mic__done svg { width: 16px; height: 16px; }
 .zc-ai-mic--sm > svg { width: 18px; height: 18px; }
-.zc-ai-mic--sm[data-listening] { height: 28px; padding-left: 10px; }
+.zc-ai-mic--sm[data-listening] { height: 28px; padding: 0 4px; gap: 6px; }
 .zc-ai-mic--sm .zc-ai-mic__wave { height: 14px; }
-.zc-ai-mic--sm .zc-ai-mic__stop { width: 20px; height: 20px; }
-.zc-ai-mic--sm .zc-ai-mic__stop::after { width: 7px; height: 7px; }
-/* On the Ask bar the mic is part of the bar's button (a click there opens the box listening). */
-.zc-askbar .zc-ai-mic { cursor: pointer; }
+.zc-ai-mic--sm .zc-ai-mic__cancel, .zc-ai-mic--sm .zc-ai-mic__done { width: 20px; height: 20px; }
+.zc-ai-mic--sm .zc-ai-mic__cancel svg, .zc-ai-mic--sm .zc-ai-mic__done svg { width: 12px; height: 12px; }
+/* On the Ask bar the mic is part of the bar's button (a click there opens the box listening). Hovering it shows the
+   same round ghost hover as the other mics, so it reads as its own target on the collapsed bar (owner, 2026-11-26). */
+.zc-askbar .zc-ai-mic { min-width: 32px; height: 32px; margin-right: -4px; cursor: pointer; }
+@media (hover: hover) { .zc-askbar .zc-ai-mic:hover { background: var(--zc-ghost-hover-bg); } }
+.zc-askbar .zc-ai-mic:active { background: var(--zc-ghost-pressed-bg); }
 .zc-ai-composer__send:focus-visible { outline: none; box-shadow: var(--zc-focus-ring-strong); }
 @media (hover: hover) { .zc-ai-composer__send:hover:not(:disabled) { background: var(--zc-primary-hover); } }
 .zc-ai-composer__foot {

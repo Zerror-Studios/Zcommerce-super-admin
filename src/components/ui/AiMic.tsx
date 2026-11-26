@@ -6,12 +6,13 @@
  *
  * - Speech is added after what is already typed; the field shows the live guess and settles as phrases finish.
  * - Typing, sending, or the field turning disabled ends listening, so speech never lands on top of an edit.
- * - It keeps listening through pauses (restarting the browser's run when it ends on its own) until the mic is pressed
- *   again, the user types or sends, or a minute passes without a word.
+ * - It keeps listening through pauses (restarting the browser's run when it ends on its own) until the user presses
+ *   ✓ (keep the text) or ✕ (drop what was said, back to the text from before), types or sends, or a minute passes
+ *   without a word.
  */
-import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import { cx } from "./cx";
-import { IconMic } from "./icons";
+import { IconCheck, IconClose, IconMic } from "./icons";
 import { toast } from "./toast";
 import {
   getSpeechRecognition,
@@ -34,7 +35,10 @@ export interface SpeechInput {
   capturing: boolean;
   error: SpeechError | null;
   start: () => void;
+  /** Stop listening and keep what was heard (✓). */
   stop: () => void;
+  /** Stop listening and put the field back to what it held before the mic was pressed (✕). */
+  cancel: () => void;
   toggle: () => void;
 }
 
@@ -67,7 +71,7 @@ export function useSpeechInput({ value, onValueChange, maxLength, isDisabled = f
   });
 
   /** The listening session the user started; null once they stop it (or it ends on an error). */
-  const session = useRef<{ heardAt: number; quickEnds: number } | null>(null);
+  const session = useRef<{ heardAt: number; quickEnds: number; before: string } | null>(null);
 
   const stop = useCallback(() => {
     session.current = null;
@@ -92,7 +96,7 @@ export function useSpeechInput({ value, onValueChange, maxLength, isDisabled = f
   const start = useCallback(() => {
     const Recognition = getSpeechRecognition();
     if (!Recognition || session.current || latest.current.isDisabled) return;
-    session.current = { heardAt: Date.now(), quickEnds: 0 };
+    session.current = { heardAt: Date.now(), quickEnds: 0, before: latest.current.value };
     setError(null);
     setListening(true);
 
@@ -159,6 +163,12 @@ export function useSpeechInput({ value, onValueChange, maxLength, isDisabled = f
     listen(latest.current.value);
   }, [stop]);
 
+  const cancel = useCallback(() => {
+    const before = session.current?.before;
+    stop();
+    if (before !== undefined && before !== latest.current.value) latest.current.onValueChange(before);
+  }, [stop]);
+
   const toggle = useCallback(() => {
     if (session.current) stop();
     else start();
@@ -185,7 +195,7 @@ export function useSpeechInput({ value, onValueChange, maxLength, isDisabled = f
 
   useEffect(() => stop, [stop]);
 
-  return { supported, listening, capturing, error, start, stop, toggle };
+  return { supported, listening, capturing, error, start, stop, cancel, toggle };
 }
 
 export interface AiMicButtonProps {
@@ -195,37 +205,79 @@ export interface AiMicButtonProps {
 }
 
 /**
- * The mic at the right end of an AI input, before Send (`.zc-ai-mic`). Idle: an ink mic. Listening: the same button
- * widens into a soft pill with a live waveform of the user's voice and a round stop button (press anywhere on it to
- * stop). One element in both states, so keyboard focus stays put; pressing it keeps the focus in the field.
- * Unsupported browsers show it dimmed with the reason on hover.
+ * The mic at the right end of an AI input, before Send (`.zc-ai-mic`). Idle: an ink mic. Listening: it widens into a
+ * soft pill with ✕ (drop what was said), a live waveform of the user's voice, and ✓ (keep the text). Pressing any of
+ * them keeps the focus in the field; from the keyboard, focus moves from the mic to ✓ and back when listening ends.
+ * Unsupported browsers show the mic dimmed with the reason on hover.
  */
 export function AiMicButton({ speech, isDisabled = false, className }: AiMicButtonProps) {
   const unavailable = !speech.supported || isDisabled;
   const label = micLabel(speech);
+  const micRef = useRef<HTMLButtonElement>(null);
+  const doneRef = useRef<HTMLButtonElement>(null);
+  /** Where keyboard focus goes after the state flips (only when the pressed button had it). */
+  const focusNext = useRef<"mic" | "done" | null>(null);
+  const keep = (event: MouseEvent) => event.preventDefault();
+
+  useLayoutEffect(() => {
+    const target = focusNext.current === "done" ? doneRef.current : focusNext.current === "mic" ? micRef.current : null;
+    focusNext.current = null;
+    target?.focus();
+  }, [speech.listening]);
+
+  const finish = (how: "stop" | "cancel", button: HTMLButtonElement) => {
+    if (document.activeElement === button) focusNext.current = "mic";
+    if (how === "cancel") speech.cancel();
+    else speech.stop();
+  };
+
+  if (speech.listening) {
+    return (
+      <span role="group" aria-label="Voice input" className={cx("zc-ai-mic", className)} data-listening>
+        <button
+          type="button"
+          className="zc-ai-mic__cancel"
+          aria-label="Discard voice input"
+          title="Discard"
+          onMouseDown={keep}
+          onClick={(event) => finish("cancel", event.currentTarget)}
+        >
+          <IconClose aria-hidden />
+        </button>
+        <VoiceWave live={speech.capturing} />
+        <button
+          ref={doneRef}
+          type="button"
+          className="zc-ai-mic__done"
+          aria-label="Keep text"
+          title="Keep text"
+          onMouseDown={keep}
+          onClick={(event) => finish("stop", event.currentTarget)}
+        >
+          <IconCheck aria-hidden />
+        </button>
+      </span>
+    );
+  }
+
   return (
     <button
+      ref={micRef}
       type="button"
       className={cx("zc-ai-mic", className)}
       aria-label={label}
       title={label}
-      aria-pressed={speech.listening}
+      aria-pressed={false}
       aria-disabled={unavailable || undefined}
-      data-listening={speech.listening || undefined}
-      data-error={speech.error && !speech.listening ? speech.error : undefined}
-      onMouseDown={(event: MouseEvent) => event.preventDefault()}
-      onClick={() => {
-        if (!unavailable) speech.toggle();
+      data-error={speech.error ? speech.error : undefined}
+      onMouseDown={keep}
+      onClick={(event) => {
+        if (unavailable) return;
+        if (document.activeElement === event.currentTarget) focusNext.current = "done";
+        speech.start();
       }}
     >
-      {speech.listening ? (
-        <>
-          <VoiceWave live={speech.capturing} />
-          <span aria-hidden className="zc-ai-mic__stop" />
-        </>
-      ) : (
-        <IconMic aria-hidden />
-      )}
+      <IconMic aria-hidden />
     </button>
   );
 }
