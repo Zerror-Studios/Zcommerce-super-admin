@@ -1,6 +1,6 @@
 /**
- * Store detail › the two store edit forms, as hooks (owner, 2026-11-26: the Overview's Store details card edits both
- * in one pop-up, so the logic lives here and each form only draws fields).
+ * Store detail › the two store edit forms, as hooks: the logic lives here and each form only draws its fields
+ * (StoreDetailsFields in the Store pop-up, StoreProfileFields in the inline Profile editor).
  *
  * - `useStoreDetailsForm`: name, owner contact, billing contact, GSTIN, time zone and currency (PRD-017 FR-4.5),
  *   saved through `updateTenant` with only the changed fields; server field errors land on their field.
