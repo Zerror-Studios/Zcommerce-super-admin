@@ -105,15 +105,16 @@ function oneThingToDo(client: Client, subscription: Subscription | undefined): {
 
 /**
  * Store detail › Overview (design v2 §7, board 60-SA-Store; round 2 §6.3): the one thing to do and "Schedule a call",
- * Store details, the summary panel (Sales · 30d, Orders, Products live, Customers), then the main column (Store health: ring + Setup
+ * the blue summary panel (Sales · 30d, Orders, Products live, Customers), then Store details: one wide card with the
+ * web address, category, location, region and currency, GSTIN, account manager, live since, and the owner with
+ * Email / WhatsApp (owner, 2026-11-26: no separate Owner card). Then the main column (Store health: ring + Setup
  * complete, Selling regularly, Team signs in, Payments, Google Analytics with Good / Failing / Stale chips; Setup as a
- * collapsible card; Go live until the store is live) and the side column (Plan & billing, Notes for the team). Store
- * details come first, one wide card: web address, category, location, region and currency, GSTIN, account manager,
- * live since, and the owner with Email / WhatsApp (owner, 2026-11-26: no separate Owner card).
+ * collapsible card; Go live until the store is live) and the side column (Plan & billing, Notes for the team).
  *
  * Kept to what matters at a glance (owner, 2026-11-26): no activity list (Activity log tab), connected apps (Apps
  * tab), performance chart (AI usage tab, with Usage history) or the nightly health-signals card (Store health already
- * reads the same snapshot). The store's details and profile are edited in Settings. Plan usage against the limits is on the Billing tab (board 61 "Plan limits").
+ * reads the same snapshot). The store's details and profile are edited in Settings. Plan usage against the limits is
+ * on the Billing tab (board 61 "Plan limits").
  *
  * Customers: the nightly usage snapshot's count (PRD-036 round 2 gaps); "—" until a snapshot has counted them.
  */
@@ -240,7 +241,9 @@ export function ClientOverviewTab({ client, subscription, setup, goLive }: Clien
         </NextStepLine>
       ) : null}
 
-      {/* Store details first (owner, 2026-11-26): the store's facts and its owner in one wide card. */}
+      <SummaryPanel cells={cells} storageKey="store:overview" aria-label={`${client.storeName} summary`} />
+
+      {/* Store details under the blue summary panel (owner, 2026-11-26): the store's facts and its owner in one wide card. */}
       <Card
         title="Store details"
         actions={
@@ -324,8 +327,6 @@ export function ClientOverviewTab({ client, subscription, setup, goLive }: Clien
           </section>
         </div>
       </Card>
-
-      <SummaryPanel cells={cells} storageKey="store:overview" aria-label={`${client.storeName} summary`} />
 
       <div className={columnsClass}>
         <div className="flex min-w-0 flex-col gap-4">
