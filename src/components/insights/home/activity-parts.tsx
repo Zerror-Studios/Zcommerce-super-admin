@@ -24,7 +24,7 @@ import {
   IconRocket,
   IconSettings,
   IconStore,
-  IconSupport,
+  IconTicket,
   IconTicketPercent,
   IconView,
 } from "../../ui";
@@ -46,7 +46,8 @@ export const ACTIVITY_ICONS: Record<ActivityKind, ComponentType<{ "aria-hidden"?
   auth: IconLock,
   settings: IconSettings,
   apps: IconApps,
-  support: IconSupport,
+  // Ticket raised / replied / resolved
+  support: IconTicket,
   order: IconOrders,
   announce: IconMarketing,
   other: IconClipboard,

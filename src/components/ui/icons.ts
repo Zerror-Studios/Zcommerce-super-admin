@@ -231,6 +231,7 @@ export {
   MdDragIndicator as IconDragHandle,
   MdArchive as IconArchive,
   MdContentPaste as IconClipboard,
+  MdConfirmationNumber as IconTicket,
   MdUnsubscribe as IconMailX,
   MdCancel as IconXCircle,
   MdRocketLaunch as IconRocket,

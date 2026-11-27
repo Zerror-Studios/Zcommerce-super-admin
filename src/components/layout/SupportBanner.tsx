@@ -1,6 +1,6 @@
 /* SYNCED FILE (zcom-ui-consistency): keep byte-identical in store-dashboard and super-admin */
 import { useState, type ReactNode } from "react";
-import { IconClose, IconSupport } from "../ui/icons";
+import { IconClose, IconView } from "../ui/icons";
 
 const HIDDEN_KEY = "zc.support-banner.hidden";
 
@@ -42,7 +42,7 @@ export function SupportBanner({ storeName, onExit }: SupportBannerProps) {
       role="status"
       className="flex h-support shrink-0 items-center gap-2.5 border-b border-support-line bg-support px-4 text-label text-support-fg"
     >
-      <IconSupport aria-hidden className="size-4 shrink-0" />
+      <IconView aria-hidden className="size-4 shrink-0" />
       <p className="min-w-0 flex-1 truncate max-md:hidden">
         You&apos;re viewing <span className="font-semibold">{storeName}</span> as Zerror admin. Changes are logged.
       </p>
