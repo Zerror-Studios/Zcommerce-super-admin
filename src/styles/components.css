@@ -1766,7 +1766,7 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
 .zc-video__play { position: absolute; z-index: 3; left: 16px; bottom: 14px; display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px 0 4px; border-radius: 15px; background: rgba(255, 255, 255, 0.94); color: var(--zc-ink); font: 400 11.5px/14px var(--zc-font-mono); box-shadow: 0 6px 16px -8px rgba(11, 12, 16, 0.35); }
 .zc-video__play i { width: 22px; height: 22px; border-radius: 11px; background: var(--zc-ink); color: white; display: inline-grid; place-items: center; }
 .zc-video__play svg { width: 10px; height: 10px; }
-.zc-video__shot { position: absolute; overflow: hidden; background: var(--zc-surface); transition: transform var(--zc-dur-base) var(--zc-ease); }
+.zc-video__shot { position: absolute; overflow: hidden; background: var(--zc-surface); transition: transform var(--zc-dur-base) var(--zc-ease), scale var(--zc-dur-slow) var(--ease-out); }
 .zc-video__shot img { display: block; width: 100%; }
 .zc-video[data-look="tilt"] { background: var(--zc-video-tilt); }
 .zc-video[data-look="tilt"] .zc-video__shot { left: 38%; top: 30%; width: 92%; border-radius: 10px; transform: rotate(-6deg); transform-origin: 0 0; box-shadow: 0 26px 46px -18px rgba(11, 20, 60, 0.45), 0 0 0 4px rgba(255, 255, 255, 0.6); }
@@ -1782,6 +1782,33 @@ tr[data-tone="warning"] > td { background: var(--zc-table-row-warning); }
    no grey shows past the artwork's corners on a big player (owner, 2026-11-21). */
 .zc-video[data-cover] { background: transparent; border-color: transparent; }
 .zc-video__cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* Hover (owner, 2026-11-27): the thumbnail lifts, its artwork zooms in a little under a soft shade, and the play pill
+   grows with its dot turning blue; pointing at the pill itself grows it a touch more. Pointer devices only. */
+.zc-video { transition: transform var(--zc-dur-base) var(--ease-out), box-shadow var(--zc-dur-base) var(--ease-out), filter var(--zc-dur-base) var(--ease-out); }
+.zc-video::after { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; background: rgba(11, 12, 16, 0.08); opacity: 0; pointer-events: none; transition: opacity var(--zc-dur-base) var(--zc-ease); }
+.zc-video__cover { transition: scale var(--zc-dur-slow) var(--ease-out), filter var(--zc-dur-base) var(--zc-ease); }
+.zc-video__play { transform-origin: left center; transition: transform var(--zc-dur-base) var(--ease-out), box-shadow var(--zc-dur-base) var(--ease-out); }
+.zc-video__play i { transition: background-color var(--zc-dur-base) var(--zc-ease), transform var(--zc-dur-base) var(--ease-out); }
+@media (hover: hover) {
+  .zc-video:hover { transform: translateY(-2px); box-shadow: var(--zc-shadow-float); }
+  .zc-video:hover::after { opacity: 1; }
+  .zc-video:hover .zc-video__cover,
+  .zc-video:hover .zc-video__shot { scale: 1.04; }
+  .zc-video:hover .zc-video__play { transform: scale(1.06); box-shadow: 0 10px 22px -8px rgba(11, 12, 16, 0.45); }
+  .zc-video:hover .zc-video__play i { background: var(--zc-primary); }
+  /* A cover's artwork has its own rounded corners: shade the artwork itself and let the shadow follow its edges. */
+  .zc-video[data-cover]:hover { box-shadow: none; filter: drop-shadow(0 18px 28px rgba(11, 12, 16, 0.22)); }
+  .zc-video[data-cover]:hover::after { opacity: 0; }
+  .zc-video[data-cover]:hover .zc-video__cover { filter: brightness(0.94); }
+  .zc-video .zc-video__play:hover { transform: scale(1.12); }
+  .zc-video .zc-video__play:hover i { transform: scale(1.1); }
+}
+.zc-video:active { transform: scale(var(--zc-press-scale-card)); }
+@media (prefers-reduced-motion: reduce) {
+  .zc-video, .zc-video__cover, .zc-video__play, .zc-video__play i { transition: none; }
+  .zc-video:hover, .zc-video:hover .zc-video__play, .zc-video .zc-video__play:hover, .zc-video .zc-video__play:hover i { transform: none; }
+  .zc-video:hover .zc-video__cover, .zc-video:hover .zc-video__shot { scale: none; }
+}
 
 /* ---- Laptop/tablet menu overlay (§10): the full menu over the 72px rail and the content, never pushing it.
    Transform and opacity only; hidden it stays mounted (AppShell) but invisible and inert. ---- */
