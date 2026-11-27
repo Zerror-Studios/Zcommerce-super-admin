@@ -52,6 +52,14 @@ describe("platform permissions", () => {
     expect(can("READ_ONLY", PLATFORM_PERMISSIONS.SUPPORT_REPLY)).toBe(false);
   });
 
+  it("matches the backend matrix for the messaging permissions (PRD-050)", () => {
+    expect(can("PLATFORM_ADMIN", PLATFORM_PERMISSIONS.MESSAGING_MANAGE)).toBe(true);
+    expect(can("READ_ONLY", PLATFORM_PERMISSIONS.MESSAGING_READ)).toBe(true);
+    expect(can("READ_ONLY", PLATFORM_PERMISSIONS.MESSAGING_MANAGE)).toBe(false);
+    expect(can("BILLING_MANAGER", PLATFORM_PERMISSIONS.MESSAGING_READ)).toBe(false);
+    expect(can("SUPPORT_AGENT", PLATFORM_PERMISSIONS.MESSAGING_READ)).toBe(false);
+  });
+
   it("grants nothing without a role", () => {
     expect(can(null, PLATFORM_PERMISSIONS.TENANTS_READ)).toBe(false);
     expect(can(undefined, PLATFORM_PERMISSIONS.TENANTS_READ)).toBe(false);

@@ -20,6 +20,7 @@ const ROUTES: Record<string, () => Promise<unknown>> = {
   "support/guides": () => import("../pages/SupportGuides"),
   "support/settings": () => import("../pages/SupportSettings"),
   "system-health": () => import("../pages/SystemHealth"),
+  messaging: () => import("../pages/Messaging"),
 };
 
 /** "/analytics/revenue" → "analytics"; "/support/tickets" → "support/tickets". */

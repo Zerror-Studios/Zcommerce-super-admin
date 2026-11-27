@@ -44,11 +44,13 @@ export const NOTIFICATION_TABS: readonly NotificationTab[] = [
     key: "stores",
     label: "Stores",
     // AI top-up requests are STORES items readable with platform:ai:read;
-    // support tickets (PRD-049 FR-A31) with platform:support:read.
+    // support tickets (PRD-049 FR-A31) with platform:support:read;
+    // MSG91 work-queue tasks (PRD-050 FR-1.10) with platform:messaging:read.
     permissions: [
       PLATFORM_PERMISSIONS.TENANTS_READ,
       PLATFORM_PERMISSIONS.AI_READ,
       PLATFORM_PERMISSIONS.SUPPORT_READ,
+      PLATFORM_PERMISSIONS.MESSAGING_READ,
     ],
   },
   {
