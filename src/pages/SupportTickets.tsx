@@ -36,7 +36,7 @@ import {
   type DataTableColumn,
   type SummaryCell,
 } from "../components/ui";
-import { IconLock, IconSupport } from "../components/ui/icons";
+import { IconLock, IconTicket } from "../components/ui/icons";
 import { PLATFORM_SUPPORT_SUMMARY, PLATFORM_SUPPORT_TICKETS } from "../graphql/support";
 import { useDebouncedValue } from "../hooks/use-debounced-value";
 import { useAuth } from "../providers/AuthProvider";
@@ -264,7 +264,7 @@ export function SupportTickets() {
             }
             emptyContent={
               <EmptyState
-                icon={IconSupport}
+                icon={IconTicket}
                 title={debounced ? `No tickets match "${debounced}"` : emptyTabTitle(tab)}
                 description="Tickets stores raise from Help & support show here."
               />
