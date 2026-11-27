@@ -1163,16 +1163,13 @@ body:has([aria-modal="true"]) .zc-askbar-slot { opacity: 0; visibility: hidden; 
   display: flex; flex: none; flex-direction: column; width: 250px; min-height: 0; padding: 18px 12px;
   border-right: 1px solid var(--zc-divider); background: var(--zc-surface-muted);
 }
-.zc-ai-rail__brand { display: flex; align-items: center; gap: 10px; padding: 0 6px 14px; font-weight: 600; color: var(--zc-fg); }
-.zc-ai-rail__orb {
-  display: inline-grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: var(--zc-radius-circle);
-  background: var(--zc-ai-gradient);
-}
 .zc-ai-rail__new { justify-content: flex-start; }
 .zc-ai-rail__list { flex: 1; min-height: 0; margin-top: 10px; overflow-y: auto; }
 .zc-ai-rail__footer { padding: 10px 8px 0; font-size: 12px; line-height: 16px; color: var(--zc-fg-subtle); }
 /* The app's usage bar sits in the footer without its own strip edges. */
 .zc-ai-rail__footer > * { border-bottom-width: 0; padding-left: 0; padding-right: 0; padding-bottom: 0; }
+/* The narrow column: "resets Mon" on its own line under "195 of 200 questions left" (owner 2026-11-27). */
+.zc-ai-rail__footer .zc-ai-quota__row { flex-direction: column; align-items: flex-start; gap: 2px; }
 @media (max-width: 767px) { .zc-ai-rail { display: none; } }
 
 /* The reply box (AiComposer, board 46): a pill field with a round blue send, one small line under it. */

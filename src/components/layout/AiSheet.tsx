@@ -298,14 +298,15 @@ export interface AiSheetHeaderProps {
   thinking?: boolean;
   /** The orb's state (thinking → working → done); wins over `thinking`. */
   orbState?: OrbState;
-  /** Full view: the conversation title in the plain header. Default "New chat". */
+  /** Full view: the conversation's title, after "Zcom AI" ("Zcom AI · Weekly sales"); none for a new chat. */
   fullTitle?: ReactNode;
 }
 
 /**
  * Box and half size: the 48px header (grab handle on phone; orb, "Zcom AI · sees ‹page›" in 13px, the app's
- * actions, expand ⤢ and close; the half size adds shrink). Full view (board 46): a plain header with the
- * conversation title, shrink and close; the app's actions stay on phone, where the history column is hidden.
+ * actions, expand ⤢ and close; the half size adds shrink). Full view (board 46): the same orb and "Zcom AI" (owner
+ * 2026-11-27: not "New chat"), then the conversation's title in grey when it has one, shrink and close; the app's
+ * actions stay on phone, where the history column is hidden.
  */
 export function AiSheetHeader({ context, title, leading, actions, onClose, thinking = false, orbState, fullTitle }: AiSheetHeaderProps) {
   const sheet = useContext(AiSheetContext);
@@ -343,7 +344,11 @@ export function AiSheetHeader({ context, title, leading, actions, onClose, think
   if (size === "full" && !isPhone) {
     return (
       <header className="zc-ai-sheet__bar">
-        <h2 className="min-w-0 flex-1 truncate text-body-strong text-fg">{fullTitle ?? "New chat"}</h2>
+        <Orb state={orbState ?? (thinking ? "thinking" : "idle")} />
+        <h2 className="min-w-0 flex-1 truncate text-body-strong text-fg">
+          Zcom AI
+          {fullTitle ? <span className="font-normal text-fg-muted"> · {fullTitle}</span> : null}
+        </h2>
         <IconButton aria-label="Shrink" size="sm" onPress={() => setSize(shrink())}>
           <IconMinimize />
         </IconButton>
@@ -456,18 +461,13 @@ export interface AiSheetHistoryProps {
 }
 
 /**
- * The full view's left column (board 46): the orb in a gradient circle with "Zcom AI", a "+ New chat" pill, the
- * conversations (scrolling), and the usage line at the bottom. Hidden on phone (the header keeps the history button).
+ * The full view's left column (board 46): a "+ New chat" pill, the conversations (scrolling), and the usage line at
+ * the bottom; the orb and "Zcom AI" are in the header (owner 2026-11-27). Hidden on phone (the header keeps the
+ * history button).
  */
 export function AiSheetHistory({ onNewChat, newChatDisabled, children, footer }: AiSheetHistoryProps) {
   return (
     <aside className="zc-ai-rail" aria-label="Conversations">
-      <div className="zc-ai-rail__brand">
-        <span aria-hidden className="zc-ai-rail__orb">
-          <Orb onDark />
-        </span>
-        <b>Zcom AI</b>
-      </div>
       <Button
         variant="secondary"
         size="sm"
