@@ -31,6 +31,8 @@ const SupportFeatureRequests = lazy(() =>
 );
 // PRD-049 FR-A33: Support › Settings (hours, promises, auto-close).
 const SupportSettings = lazy(() => import("./pages/SupportSettings").then((m) => ({ default: m.SupportSettings })));
+// PRD-050 FR-1.10: Messaging (MSG91 work queue, accounts, rates); the console feed links to /messaging.
+const Messaging = lazy(() => import("./pages/Messaging").then((m) => ({ default: m.Messaging })));
 const SystemHealth = lazy(() => import("./pages/SystemHealth").then((m) => ({ default: m.SystemHealth })));
 const SignIn = lazy(() => import("./pages/SignIn").then((m) => ({ default: m.SignIn })));
 // The component showcase ships in development builds only (docs/design/README.md Phase 10).
@@ -154,6 +156,7 @@ export default function App() {
           <Route path="support/guides" element={<SupportGuides />} />
           <Route path="support/settings" element={<SupportSettings />} />
           <Route path="system-health" element={<SystemHealth />} />
+          <Route path="messaging" element={<Messaging />} />
 
           <Route path="settings" element={<Settings />} />
           {/* Payment reminders moved from Settings to its own page. */}

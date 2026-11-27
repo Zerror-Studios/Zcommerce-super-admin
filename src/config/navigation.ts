@@ -1,6 +1,6 @@
 import type { NavItem } from "../components/layout/types";
 import { PLATFORM_PERMISSIONS, type PlatformPermission } from "../lib/permissions";
-import { IconAnalytics, IconHome, IconPayments, IconSettings, IconStore, IconStoreHealth, IconSupport } from "../components/ui/icons";
+import { IconAnalytics, IconHome, IconMessages, IconPayments, IconSettings, IconStore, IconStoreHealth, IconSupport } from "../components/ui/icons";
 
 /**
  * The black menu (docs/design-v2/README.md §3.1, 5 Nov 2026): Home, Stores, Billing, Analytics ▸ (Revenue, Stores,
@@ -11,7 +11,8 @@ import { IconAnalytics, IconHome, IconPayments, IconSettings, IconStore, IconSto
  * days), Analytics a blue pill (open AI top-up requests); DashboardLayout fills them in.
  *
  * Round 2 §4 (PRD-036 R2-8/R2-9, 2026-11-06): Support ▸ (Tickets, Announcements, Guides & videos) after Billing and
- * System health after Analytics. PRD-049 FR-A33 (2026-11-19) adds Support › Settings and step A3 (2026-11-20) Feature requests. Billing is one page today, so it has no sub-items until §7 adds them.
+ * System health after Analytics. PRD-049 FR-A33 (2026-11-19) adds Support › Settings and step A3 (2026-11-20) Feature requests.
+ * PRD-050 FR-1.10 (2026-11-27) adds Messaging (the MSG91 work queue, accounts and rates) after Support. Billing is one page today, so it has no sub-items until §7 adds them.
  */
 export const mainNavItems: NavItem[] = [
   { key: "home", label: "Home", to: "/", end: true, icon: IconHome },
@@ -31,6 +32,8 @@ export const mainNavItems: NavItem[] = [
       { to: "/support/settings", label: "Settings" },
     ],
   },
+  // PRD-050 FR-1.10: shown only with platform:messaging:read (`visibleNavItems`).
+  { key: "messaging", label: "Messaging", to: "/messaging", icon: IconMessages },
   {
     key: "analytics",
     label: "Analytics",
@@ -79,6 +82,8 @@ const NAV_PERMISSIONS: Partial<Record<string, PlatformPermission | PlatformPermi
   "/support/settings": PLATFORM_PERMISSIONS.SUPPORT_READ,
   // PRD-049 step A3: the feature board reads with either permission.
   "/support/features": [PLATFORM_PERMISSIONS.SUPPORT_READ, PLATFORM_PERMISSIONS.FEEDBACK_MANAGE],
+  // PRD-050 FR-1.10: Console › Messaging.
+  messaging: PLATFORM_PERMISSIONS.MESSAGING_READ,
 };
 
 /** `items` without the entries and sub-items the caller's role can't open (PRD-021 FR-6). */

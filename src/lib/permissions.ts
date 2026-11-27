@@ -41,6 +41,10 @@ export const PLATFORM_PERMISSIONS = {
   FEEDBACK_MANAGE: "platform:feedback:manage",
   /** PRD-049 FR-A20 (step A4): tutorials and docs */
   HELP_MANAGE: "platform:help:manage",
+  /** PRD-050 FR-1.10: Console › Messaging (work queue, accounts, rates) */
+  MESSAGING_READ: "platform:messaging:read",
+  /** PRD-050: create / connect accounts, complete tasks, rates (MFA) */
+  MESSAGING_MANAGE: "platform:messaging:manage",
 } as const;
 
 export type PlatformPermission =
