@@ -5,7 +5,13 @@
  * add_client API switch, which stays off until MSG91 confirms the API in
  * writing (FR-0.2). D21: the hourly email limit of Zerror's parent account
  * (the shared address; every store shares it) and marketing's share of
- * every account's hour. Saving needs platform:messaging:manage.
+ * every account's hour. Backend PRD-051 FR-11 (D13 Q2): WhatsApp is charged
+ * by the template's Meta category (Marketing ₹0.95, Utility ₹0.15,
+ * Authentication ₹0.15, Service free by default); its old per-purpose row is
+ * history and no longer shown. W3 (FR-11, Q6): the WhatsApp number's
+ * monthly fee, passed through at cost from each store's message balance
+ * (0 = not charged), and under it the month's number fees (charged or due).
+ * Saving needs platform:messaging:manage.
  */
 import { useMutation, useQuery } from "@apollo/client";
 import { useState } from "react";
@@ -23,6 +29,7 @@ import {
   toastError,
 } from "../ui";
 import { IconWarning } from "../ui/icons";
+import { WhatsAppNumberFeesCard } from "./WhatsAppNumberFeesCard";
 import { toasts } from "../../copy";
 import { PLATFORM_MESSAGING_SETTINGS, UPDATE_PLATFORM_MESSAGING_SETTINGS } from "../../graphql/messaging";
 import {
@@ -35,10 +42,21 @@ import {
   marketingShareError,
   messagingFailureCopy,
   messagingFieldErrorsFromServer,
+  numberFeeError,
+  paiseToRupees,
   rateFieldKey,
+  rupeesToPaise,
   ratesDraftOf,
   ratesInputOf,
   validateRatesDraft,
+  validateWhatsAppRatesDraft,
+  WHATSAPP_CATEGORIES,
+  WHATSAPP_CATEGORY_LABEL,
+  whatsAppRateFieldKey,
+  whatsAppRatesDraftOf,
+  whatsAppRatesInputOf,
+  type WhatsAppRateCategory,
+  type WhatsAppRatesDraft,
   type MessagingRateChannel,
   type MessagingRatePurpose,
   type MessagingSettings,
@@ -70,20 +88,25 @@ export function MessagingRatesTab({ canManage }: { canManage: boolean }) {
   if (!settings) return null;
   // A save changes the version and remounts the form from the server's answer.
   return (
-    <RatesForm
-      key={`${settings.rates.version}-${settings.addClientApiEnabled}-${settings.parentHourlyEmailLimit}-${settings.marketingHourlySharePercent}`}
-      settings={settings}
-      canManage={canManage}
-    />
+    <div className="space-y-4">
+      <RatesForm
+        key={`${settings.rates.version}-${settings.addClientApiEnabled}-${settings.parentHourlyEmailLimit}-${settings.marketingHourlySharePercent}-${settings.whatsappNumberMonthlyFeePaise}`}
+        settings={settings}
+        canManage={canManage}
+      />
+      <WhatsAppNumberFeesCard />
+    </div>
   );
 }
 
 function RatesForm({ settings, canManage }: { settings: MessagingSettings; canManage: boolean }) {
   const [draft, setDraft] = useState<RatesDraft>(() => ratesDraftOf(settings.rates));
+  const [waDraft, setWaDraft] = useState<WhatsAppRatesDraft>(() => whatsAppRatesDraftOf(settings.rates));
   const [addClient, setAddClient] = useState(settings.addClientApiEnabled);
   const [confirmOn, setConfirmOn] = useState(false);
   const [parentLimit, setParentLimit] = useState(String(settings.parentHourlyEmailLimit));
   const [share, setShare] = useState(String(settings.marketingHourlySharePercent));
+  const [numberFee, setNumberFee] = useState(paiseToRupees(settings.whatsappNumberMonthlyFeePaise ?? 0));
   const [errors, setErrors] = useState<RatesErrors>({});
   const [save, { loading }] = useMutation<{ updatePlatformMessagingSettings: MessagingSettings }>(UPDATE_PLATFORM_MESSAGING_SETTINGS, {
     // The settings have no id, so the cache can't merge them by itself.
@@ -95,10 +118,14 @@ function RatesForm({ settings, canManage }: { settings: MessagingSettings; canMa
   });
 
   const rates = ratesInputOf(draft, settings.rates);
+  const waRates = whatsAppRatesInputOf(waDraft, settings.rates);
   const limitsChanged =
     parentLimit.trim() !== String(settings.parentHourlyEmailLimit) ||
     share.trim() !== String(settings.marketingHourlySharePercent);
-  const dirty = rates !== null || addClient !== settings.addClientApiEnabled || limitsChanged;
+  const numberFeePaise = rupeesToPaise(numberFee);
+  const numberFeeChanged = numberFeePaise !== (settings.whatsappNumberMonthlyFeePaise ?? 0);
+  const dirty =
+    rates !== null || waRates !== null || addClient !== settings.addClientApiEnabled || limitsChanged || numberFeeChanged;
 
   const change = (channel: MessagingRateChannel, purpose: MessagingRatePurpose, value: string) => {
     setDraft((current) => ({ ...current, [channel]: { ...current[channel], [purpose]: value } }));
@@ -108,28 +135,35 @@ function RatesForm({ settings, canManage }: { settings: MessagingSettings; canMa
   const submit = async () => {
     const found: RatesErrors = {
       ...validateRatesDraft(draft),
+      ...validateWhatsAppRatesDraft(waDraft),
       parentHourlyEmailLimit: hourlyLimitError(parentLimit) ?? undefined,
       marketingHourlySharePercent: marketingShareError(share) ?? undefined,
+      whatsappNumberMonthlyFeePaise: numberFeeError(numberFee) ?? undefined,
     };
     if (Object.values(found).some(Boolean)) {
       setErrors(found);
       return;
     }
     const input: {
-      rates?: ReturnType<typeof ratesInputOf>;
+      rates?: ReturnType<typeof ratesInputOf> & { WHATSAPP_CATEGORY?: ReturnType<typeof whatsAppRatesInputOf> };
       addClientApiEnabled?: boolean;
       parentHourlyEmailLimit?: number;
       marketingHourlySharePercent?: number;
+      whatsappNumberMonthlyFeePaise?: number;
     } = {};
     const changedRates = ratesInputOf(draft, settings.rates);
-    if (changedRates) input.rates = changedRates;
+    const changedWhatsApp = whatsAppRatesInputOf(waDraft, settings.rates);
+    if (changedRates || changedWhatsApp) {
+      input.rates = { ...(changedRates ?? {}), ...(changedWhatsApp ? { WHATSAPP_CATEGORY: changedWhatsApp } : {}) };
+    }
     if (addClient !== settings.addClientApiEnabled) input.addClientApiEnabled = addClient;
     if (parentLimit.trim() !== String(settings.parentHourlyEmailLimit)) input.parentHourlyEmailLimit = Number(parentLimit.trim());
     if (share.trim() !== String(settings.marketingHourlySharePercent)) input.marketingHourlySharePercent = Number(share.trim());
+    if (numberFeeChanged && numberFeePaise !== null) input.whatsappNumberMonthlyFeePaise = numberFeePaise;
     if (!Object.keys(input).length) return;
     try {
       await save({ variables: { input } });
-      toast.success(changedRates ? "Rates saved as a new version" : "Messaging settings saved");
+      toast.success(changedRates || changedWhatsApp ? "Rates saved as a new version" : "Messaging settings saved");
     } catch (failure) {
       const fields = messagingFieldErrorsFromServer(failure);
       if (fields) {
@@ -169,7 +203,8 @@ function RatesForm({ settings, canManage }: { settings: MessagingSettings; canMa
               </tr>
             </thead>
             <tbody>
-              {MESSAGING_CHANNELS.map((channel) => (
+              {/* WhatsApp is charged by category (PRD-051), below */}
+              {MESSAGING_CHANNELS.filter((channel) => channel !== "WHATSAPP").map((channel) => (
                 <tr key={channel} className="border-t border-line-subtle">
                   <th scope="row" className="py-3 pr-3 text-left font-medium text-fg">
                     {CHANNEL_LABEL[channel]}
@@ -195,6 +230,50 @@ function RatesForm({ settings, canManage }: { settings: MessagingSettings; canMa
               ))}
             </tbody>
           </table>
+        </div>
+      </Card>
+
+      <Card
+        title="WhatsApp rates by Meta category"
+        description="What a store pays per WhatsApp message, by its template's category. Service is a reply inside the 24-hour window (free from Meta)."
+      >
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {WHATSAPP_CATEGORIES.map((category: WhatsAppRateCategory) => {
+            const key = whatsAppRateFieldKey(category);
+            return (
+              <Input
+                key={category}
+                label={WHATSAPP_CATEGORY_LABEL[category]}
+                inputMode="decimal"
+                startContent={<span className="text-fg-muted">₹</span>}
+                value={waDraft[category]}
+                onValueChange={(value) => {
+                  setWaDraft((current) => ({ ...current, [category]: value }));
+                  setErrors((current) => ({ ...current, [key]: undefined, form: undefined }));
+                }}
+                isReadOnly={!canManage}
+                isInvalid={!!errors[key]}
+                errorMessage={errors[key]}
+              />
+            );
+          })}
+        </div>
+        <div className="mt-4 border-t border-line-subtle pt-4">
+          <Input
+            className="sm:max-w-xs"
+            label="WhatsApp number fee per month (passed through at cost)"
+            description="Debited once a month from the message balance of each store with a live number. 0 = not charged."
+            inputMode="decimal"
+            startContent={<span className="text-fg-muted">₹</span>}
+            value={numberFee}
+            onValueChange={(value) => {
+              setNumberFee(value);
+              setErrors((current) => ({ ...current, whatsappNumberMonthlyFeePaise: undefined, form: undefined }));
+            }}
+            isReadOnly={!canManage}
+            isInvalid={!!errors.whatsappNumberMonthlyFeePaise}
+            errorMessage={errors.whatsappNumberMonthlyFeePaise}
+          />
         </div>
       </Card>
 
@@ -263,9 +342,11 @@ function RatesForm({ settings, canManage }: { settings: MessagingSettings; canMa
             isDisabled={!dirty || loading}
             onPress={() => {
               setDraft(ratesDraftOf(settings.rates));
+              setWaDraft(whatsAppRatesDraftOf(settings.rates));
               setAddClient(settings.addClientApiEnabled);
               setParentLimit(String(settings.parentHourlyEmailLimit));
               setShare(String(settings.marketingHourlySharePercent));
+              setNumberFee(paiseToRupees(settings.whatsappNumberMonthlyFeePaise ?? 0));
               setErrors({});
             }}
           >

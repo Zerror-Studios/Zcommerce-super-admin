@@ -45,6 +45,8 @@ const RATES: MessagingRates = {
   EMAIL: { MARKETING: 25, TRANSACTIONAL: 15, SERVICE: 0 },
   SMS: { MARKETING: 30, TRANSACTIONAL: 20, SERVICE: 20 },
   WHATSAPP: { MARKETING: 100, TRANSACTIONAL: 30, SERVICE: 0 },
+  // Backend PRD-051 FR-11: WhatsApp is charged by Meta category
+  WHATSAPP_CATEGORY: { MARKETING: 95, UTILITY: 15, AUTHENTICATION: 15, SERVICE: 0 },
 };
 
 function gqlError(code: string, reason: string, field?: string, message = "Server says no") {

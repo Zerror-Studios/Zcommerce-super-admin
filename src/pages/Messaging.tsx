@@ -6,7 +6,9 @@
  *   links here);
  * - Accounts: each store's MSG91 account, credentials saved (never shown),
  *   domain, and sending on/off (read-only; the owner's CLI switches it);
- * - Rates: per channel and purpose, and the add_client API switch;
+ * - Rates: per channel and purpose, and the add_client API switch; WhatsApp
+ *   by Meta category, the number's monthly fee and the month's number fees
+ *   (backend PRD-051 FR-11);
  * - Balances: every store's prepaid message balance, lowest first, with its
  *   ledger, top-ups and "Grant or correct" (FR-4.6);
  * - Top-up requests: Record payment (bank reference) and Withdraw (FR-4.6);
