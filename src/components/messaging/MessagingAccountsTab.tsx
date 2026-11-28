@@ -8,6 +8,9 @@
  * Connect / update credentials need platform:messaging:manage.
  * D21: MSG91's KYC of each account (sending can't be switched on before it
  * is approved) and its hourly email limit, edited in "KYC and limit".
+ * Backend PRD-051 FR-1: each store's WhatsApp number (status, quality and
+ * daily limit, the last refresh's problem), edited and refreshed from MSG91
+ * in "WhatsApp" (platform:messaging:manage, audited).
  */
 import { useQuery } from "@apollo/client";
 import { useMemo, useState } from "react";
@@ -32,7 +35,11 @@ import {
   ACCOUNT_STATE_TONE,
   KYC_STATUS_LABEL,
   KYC_STATUS_TONE,
+  WHATSAPP_LIMIT_LABEL,
+  WHATSAPP_QUALITY_LABEL,
+  WHATSAPP_QUALITY_TONE,
   credentialSummary,
+  whatsAppStatusChip,
   domainSummary,
   messagingAccountStateEnum,
   type MessagingAccount,
@@ -40,7 +47,14 @@ import {
   type MessagingSettings,
 } from "../../lib/platform-messaging.util";
 import { useClients } from "../../providers/ClientsProvider";
-import { AccountKycDialog, ConnectAccountDialog, CreateAccountDialog, type StoreOption } from "./MessagingDialogs";
+import {
+  AccountKycDialog,
+  ConnectAccountDialog,
+  CreateAccountDialog,
+  WhatsAppNumberDialog,
+  type StoreOption,
+} from "./MessagingDialogs";
+import { WhatsAppMoveReportCard } from "./WhatsAppMoveReportCard";
 import { MESSAGING_REFETCH } from "./MessagingQueueTab";
 
 const PAGE_SIZE = 20;
@@ -61,6 +75,7 @@ type Dialog =
   | { kind: "create"; store: StoreOption | null }
   | { kind: "connect"; store: StoreOption | null; account: MessagingAccount | null }
   | { kind: "kyc"; account: MessagingAccount }
+  | { kind: "whatsapp"; account: MessagingAccount }
   | null;
 
 export function MessagingAccountsTab({ canManage }: { canManage: boolean }) {
@@ -93,8 +108,9 @@ export function MessagingAccountsTab({ canManage }: { canManage: boolean }) {
     { key: "credentials", label: "Credentials", width: 230, hideWhen: "narrow", mobile: "meta" },
     { key: "kyc", label: "KYC · limit", width: 170, skeleton: "badge", hideWhen: "narrow", mobile: "meta" },
     { key: "domain", label: "Sending domain", width: 240, mobile: "title" },
+    { key: "whatsapp", label: "WhatsApp", width: 170, skeleton: "badge", hideWhen: "narrow", mobile: "meta" },
     { key: "sending", label: "Sending", width: 110, skeleton: "badge", mobile: "value" },
-    ...(canManage ? [{ key: "actions", label: "Actions", hideLabel: true, width: 200, mobile: "hide" as const }] : []),
+    ...(canManage ? [{ key: "actions", label: "Actions", hideLabel: true, width: 220, mobile: "hide" as const }] : []),
   ];
 
   const renderCell = (row: MessagingAccount, key: string) => {
@@ -140,6 +156,24 @@ export function MessagingAccountsTab({ canManage }: { canManage: boolean }) {
           </div>
         );
       }
+      case "whatsapp": {
+        const chip = whatsAppStatusChip(row.whatsapp?.status);
+        const quality = row.whatsapp?.qualityRating ?? "UNKNOWN";
+        return (
+          <div className="min-w-0">
+            <Chip tone={chip.tone}>{chip.label}</Chip>
+            {row.whatsapp?.number ? (
+              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-label text-fg-muted">
+                <Chip tone={WHATSAPP_QUALITY_TONE[quality] ?? "neutral"} dot={false}>
+                  {WHATSAPP_QUALITY_LABEL[quality] ?? quality}
+                </Chip>
+                <span>{WHATSAPP_LIMIT_LABEL[row.whatsapp.limitTier] ?? row.whatsapp.limitTier}</span>
+              </div>
+            ) : null}
+            {row.whatsapp?.healthError ? <p className="mt-1 line-clamp-2 text-label text-tone-warning">{row.whatsapp.healthError}</p> : null}
+          </div>
+        );
+      }
       case "sending":
         return <Chip tone={row.sendingEnabled ? "success" : "neutral"}>{row.sendingEnabled ? "On" : "Off"}</Chip>;
       case "actions":
@@ -165,6 +199,9 @@ export function MessagingAccountsTab({ canManage }: { canManage: boolean }) {
             </Button>
             <Button variant="secondary" size="sm" onPress={() => setDialog({ kind: "kyc", account: row })}>
               KYC and limit
+            </Button>
+            <Button variant="secondary" size="sm" onPress={() => setDialog({ kind: "whatsapp", account: row })}>
+              WhatsApp
             </Button>
           </div>
         );
@@ -241,6 +278,9 @@ export function MessagingAccountsTab({ canManage }: { canManage: boolean }) {
         />
       )}
 
+      {/* Backend PRD-051 FR-13: stores still on their own MSG91 WhatsApp install */}
+      <WhatsAppMoveReportCard />
+
       {dialog?.kind === "create" ? (
         <CreateAccountDialog
           isOpen
@@ -253,6 +293,9 @@ export function MessagingAccountsTab({ canManage }: { canManage: boolean }) {
       ) : null}
       {dialog?.kind === "kyc" ? (
         <AccountKycDialog isOpen onClose={() => setDialog(null)} account={dialog.account} refetchQueries={MESSAGING_REFETCH} />
+      ) : null}
+      {dialog?.kind === "whatsapp" ? (
+        <WhatsAppNumberDialog isOpen onClose={() => setDialog(null)} account={dialog.account} refetchQueries={MESSAGING_REFETCH} />
       ) : null}
       {dialog?.kind === "connect" ? (
         <ConnectAccountDialog

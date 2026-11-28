@@ -12,6 +12,10 @@
  *   MSG91's live check and never turns sending on.
  * - KYC and hourly limit (D21): MSG91's KYC state of the store's account
  *   (a refusal needs a note the store sees) and its hourly email limit.
+ * - WhatsApp (backend PRD-051 FR-1): WHATSAPP_ONBOARD completion (the
+ *   connected number, WABA id, display name, Meta's approval of it) and the
+ *   WhatsApp number dialog (status, health, Zerror's note; "Refresh health"
+ *   from MSG91). Every change is audited by the server.
  * All need platform:messaging:manage; the server checks again.
  */
 import { useMutation } from "@apollo/client";
@@ -40,8 +44,10 @@ import {
   CONNECT_MESSAGING_ACCOUNT,
   CREATE_MESSAGING_CHILD_ACCOUNT,
   REJECT_MESSAGING_TASK,
+  REFRESH_MESSAGING_WHATSAPP_HEALTH,
   SET_MESSAGING_ACCOUNT_KYC,
   SET_MESSAGING_HOURLY_EMAIL_LIMIT,
+  UPDATE_MESSAGING_WHATSAPP_NUMBER,
 } from "../../graphql/messaging";
 import {
   ACCOUNT_KIND_LABEL,
@@ -72,7 +78,20 @@ import {
   validateCompleteTask,
   validateConnectDraft,
   validateCreateChild,
+  validateWhatsAppEdit,
+  whatsAppEditDraftOf,
+  whatsAppEditInputOf,
+  whatsAppStatusChip,
+  WHATSAPP_LIMIT_LABEL,
+  WHATSAPP_LIMIT_TIERS,
+  WHATSAPP_NUMBER_STATUSES,
+  WHATSAPP_QUALITIES,
+  WHATSAPP_QUALITY_LABEL,
+  WHATSAPP_REVIEW_STATES,
+  WHATSAPP_STATUS_LABEL,
+  WHATSAPP_VERIFICATIONS,
   withoutSecrets,
+  type WhatsAppEditDraft,
   type CompleteTaskDraft,
   type ConnectDraft,
   type CreateChildDraft,
@@ -149,7 +168,7 @@ export function CompleteTaskDialog({ task, isOpen, onClose, refetchQueries }: Co
   const [errors, setErrors] = useState<Errors>({});
   const [complete, { loading }] = useMutation(COMPLETE_MESSAGING_TASK, { refetchQueries });
   useResetOnOpen(isOpen, () => {
-    setDraft(completeTaskDraftOf());
+    setDraft(completeTaskDraftOf(task));
     setErrors({});
   });
 
@@ -229,6 +248,42 @@ export function CompleteTaskDialog({ task, isOpen, onClose, refetchQueries }: Co
                   MSG91 shows {task.subject || "the domain"} as verified
                 </Checkbox>
                 {errors.msg91Verified ? <p className="mt-1 text-label text-tone-danger-text">{errors.msg91Verified}</p> : null}
+              </div>
+            ) : null}
+
+            {task.type === messagingTaskTypeEnum.WHATSAPP_ONBOARD ? (
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Input
+                    label="Connected number"
+                    description="With the country code, as MSG91 shows it"
+                    isRequired
+                    inputMode="tel"
+                    value={draft.whatsappNumber}
+                    onValueChange={(whatsappNumber) => change({ whatsappNumber })}
+                    isInvalid={!!errors.whatsappNumber}
+                    errorMessage={errors.whatsappNumber}
+                  />
+                  <Input
+                    label="WhatsApp Business Account id"
+                    isRequired
+                    value={draft.wabaId}
+                    onValueChange={(wabaId) => change({ wabaId })}
+                    isInvalid={!!errors.wabaId}
+                    errorMessage={errors.wabaId}
+                  />
+                </div>
+                <Input
+                  label="Display name"
+                  isRequired
+                  value={draft.displayName}
+                  onValueChange={(displayName) => change({ displayName })}
+                  isInvalid={!!errors.displayName}
+                  errorMessage={errors.displayName}
+                />
+                <Checkbox isSelected={draft.displayNameApproved} onValueChange={(displayNameApproved) => change({ displayNameApproved })}>
+                  Meta already approved the display name (the number goes live now; else it waits in Meta review)
+                </Checkbox>
               </div>
             ) : null}
 
@@ -935,6 +990,221 @@ export function AccountKycDialog({ account, isOpen, onClose, refetchQueries }: A
             isLoading={kycState.loading || limitState.loading}
             onPress={() => void submit()}
           >
+            Save
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+}
+
+// ─── WhatsApp number (PRD-051 FR-1) ───────────────────────────────────────
+
+export interface WhatsAppNumberDialogProps {
+  account: MessagingAccount;
+  isOpen: boolean;
+  onClose: () => void;
+  refetchQueries: string[];
+}
+
+function EnumSelect({
+  label,
+  values,
+  value,
+  labels,
+  onChange,
+}: {
+  label: string;
+  values: readonly string[];
+  value: string;
+  labels?: Readonly<Record<string, string>>;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Select
+      label={label}
+      selectedKeys={new Set([value])}
+      disallowEmptySelection
+      onSelectionChange={(keys) => onChange(String(Array.from(keys)[0]))}
+    >
+      {values.map((item) => (
+        <SelectItem key={item}>{labels?.[item] ?? item.replace(/_/g, " ").toLowerCase()}</SelectItem>
+      ))}
+    </Select>
+  );
+}
+
+/**
+ * A store's WhatsApp number: its status (CONNECTING once the guided session
+ * is booked), the number, WABA id, display name and Meta's review, business
+ * verification, limit tier, quality and a note the store sees. "Refresh
+ * health" reads MSG91 now; a drop alerts the store and the console.
+ */
+export function WhatsAppNumberDialog({ account, isOpen, onClose, refetchQueries }: WhatsAppNumberDialogProps) {
+  const [draft, setDraft] = useState<WhatsAppEditDraft>(() => whatsAppEditDraftOf(account.whatsapp));
+  const [errors, setErrors] = useState<Errors>({});
+  const [update, { loading }] = useMutation(UPDATE_MESSAGING_WHATSAPP_NUMBER, { refetchQueries });
+  const [refresh, { loading: refreshing }] = useMutation(REFRESH_MESSAGING_WHATSAPP_HEALTH, { refetchQueries });
+  useResetOnOpen(isOpen, () => {
+    setDraft(whatsAppEditDraftOf(account.whatsapp));
+    setErrors({});
+  });
+
+  const change = (patch: Partial<WhatsAppEditDraft>) => {
+    setDraft((current) => ({ ...current, ...patch }));
+    setErrors((current) => clearKeys(current, Object.keys(patch)));
+  };
+
+  const save = async () => {
+    const found = validateWhatsAppEdit(draft);
+    if (Object.values(found).some(Boolean)) {
+      setErrors(found);
+      return;
+    }
+    const input = whatsAppEditInputOf(draft, account.whatsapp);
+    if (!input) {
+      onClose();
+      return;
+    }
+    try {
+      await update({ variables: { tenantId: account.tenantId, input } });
+      toast.success(`WhatsApp number saved for ${account.storeName || account.slug}`);
+      onClose();
+    } catch (error) {
+      const fields = messagingFieldErrorsFromServer(error);
+      if (fields) {
+        setErrors(fields);
+        return;
+      }
+      fail(error);
+    }
+  };
+
+  const runRefresh = async () => {
+    try {
+      const { data } = await refresh({ variables: { tenantId: account.tenantId } });
+      const next = data?.refreshMessagingWhatsAppHealth?.whatsapp;
+      if (next?.healthError) toastError(`MSG91: ${next.healthError}`);
+      else toast.success("Health read from MSG91");
+      if (next) setDraft(whatsAppEditDraftOf(next));
+    } catch (error) {
+      fail(error);
+    }
+  };
+
+  const chip = whatsAppStatusChip(account.whatsapp?.status);
+  const wa = account.whatsapp;
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="lg">
+      <ModalContent>
+        <ModalHeader>
+          <PopupTitle icon={<IconMessages aria-hidden />} description={`${account.storeName || account.slug} · ${chip.label}`}>
+            WhatsApp number
+          </PopupTitle>
+        </ModalHeader>
+        <ModalBody>
+          <div className="flex flex-col gap-4">
+            {wa?.requestedNumber || wa?.requestedDisplayName ? (
+              <p className="text-label text-fg-muted">
+                The store asked for {wa.requestedNumber ? `+${wa.requestedNumber}` : "a number"}
+                {wa.requestedDisplayName ? ` as "${wa.requestedDisplayName}"` : ""}.
+              </p>
+            ) : null}
+            {wa?.healthError ? (
+              <p className="flex items-start gap-2 text-label text-tone-warning">
+                <IconWarning aria-hidden className="mt-0.5 size-4 shrink-0" />
+                Last refresh: {wa.healthError}
+              </p>
+            ) : null}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <EnumSelect
+                label="Status"
+                values={WHATSAPP_NUMBER_STATUSES}
+                value={draft.status}
+                labels={WHATSAPP_STATUS_LABEL}
+                onChange={(status) => change({ status: status as WhatsAppEditDraft["status"] })}
+              />
+              <Input
+                label="Number"
+                inputMode="tel"
+                value={draft.number}
+                onValueChange={(number) => change({ number })}
+                isInvalid={!!errors.number}
+                errorMessage={errors.number}
+              />
+              <Input
+                label="WABA id"
+                value={draft.wabaId}
+                onValueChange={(wabaId) => change({ wabaId })}
+                isInvalid={!!errors.wabaId}
+                errorMessage={errors.wabaId}
+              />
+              <Input
+                label="Display name"
+                value={draft.displayName}
+                onValueChange={(displayName) => change({ displayName })}
+                isInvalid={!!errors.displayName}
+                errorMessage={errors.displayName}
+              />
+              <EnumSelect
+                label="Display name review"
+                values={WHATSAPP_REVIEW_STATES}
+                value={draft.displayNameStatus}
+                onChange={(displayNameStatus) => change({ displayNameStatus })}
+              />
+              <EnumSelect
+                label="Meta business verification"
+                values={WHATSAPP_VERIFICATIONS}
+                value={draft.businessVerification}
+                onChange={(businessVerification) => change({ businessVerification })}
+              />
+              <EnumSelect
+                label="Messaging limit"
+                values={WHATSAPP_LIMIT_TIERS}
+                value={draft.limitTier}
+                labels={WHATSAPP_LIMIT_LABEL}
+                onChange={(limitTier) => change({ limitTier })}
+              />
+              <EnumSelect
+                label="Quality"
+                values={WHATSAPP_QUALITIES}
+                value={draft.qualityRating}
+                labels={WHATSAPP_QUALITY_LABEL}
+                onChange={(qualityRating) => change({ qualityRating })}
+              />
+            </div>
+            <Textarea
+              label="Note the store sees (optional)"
+              minRows={2}
+              maxLength={MESSAGING_NOTE_MAX_CHARS}
+              value={draft.statusNote}
+              onValueChange={(statusNote) => change({ statusNote })}
+              isInvalid={!!errors.statusNote}
+              errorMessage={errors.statusNote}
+            />
+            <p className="flex items-start gap-2 text-label text-fg-muted">
+              <IconInfo aria-hidden className="mt-0.5 size-4 shrink-0" />
+              A lower quality or limit, or Flagged / Restricted / Disconnected, alerts the store and the console.
+            </p>
+            {errors.form ? <p className="text-label text-tone-danger-text">{errors.form}</p> : null}
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <div className="zc-modal__footer-start">
+            <Button
+              variant="ghost"
+              size="sm"
+              isLoading={refreshing}
+              isDisabled={!wa?.number || !account.hasAuthKey}
+              onPress={() => void runRefresh()}
+            >
+              Refresh health
+            </Button>
+          </div>
+          <Button variant="secondary" onPress={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" isLoading={loading} onPress={() => void save()}>
             Save
           </Button>
         </ModalFooter>

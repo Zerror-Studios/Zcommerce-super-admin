@@ -70,6 +70,24 @@ const MESSAGING_ACCOUNT_FIELDS = gql`
     kycNote
     kycUpdatedAt
     kycUpdatedBy
+    whatsapp {
+      status
+      number
+      wabaId
+      displayName
+      displayNameStatus
+      businessVerification
+      limitTier
+      qualityRating
+      requestedNumber
+      requestedDisplayName
+      requestedAt
+      connectedAt
+      healthCheckedAt
+      healthSource
+      healthError
+      statusNote
+    }
     lastTestOk
     lastTestAt
     lastTestMessage
@@ -104,10 +122,17 @@ const MESSAGING_SETTINGS_FIELDS = gql`
       WHATSAPP {
         ...PlatformMessagingRateTableFields
       }
+      WHATSAPP_CATEGORY {
+        MARKETING
+        UTILITY
+        AUTHENTICATION
+        SERVICE
+      }
     }
     addClientApiEnabled
     parentHourlyEmailLimit
     marketingHourlySharePercent
+    whatsappNumberMonthlyFeePaise
   }
   ${MESSAGING_RATE_TABLE_FIELDS}
 `;
@@ -172,6 +197,43 @@ export const PLATFORM_MESSAGING_SETTINGS = gql`
     }
   }
   ${MESSAGING_SETTINGS_FIELDS}
+`;
+
+/**
+ * Backend PRD-051 FR-11 (Q6), platform:messaging:read: the WhatsApp number
+ * fees of a month (default this IST month). BAD_USER_INPUT INVALID_MONTH,
+ * INVALID_STATUS.
+ */
+export const PLATFORM_WHATSAPP_NUMBER_FEES = gql`
+  query PlatformWhatsAppNumberFees(
+    $month: String
+    $status: PlatformWhatsAppNumberFeeStatus
+    $limit: Int
+    $offset: Int
+  ) {
+    platformWhatsAppNumberFees(
+      month: $month
+      status: $status
+      limit: $limit
+      offset: $offset
+    ) {
+      month
+      feePaise
+      total
+      items {
+        tenantId
+        tenantName
+        month
+        amountPaise
+        status
+        numberLast4
+        attempts
+        lastError
+        chargedAt
+        createdAt
+      }
+    }
+  }
 `;
 
 // ─── Mutations ────────────────────────────────────────────────────────────
@@ -250,6 +312,28 @@ export const SET_MESSAGING_ACCOUNT_KYC = gql`
 export const SET_MESSAGING_HOURLY_EMAIL_LIMIT = gql`
   mutation SetMessagingHourlyEmailLimit($tenantId: ID!, $hourlyEmailLimit: Int!) {
     setMessagingHourlyEmailLimit(tenantId: $tenantId, hourlyEmailLimit: $hourlyEmailLimit) {
+      ...PlatformMessagingAccountFields
+    }
+  }
+  ${MESSAGING_ACCOUNT_FIELDS}
+`;
+
+// ─── WhatsApp numbers (backend PRD-051 FR-1) ──────────────────────────────
+
+/** messaging:manage, audited. BAD_USER_INPUT INVALID_INPUT (with `field`); NOT_FOUND (no account yet). */
+export const UPDATE_MESSAGING_WHATSAPP_NUMBER = gql`
+  mutation UpdateMessagingWhatsAppNumber($tenantId: ID!, $input: PlatformWhatsAppNumberInput!) {
+    updateMessagingWhatsAppNumber(tenantId: $tenantId, input: $input) {
+      ...PlatformMessagingAccountFields
+    }
+  }
+  ${MESSAGING_ACCOUNT_FIELDS}
+`;
+
+/** messaging:manage, audited. CONFLICT MESSAGING_ACCOUNT_NOT_READY; an MSG91 failure comes back as `whatsapp.healthError`. */
+export const REFRESH_MESSAGING_WHATSAPP_HEALTH = gql`
+  mutation RefreshMessagingWhatsAppHealth($tenantId: ID!) {
+    refreshMessagingWhatsAppHealth(tenantId: $tenantId) {
       ...PlatformMessagingAccountFields
     }
   }
@@ -479,6 +563,39 @@ export const RERUN_MESSAGING_RECONCILIATION = gql`
       providerErrors
       noProviderData
       failed
+    }
+  }
+`;
+
+// Backend PRD-051 FR-13 (platform:messaging:read): stores with an MSG91
+// WhatsApp install and what moving each to its sub-account needs. Read only;
+// the move itself is the owner-run `messaging-whatsapp-move` CLI.
+export const PLATFORM_WHATSAPP_MOVE_REPORT = gql`
+  query PlatformWhatsAppMoveReport {
+    platformWhatsAppMoveReport {
+      slug
+      tenantId
+      sample
+      moved
+      needs
+      install {
+        authKey
+        numberLast4
+      }
+      templates {
+        total
+        approved
+        builder
+      }
+      account {
+        state
+        authKey
+        kyc
+        whatsappStatus
+        whatsappNumberLast4
+        sameNumber
+        movedFromInstallAt
+      }
     }
   }
 `;

@@ -3,7 +3,11 @@
  * FR-1.11, D19): labels and tones for tasks and accounts, the SLA chip,
  * rupees ↔ integer paise for the rate table, the DNS records form, the
  * connect form and the server's field errors; D21: MSG91's KYC per
- * sub-account and the hourly email limits. Pure: no React.
+ * sub-account and the hourly email limits; backend PRD-051 W1: the
+ * WHATSAPP_ONBOARD task, a store's WhatsApp number (status, health, the
+ * console's edit) and WhatsApp rates per Meta category; W3 (FR-11, Q6):
+ * the WhatsApp number's monthly fee and the fee list's month and status
+ * filters. Pure: no React.
  *
  * The checks mirror the platform-admin service (`platform-messaging.service.ts`)
  * and core `messaging-rates.ts`, so most mistakes show before a round trip;
@@ -25,6 +29,8 @@ export const messagingTaskTypeEnum = {
   TOP_UP_WALLET: "TOP_UP_WALLET",
   /** D21: MSG91's KYC of the store's sub-account. */
   KYC: "KYC",
+  /** PRD-051 FR-1: connect the store's WhatsApp number (guided session). */
+  WHATSAPP_ONBOARD: "WHATSAPP_ONBOARD",
 } as const;
 
 export type MessagingTaskType =
@@ -85,6 +91,27 @@ export const MESSAGING_PURPOSES = [
   "SERVICE",
 ] as const;
 export type MessagingRatePurpose = (typeof MESSAGING_PURPOSES)[number];
+
+/** PRD-051 FR-11 (D13 Q2): WhatsApp is charged by Meta category. */
+export const WHATSAPP_CATEGORIES = ["MARKETING", "UTILITY", "AUTHENTICATION", "SERVICE"] as const;
+export type WhatsAppRateCategory = (typeof WHATSAPP_CATEGORIES)[number];
+
+/** PRD-051 FR-1: a store's WhatsApp number. */
+export const WHATSAPP_NUMBER_STATUSES = [
+  "NOT_STARTED",
+  "REQUESTED",
+  "CONNECTING",
+  "IN_REVIEW",
+  "ACTIVE",
+  "FLAGGED",
+  "RESTRICTED",
+  "DISCONNECTED",
+] as const;
+export type WhatsAppNumberStatus = (typeof WHATSAPP_NUMBER_STATUSES)[number];
+export const WHATSAPP_QUALITIES = ["GREEN", "YELLOW", "RED", "UNKNOWN"] as const;
+export const WHATSAPP_LIMIT_TIERS = ["TIER_50", "TIER_250", "TIER_1K", "TIER_10K", "TIER_100K", "UNLIMITED", "UNKNOWN"] as const;
+export const WHATSAPP_REVIEW_STATES = ["PENDING", "APPROVED", "REJECTED", "UNKNOWN"] as const;
+export const WHATSAPP_VERIFICATIONS = ["NOT_VERIFIED", "PENDING", "VERIFIED", "UNKNOWN"] as const;
 
 export const DNS_RECORD_TYPES = ["TXT", "CNAME", "MX"] as const;
 export type DnsRecordType = (typeof DNS_RECORD_TYPES)[number];
@@ -188,6 +215,8 @@ export interface MessagingAccount {
   kycNote: string | null;
   kycUpdatedAt: string | null;
   kycUpdatedBy: string | null;
+  /** PRD-051 FR-1 (never the key). */
+  whatsapp: WhatsAppNumber;
   lastTestOk: boolean | null;
   lastTestAt: string | null;
   lastTestMessage: string | null;
@@ -198,13 +227,36 @@ export interface MessagingAccount {
   updatedAt: string | null;
 }
 
+export interface WhatsAppNumber {
+  status: WhatsAppNumberStatus;
+  number: string | null;
+  wabaId: string | null;
+  displayName: string | null;
+  displayNameStatus: string;
+  businessVerification: string;
+  limitTier: string;
+  qualityRating: string;
+  requestedNumber: string | null;
+  requestedDisplayName: string | null;
+  requestedAt: string | null;
+  connectedAt: string | null;
+  healthCheckedAt: string | null;
+  healthSource: string | null;
+  healthError: string | null;
+  statusNote: string | null;
+}
+
 export type MessagingRateTable = Record<MessagingRatePurpose, number>;
+
+export type WhatsAppCategoryRateTable = Record<WhatsAppRateCategory, number>;
 
 export interface MessagingRates
   extends Record<MessagingRateChannel, MessagingRateTable> {
   version: number;
   updatedAt: string | null;
   updatedBy: string | null;
+  /** PRD-051 FR-11: what WhatsApp is charged (the WHATSAPP table is history). */
+  WHATSAPP_CATEGORY: WhatsAppCategoryRateTable;
 }
 
 export interface MessagingSettings {
@@ -214,6 +266,8 @@ export interface MessagingSettings {
   parentHourlyEmailLimit: number;
   /** D21: marketing's share of every account's hour, percent. */
   marketingHourlySharePercent: number;
+  /** PRD-051 FR-11 (Q6): a live number's monthly fee in paise (0 = not charged). */
+  whatsappNumberMonthlyFeePaise: number;
 }
 
 export interface MessagingAbilities {
@@ -230,6 +284,7 @@ export const TASK_TYPE_LABEL: Readonly<Record<MessagingTaskType, string>> = {
   VERIFY_EMAIL_DOMAIN: "Verify email domain",
   TOP_UP_WALLET: "Top up wallet",
   KYC: "MSG91 KYC",
+  WHATSAPP_ONBOARD: "Connect WhatsApp number",
 };
 
 /** What the step asks of ops, one line under the title. */
@@ -245,7 +300,147 @@ export const TASK_TYPE_HINT: Readonly<Record<MessagingTaskType, string>> = {
   TOP_UP_WALLET: "Top up the child's MSG91 wallet, then mark the step done.",
   KYC:
     "Submit the store's business documents in the sub-account's KYC page. Done records MSG91's approval; Reject records its refusal.",
+  WHATSAPP_ONBOARD:
+    "Book a short call, add the number in the sub-account (WhatsApp › Number › Add Number) while the merchant logs in to Facebook, then enter the number, WABA id and display name.",
 };
+
+// ─── WhatsApp numbers (PRD-051 FR-1) ──────────────────────────────────────
+
+export const WHATSAPP_STATUS_LABEL: Readonly<Record<WhatsAppNumberStatus, string>> = {
+  NOT_STARTED: "Not set up",
+  REQUESTED: "Asked",
+  CONNECTING: "Connecting",
+  IN_REVIEW: "Meta review",
+  ACTIVE: "Live",
+  FLAGGED: "Flagged",
+  RESTRICTED: "Restricted",
+  DISCONNECTED: "Disconnected",
+};
+
+export const WHATSAPP_STATUS_TONE: Readonly<Record<WhatsAppNumberStatus, Tone>> = {
+  NOT_STARTED: "neutral",
+  REQUESTED: "info",
+  CONNECTING: "info",
+  IN_REVIEW: "info",
+  ACTIVE: "success",
+  FLAGGED: "warning",
+  RESTRICTED: "danger",
+  DISCONNECTED: "danger",
+};
+
+export const WHATSAPP_QUALITY_LABEL: Readonly<Record<string, string>> = {
+  GREEN: "High",
+  YELLOW: "Medium",
+  RED: "Low",
+  UNKNOWN: "Unknown",
+};
+
+export const WHATSAPP_QUALITY_TONE: Readonly<Record<string, Tone>> = {
+  GREEN: "success",
+  YELLOW: "warning",
+  RED: "danger",
+  UNKNOWN: "neutral",
+};
+
+export const WHATSAPP_LIMIT_LABEL: Readonly<Record<string, string>> = {
+  TIER_50: "50 a day",
+  TIER_250: "250 a day",
+  TIER_1K: "1,000 a day",
+  TIER_10K: "10,000 a day",
+  TIER_100K: "1,00,000 a day",
+  UNLIMITED: "Unlimited",
+  UNKNOWN: "Unknown",
+};
+
+export const WHATSAPP_CATEGORY_LABEL: Readonly<Record<WhatsAppRateCategory, string>> = {
+  MARKETING: "Marketing",
+  UTILITY: "Utility",
+  AUTHENTICATION: "Authentication",
+  SERVICE: "Service (replies in 24 h)",
+};
+
+/** D13 Q2: the defaults (paise) until the console changes them. */
+export const WHATSAPP_CATEGORY_DEFAULT_PAISE: Readonly<WhatsAppCategoryRateTable> = {
+  MARKETING: 95,
+  UTILITY: 15,
+  AUTHENTICATION: 15,
+  SERVICE: 0,
+};
+
+const isStatus = (value: unknown): value is WhatsAppNumberStatus =>
+  (WHATSAPP_NUMBER_STATUSES as readonly string[]).includes(String(value));
+
+/** The number's status chip (unknown values read Not set up). */
+export function whatsAppStatusChip(status: unknown): { label: string; tone: Tone } {
+  const value = isStatus(status) ? status : "NOT_STARTED";
+  return { label: WHATSAPP_STATUS_LABEL[value], tone: WHATSAPP_STATUS_TONE[value] };
+}
+
+/** "+91 98290 00001" style: + and the digits (never shortened in the console). */
+export function whatsAppNumberLabel(number: string | null | undefined): string {
+  return number ? `+${number}` : "No number yet";
+}
+
+export interface WhatsAppEditDraft {
+  status: WhatsAppNumberStatus;
+  number: string;
+  wabaId: string;
+  displayName: string;
+  displayNameStatus: string;
+  businessVerification: string;
+  limitTier: string;
+  qualityRating: string;
+  statusNote: string;
+}
+
+export function whatsAppEditDraftOf(number: WhatsAppNumber | null | undefined): WhatsAppEditDraft {
+  return {
+    status: isStatus(number?.status) ? (number!.status as WhatsAppNumberStatus) : "NOT_STARTED",
+    number: number?.number ?? "",
+    wabaId: number?.wabaId ?? "",
+    displayName: number?.displayName ?? "",
+    displayNameStatus: number?.displayNameStatus ?? "UNKNOWN",
+    businessVerification: number?.businessVerification ?? "UNKNOWN",
+    limitTier: number?.limitTier ?? "UNKNOWN",
+    qualityRating: number?.qualityRating ?? "UNKNOWN",
+    statusNote: number?.statusNote ?? "",
+  };
+}
+
+/** The service's checks for the edit (keys = the server's `field`). */
+export function validateWhatsAppEdit(draft: WhatsAppEditDraft): Record<string, string | undefined> {
+  const errors: Record<string, string | undefined> = {};
+  const digits = draft.number.replace(/\D/g, "");
+  if (draft.number.trim() && (digits.length < 10 || digits.length > 15)) {
+    errors.number = "Enter the number with its country code";
+  }
+  if ((draft.status === "ACTIVE" || draft.status === "FLAGGED") && !digits) {
+    errors.number = "A live number needs the number";
+  }
+  if (draft.wabaId.trim() && !/^[A-Za-z0-9_-]{3,64}$/.test(draft.wabaId.trim())) {
+    errors.wabaId = "Enter the WhatsApp Business Account id";
+  }
+  if (draft.displayName.trim() && draft.displayName.trim().length < 3) {
+    errors.displayName = "Enter the display name";
+  }
+  if (draft.statusNote.length > MESSAGING_NOTE_MAX_CHARS) {
+    errors.statusNote = `Keep the note under ${MESSAGING_NOTE_MAX_CHARS} characters`;
+  }
+  return errors;
+}
+
+/** The `input` for `updateMessagingWhatsAppNumber`: only what changed (null: nothing). */
+export function whatsAppEditInputOf(draft: WhatsAppEditDraft, current: WhatsAppNumber | null | undefined) {
+  const before = whatsAppEditDraftOf(current);
+  const input: Record<string, string> = {};
+  for (const key of Object.keys(draft) as (keyof WhatsAppEditDraft)[]) {
+    const value = String(draft[key] ?? "").trim();
+    if (value === String(before[key] ?? "").trim()) continue;
+    if (key === "number") input.number = value.replace(/\D/g, "");
+    else input[key] = value;
+  }
+  return Object.keys(input).length ? input : null;
+}
 
 export const KYC_STATUS_LABEL: Readonly<Record<MessagingKycStatus, string>> = {
   NOT_STARTED: "KYC not started",
@@ -491,6 +686,136 @@ export function ratesInputOf(
   return Object.keys(input).length ? input : null;
 }
 
+// ─── WhatsApp rates by category (PRD-051 FR-11) ───────────────────────────
+
+export type WhatsAppRatesDraft = Record<WhatsAppRateCategory, string>;
+
+export const whatsAppRateFieldKey = (category: WhatsAppRateCategory) => `rates.WHATSAPP_CATEGORY.${category}`;
+
+export function whatsAppRatesDraftOf(rates: MessagingRates): WhatsAppRatesDraft {
+  const table = rates.WHATSAPP_CATEGORY ?? WHATSAPP_CATEGORY_DEFAULT_PAISE;
+  return Object.fromEntries(
+    WHATSAPP_CATEGORIES.map((category) => [category, paiseToRupees(table[category] ?? WHATSAPP_CATEGORY_DEFAULT_PAISE[category])]),
+  ) as WhatsAppRatesDraft;
+}
+
+export function validateWhatsAppRatesDraft(draft: WhatsAppRatesDraft): RatesErrors {
+  const errors: RatesErrors = {};
+  for (const category of WHATSAPP_CATEGORIES) {
+    const paise = rupeesToPaise(draft[category]);
+    if (paise === null) errors[whatsAppRateFieldKey(category)] = "Enter rupees, like 0.95";
+    else if (paise > MESSAGING_RATE_MAX_PAISE) errors[whatsAppRateFieldKey(category)] = "At most ₹10,000 a message";
+  }
+  return errors;
+}
+
+/** The `WHATSAPP_CATEGORY` input when a category changed, else null. Call after validating. */
+export function whatsAppRatesInputOf(draft: WhatsAppRatesDraft, rates: MessagingRates): WhatsAppCategoryRateTable | null {
+  const table = rates.WHATSAPP_CATEGORY ?? WHATSAPP_CATEGORY_DEFAULT_PAISE;
+  const next = {} as WhatsAppCategoryRateTable;
+  let changed = false;
+  for (const category of WHATSAPP_CATEGORIES) {
+    next[category] = rupeesToPaise(draft[category]) ?? 0;
+    if (next[category] !== table[category]) changed = true;
+  }
+  return changed ? next : null;
+}
+
+// ─── WhatsApp number fee (PRD-051 FR-11, Q6) ──────────────────────────────
+
+/** The server's limit for `whatsappNumberMonthlyFeePaise` (₹10,000). */
+export const WHATSAPP_NUMBER_FEE_MAX_PAISE = 1_000_000;
+
+export const whatsAppNumberFeeStatusEnum = {
+  CHARGED: "CHARGED",
+  DUE: "DUE",
+} as const;
+export type WhatsAppNumberFeeStatus =
+  (typeof whatsAppNumberFeeStatusEnum)[keyof typeof whatsAppNumberFeeStatusEnum];
+export type WhatsAppNumberFeeTab = WhatsAppNumberFeeStatus | "ALL";
+
+export interface WhatsAppNumberFee {
+  tenantId: string;
+  tenantName: string | null;
+  month: string;
+  amountPaise: number;
+  status: WhatsAppNumberFeeStatus;
+  numberLast4: string | null;
+  attempts: number;
+  lastError: string | null;
+  chargedAt: string | null;
+  createdAt: string | null;
+}
+
+export interface WhatsAppNumberFeeList {
+  month: string;
+  feePaise: number;
+  total: number;
+  items: WhatsAppNumberFee[];
+}
+
+export const WHATSAPP_NUMBER_FEE_TABS: ReadonlyArray<{
+  value: WhatsAppNumberFeeTab;
+  label: string;
+}> = [
+  { value: "ALL", label: "All" },
+  { value: "CHARGED", label: "Charged" },
+  { value: "DUE", label: "Due" },
+];
+
+export const WHATSAPP_NUMBER_FEE_STATUS_LABEL: Readonly<
+  Record<WhatsAppNumberFeeStatus, string>
+> = { CHARGED: "Charged", DUE: "Due" };
+
+export const WHATSAPP_NUMBER_FEE_STATUS_TONE: Readonly<
+  Record<WhatsAppNumberFeeStatus, Tone>
+> = { CHARGED: "success", DUE: "warning" };
+
+/** The fee as typed in rupees: an error, or null when it is 0–₹10,000. */
+export function numberFeeError(text: string): string | null {
+  const paise = rupeesToPaise(text);
+  if (paise === null) return "Enter rupees, like 99 or 0 for no fee";
+  if (paise > WHATSAPP_NUMBER_FEE_MAX_PAISE) return "At most ₹10,000 a month";
+  return null;
+}
+
+/** A YYYY-MM month (01–12), or null. */
+export function validNumberFeeMonth(text: string | null | undefined): string | null {
+  const value = String(text ?? "").trim();
+  const match = /^(\d{4})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const month = Number(match[2]);
+  return month >= 1 && month <= 12 ? value : null;
+}
+
+/** The query's variables: no month = this IST month on the server. */
+export function numberFeeVariables(
+  month: string | null,
+  tab: WhatsAppNumberFeeTab,
+  limit: number,
+  offset: number,
+) {
+  return {
+    month: validNumberFeeMonth(month),
+    status: tab === "ALL" ? null : tab,
+    limit,
+    offset,
+  };
+}
+
+export function isNumberFeeTab(value: string | null): value is WhatsAppNumberFeeTab {
+  return WHATSAPP_NUMBER_FEE_TABS.some((tab) => tab.value === value);
+}
+
+/** Why a fee is still due, in words. */
+export function numberFeeErrorText(lastError: string | null | undefined): string | null {
+  if (!lastError) return null;
+  if (lastError === "MESSAGE_BALANCE_EMPTY") {
+    return "The store's message balance couldn't cover it; tried again daily.";
+  }
+  return lastError;
+}
+
 // ─── DNS records form (ADD_EMAIL_DOMAIN) ──────────────────────────────────
 
 export interface DnsRecordDraft {
@@ -580,12 +905,30 @@ export interface CompleteTaskDraft {
   childId: string;
   records: DnsRecordDraft[];
   msg91Verified: boolean;
+  /** WHATSAPP_ONBOARD (PRD-051 FR-1) */
+  whatsappNumber: string;
+  wabaId: string;
+  displayName: string;
+  displayNameApproved: boolean;
 }
 
 export type CompleteTaskErrors = Record<string, string | undefined>;
 
-export function completeTaskDraftOf(): CompleteTaskDraft {
-  return { note: "", childId: "", records: [emptyDnsRecord()], msg91Verified: false };
+export function completeTaskDraftOf(task?: Pick<MessagingTask, "values"> | null): CompleteTaskDraft {
+  // WHATSAPP_ONBOARD: start from what the store asked for
+  const valueOf = (label: string) => task?.values?.find((item) => item.label === label)?.value ?? "";
+  const asked = valueOf("Number");
+  const name = valueOf("Display name");
+  return {
+    note: "",
+    childId: "",
+    records: [emptyDnsRecord()],
+    msg91Verified: false,
+    whatsappNumber: asked.startsWith("+") ? asked : "",
+    wabaId: "",
+    displayName: name && name !== "Not given" ? name : "",
+    displayNameApproved: false,
+  };
 }
 
 export function validateCompleteTask(
@@ -608,6 +951,13 @@ export function validateCompleteTask(
         errors.msg91Verified = "Confirm that MSG91 shows the domain verified";
       }
       break;
+    case messagingTaskTypeEnum.WHATSAPP_ONBOARD: {
+      const digits = draft.whatsappNumber.replace(/\D/g, "");
+      if (digits.length < 10 || digits.length > 15) errors.whatsappNumber = "Enter the connected number with its country code";
+      if (!/^[A-Za-z0-9_-]{3,64}$/.test(draft.wabaId.trim())) errors.wabaId = "Enter the WhatsApp Business Account id";
+      if (draft.displayName.trim().length < 3) errors.displayName = "Enter the display name Meta shows";
+      break;
+    }
     default:
       break;
   }
@@ -624,6 +974,10 @@ export function completeTaskInputOf(
     childId?: string;
     records?: ReturnType<typeof dnsRecordsInputOf>;
     msg91Verified?: boolean;
+    whatsappNumber?: string;
+    wabaId?: string;
+    displayName?: string;
+    displayNameApproved?: boolean;
   } = {};
   if (draft.note.trim()) input.note = draft.note.trim();
   if (task.type === messagingTaskTypeEnum.CREATE_CHILD) {
@@ -632,6 +986,11 @@ export function completeTaskInputOf(
     input.records = dnsRecordsInputOf(draft.records);
   } else if (task.type === messagingTaskTypeEnum.VERIFY_EMAIL_DOMAIN) {
     input.msg91Verified = draft.msg91Verified;
+  } else if (task.type === messagingTaskTypeEnum.WHATSAPP_ONBOARD) {
+    input.whatsappNumber = draft.whatsappNumber.replace(/\D/g, "");
+    input.wabaId = draft.wabaId.trim();
+    input.displayName = draft.displayName.trim();
+    input.displayNameApproved = draft.displayNameApproved;
   }
   return input;
 }
