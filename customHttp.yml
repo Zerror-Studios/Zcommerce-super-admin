@@ -1,0 +1,33 @@
+# Amplify custom headers for the platform console (PRD-014 FR-0.7, FE-01).
+#
+# The console is hosted on AWS Amplify (app "ZCOMM Super Admin", branch
+# main → platform.zerrorstudios.com). Amplify reads this file from the repo
+# root on each build; it replaced vercel.json, which Amplify never read, so
+# until 2026-11-28 the live console sent none of these headers. The SPA
+# rewrite (every path → /index.html) is an Amplify app custom rule, not part
+# of this file.
+#
+# Content-Security-Policy, by directive:
+#   connect-src  the API host only (ADR-003); a build against a UAT API needs
+#                that origin added here.
+#   img-src      https: for store media thumbnails and support ticket
+#                attachments, which come from store media hosts and S3.
+#   worker-src   the same-origin web push service worker (PRD-033 FR-2.7).
+#   media-src    the banner videos are bundled, so 'self' and blob: only.
+# Keep the value on one line: src/lib/console-csp.test.ts reads it.
+customHeaders:
+  - pattern: "**"
+    headers:
+      - key: "Content-Security-Policy"
+        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' https://api.zerrorstudios.com; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+      - key: "X-Frame-Options"
+        value: "DENY"
+      - key: "X-Content-Type-Options"
+        value: "nosniff"
+      - key: "Referrer-Policy"
+        value: "no-referrer"
+      - key: "Strict-Transport-Security"
+        value: "max-age=63072000; includeSubDomains"
+      # The console (sign-in, password reset) is never indexed
+      - key: "X-Robots-Tag"
+        value: "noindex, nofollow"

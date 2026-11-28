@@ -22,7 +22,7 @@ Tenant staff use `zcom-frontend`; this console sits *above* all tenants.
 
 ```mermaid
 flowchart LR
-    Z(["👤 Zerror team"]) --> SA["zcom-super-admin<br/>Vercel SPA"]
+    Z(["👤 Zerror team"]) --> SA["zcom-super-admin<br/>Amplify SPA"]
     SA -->|"one Apollo client,<br/>platform token (aud platform-admin) + refresh cookie"| GW["zcom-backend gateway /v1/graphql"]
     GW --> PADM["platform-admin subgraph :4014<br/>(master DB: platform_user, platform_session, audit;<br/>reads db_configs, plan, subscription)"]
     PADM --> TDBs[("tenant DBs<br/>provisioning, usage snapshots, impersonation")]
@@ -210,7 +210,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    SRC["src/"] --> TSC["tsc -b (strict)"] --> VB["vite build"] --> VER["Vercel<br/>vercel.json: /(.*) → /index.html"]
+    SRC["src/"] --> TSC["tsc -b (strict)"] --> VB["vite build"] --> VER["AWS Amplify<br/>app rules: every path → /index.html<br/>customHttp.yml headers"]
     SRC --> VT["vitest run<br/>src/**/*.test.ts (node env)"]
     SRC --> OX["oxlint"]
 ```
@@ -219,7 +219,7 @@ flowchart LR
 
 | Gap | Impact | Path |
 |---|---|---|
-| Vercel topology | Resolved: Q6 decided 2026-10-18 (the console calls `https://api.zerrorstudios.com` directly, same site); the CSP `connect-src` allows that origin since PRD-014 FR-0.7 (2026-10-25) | A UAT build needs its API origin in `vercel.json` too (PRD-007 Q8 hosts) |
+| Hosting topology | Resolved: Q6 decided 2026-10-18 (the console calls `https://api.zerrorstudios.com` directly, same site); the CSP `connect-src` allows that origin since PRD-014 FR-0.7 (2026-10-25) | A UAT build needs its API origin in the `customHttp.yml` CSP too (PRD-007 Q8 hosts) |
 | Vocabulary mismatch with backend plans and statuses | Integration bugs | Settle it in the PRD |
 | Notifications feed | Built in the console (PRD-024 FR-4.1.5, 2026-10-27); empty or erroring until the backend's `platformNotifications` is deployed | Deploy the backend first, then regenerate the console manifest |
 | PRD-025 store profile, history, health, at-risk (2026-10-30) | Cancel subscription and Void invoice send required reasons the deployed backend doesn't accept yet (breaking); History is empty until the one-off `status-history-backfill`; Store health signals and At risk are empty until the first nightly usage run after the deploy | Deploy the backend first (console manifest already regenerated, 107/107); run the backfill per the backend runbook |
